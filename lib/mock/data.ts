@@ -34,7 +34,7 @@ export const REGLAMENTO_VIGENTE: ReglamentoVersion = {
 // Registros de ejemplo para el panel admin (se usarán en pantallas posteriores).
 export const REGISTROS_DEMO: Registro[] = [
   {
-    id: "demo-1", folio: "SATAV-100241",
+    id: "demo-1", folio: "SATAG-100241",
     usuarioNombre: "Ana Torres Vela", gestionanteNombre: null, tipoUsuario: "padres",
     marca: "Toyota", modelo: "Sienna", color: "Blanco", placas: "UAB1234", sinPlacas: false,
     noDispositivo: "9426780", procedenciaTag: "escuela", estado: "activo",
@@ -45,7 +45,7 @@ export const REGISTROS_DEMO: Registro[] = [
     createdAt: "2025-08-19",
   },
   {
-    id: "demo-2", folio: "SATAV-100242",
+    id: "demo-2", folio: "SATAG-100242",
     usuarioNombre: "Diego Salas Marín", gestionanteNombre: "Marta Marín Ruiz", tipoUsuario: "alumno",
     marca: "Mazda", modelo: "3", color: "Gris", placas: "UBC9087", sinPlacas: false,
     noDispositivo: null, procedenciaTag: "escuela", estado: "pendiente",

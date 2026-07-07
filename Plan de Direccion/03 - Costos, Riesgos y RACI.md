@@ -4,7 +4,7 @@
 > Documentos del estándar incluidos: **2.4 Costos** + **2.5 Riesgos** + **2.6 RACI/Recursos** +
 > **2.7 Comunicaciones** (versión breve). Se apoya en el Doc 1 (Charter) y el Doc 2 (Alcance/WBS/Cronograma).
 
-| Proyecto | **SATAV** — Sistema de Adquisición de TAG Vehicular |
+| Proyecto | **SATAG** — Sistema de Adquisición de TAG Vehicular |
 |---|---|
 | Cliente | Instituto Asunción de Querétaro AC (IAQ) — interno |
 | Responsable / Desarrollador | Gerardo Sánchez — Soporte TI Jr. |
@@ -58,7 +58,7 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 
 | ID | Riesgo | Prob. | Impacto | Nivel | Respuesta | Responsable |
 |---|---|---|---|---|---|---|
-| R1 | **Datos personales** (nombres, placas, firmas y datos de menores) sin protección legal/técnica | Media | Alto | **Alto** | **Mitigar:** aviso específico SATAV, aviso simplificado, RLS estricta, RPC controlada, Storage privado, MFA admin y pruebas de privacidad | Gerardo |
+| R1 | **Datos personales** (nombres, placas, firmas y datos de menores) sin protección legal/técnica | Media | Alto | **Alto** | **Mitigar:** aviso específico SATAG, aviso simplificado, RLS estricta, RPC controlada, Storage privado, MFA admin y pruebas de privacidad | Gerardo |
 | R2 | **Firma manuscrita digital** sin valor probatorio suficiente | Media | Alto | **Alto** | **Mitigar:** firma simple reforzada: imagen + trazos si aplica + hash SHA-256 + versión del reglamento/aviso + sello de tiempo + bitácora | Gerardo / Auditor |
 | R3 | **Scope creep hacia hardware** (lector/pluma) | Media | Medio | **Medio** | **Evitar:** exclusión explícita en el alcance; integración documentada como roadmap futuro | Gerardo / Auditor |
 | R4 | **Registros "pendientes" acumulados** (flujo en varias manos) | Media | Medio | **Medio** | **Mitigar:** estado del registro + reporte de pendientes en el panel; seguimiento | Gerardo / TI |
@@ -66,7 +66,7 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 | R6 | **Curva de aprendizaje** del personal (admin/TI) al cambiar de papel a web | Baja | Medio | **Bajo** | **Mitigar:** usabilidad (alta sin manual) + manual breve + capacitación | Gerardo |
 | R7 | **Pérdida de datos** / falta de respaldo | Baja | Alto | **Medio** | **Mitigar/Transferir:** respaldos automáticos de Supabase; verificar política de backups | Gerardo |
 | R8 | **Disponibilidad del auditor** para validar | Baja | Medio | **Bajo** | **Aceptar:** el jefe está en la misma oficina y valida el mismo día (riesgo residual mínimo) | Gerardo |
-| R9 | **Aviso institucional insuficiente para SATAV** (no cubre placas, firma web, nube ni finalidad TAG) | Media | Alto | **Alto** | **Mitigar:** crear aviso específico SATAV/anexo y someterlo a aprobación antes de producción | Gerardo / Auditor |
+| R9 | **Aviso institucional insuficiente para SATAG** (no cubre placas, firma web, nube ni finalidad TAG) | Media | Alto | **Alto** | **Mitigar:** crear aviso específico SATAG/anexo y someterlo a aprobación antes de producción | Gerardo / Auditor |
 | R10 | **Tratamiento de menores sin firma de tutor** | Media | Alto | **Alto** | **Evitar/Mitigar:** cuando el usuario sea menor, exigir firma del padre/madre/tutor como gestionante | Gerardo / Administración |
 | R11 | **Configuración incorrecta de RLS/RPC/Storage** que exponga firmas o placas | Media | Alto | **Alto** | **Mitigar:** pruebas RLS/RPC, bucket privado, URLs firmadas, revisión por rol y MFA admin | Gerardo / Auditor |
 | R12 | **NOM-151 no presupuestada** si se exige mayor fuerza probatoria | Baja | Medio | **Medio** | **Aceptar/Diferir:** no incluir en MVP; cotizar Cincel/ATEB/PSC acreditados como fase 2 | Auditor / Dirección |
@@ -84,7 +84,7 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 |---|---|---|---|---|---|
 | Planeación (Plan de Dirección) | R | A | I | I | — |
 | Modelo de datos + BD segura (RLS/RPC/Storage/MFA) | R | A | — | C | — |
-| Cumplimiento legal y privacidad (aviso SATAV, firma, menores, ARCO) | R | A | C | C | I |
+| Cumplimiento legal y privacidad (aviso SATAG, firma, menores, ARCO) | R | A | C | C | I |
 | Infraestructura + CI/CD | R | A | — | C | — |
 | Fase 1 — Formulario + firma (autoservicio) | R | A | — | — | C |
 | Fase 2 — Administración (estacionamiento + pago) | R | A | **C** | — | — |
@@ -115,7 +115,7 @@ permite una validación ágil.
 |---|---|---|---|---|
 | Avance y validación de entregables | Auditor (jefe de Sistemas) | Diaria / por entregable | En persona (misma oficina) | Gerardo |
 | Coordinación de las fases operativas | Administración + TI | Al llegar a las fases 2 y 3 | Reunión breve | Auditor |
-| Validación legal mínima (aviso SATAV, menores, ARCO, firma) | Auditor + Dirección/Legal si aplica | Antes de producción | Revisión documental breve | Gerardo / Auditor |
+| Validación legal mínima (aviso SATAG, menores, ARCO, firma) | Auditor + Dirección/Legal si aplica | Antes de producción | Revisión documental breve | Gerardo / Auditor |
 | Estado del proyecto en hitos clave | Dirección del IAQ | En hitos (H1–H6) | Vía jefe de Sistemas | Auditor |
 | Reporte de pendientes / incidencias | Auditor + TI | Según ocurra | En persona / correo | Gerardo |
 

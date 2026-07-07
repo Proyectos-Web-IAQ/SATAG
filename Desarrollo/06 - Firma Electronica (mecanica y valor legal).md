@@ -1,10 +1,10 @@
-# Firma Electrónica — Mecánica y Valor Legal (SATAV)
+# Firma Electrónica — Mecánica y Valor Legal (SATAG)
 
 > **Desarrollo · Fase 1 (Diseño)** · Apoyo a WBS 1.2.3 (Definición legal: aviso de privacidad +
 > **mecánica de la firma**). Documento **de decisión**: sirve para acordar CON el IAQ qué nivel de
 > firma se usará. **No es asesoría jurídica** — el criterio final lo da el área legal del IAQ.
 
-| Proyecto | **SATAV** — Sistema de Adquisición de TAG Vehicular |
+| Proyecto | **SATAG** — Sistema de Adquisición de TAG Vehicular |
 |---|---|
 | Cliente | Instituto Asunción de Querétaro AC (IAQ) — interno |
 | Responsable / Desarrollador | Gerardo Sánchez — Soporte TI Jr. |
@@ -15,7 +15,7 @@
 
 ---
 
-## 1. Qué usa SATAV hoy
+## 1. Qué usa SATAG hoy
 
 El formulario captura la firma en un **lienzo (`<canvas>` de HTML5 + eventos de puntero)**: la persona
 firma con el dedo o el mouse y se genera una **imagen PNG**. Sin librerías externas.
@@ -70,7 +70,7 @@ documento no se alteró).
 
 ## 5. Recomendación técnica
 
-**Opción B (firma simple reforzada).** Es **proporcional** al caso: SATAV digitaliza un **reglamento
+**Opción B (firma simple reforzada).** Es **proporcional** al caso: SATAG digitaliza un **reglamento
 interno de acceso vehicular**, no un contrato litigioso. B eleva mucho la defendibilidad **sin costo y sin
 fricción** para los papás, guardando junto a la firma: la **versión exacta** del reglamento, el **sello de
 tiempo**, la **casilla de aceptación** y un **hash** que prueba que nada se alteró.
@@ -82,10 +82,10 @@ tiempo**, la **casilla de aceptación** y un **hash** que prueba que nada se alt
 
 ## 6. Almacenamiento y costo (¿hace falta plan premium de Supabase?)
 
-**No hace falta plan de pago para SATAV.** Cabe cómodo en el **plan gratuito**:
+**No hace falta plan de pago para SATAG.** Cabe cómodo en el **plan gratuito**:
 
 - **Tamaño de una firma:** un PNG de canvas pesa ~**10–40 KB**; los **trazos vectoriales** (JSON) son ~2–10 KB.
-- **Volumen SATAV:** ~1,660 registros + ~300/año. Aun con **2,500 firmas × 40 KB ≈ 100 MB**.
+- **Volumen SATAG:** ~1,660 registros + ~300/año. Aun con **2,500 firmas × 40 KB ≈ 100 MB**.
 - **Plan gratuito de Supabase (aprox., confirmar vigente):** ~**1 GB de Storage** + ~**500 MB de base** +
   límite de subida por archivo de ~50 MB. → **100 MB de firmas entra de sobra en 1 GB.**
 - La imagen va a **Storage** (bucket privado `firmas`); los vectores/hash/metadatos van en **Postgres**
@@ -124,7 +124,7 @@ Supabase antes de producción.
 ## 9. Diseño como módulo reutilizable (firma portátil)
 
 *(Decisión con Dirección: la captura de firma es un módulo que se reutilizará en otros sistemas del IAQ,
-así que se diseña **desacoplado de SATAV** y pensado para copiarse/portarse — `CC-08` / B8.)*
+así que se diseña **desacoplado de SATAG** y pensado para copiarse/portarse — `CC-08` / B8.)*
 
 **Idea.** La firma manuscrita digital no depende de "reglamento" ni de "registro de TAG": es una
 capacidad genérica (capturar → guardar → verificar una firma sobre *cualquier* documento). Se separa en
@@ -136,17 +136,17 @@ capacidad genérica (capturar → guardar → verificar una firma sobre *cualqui
 | Dominio | **`Firma`** (clase/módulo) | ✅ total | Imagen + trazos + `hashDocumento` + `selloTiempo` + firmante + metadata; `verificarIntegridad()`, `esValida()` |
 | Servicio | **`FirmaService`** | ✅ total | Subir la imagen a Storage privado, calcular hash del PNG si aplica, solicitar a la base el hash legal, recuperar y verificar |
 | Patrón (opcional) | **`AceptacionDocumento`** | ✅ genérico | "Firmar/aceptar un documento versionado": `documento` + `version` + `Firma` + firmante |
-| App (SATAV) | `AceptacionReglamento` | ❌ específico | Compone una `Firma` con `ReglamentoVersion` + `RegistroTag` |
+| App (SATAG) | `AceptacionReglamento` | ❌ específico | Compone una `Firma` con `ReglamentoVersion` + `RegistroTag` |
 
 **Frontera del módulo.** El módulo reutilizable = **`SignaturePad` + `Firma` + `FirmaService`** (y,
 opcional, el patrón `AceptacionDocumento`). **No** conoce `registros`, `reglamento_versiones` ni la RLS
-de SATAV. Se configura por parámetros: bucket de Storage, si guarda trazos vectoriales, si exige hash del
+de SATAG. Se configura por parámetros: bucket de Storage, si guarda trazos vectoriales, si exige hash del
 documento y formato de metadata.
 
 **Interfaz sugerida (portátil):**
 
 ```ts
-// Módulo reutilizable — sin dependencias de SATAV
+// Módulo reutilizable — sin dependencias de SATAG
 interface Firma {
   imagenRuta: string;          // ruta en Storage privado (no URL pública)
   trazos?: Trazo[];            // vectores opcionales (mayor evidencia)
@@ -164,10 +164,10 @@ interface FirmaService {
 ```
 
 **Empaquetado.** En código vive como paquete/carpeta propia (p. ej. `lib/firma/` o `packages/firma/`),
-sin importar nada del dominio de SATAV, para poder **copiarse tal cual** a otro sistema. La estructura y
+sin importar nada del dominio de SATAG, para poder **copiarse tal cual** a otro sistema. La estructura y
 la frontera se detallan en [`03 - Arquitectura Técnica`](03%20-%20Arquitectura%20Tecnica.md).
 
-**Persistencia (SATAV).** `aceptaciones` guarda la firma (`firma_url`, `firma_imagen_sha256`,
+**Persistencia (SATAG).** `aceptaciones` guarda la firma (`firma_url`, `firma_imagen_sha256`,
 `firma_trazos`, `firmante_nombre`, `sello_tiempo`) + la version del reglamento, la version del aviso,
 `hash_payload` y `hash_documento` generado por la base. *(Opcional a futuro: una tabla generica
 `firmas` que `aceptaciones` referencie, si otro sistema comparte la misma base.)*

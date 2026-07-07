@@ -1,4 +1,4 @@
-# SATAV — Sistema de Adquisición de TAG Vehicular
+# SATAG — Sistema de Adquisición de TAG Vehicular
 
 Alternativa web para reemplazar la hoja física de adquisición de TAG vehicular del
 **Instituto Asunción de Querétaro AC (IAQ)**.
@@ -44,7 +44,7 @@ los cambios quedan registrados en la **[bitácora de cambios](Plan%20de%20Direcc
 
 ```mermaid
 gantt
-  title SATAV — Cronograma real (serializado, 1 desarrollador)
+  title SATAG — Cronograma real (serializado, 1 desarrollador)
   dateFormat YYYY-MM-DD
   axisFormat %d-%b
   excludes weekends
@@ -89,7 +89,7 @@ gantt
 > [Plan/02 §2.5](Plan%20de%20Direccion/02%20-%20Alcance%2C%20WBS%20y%20Cronograma.md).
 >
 > **Ajuste legal (opción A, 03-jul):** la investigación legal agrega controles mínimos para producción:
-> aviso específico SATAV, aviso simplificado, firma reforzada con hash/versionado, tutor obligatorio
+> aviso específico SATAG, aviso simplificado, firma reforzada con hash/versionado, tutor obligatorio
 > para menores, RLS/RPC/Storage privado/MFA y pruebas de privacidad. NOM-151 queda como mejora de fase 2.
 > Esto suma ~2 días-persona adicionales y mueve el cierre objetivo a **~03-ago-2026**.
 >
@@ -114,11 +114,11 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 |---|---|---|
 | **Modelo de datos + BD** (E1) | 🟡 1.er corte listo | [Doc modelo](Desarrollo/01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md) · [schema.sql](supabase/schema.sql) · [seed.sql](supabase/seed.sql) · [supabase/README](supabase/README.md) |
 | **Modelo de dominio (POO)** | ✅ Listo | [Doc POO](Desarrollo/02%20-%20Modelo%20de%20Dominio%20POO.md) |
-| **Prototipo UI/UX** (autoservicio + panel Admin/TI) | 🟡 Listo (datos *mock*) | **En línea:** [Inicio](https://satav.vercel.app/) · [Registro](https://satav.vercel.app/registro/) · [Panel Admin/TI](https://satav.vercel.app/admin/) *(acceso demo: cualquier correo/contraseña)* |
-| **Investigación legal y matriz de cumplimiento** | ✅ Listo | [Doc investigación legal](Investigacion/02%20-%20Investigacion%20Legal%20SATAV.md) · [PDF](Investigacion/02%20-%20Investigacion%20Legal%20SATAV.pdf) |
+| **Prototipo UI/UX** (autoservicio + panel Admin/TI) | 🟡 Listo (datos *mock*) | **En línea:** [Inicio](https://satag.vercel.app/) · [Registro](https://satag.vercel.app/registro/) · [Panel Admin/TI](https://satag.vercel.app/admin/) *(acceso demo: cualquier correo/contraseña)* |
+| **Investigación legal y matriz de cumplimiento** | ✅ Listo | [Doc investigación legal](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.md) · [PDF](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.pdf) |
 | **Firma electrónica — mecánica y valor legal** | 🔵 Borrador para decidir con dirección/legal | [Doc firma](Desarrollo/06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md) |
 | **Arquitectura técnica** | ⚪ Pendiente | [Doc](Desarrollo/03%20-%20Arquitectura%20Tecnica.md) |
-| **Seguridad, RLS y privacidad** | 🟡 Primer corte implementable, pendiente de aprobación | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAV](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAV.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAV.md) |
+| **Seguridad, RLS y privacidad** | 🟡 Primer corte implementable, pendiente de aprobación | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAG](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
 | **Flujos del sistema** | ⚪ Pendiente | [Doc](Desarrollo/05%20-%20Flujos%20del%20Sistema.md) |
 
 ### Seguimiento del cronograma
@@ -131,7 +131,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 - [x] Modelo de datos — *Est. 1 d* ✅
 - [x] Diseño UI/UX — *Est. 1 d* ✅ (prototipo navegable)
 - [x] Definición legal y privacidad — *Est. 1.5 d* · 🟡 borradores y criterios listos, falta aprobación Dirección/Legal
-  - [x] Aviso específico SATAV / anexo al aviso general IAQ (CC-09)
+  - [x] Aviso específico SATAG / anexo al aviso general IAQ (CC-09)
   - [x] Aviso simplificado para formulario + texto de aceptación (CC-09)
   - [x] Tratamiento de menores: firma de padre/madre/tutor (CC-11)
   - [x] Política mínima de conservación y ARCO operativo (CC-13)
@@ -181,7 +181,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 **Avance:** **2 de ~22.5** días-persona terminados (~9 %). La junta de Dirección (03-jul) sumó
 **≈ +2.4 días-persona** de alcance nuevo (Caja MVP + Solicitudes; el resto se absorbe en tareas existentes)
 y la investigación legal suma **≈ +2 días-persona** de controles mínimos para producción (opción A:
-aviso SATAV, firma reforzada, RLS/RPC/MFA, menores y ARCO básico). Con ese alcance el cierre serializado
+aviso SATAG, firma reforzada, RLS/RPC/MFA, menores y ARCO básico). Con ese alcance el cierre serializado
 pasa de **28-jul a ~03-ago-2026**. El **front-end** de Autoservicio y Panel (≈ 8.5 d) ya está
 **prototipado**, por lo que parte del ajuste puede recuperarse durante la conexión a Supabase; no se
 recomienda recortar pruebas de privacidad/RLS.
@@ -208,7 +208,7 @@ recomienda recortar pruebas de privacidad/RLS.
 ## Estructura del repositorio
 
 ```
-SATAV/
+SATAG/
 ├─ Plan de Direccion/       Documentos de gestión (PMBOK) · img/ (diagramas)
 ├─ Investigacion/           Investigación de soporte (técnica, legal)
 ├─ Desarrollo/              Diseño técnico: datos/BD, dominio POO, arquitectura, seguridad, flujos, firma

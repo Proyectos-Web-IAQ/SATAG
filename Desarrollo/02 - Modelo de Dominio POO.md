@@ -1,4 +1,4 @@
-# Modelo de Dominio POO - SATAV
+# Modelo de Dominio POO - SATAG
 
 > **Desarrollo - Fase 1 (Diseno)**.
 > **Fecha:** 06-jul-2026.
@@ -8,7 +8,7 @@ Este documento describe las clases de dominio que consumen el modelo relacional 
 
 ## 1. Principio de diseno
 
-SATAV puede usar objetos de dominio sin abandonar Supabase/PostgreSQL:
+SATAG puede usar objetos de dominio sin abandonar Supabase/PostgreSQL:
 
 - El objeto valida reglas y expresa comportamiento.
 - El repositorio persiste y reconstruye objetos.

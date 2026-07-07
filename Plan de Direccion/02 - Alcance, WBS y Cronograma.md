@@ -4,13 +4,13 @@
 > Documentos del estándar incluidos: **2.1 Enunciado del Alcance + EDT/WBS** + **2.3 Cronograma**
 > Se apoya en el Doc 1 (Charter) y en el Playbook técnico (`Investigacion/`).
 
-| Proyecto | **SATAV** — Sistema de Adquisición de TAG Vehicular |
+| Proyecto | **SATAG** — Sistema de Adquisición de TAG Vehicular |
 |---|---|
 | Cliente | Instituto Asunción de Querétaro AC (IAQ) — interno |
 | Responsable / Desarrollador | Gerardo Sánchez — Soporte TI Jr. |
 | Fecha | 03-jul-2026 · Versión **v0.3** |
 
-**Historial de versiones:** v0.1 (01-jul, borrador) · v0.2 (01-jul, cronograma completo + diccionario de la WBS + pruebas ampliadas a 2.5 d + vistas de recursos) · **v0.3** (03-jul, opción A de cumplimiento legal: aviso SATAV, firma reforzada, menores, RLS/RPC/MFA y ARCO básico).
+**Historial de versiones:** v0.1 (01-jul, borrador) · v0.2 (01-jul, cronograma completo + diccionario de la WBS + pruebas ampliadas a 2.5 d + vistas de recursos) · **v0.3** (03-jul, opción A de cumplimiento legal: aviso SATAG, firma reforzada, menores, RLS/RPC/MFA y ARCO básico).
 
 ---
 
@@ -18,7 +18,7 @@
 
 ### Descripción del alcance del producto
 
-SATAV es una **aplicación web estática** (Next.js export + Supabase) que reemplaza la hoja física de
+SATAG es una **aplicación web estática** (Next.js export + Supabase) que reemplaza la hoja física de
 adquisición de TAG vehicular del IAQ. Digitaliza el **reglamento (22 cláusulas)**, la **captura de
 datos** del usuario y su vehículo, la **aceptación con firma manuscrita digital**, y el **expediente**
 de cada TAG a lo largo de su ciclo de vida, más un **panel administrativo** de consulta y control.
@@ -41,7 +41,7 @@ El proceso se cubre en **tres momentos / tres actores**:
 | E3 | **Módulo de administración** | Asignación de estacionamiento + registro de pago |
 | E4 | **Módulo de instalación (TI)** | Captura del No. de TAG + cambio de estado + ciclo de vida |
 | E5 | **Panel administrativo** | Login, búsqueda/consulta, edición, control de TAGs/estados/pagos, reporte de pendientes |
-| E6 | **Cumplimiento legal y privacidad** | Aviso específico SATAV/anexo, aviso simplificado, ARCO básico, menores y firma reforzada |
+| E6 | **Cumplimiento legal y privacidad** | Aviso específico SATAG/anexo, aviso simplificado, ARCO básico, menores y firma reforzada |
 | E7 | **Infraestructura y despliegue** | Subdominio GoDaddy + Cloudflare + proyecto Supabase + GitHub Action |
 | E8 | **Documentación y manual** | Docs técnicas + manual breve para administrativos/TI |
 
@@ -77,7 +77,7 @@ El proceso se cubre en **tres momentos / tres actores**:
 - **Firma manuscrita digital** obligatoria (definición del IAQ).
 - **Presupuesto:** interno, sin pago extra; gasto out-of-pocket ≈ **$0** (infra ya contratada).
 - **Plazo:** meta **24-jul-2026**; **1 desarrollador** (Gerardo).
-- **Legal:** manejo de datos personales bajo **LFPDPPP** vigente (aviso específico SATAV, aviso simplificado,
+- **Legal:** manejo de datos personales bajo **LFPDPPP** vigente (aviso específico SATAG, aviso simplificado,
   RLS/RPC, ARCO básico, menores y evidencia de firma). NOM-151 queda como mejora futura/cotización, no como
   requisito del MVP.
 
@@ -93,7 +93,7 @@ El proceso se cubre en **tres momentos / tres actores**:
 ## 2.2 EDT / WBS (descomposición del trabajo)
 
 ```
-1. SATAV
+1. SATAG
 ├─ 1.1 Gestión del proyecto
 │   ├─ 1.1.1 Planeación (este Plan de Dirección)
 │   ├─ 1.1.2 Seguimiento y control de cambios
@@ -101,7 +101,7 @@ El proceso se cubre en **tres momentos / tres actores**:
 ├─ 1.2 Diseño
 │   ├─ 1.2.1 Modelo de datos (esquema + RLS + RPC)
 │   ├─ 1.2.2 Diseño UI/UX (formulario, panel, flujo de 3 actores)
-│   └─ 1.2.3 Definición legal y privacidad (aviso SATAV + firma + menores + ARCO)
+│   └─ 1.2.3 Definición legal y privacidad (aviso SATAG + firma + menores + ARCO)
 ├─ 1.3 Infraestructura / setup
 │   ├─ 1.3.1 Proyecto Supabase seguro (BD + esquema + RLS + RPC + Storage + MFA)
 │   ├─ 1.3.2 Subdominio GoDaddy + registro Cloudflare + cuenta FTP
@@ -145,9 +145,9 @@ paquetes como actividades.)*
 |---|---|---|---|---|
 | 1.2.1 | Modelo de datos | Esquema Supabase (tablas §2.3), RLS, RPC de guardado atómico | `schema.sql` | Inserta vía RPC; RLS impide leer PII ajena |
 | 1.2.2 | Diseño UI/UX | Wireframes de formulario, panel y flujo de 3 actores | Mockups / guía visual | Cubre los 3 flujos; aprobado por el auditor |
-| 1.2.3 | Definición legal y privacidad | Aviso específico SATAV/anexo, aviso simplificado, texto de aceptación, firma, menores, ARCO básico y conservación | Investigación legal + textos/criterios aprobables | Aviso y firma definidos; menores/ARCO/conservación contemplados |
+| 1.2.3 | Definición legal y privacidad | Aviso específico SATAG/anexo, aviso simplificado, texto de aceptación, firma, menores, ARCO básico y conservación | Investigación legal + textos/criterios aprobables | Aviso y firma definidos; menores/ARCO/conservación contemplados |
 | 1.3.1 | Setup Supabase seguro | Proyecto, aplicación de esquema/RLS/RPC, bucket privado de firmas, roles y MFA admin | Proyecto Supabase operativo y endurecido | Tablas y RLS activas; Storage privado; escrituras críticas por RPC; MFA admin |
-| 1.3.2 | Infra web | Subdominio GoDaddy, registro A en Cloudflare (proxy), cuenta FTP | Subdominio con HTTPS | `https://satav…` responde 200 |
+| 1.3.2 | Infra web | Subdominio GoDaddy, registro A en Cloudflare (proxy), cuenta FTP | Subdominio con HTTPS | `https://satag…` responde 200 |
 | 1.3.3 | CI/CD | Repo + GitHub Action (FTPS) + Secrets | Deploy automático | Push a `main` publica el sitio |
 | 1.4 | Fase 1 — Autoservicio | Formulario, aviso simplificado, reglamento+versión, firma reforzada, guardado "pendiente", comprobante | Formulario funcional | Usuario captura y firma; registro queda "pendiente"; menores firman por gestionante/tutor |
 | 1.4.5 🆕 | Solicitud de cambio/baja | Formulario público: identifica su registro + tipo (cambio/baja) + detalle; RPC `crear_solicitud` | Solicitud registrada | La solicitud cae en la bandeja de TI (1.6.3) |
@@ -198,7 +198,7 @@ El modelo de dominio orientado a objetos vive separado en
 |---|---|---|---|---|---|---|---|
 | 1 | Modelo de datos (esquema + RLS + RPC) | 1.2.1 | 0.5 | 1 | 1.5 | **1** | — |
 | 2 | Diseño UI/UX (formulario, panel, flujo) | 1.2.2 | 0.5 | 1 | 1.5 | **1** | — |
-| 3 | Definición legal y privacidad (aviso SATAV + firma + menores + ARCO) | 1.2.3 | 1 | 1.5 | 2 | **1.5** | — |
+| 3 | Definición legal y privacidad (aviso SATAG + firma + menores + ARCO) | 1.2.3 | 1 | 1.5 | 2 | **1.5** | — |
 | 4 | Infraestructura (subdominio + Cloudflare + FTP + repo + Action) | 1.3.2/1.3.3 | 0.5 | 1 | 1.5 | **1** | — |
 | 5 | Setup Supabase seguro (BD + esquema + RLS + RPC + Storage + MFA) | 1.3.1 | 1 | 1.5 | 2 | **1.5** | 1 |
 | 6 | Auth del panel + reset de contraseña | 1.7.1 | 0.5 | 0.5 | 0.5 | **0.5** | 5 |
@@ -251,7 +251,7 @@ El modelo de dominio orientado a objetos vive separado en
 - **Ajustes de la junta de Dirección (03-jul):** se definen como **subactividades** en **§2.5**
   (≈ +2.4 días-persona de trabajo nuevo; el resto se absorbe en actividades existentes).
 - **Ajuste legal opción A (03-jul):** se incorporan controles mínimos para producción derivados de la
-  investigación legal (aviso SATAV, firma reforzada, menores, RLS/RPC/MFA y ARCO básico), con impacto
+  investigación legal (aviso SATAG, firma reforzada, menores, RLS/RPC/MFA y ARCO básico), con impacto
   neto estimado de **≈ +2 días-persona**. NOM-151 queda diferido como mejora/cotización de fase 2.
 
 ### Gantt (esquemático) — cronograma real serializado
@@ -266,7 +266,7 @@ El modelo de dominio orientado a objetos vive separado en
 
 ```mermaid
 gantt
-  title SATAV — Cronograma real (serializado, 1 recurso)
+  title SATAG — Cronograma real (serializado, 1 recurso)
   dateFormat YYYY-MM-DD
   axisFormat %d-%b
   excludes weekends
@@ -302,16 +302,16 @@ gantt
 **Figura 1 — Gantt de ejecución** (serializado, agrupado por fases; barras negras = resúmenes; en rojo
 las tareas críticas; inicio 02-jul → cierre 28-jul-2026):
 
-![Gantt de ejecución de SATAV — ProjectLibre](img/02-gantt-ejecucion.png)
+![Gantt de ejecución de SATAG — ProjectLibre](img/02-gantt-ejecucion.png)
 
 **Figura 2 — Red de actividades (AON)** (cada caja es una actividad; en rojo la ruta crítica; los
 paralelogramos son las fases resumen):
 
-![Red AON de SATAV — ProjectLibre](img/02-red-aon.png)
+![Red AON de SATAG — ProjectLibre](img/02-red-aon.png)
 
 **Figura 3 — Tabla de actividades** (duración, inicio/fin, predecesores y recurso, agrupadas por fase):
 
-![Tabla de actividades de SATAV — ProjectLibre](img/02-hoja-tareas.png)
+![Tabla de actividades de SATAG — ProjectLibre](img/02-hoja-tareas.png)
 
 ---
 
@@ -346,7 +346,7 @@ ya en los documentos de `Desarrollo/` (01 Modelo de Datos, 02 POO, 05 Flujos, 06
 | SA-17 | Sección "Incompletos" en el panel (motivo del faltante) | 11 Panel | B2 | A | 2 |
 | SA-18 | Estándar "de usted" documentado + revisión del copy del prototipo | 2 Diseño/estándar | B7 | A | 1 |
 | SA-19 | Diseñar la firma como **módulo reutilizable** (desacoplar `SignaturePad`+`Firma`+`FirmaService`) | 9 Firma digital | B8 | A | 3 |
-| SA-20 | Aviso específico SATAV / anexo al aviso general IAQ | 3 Definición legal y privacidad | CC-09 | N | 3 |
+| SA-20 | Aviso específico SATAG / anexo al aviso general IAQ | 3 Definición legal y privacidad | CC-09 | N | 3 |
 | SA-21 | Aviso simplificado en formulario + texto de aceptación | 3 Definición legal y privacidad / 7 Formulario | CC-09 | A | 1.5 |
 | SA-22 | Hash SHA-256 + versión de reglamento/aviso + sello de tiempo | 9 Firma reforzada / 10 Guardar registro | CC-10 | A | 3 |
 | SA-23 | Regla de menores: firma del padre/madre/tutor como gestionante | 7 Formulario / 9 Firma reforzada | CC-11 | A | 2 |
@@ -359,7 +359,7 @@ ya en los documentos de `Desarrollo/` (01 Modelo de Datos, 02 POO, 05 Flujos, 06
 ≈ **19 h ≈ 2.4 d**; el resto (**≈ 19.5 h ≈ 2.4 d**) se **absorbe** dentro de las actividades 1, 7, 9, 13 y 11.
 
 **Ajuste legal opción A:** SA-20…SA-27 suman ≈ **19.5 h ≈ 2.4 días-persona**. De ese total, lo nuevo
-neto para cronograma es ≈ **16 h ≈ 2 días-persona** (aviso SATAV y ARCO básico); el resto se absorbe en
+neto para cronograma es ≈ **16 h ≈ 2 días-persona** (aviso SATAG y ARCO básico); el resto se absorbe en
 Definición legal, Setup Supabase, Firma y Pruebas. NOM-151 queda diferido como mejora/cotización de fase 2.
 
 ### Efecto en fechas

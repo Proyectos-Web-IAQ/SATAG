@@ -1,15 +1,15 @@
-# Seguridad, RLS y Privacidad - SATAV
+# Seguridad, RLS y Privacidad - SATAG
 
 > **Estado:** primer corte implementable para revision.
 > **Fecha:** 06/07/2026.
-> **Fuente:** Investigacion legal SATAV del 03/07/2026.
+> **Fuente:** Investigacion legal SATAG del 03/07/2026.
 > **Uso:** reglas obligatorias para desarrollo; no sustituye la validacion final de Direccion/Legal del IAQ.
 
 ## 1. Objetivo
 
-Este documento traduce la definicion legal y de privacidad de SATAV a reglas tecnicas verificables para el MVP. El sistema debe poder operar sin exponer datos personales, conservar evidencia de aceptacion del reglamento y soportar solicitudes basicas ARCO/cambio/baja.
+Este documento traduce la definicion legal y de privacidad de SATAG a reglas tecnicas verificables para el MVP. El sistema debe poder operar sin exponer datos personales, conservar evidencia de aceptacion del reglamento y soportar solicitudes basicas ARCO/cambio/baja.
 
-SATAV trata datos personales ordinarios: nombre, tipo de usuario, datos vehiculares, placas, firma manuscrita digital, metadatos de aceptacion, pago administrativo del TAG y solicitudes operativas. Las placas y firmas deben tratarse como datos personales cuando permitan identificar o asociar a una persona.
+SATAG trata datos personales ordinarios: nombre, tipo de usuario, datos vehiculares, placas, firma manuscrita digital, metadatos de aceptacion, pago administrativo del TAG y solicitudes operativas. Las placas y firmas deben tratarse como datos personales cuando permitan identificar o asociar a una persona.
 
 ## 2. Inventario de datos personales
 
@@ -75,7 +75,7 @@ La firma no debe depender solo de la imagen PNG. La fuerza probatoria viene del 
 
 Antes de capturar datos, el formulario debe mostrar:
 
-- Aviso simplificado SATAV.
+- Aviso simplificado SATAG.
 - Enlace al aviso integral.
 - Finalidades primarias del tratamiento.
 - Datos personales principales que se recaban.
@@ -98,7 +98,7 @@ Implementacion minima:
 
 ## 9. ARCO, revocacion, cambio y baja
 
-SATAV debe soportar, al menos de forma operativa en panel o proceso documentado:
+SATAG debe soportar, al menos de forma operativa en panel o proceso documentado:
 
 | Derecho/proceso | Soporte minimo |
 |---|---|
@@ -123,7 +123,7 @@ Criterio minimo para MVP, pendiente de aprobacion institucional:
 
 ## 11. Nube, encargados y transferencias
 
-SATAV usa Supabase como proveedor cloud/encargado tecnologico. Antes de produccion se debe:
+SATAG usa Supabase como proveedor cloud/encargado tecnologico. Antes de produccion se debe:
 
 - Confirmar region del proyecto Supabase.
 - Firmar o conservar DPA/terminos aplicables de Supabase.
@@ -151,7 +151,7 @@ Cloudflare/GoDaddy no deben procesar datos personales del sistema si el front es
 
 | Pendiente | Responsable sugerido | Necesario antes de produccion |
 |---|---|---|
-| Aprobar aviso integral SATAV/anexo | Direccion/Legal | Si |
+| Aprobar aviso integral SATAG/anexo | Direccion/Legal | Si |
 | Aprobar aviso simplificado y texto de aceptacion | Direccion/Legal | Si |
 | Designar persona/departamento ARCO y correo | Direccion/Administracion | Si |
 | Definir plazo de conservacion/bloqueo/supresion | Direccion/Legal/Administracion | Si |
@@ -177,8 +177,8 @@ NOM-151 no es requisito del MVP. Para fase 1 se implementa hash interno, version
 
 ## 16. Referencias internas
 
-- [Investigacion legal SATAV](../Investigacion/02%20-%20Investigacion%20Legal%20SATAV.md)
-- [Aviso y textos legales SATAV](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAV.md)
-- [Checklist legal y privacidad](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAV.md)
+- [Investigacion legal SATAG](../Investigacion/02%20-%20Investigacion%20Legal%20SATAG.md)
+- [Aviso y textos legales SATAG](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md)
+- [Checklist legal y privacidad](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md)
 - [Modelo de Datos y Base de Datos](01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md)
 - [Firma Electronica](06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md)

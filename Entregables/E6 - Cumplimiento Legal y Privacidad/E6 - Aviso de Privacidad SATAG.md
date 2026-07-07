@@ -1,23 +1,23 @@
-# Aviso de Privacidad SATAV
+# Aviso de Privacidad SATAG
 
-> **Proyecto:** SATAV - Sistema de Adquisicion de TAG Vehicular.
+> **Proyecto:** SATAG - Sistema de Adquisicion de TAG Vehicular.
 > **Institucion:** Instituto Asuncion de Queretaro, A.C.
 > **Fecha de borrador:** 06/07/2026.
 > **Estado:** borrador para revision de Direccion/Legal.
 > **Nota:** este texto es una base operativa derivada de la investigacion legal del proyecto. Debe validarse formalmente antes de publicarse.
 
-## 1. Aviso de privacidad integral especifico SATAV
+## 1. Aviso de privacidad integral especifico SATAG
 
 ### Identidad y domicilio del responsable
 
-El Instituto Asuncion de Queretaro, A.C. ("IAQ"), con domicilio en Cerrada de la Asuncion #16, Col. Loma Dorada, Queretaro, Qro., Mexico, C.P. 76060, es responsable del tratamiento de los datos personales recabados mediante SATAV, sistema usado para la adquisicion, administracion, control, cambio, baja e instalacion del TAG vehicular de acceso al estacionamiento escolar.
+El Instituto Asuncion de Queretaro, A.C. ("IAQ"), con domicilio en Cerrada de la Asuncion #16, Col. Loma Dorada, Queretaro, Qro., Mexico, C.P. 76060, es responsable del tratamiento de los datos personales recabados mediante SATAG, sistema usado para la adquisicion, administracion, control, cambio, baja e instalacion del TAG vehicular de acceso al estacionamiento escolar.
 
 > **Correo institucional de privacidad:** `aviso.privacidad@asuncionqro.edu.mx`.
 > **Pendiente de completar por IAQ:** persona/departamento responsable de datos personales. (Legal debe confirmar que este domicilio coincide con el del aviso general/acta constitutiva.)
 
 ### Datos personales que se recaban
 
-Para operar SATAV, el IAQ puede recabar:
+Para operar SATAG, el IAQ puede recabar:
 
 - Nombre del usuario del TAG.
 - Nombre del padre, madre, tutor o gestionante, cuando aplique.
@@ -49,7 +49,7 @@ Los datos se usaran para:
 
 ### Firma electronica simple reforzada
 
-La aceptacion del reglamento se realiza mediante firma manuscrita digital capturada en pantalla. Esta firma no es e.firma del SAT ni firma electronica avanzada. Para reforzar su valor probatorio, SATAV conserva junto con la firma la version exacta del reglamento, la version del aviso de privacidad, un sello de tiempo, metadatos de aceptacion, bitacora y hash SHA-256 del paquete firmado.
+La aceptacion del reglamento se realiza mediante firma manuscrita digital capturada en pantalla. Esta firma no es e.firma del SAT ni firma electronica avanzada. Para reforzar su valor probatorio, SATAG conserva junto con la firma la version exacta del reglamento, la version del aviso de privacidad, un sello de tiempo, metadatos de aceptacion, bitacora y hash SHA-256 del paquete firmado.
 
 El firmante declara que los datos proporcionados son correctos y que acepta el reglamento de estacionamiento aplicable al TAG solicitado.
 
@@ -59,13 +59,13 @@ Cuando el usuario del TAG sea alumno menor de edad, la aceptacion del reglamento
 
 ### Encargados tecnologicos y nube
 
-SATAV puede alojar datos en servicios de nube, incluyendo Supabase como proveedor tecnologico y la infraestructura cloud que este utilice. Dichos proveedores actuan como encargados tecnologicos para almacenamiento, base de datos, autenticacion, seguridad, respaldos y operacion tecnica del sistema.
+SATAG puede alojar datos en servicios de nube, incluyendo Supabase como proveedor tecnologico y la infraestructura cloud que este utilice. Dichos proveedores actuan como encargados tecnologicos para almacenamiento, base de datos, autenticacion, seguridad, respaldos y operacion tecnica del sistema.
 
 El IAQ debera conservar la documentacion contractual o terminos aplicables del proveedor, incluyendo DPA o documento equivalente cuando corresponda, region del proyecto, subprocesadores y medidas de seguridad disponibles.
 
 ### Transferencias
 
-El IAQ no transferira los datos personales de SATAV a terceros para finalidades distintas a las informadas, salvo los casos permitidos por la legislacion aplicable, requerimiento de autoridad competente, cumplimiento de obligaciones legales o cuando sea necesario para proteger derechos del IAQ o de la comunidad escolar.
+El IAQ no transferira los datos personales de SATAG a terceros para finalidades distintas a las informadas, salvo los casos permitidos por la legislacion aplicable, requerimiento de autoridad competente, cumplimiento de obligaciones legales o cuando sea necesario para proteger derechos del IAQ o de la comunidad escolar.
 
 La comunicacion de datos a proveedores tecnologicos que procesan informacion por cuenta del IAQ se considera remision a encargados y debe estar documentada en los terminos o contratos aplicables.
 
@@ -106,21 +106,21 @@ El IAQ podra modificar este aviso por cambios legales, institucionales, tecnicos
 
 Texto recomendado para mostrar antes de capturar datos:
 
-> El Instituto Asuncion de Queretaro, A.C. es responsable del tratamiento de sus datos personales en SATAV. Usaremos su informacion para registrar y administrar la solicitud del TAG vehicular, asociar el vehiculo y placas al usuario, gestionar asignacion, pago, instalacion, cambio o baja del TAG, conservar evidencia de aceptacion del reglamento y atender solicitudes relacionadas con privacidad o control vehicular. Se recabaran nombre, tipo de usuario, datos del vehiculo, placas, datos del gestionante cuando aplique, firma manuscrita digital, version del reglamento/aviso aceptado, datos administrativos del TAG y registro del cobro en efectivo. Sus datos se resguardan en sistemas institucionales y proveedores tecnologicos de nube usados por el IAQ. Puede consultar el aviso integral y ejercer derechos ARCO o revocar su consentimiento mediante el canal institucional que el IAQ designe.
+> El Instituto Asuncion de Queretaro, A.C. es responsable del tratamiento de sus datos personales en SATAG. Usaremos su informacion para registrar y administrar la solicitud del TAG vehicular, asociar el vehiculo y placas al usuario, gestionar asignacion, pago, instalacion, cambio o baja del TAG, conservar evidencia de aceptacion del reglamento y atender solicitudes relacionadas con privacidad o control vehicular. Se recabaran nombre, tipo de usuario, datos del vehiculo, placas, datos del gestionante cuando aplique, firma manuscrita digital, version del reglamento/aviso aceptado, datos administrativos del TAG y registro del cobro en efectivo. Sus datos se resguardan en sistemas institucionales y proveedores tecnologicos de nube usados por el IAQ. Puede consultar el aviso integral y ejercer derechos ARCO o revocar su consentimiento mediante el canal institucional que el IAQ designe.
 
 Casilla no premarcada:
 
-> He leido el aviso de privacidad de SATAV y acepto el tratamiento de mis datos personales para las finalidades indicadas.
+> He leido el aviso de privacidad de SATAG y acepto el tratamiento de mis datos personales para las finalidades indicadas.
 
 Enlace:
 
-> Consultar aviso de privacidad integral SATAV.
+> Consultar aviso de privacidad integral SATAG.
 
 ## 3. Texto de aceptacion de reglamento, privacidad y firma
 
 Texto recomendado antes de firmar:
 
-> Declaro que la informacion proporcionada es correcta y que he leido y acepto el reglamento de acceso vehicular del Instituto Asuncion de Queretaro aplicable al TAG solicitado. Reconozco que mi firma manuscrita digital se usara como firma electronica simple para dejar evidencia de aceptacion del reglamento y del aviso de privacidad SATAV. Autorizo que se conserve junto con mi firma la version del reglamento, version del aviso, sello de tiempo, hash de integridad y bitacora de aceptacion.
+> Declaro que la informacion proporcionada es correcta y que he leido y acepto el reglamento de acceso vehicular del Instituto Asuncion de Queretaro aplicable al TAG solicitado. Reconozco que mi firma manuscrita digital se usara como firma electronica simple para dejar evidencia de aceptacion del reglamento y del aviso de privacidad SATAG. Autorizo que se conserve junto con mi firma la version del reglamento, version del aviso, sello de tiempo, hash de integridad y bitacora de aceptacion.
 
 Texto adicional cuando firma un gestionante:
 
@@ -138,6 +138,6 @@ Texto obligatorio para menores:
 | Correo ARCO | `aviso.privacidad@asuncionqro.edu.mx` |
 | Persona/departamento responsable ARCO | Pendiente |
 | URL final del aviso integral | Pendiente |
-| Plazo de conservacion de expedientes SATAV | Pendiente |
+| Plazo de conservacion de expedientes SATAG | Pendiente |
 | Region Supabase y DPA archivado | Pendiente |
 | Aprobacion de Direccion/Legal | Pendiente |

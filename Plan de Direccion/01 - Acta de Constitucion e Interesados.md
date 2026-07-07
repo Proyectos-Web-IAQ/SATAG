@@ -4,7 +4,7 @@
 > Documentos del estándar incluidos: **1.1 Acta de Constitución** + **1.2 Registro de Interesados**
 > Estado: v0.2 — pendientes resueltos; listo para validación del auditor (jefe de Sistemas).
 
-| Proyecto | **SATAV** — Sistema de Adquisición de TAG Vehicular |
+| Proyecto | **SATAG** — Sistema de Adquisición de TAG Vehicular |
 |---|---|
 | Descripción | Alternativa web que reemplaza la hoja física de adquisición de TAG del IAQ |
 | Cliente | Instituto Asunción de Querétaro AC (IAQ) — *cliente interno* (la propia escuela) |

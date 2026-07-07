@@ -7,7 +7,7 @@ import "./globals.css";
 const raleway = Raleway({ subsets: ["latin"], display: "swap", variable: "--font-raleway" });
 
 export const metadata: Metadata = {
-  title: "SATAV — Adquisición de TAG Vehicular · IAQ",
+  title: "SATAG — Adquisición de TAG Vehicular · IAQ",
   description:
     "Sistema de Adquisición de TAG Vehicular del Instituto Asunción de Querétaro. Prototipo de diseño.",
 };
@@ -25,7 +25,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
               <img src="/monograma-asuncion.png" alt="Instituto Asunción" />
             </span>
             <span className="app-titles">
-              <span className="app-title">SATAV</span>
+              <span className="app-title">SATAG</span>
               <span className="app-subtitle">Adquisición de TAG Vehicular</span>
             </span>
           </div>

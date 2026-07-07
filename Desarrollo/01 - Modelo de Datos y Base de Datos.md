@@ -1,11 +1,11 @@
-# Modelo de Datos - SATAV
+# Modelo de Datos - SATAG
 
 > **Desarrollo - Fase 1 (Diseno)** - WBS 1.2.1 - Entregable **E1**.
 > **Fecha:** 06-jul-2026.
 > **Version:** v0.12 - alineada con E6 legal/privacidad.
 > **SQL canonico:** [`../supabase/schema.sql`](../supabase/schema.sql).
 
-Este documento define el modelo de datos de SATAV para el MVP: expediente del TAG, vehiculo, firma reforzada, aviso/reglamento versionados, pagos administrativos, solicitudes de cambio/baja/ARCO y controles de privacidad.
+Este documento define el modelo de datos de SATAG para el MVP: expediente del TAG, vehiculo, firma reforzada, aviso/reglamento versionados, pagos administrativos, solicitudes de cambio/baja/ARCO y controles de privacidad.
 
 ## 1. Estado de alineacion E1 + E6
 
@@ -45,7 +45,7 @@ El modelo ya debe soportar lo decidido o requerido por E6:
 | 4 | Vehiculo | Marca, modelo, color y placas viven en `registros`; modelo es obligatorio. |
 | 5 | Menores | `usuario_es_menor = true` exige gestionante padre/madre/tutor. |
 | 6 | Firma | `aceptaciones` guarda reglamento, aviso, firma, trazos, hash generado en BD, paquete firmado y timestamp. |
-| 7 | Aviso | `aviso_versiones` conserva versiones del aviso de privacidad SATAV. |
+| 7 | Aviso | `aviso_versiones` conserva versiones del aviso de privacidad SATAG. |
 | 8 | Pago | `pagos` registra monto/metodo/cobrado_por/fecha; sin folio/recibo/corte por ahora. |
 | 9 | Cambio/baja/ARCO | `solicitudes` cubre cambio, baja, ARCO y revocacion. |
 | 10 | Bloqueo | `registros.estado = bloqueado` conserva evidencia sin uso operativo ordinario. |

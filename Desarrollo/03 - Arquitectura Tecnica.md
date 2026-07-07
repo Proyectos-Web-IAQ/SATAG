@@ -1,7 +1,7 @@
-# Arquitectura Técnica — SATAV
+# Arquitectura Técnica — SATAG
 
 > **Estado:** pendiente de desarrollo.
-> Este documento aterrizará el reuso técnico de SEVAD para SATAV.
+> Este documento aterrizará el reuso técnico de SEVAD para SATAG.
 
 ## Contenido previsto
 
@@ -13,7 +13,7 @@
 - Estructura futura del código.
 - **Módulos reutilizables** *(rev. Dirección 03-jul, B8)*: la **firma** (`SignaturePad` + `Firma` +
   `FirmaService`) se diseña como **paquete portátil** (p. ej. `lib/firma/`), **desacoplado** del dominio
-  de SATAV, para reutilizarse en otros sistemas del IAQ. Frontera e interfaz en
+  de SATAG, para reutilizarse en otros sistemas del IAQ. Frontera e interfaz en
   [`06 - Firma Electrónica`](06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md) §9.
 - Criterios de despliegue y verificación.
 

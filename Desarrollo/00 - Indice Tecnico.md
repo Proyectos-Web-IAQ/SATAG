@@ -1,4 +1,4 @@
-# Índice Técnico — SATAV
+# Índice Técnico — SATAG
 
 > **Desarrollo · Documentación técnica viva**
 > Esta carpeta contiene el diseño técnico que traduce el Plan de Dirección en decisiones implementables.
@@ -24,7 +24,7 @@ El Plan de Dirección define alcance, cronograma y entregables. Esta carpeta ate
 | WBS 1.2.3 Definición legal | `04 - Seguridad, RLS y Privacidad.md` |
 | WBS 1.3 Infraestructura | `03 - Arquitectura Tecnica.md` |
 
-**Entregables legales de apoyo:** [`Aviso de Privacidad SATAV`](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAV.md) y [`Checklist Legal y Privacidad SATAV`](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAV.md).
+**Entregables legales de apoyo:** [`Aviso de Privacidad SATAG`](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) y [`Checklist Legal y Privacidad SATAG`](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md).
 
 ---
 

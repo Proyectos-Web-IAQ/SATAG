@@ -15,7 +15,7 @@ export async function getReglamentoVigente() { await delay(120); return REGLAMEN
 const registrosMem: Registro[] = [...REGISTROS_DEMO];
 
 function nuevoFolio(): string {
-  return `SATAV-${100_000 + Math.floor(Math.random() * 899_999)}`;
+  return `SATAG-${100_000 + Math.floor(Math.random() * 899_999)}`;
 }
 function find(id: string): Registro {
   const r = registrosMem.find((x) => x.id === id);

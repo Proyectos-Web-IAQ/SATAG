@@ -1,4 +1,4 @@
-# Guia de Sesiones y Ruta Operativa - SATAV
+# Guia de Sesiones y Ruta Operativa - SATAG
 
 > **Fecha base:** 06/07/2026.
 > **Horario real de trabajo:** 09:00 a 14:00.
@@ -32,16 +32,16 @@ Estado: borradores listos, pendiente aprobacion institucional.
 
 Archivos:
 
-- `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAV.md`
-- `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Checklist Legal y Privacidad SATAV.md`
+- `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md`
+- `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Checklist Legal y Privacidad SATAG.md`
 - `Desarrollo/04 - Seguridad, RLS y Privacidad.md`
 
 Pendientes por definir con IAQ:
 
-- Responsable ARCO: puede ser una persona o un departamento designado; recomendacion SATAV: Departamento de TI como responsable operativo, con apoyo de Administracion para cambios/pagos y escalamiento a Direccion/Legal.
+- Responsable ARCO: puede ser una persona o un departamento designado; recomendacion SATAG: Departamento de TI como responsable operativo, con apoyo de Administracion para cambios/pagos y escalamiento a Direccion/Legal.
 - Correo ARCO/publicacion: `aviso.privacidad@asuncionqro.edu.mx`.
 - Domicilio legal exacto del IAQ para el aviso.
-- Plazo de conservacion de registros SATAV.
+- Plazo de conservacion de registros SATAG.
 - Persona que aprueba el aviso antes de publicacion.
 - Confirmacion de que el cobro de $100 no requiere folio, recibo ni corte especifico por ahora.
 
@@ -103,14 +103,14 @@ ARCO significa:
 - **Cancelacion:** bloquear/cancelar datos cuando proceda y suprimirlos al terminar la finalidad/plazo aplicable.
 - **Oposicion:** permitir que el titular se oponga a ciertos tratamientos cuando proceda.
 
-En SATAV, ARCO no significa que todo deba estar 100% automatizado desde el primer dia. Para el MVP basta que el sistema permita ejecutar y documentar esas acciones de forma controlada desde el panel o mediante procedimiento interno.
+En SATAG, ARCO no significa que todo deba estar 100% automatizado desde el primer dia. Para el MVP basta que el sistema permita ejecutar y documentar esas acciones de forma controlada desde el panel o mediante procedimiento interno.
 
 ### Quien puede ser responsable ARCO
 
-Puede designarse una persona o un departamento. Para SATAV se recomienda:
+Puede designarse una persona o un departamento. Para SATAG se recomienda:
 
 - **Responsable institucional publicado en aviso:** Departamento de TI del IAQ o area institucional de datos personales que Direccion designe.
-- **Responsable operativo de sistema:** TI, por acceso tecnico a SATAV, exportaciones, bloqueo/supresion y seguridad.
+- **Responsable operativo de sistema:** TI, por acceso tecnico a SATAG, exportaciones, bloqueo/supresion y seguridad.
 - **Apoyo operativo:** Administracion, para datos de pago, asignacion, tipo de usuario, cambios administrativos y validacion de solicitudes.
 - **Escalamiento:** Direccion/Legal para solicitudes dudosas, negativas, menores, conflictos o requerimientos de autoridad.
 
@@ -118,7 +118,7 @@ El aviso debe publicar un canal claro y unico. Internamente pueden participar TI
 
 ### Correo ARCO
 
-Debe ser un correo institucional del responsable o departamento, no necesariamente de una persona individual. Para SATAV queda definido:
+Debe ser un correo institucional del responsable o departamento, no necesariamente de una persona individual. Para SATAG queda definido:
 
 - `aviso.privacidad@asuncionqro.edu.mx`
 
@@ -126,7 +126,7 @@ La mejor practica es usar un alias o buzon departamental para que no dependa de 
 
 ## 5. Criterios recomendados
 
-### Conservacion de registros SATAV
+### Conservacion de registros SATAG
 
 Recomendacion para proponer a Direccion/Legal:
 

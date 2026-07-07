@@ -1,4 +1,4 @@
-# supabase/ - SATAV
+# supabase/ - SATAG
 
 Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/privacidad.
 

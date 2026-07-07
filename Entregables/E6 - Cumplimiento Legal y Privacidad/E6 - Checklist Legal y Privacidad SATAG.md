@@ -1,4 +1,4 @@
-# Checklist Legal y Privacidad SATAV
+# Checklist Legal y Privacidad SATAG
 
 > **Fecha:** 06/07/2026.
 > **Tarea:** WBS 1.2.3 - Definicion legal y privacidad.
@@ -7,7 +7,7 @@
 ## 1. Objetivos del dia
 
 - [x] Convertir la investigacion legal en textos revisables.
-- [x] Crear aviso de privacidad integral SATAV/anexo base.
+- [x] Crear aviso de privacidad integral SATAG/anexo base.
 - [x] Crear aviso simplificado para formulario.
 - [x] Crear texto de aceptacion de reglamento, privacidad y firma.
 - [x] Definir reglas obligatorias para menores.
@@ -21,9 +21,9 @@
 
 | Entregable | Ubicacion | Estado |
 |---|---|---|
-| Aviso integral SATAV | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAV.md` | Borrador revisable |
-| Aviso simplificado | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAV.md` | Borrador revisable |
-| Texto de aceptacion y firma | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAV.md` | Borrador revisable |
+| Aviso integral SATAG | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Borrador revisable |
+| Aviso simplificado | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Borrador revisable |
+| Texto de aceptacion y firma | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Borrador revisable |
 | Reglas tecnicas de privacidad | `Desarrollo/04 - Seguridad, RLS y Privacidad.md` | Primer corte implementable |
 | Checklist legal/privacidad | Este documento | Listo |
 
@@ -32,7 +32,7 @@
 ### Aviso y consentimiento
 
 - [ ] Mostrar aviso simplificado antes de capturar datos.
-- [ ] Enlazar aviso integral SATAV.
+- [ ] Enlazar aviso integral SATAG.
 - [ ] Usar casilla no premarcada de aceptacion.
 - [ ] Guardar version exacta del aviso aceptado.
 - [ ] Guardar version exacta del reglamento firmado.
@@ -90,7 +90,7 @@
 |---|---|---|
 | Responsable ARCO | Nombre de persona/departamento y correo institucional | Alta |
 | Domicilio legal en aviso | Confirmar texto exacto del aviso general IAQ | Alta |
-| Plazo de conservacion SATAV | Definir vigencia + bloqueo + supresion | Alta |
+| Plazo de conservacion SATAG | Definir vigencia + bloqueo + supresion | Alta |
 | Senaletica fisica | Aprobar cartel corto y ubicacion | Media-alta |
 | Supabase DPA/region | Firmar/archivar DPA y documentar region | Alta |
 | Reglamento de estacionamiento | Validar clausulas y limites de responsabilidad | Alta |
@@ -101,7 +101,7 @@
 
 ## 5. Criterios de aceptacion
 
-- [x] Existe texto revisable del aviso SATAV.
+- [x] Existe texto revisable del aviso SATAG.
 - [x] El formulario tiene texto legal base para implementar.
 - [x] Esta definido que pasa con alumnos menores de edad.
 - [x] Esta definido que evidencia debe guardar la firma.
@@ -115,13 +115,13 @@ La tarea **Definicion legal y privacidad** queda en estado:
 
 > **Borradores legales y criterios de privacidad listos para revision institucional.**
 
-No se debe publicar el aviso ni operar SATAV en produccion hasta completar los campos pendientes y obtener aprobacion de Direccion/Legal.
+No se debe publicar el aviso ni operar SATAG en produccion hasta completar los campos pendientes y obtener aprobacion de Direccion/Legal.
 
 ## 7. Proximo paso recomendado
 
 Enviar a Direccion/Legal:
 
-- `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAV.md`
+- `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md`
 - `Desarrollo/04 - Seguridad, RLS y Privacidad.md`
 - Esta lista de pendientes
 

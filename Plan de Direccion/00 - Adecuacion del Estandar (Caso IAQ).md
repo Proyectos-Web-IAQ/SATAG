@@ -6,9 +6,9 @@
 
 | Campo | Valor |
 |---|---|
-| **Proyecto** | **SATAV** — Sistema de Adquisición de TAG Vehicular |
+| **Proyecto** | **SATAG** — Sistema de Adquisición de TAG Vehicular |
 | **Descripción** | Alternativa web para reemplazar la hoja de adquisición de TAG vehicular del IAQ |
-| **Repo / clave** | `satav` (GitHub) |
+| **Repo / clave** | `satag` (GitHub) |
 | **Cliente** | Instituto Asunción de Querétaro AC (IAQ) — *”la escuela”* (cliente interno) |
 | **Naturaleza** | Software a la medida **interno** (automatización de proceso de la escuela); sin costo adicional al salario |
 | **PM / Desarrollador** | Gerardo Sánchez Moreno — Soporte TI / desarrollo web interno del IAQ |

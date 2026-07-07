@@ -1,4 +1,4 @@
-# Flujos del Sistema — SATAV
+# Flujos del Sistema — SATAG
 
 > **Estado:** pendiente de desarrollo.
 > Este documento describirá los recorridos funcionales por actor y caso de uso.

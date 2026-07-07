@@ -1,8 +1,8 @@
 {
-  "name": "satav",
+  "name": "satag",
   "version": "0.1.0",
   "private": true,
-  "description": "SATAV — Sistema de Adquisición de TAG Vehicular (IAQ). Prototipo de frontend con datos mock.",
+  "description": "SATAG — Sistema de Adquisición de TAG Vehicular (IAQ). Prototipo de frontend con datos mock.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

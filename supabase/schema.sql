@@ -1,5 +1,5 @@
 -- =====================================================================
--- SATAV - schema.sql (E1 alineado con E6)
+-- SATAG - schema.sql (E1 alineado con E6)
 -- Sistema de Adquisicion de TAG Vehicular - IAQ
 -- PostgreSQL / Supabase
 --
@@ -549,7 +549,7 @@ begin
     ) returning id into v_registro_id;
 
     v_hash_payload := jsonb_build_object(
-        'schema', 'satav.acceptance.v1',
+        'schema', 'satag.acceptance.v1',
         'sello_tiempo', v_sello_tiempo,
         'reglamento', jsonb_build_object(
             'id', v_reglamento_version_id,

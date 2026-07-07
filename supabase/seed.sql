@@ -1,5 +1,5 @@
 -- =====================================================================
--- SATAV - seed.sql (datos base E1)
+-- SATAG - seed.sql (datos base E1)
 -- Ejecutar DESPUES de schema.sql. Idempotente. No contiene datos personales.
 -- =====================================================================
 
@@ -68,11 +68,11 @@ insert into reglamento_versiones (version, contenido, vigente) values
 on conflict (version) do nothing;
 
 -- ---------------------------------------------------------------------
--- Aviso de privacidad SATAV placeholder/version inicial.
+-- Aviso de privacidad SATAG placeholder/version inicial.
 -- ---------------------------------------------------------------------
 insert into aviso_versiones (version, contenido, url_publica, vigente) values
     (1,
-     '[PLACEHOLDER] Aviso de privacidad SATAV. Reemplazar por el texto aprobado ' ||
+     '[PLACEHOLDER] Aviso de privacidad SATAG. Reemplazar por el texto aprobado ' ||
      'por Direccion/Legal antes de produccion. Correo: aviso.privacidad@asuncionqro.edu.mx.',
      '/aviso-de-privacidad',
      true)
