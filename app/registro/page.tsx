@@ -8,7 +8,7 @@ import type { TipoUsuario, CrearRegistroResultado, NombrePersona, ReglamentoVers
 const STEPS = ["Datos", "Vehículo", "Reglamento", "Firma", "Listo"];
 
 function nombreCompleto(partes: NombrePersona): string {
-  return [partes.apellidoPaterno, partes.apellidoMaterno, partes.nombre]
+  return [partes.nombre, partes.apellidoPaterno, partes.apellidoMaterno]
     .map((v) => v.trim())
     .filter(Boolean)
     .join(" ");
@@ -147,6 +147,16 @@ export default function RegistroWizard() {
         {step === 0 && (
           <>
             <header className="survey-header"><h1>Datos del solicitante</h1></header>
+            <div className="field">
+              <span>Nombre(s) del conductor</span>
+              <input className={`input ${errores.conductorNombre ? "invalid" : ""}`} value={conductorNombre}
+                onChange={(e) => setConductorNombre(e.target.value)} placeholder="Ej. Juan Carlos" />
+              <p className="hint" style={{ margin: 0 }}>
+                La persona que <strong>manejará el auto</strong> que entra al estacionamiento —
+                no necesariamente quien paga o firma.
+              </p>
+              {errores.conductorNombre && <p className="field-error">{errores.conductorNombre}</p>}
+            </div>
             <div className="grid-2">
               <div className="field">
                 <span>Apellido paterno del conductor</span>
@@ -161,22 +171,18 @@ export default function RegistroWizard() {
                 {errores.conductorApellidoMaterno && <p className="field-error">{errores.conductorApellidoMaterno}</p>}
               </div>
             </div>
-            <div className="field">
-              <span>Nombre(s) del conductor</span>
-              <input className={`input ${errores.conductorNombre ? "invalid" : ""}`} value={conductorNombre}
-                onChange={(e) => setConductorNombre(e.target.value)} placeholder="Ej. Juan Carlos" />
-              <p className="hint" style={{ margin: 0 }}>
-                La persona que <strong>manejará el auto</strong> que entra al estacionamiento —
-                no necesariamente quien paga o firma.
-              </p>
-              {errores.conductorNombre && <p className="field-error">{errores.conductorNombre}</p>}
-            </div>
             <label className="check" style={{ marginBottom: 12 }}>
               <input type="checkbox" checked={gestionanteDistinto} onChange={(e) => setGestionanteDistinto(e.target.checked)} />
               <span>El pago y la firma los hace otra persona (padre/tutor/cónyuge).</span>
             </label>
             {gestionanteDistinto && (
               <>
+                <div className="field">
+                  <span>Nombre(s) del gestionante</span>
+                  <input className={`input ${errores.gestionanteNombre ? "invalid" : ""}`} value={gestionanteNombre}
+                    onChange={(e) => setGestionanteNombre(e.target.value)} placeholder="Ej. María Fernanda" />
+                  {errores.gestionanteNombre && <p className="field-error">{errores.gestionanteNombre}</p>}
+                </div>
                 <div className="grid-2">
                   <div className="field">
                     <span>Apellido paterno del gestionante</span>
@@ -190,12 +196,6 @@ export default function RegistroWizard() {
                       onChange={(e) => setGestionanteApellidoMaterno(e.target.value)} placeholder="Ej. Ruiz" />
                     {errores.gestionanteApellidoMaterno && <p className="field-error">{errores.gestionanteApellidoMaterno}</p>}
                   </div>
-                </div>
-                <div className="field">
-                  <span>Nombre(s) del gestionante</span>
-                  <input className={`input ${errores.gestionanteNombre ? "invalid" : ""}`} value={gestionanteNombre}
-                    onChange={(e) => setGestionanteNombre(e.target.value)} placeholder="Ej. María Fernanda" />
-                  {errores.gestionanteNombre && <p className="field-error">{errores.gestionanteNombre}</p>}
                 </div>
               </>
             )}
