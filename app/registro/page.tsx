@@ -70,11 +70,11 @@ export default function RegistroWizard() {
     if (s === 0) {
       if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = "Escribe el apellido paterno.";
       if (!conductorApellidoMaterno.trim()) e.conductorApellidoMaterno = "Escribe el apellido materno.";
-      if (!conductorNombre.trim()) e.conductorNombre = "Escribe el nombre.";
+      if (!conductorNombre.trim()) e.conductorNombre = "Escribe el nombre o nombres.";
       if (gestionanteDistinto) {
         if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = "Escribe el apellido paterno.";
         if (!gestionanteApellidoMaterno.trim()) e.gestionanteApellidoMaterno = "Escribe el apellido materno.";
-        if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escribe el nombre.";
+        if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escribe el nombre o nombres.";
       }
     }
     if (s === 1) {
@@ -162,7 +162,7 @@ export default function RegistroWizard() {
               </div>
             </div>
             <div className="field">
-              <span>Nombre del conductor</span>
+              <span>Nombre(s) del conductor</span>
               <input className={`input ${errores.conductorNombre ? "invalid" : ""}`} value={conductorNombre}
                 onChange={(e) => setConductorNombre(e.target.value)} placeholder="Ej. Juan Carlos" />
               <p className="hint" style={{ margin: 0 }}>
@@ -192,7 +192,7 @@ export default function RegistroWizard() {
                   </div>
                 </div>
                 <div className="field">
-                  <span>Nombre del gestionante</span>
+                  <span>Nombre(s) del gestionante</span>
                   <input className={`input ${errores.gestionanteNombre ? "invalid" : ""}`} value={gestionanteNombre}
                     onChange={(e) => setGestionanteNombre(e.target.value)} placeholder="Ej. María Fernanda" />
                   {errores.gestionanteNombre && <p className="field-error">{errores.gestionanteNombre}</p>}
