@@ -3,9 +3,16 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import SignaturePad from "@/components/SignaturePad";
 import { getMarcas, getColores, getReglamentoVigente, crearRegistro } from "@/lib/mock/api";
-import type { TipoUsuario, CrearRegistroResultado, ReglamentoVersion } from "@/lib/mock/types";
+import type { TipoUsuario, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
 
 const STEPS = ["Datos", "Vehículo", "Reglamento", "Firma", "Listo"];
+
+function nombreCompleto(partes: NombrePersona): string {
+  return [partes.apellidoPaterno, partes.apellidoMaterno, partes.nombre]
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .join(" ");
+}
 
 export default function RegistroWizard() {
   const [step, setStep] = useState(0);
@@ -19,8 +26,12 @@ export default function RegistroWizard() {
 
   // ---- Formulario ----
   const [conductorNombre, setConductorNombre] = useState("");
+  const [conductorApellidoPaterno, setConductorApellidoPaterno] = useState("");
+  const [conductorApellidoMaterno, setConductorApellidoMaterno] = useState("");
   const [gestionanteDistinto, setGestionanteDistinto] = useState(false);
   const [gestionanteNombre, setGestionanteNombre] = useState("");
+  const [gestionanteApellidoPaterno, setGestionanteApellidoPaterno] = useState("");
+  const [gestionanteApellidoMaterno, setGestionanteApellidoMaterno] = useState("");
   const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>("padres");
   const [marca, setMarca] = useState("");
   const [marcaOtro, setMarcaOtro] = useState("");
@@ -40,13 +51,31 @@ export default function RegistroWizard() {
 
   const marcaFinal = marca === "Otro" ? marcaOtro : marca;
   const colorFinal = color === "Otro" ? colorOtro : color;
+  const conductorNombrePartes: NombrePersona = {
+    nombre: conductorNombre,
+    apellidoPaterno: conductorApellidoPaterno,
+    apellidoMaterno: conductorApellidoMaterno,
+  };
+  const gestionanteNombrePartes: NombrePersona = {
+    nombre: gestionanteNombre,
+    apellidoPaterno: gestionanteApellidoPaterno,
+    apellidoMaterno: gestionanteApellidoMaterno,
+  };
+  const conductorNombreCompleto = nombreCompleto(conductorNombrePartes);
+  const gestionanteNombreCompleto = nombreCompleto(gestionanteNombrePartes);
 
   // Validación por paso. Devuelve un mapa campo -> mensaje.
   function validarPaso(s: number): Record<string, string> {
     const e: Record<string, string> = {};
     if (s === 0) {
-      if (!conductorNombre.trim()) e.conductor = "Escribe el nombre de quien conducirá el vehículo.";
-      if (gestionanteDistinto && !gestionanteNombre.trim()) e.gestionante = "Escribe el nombre de quien paga y firma.";
+      if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = "Escribe el apellido paterno.";
+      if (!conductorApellidoMaterno.trim()) e.conductorApellidoMaterno = "Escribe el apellido materno.";
+      if (!conductorNombre.trim()) e.conductorNombre = "Escribe el nombre.";
+      if (gestionanteDistinto) {
+        if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = "Escribe el apellido paterno.";
+        if (!gestionanteApellidoMaterno.trim()) e.gestionanteApellidoMaterno = "Escribe el apellido materno.";
+        if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escribe el nombre.";
+      }
     }
     if (s === 1) {
       if (!marcaFinal.trim()) e.marca = "Selecciona o escribe la marca.";
@@ -81,14 +110,16 @@ export default function RegistroWizard() {
     setError(null);
     try {
       const res = await crearRegistro({
-        usuarioNombre: conductorNombre,
-        gestionanteNombre: gestionanteDistinto ? gestionanteNombre : null,
+        usuarioNombre: conductorNombreCompleto,
+        usuarioNombrePartes: conductorNombrePartes,
+        gestionanteNombre: gestionanteDistinto ? gestionanteNombreCompleto : null,
+        gestionanteNombrePartes: gestionanteDistinto ? gestionanteNombrePartes : null,
         tipoUsuario,
         marca: marcaFinal, modelo, color: colorFinal,
         placas: sinPlacas ? null : placas, sinPlacas,
         procedenciaTag: "escuela", observaciones: null,
         firmaDataUrl: firma,
-        firmanteNombre: gestionanteDistinto ? gestionanteNombre : conductorNombre,
+        firmanteNombre: gestionanteDistinto ? gestionanteNombreCompleto : conductorNombreCompleto,
         aceptaReglamento: acepta,
       });
       setResultado(res);
@@ -116,27 +147,57 @@ export default function RegistroWizard() {
         {step === 0 && (
           <>
             <header className="survey-header"><h1>Datos del solicitante</h1></header>
+            <div className="grid-2">
+              <div className="field">
+                <span>Apellido paterno del conductor</span>
+                <input className={`input ${errores.conductorApellidoPaterno ? "invalid" : ""}`} value={conductorApellidoPaterno}
+                  onChange={(e) => setConductorApellidoPaterno(e.target.value)} placeholder="Ej. Pérez" />
+                {errores.conductorApellidoPaterno && <p className="field-error">{errores.conductorApellidoPaterno}</p>}
+              </div>
+              <div className="field">
+                <span>Apellido materno del conductor</span>
+                <input className={`input ${errores.conductorApellidoMaterno ? "invalid" : ""}`} value={conductorApellidoMaterno}
+                  onChange={(e) => setConductorApellidoMaterno(e.target.value)} placeholder="Ej. López" />
+                {errores.conductorApellidoMaterno && <p className="field-error">{errores.conductorApellidoMaterno}</p>}
+              </div>
+            </div>
             <div className="field">
-              <span>Nombre de quien conducirá el vehículo</span>
-              <input className={`input ${errores.conductor ? "invalid" : ""}`} value={conductorNombre}
-                onChange={(e) => setConductorNombre(e.target.value)} placeholder="Ej. Juan Pérez López" />
+              <span>Nombre del conductor</span>
+              <input className={`input ${errores.conductorNombre ? "invalid" : ""}`} value={conductorNombre}
+                onChange={(e) => setConductorNombre(e.target.value)} placeholder="Ej. Juan Carlos" />
               <p className="hint" style={{ margin: 0 }}>
                 La persona que <strong>manejará el auto</strong> que entra al estacionamiento —
                 no necesariamente quien paga o firma.
               </p>
-              {errores.conductor && <p className="field-error">{errores.conductor}</p>}
+              {errores.conductorNombre && <p className="field-error">{errores.conductorNombre}</p>}
             </div>
             <label className="check" style={{ marginBottom: 12 }}>
               <input type="checkbox" checked={gestionanteDistinto} onChange={(e) => setGestionanteDistinto(e.target.checked)} />
               <span>El pago y la firma los hace otra persona (padre/tutor/cónyuge).</span>
             </label>
             {gestionanteDistinto && (
-              <div className="field">
-                <span>Nombre de quien paga y firma (gestionante)</span>
-                <input className={`input ${errores.gestionante ? "invalid" : ""}`} value={gestionanteNombre}
-                  onChange={(e) => setGestionanteNombre(e.target.value)} placeholder="Ej. María López Ruiz" />
-                {errores.gestionante && <p className="field-error">{errores.gestionante}</p>}
-              </div>
+              <>
+                <div className="grid-2">
+                  <div className="field">
+                    <span>Apellido paterno del gestionante</span>
+                    <input className={`input ${errores.gestionanteApellidoPaterno ? "invalid" : ""}`} value={gestionanteApellidoPaterno}
+                      onChange={(e) => setGestionanteApellidoPaterno(e.target.value)} placeholder="Ej. López" />
+                    {errores.gestionanteApellidoPaterno && <p className="field-error">{errores.gestionanteApellidoPaterno}</p>}
+                  </div>
+                  <div className="field">
+                    <span>Apellido materno del gestionante</span>
+                    <input className={`input ${errores.gestionanteApellidoMaterno ? "invalid" : ""}`} value={gestionanteApellidoMaterno}
+                      onChange={(e) => setGestionanteApellidoMaterno(e.target.value)} placeholder="Ej. Ruiz" />
+                    {errores.gestionanteApellidoMaterno && <p className="field-error">{errores.gestionanteApellidoMaterno}</p>}
+                  </div>
+                </div>
+                <div className="field">
+                  <span>Nombre del gestionante</span>
+                  <input className={`input ${errores.gestionanteNombre ? "invalid" : ""}`} value={gestionanteNombre}
+                    onChange={(e) => setGestionanteNombre(e.target.value)} placeholder="Ej. María Fernanda" />
+                  {errores.gestionanteNombre && <p className="field-error">{errores.gestionanteNombre}</p>}
+                </div>
+              </>
             )}
             <div className="field">
               <span>Tipo de usuario</span>
@@ -218,7 +279,7 @@ export default function RegistroWizard() {
           <>
             <header className="survey-header"><h1>Firma</h1></header>
             <p className="lead">
-              Firmará <strong>{gestionanteDistinto ? gestionanteNombre || "el gestionante" : conductorNombre || "el conductor"}</strong>.
+              Firmará <strong>{gestionanteDistinto ? gestionanteNombreCompleto || "el gestionante" : conductorNombreCompleto || "el conductor"}</strong>.
             </p>
             <SignaturePad onChange={setFirma} />
             <p className="hint" style={{ marginTop: 8 }}>Puedes firmar con el dedo (táctil) o con el mouse.</p>

@@ -37,7 +37,9 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
   registrosMem.unshift({
     id, folio,
     usuarioNombre: input.usuarioNombre.trim(),
+    usuarioNombrePartes: input.usuarioNombrePartes,
     gestionanteNombre: input.gestionanteNombre?.trim() || null,
+    gestionanteNombrePartes: input.gestionanteNombrePartes ?? null,
     tipoUsuario: input.tipoUsuario,
     marca: input.marca, modelo: input.modelo.trim(), color: input.color,
     placas: input.sinPlacas ? null : (input.placas ?? "").trim().toUpperCase() || null,

@@ -35,12 +35,20 @@ export interface Movimiento {
   noDispositivoNuevo?: string | null;
 }
 
+export interface NombrePersona {
+  nombre: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+}
+
 export interface Registro {
   id: string;
   folio: string;
   // Persona (denormalizada; gestionanteNombre null = mismo que usuario)
   usuarioNombre: string;
+  usuarioNombrePartes?: NombrePersona;
   gestionanteNombre: string | null;
+  gestionanteNombrePartes?: NombrePersona | null;
   tipoUsuario: TipoUsuario;
   // Vehículo (aplanado)
   marca: string;
@@ -68,7 +76,9 @@ export interface Registro {
 // Entrada del alta de autoservicio (espejo del RPC crear_registro).
 export interface CrearRegistroInput {
   usuarioNombre: string;
+  usuarioNombrePartes?: NombrePersona;
   gestionanteNombre: string | null;
+  gestionanteNombrePartes?: NombrePersona | null;
   tipoUsuario: TipoUsuario;
   marca: string;
   modelo: string;
