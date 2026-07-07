@@ -1,0 +1,28 @@
+# --- Datos personales / insumos: NO versionar ---
+Insumos/
+# Padron operativo real (nombres + placas de la comunidad): jamas versionar
+Acceso a estacionamiento.xlsx
+/*.heic
+/*.jpg
+/*.jpeg
+/*.png
+
+# --- Estándar interno de gestión de proyectos (no se versiona en este repo) ---
+/*.docx
+
+# --- Sistema operativo / temporales ---
+Thumbs.db
+desktop.ini
+.DS_Store
+~$*
+*.tmp
+
+# --- Dependencias / build (Next.js) ---
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.local

@@ -1,0 +1,281 @@
+/* =====================================================================
+   SATAV — tema base. Inspirado en el sistema de diseño de SEVAD:
+   navy institucional del IAQ, campos azul-grisáceo, fuente Raleway.
+   ===================================================================== */
+
+:root {
+  color-scheme: only light;
+
+  /* Paleta institucional OFICIAL IAQ (Pantone) */
+  --ink: #2E2A25;            /* Pantone Black C — texto */
+  --muted: #657080;          /* gris neutro (secundario) */
+  --line: #dbe1e8;           /* bordes */
+  --panel: #ffffff;          /* tarjetas */
+  --page: #ffffff;           /* fondo */
+  --primary: #002E6C;        /* Pantone 294 C — azul institucional */
+  --primary-strong: #002051; /* azul más oscuro: títulos, botón, hover */
+  --field-bg: #f4f7fc;       /* fondo de campos */
+  --amber: #FFDD00;          /* Pantone Yellow C */
+  --rose: #EB0028;           /* Pantone 185 C */
+  --green: #009844;          /* Pantone 347 C */
+  --cyan: #4ca7b8;           /* acento suave (no oficial) */
+  --shadow: 0 18px 50px rgba(0, 46, 108, 0.12);
+  --header-h: 64px;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(0, 46, 108, 0.05), transparent 32rem),
+    var(--page);
+  color: var(--ink);
+  font-family: var(--font-raleway), Inter, ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+}
+button, textarea, input, select { font: inherit; }
+a { color: var(--primary-strong); }
+
+/* ---------- Header institucional ---------- */
+.app-header {
+  align-items: center;
+  background: var(--primary);
+  display: flex;
+  justify-content: space-between;
+  height: var(--header-h);
+  padding: 0 0 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  overflow: hidden;
+}
+.app-brand { display: flex; align-items: center; gap: 10px; }
+.app-badge {
+  width: 38px; height: 38px; border-radius: 999px; background: #fff;
+  display: grid; place-items: center; overflow: hidden; flex: none;
+}
+.app-badge img { width: 26px; height: 26px; display: block; }
+.app-titles { display: flex; flex-direction: column; line-height: 1.05; }
+.app-title { color: #fff; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.12em; }
+.app-subtitle { color: rgba(255, 255, 255, .82); font-size: 0.68rem; font-weight: 600; }
+.app-copete { height: 100%; width: auto; display: block; }
+
+/* Imágenes de marca en paneles blancos */
+.brand-logo { display: block; max-width: 260px; width: 72%; height: auto; margin: 0 auto 20px; }
+.brand-sello { display: block; max-width: 150px; width: 45%; height: auto; margin: 6px auto 14px; }
+
+/* ---------- Layout público (encuesta-style) ---------- */
+.page-shell {
+  align-items: center; display: flex; justify-content: center;
+  min-height: calc(100dvh - var(--header-h)); padding: 24px;
+}
+.survey-panel {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(219, 225, 232, 0.9);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-width: 720px; width: min(100%, 720px); padding: 28px;
+}
+.login-panel { max-width: 460px; }
+
+.survey-header { margin: 0 0 22px; }
+.survey-header h1 { color: var(--ink); font-size: clamp(1.6rem, 5vw, 2.2rem); line-height: 1.08; margin: 0; }
+.survey-header p { color: var(--muted); font-size: 1rem; line-height: 1.55; margin: 12px 0 0; max-width: 560px; }
+.lead { color: var(--muted); margin: 0 0 18px; }
+
+.top-row { align-items: flex-start; display: flex; justify-content: space-between; gap: 16px; }
+.step-pill {
+  background: #eef1f7; border: 1px solid #d3dae7; border-radius: 999px;
+  color: var(--primary-strong); font-size: 0.8rem; font-weight: 700;
+  padding: 8px 12px; white-space: nowrap;
+}
+
+/* ---------- Campos (patrón SEVAD) ---------- */
+.field { display: grid; gap: 6px; margin-bottom: 16px; }
+.field > span, .label { color: var(--ink); font-size: 0.9rem; font-weight: 800; }
+.input, .select, .textarea, .field input, .field select, .field textarea {
+  background: var(--field-bg); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--ink); min-height: 46px; outline: none; padding: 10px 12px; width: 100%;
+}
+.textarea, .field textarea { min-height: 90px; resize: vertical; }
+.input:focus, .select:focus, .textarea:focus,
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0, 46, 108, 0.12);
+}
+.input:disabled, .field input:disabled { opacity: .55; cursor: not-allowed; }
+.hint { font-size: 0.8rem; color: var(--muted); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.95rem; }
+.check input { margin-top: 3px; }
+
+/* ---------- Botones (patrón SEVAD) ---------- */
+.primary-action {
+  background: var(--primary); border: 0; border-radius: var(--radius); color: #fff;
+  cursor: pointer; font-weight: 800; min-height: 50px; padding: 0 20px;
+}
+.primary-action:hover:not(:disabled) { background: var(--primary-strong); }
+.primary-action:disabled { background: #b4bccb; cursor: not-allowed; }
+.ghost-action {
+  background: transparent; border: 1px solid var(--primary); border-radius: var(--radius);
+  color: var(--primary); cursor: pointer; font-weight: 700; min-height: 44px; padding: 0 16px;
+}
+.ghost-action:hover:not(:disabled) { background: var(--primary); color: #fff; }
+.ghost-action:disabled { color: var(--muted); border-color: var(--line); cursor: not-allowed; opacity: .6; }
+.link-action { background: none; border: 0; color: var(--primary-strong); cursor: pointer; font-weight: 700; padding: 0; }
+.link-action:hover:not(:disabled) { text-decoration: underline; }
+.link-action--danger { color: #b0392e; }
+.btn-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
+
+/* ---------- Stepper del wizard ---------- */
+.stepper { display: flex; gap: 6px; margin-bottom: 8px; }
+.stepper__item { flex: 1; height: 6px; border-radius: 99px; background: var(--line); }
+.stepper__item.done { background: var(--amber); }
+.stepper__item.active { background: var(--primary); }
+
+/* ---------- Avisos ---------- */
+.submit-error {
+  background: #fdecea; border: 1px solid #f3b9b4; border-radius: var(--radius);
+  color: #a23b36; font-size: 0.92rem; font-weight: 700; margin: 14px 0 0; padding: 12px 14px;
+}
+.notice {
+  background: #f2f5fb; border: 1px solid #d3dae7; border-radius: var(--radius);
+  padding: 14px 16px; font-size: 0.9rem; color: #2a3b56;
+}
+.badge {
+  display: inline-block; border-radius: 999px; font-size: 0.74rem; font-weight: 800; padding: 3px 12px;
+  background: #fdf0e1; color: #9a5a1a;
+}
+
+/* ---------- Reglamento / firma / comprobante ---------- */
+.reglamento {
+  max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; background: var(--field-bg); font-size: 0.95rem;
+}
+.reglamento ol { margin: 0; padding-left: 20px; }
+.reglamento li { margin-bottom: 8px; }
+.sigpad {
+  border: 2px dashed var(--line); border-radius: var(--radius); background: #fff;
+  touch-action: none; width: 100%; height: 200px; display: block;
+}
+.comprobante { text-align: center; }
+.comprobante .folio { font-size: 26px; font-weight: 800; color: var(--primary-strong); letter-spacing: 1px; }
+
+/* =====================================================================
+   Panel administrativo (Administración + TI)
+   ===================================================================== */
+.admin-shell { display: flex; justify-content: center; min-height: calc(100dvh - var(--header-h)); padding: 16px 24px 40px; }
+.admin-panel { max-width: 1200px; width: min(100%, 1200px); }
+
+.admin-header {
+  align-items: flex-start; border-bottom: 1px solid var(--line);
+  display: flex; gap: 16px; justify-content: space-between; margin-bottom: 20px; padding: 16px 0 16px;
+}
+.admin-header h1 { color: var(--ink); font-size: 1.4rem; margin: 0; }
+.admin-header .admin-sub { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+.admin-header-actions { align-items: flex-end; display: flex; flex-direction: column; gap: 10px; }
+.admin-whoami { color: var(--muted); font-size: 0.82rem; }
+
+.admin-tabs { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.admin-tab {
+  background: transparent; border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--primary-strong); cursor: pointer; font-weight: 700; min-height: 36px; padding: 0 14px;
+}
+.admin-tab:hover:not(.admin-tab--active) { background: var(--primary); border-color: var(--primary); color: #fff; }
+.admin-tab--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.toolbar .search { flex: 1; min-width: 220px; }
+
+.metric-cards { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; }
+.metric-card { background: #f2f5fb; border: 1px solid #d3dae7; border-radius: var(--radius); display: flex; flex-direction: column; gap: 6px; padding: 16px; }
+.metric-label { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
+.metric-value { color: var(--primary-strong); font-size: 1.8rem; font-weight: 800; line-height: 1; }
+/* Semáforo de pendientes: verde (0), amarillo (pocos), rojo (muchos) */
+.metric-card--ok { background: #eaf6ee; border-color: #b7e0c4; }
+.metric-card--ok .metric-label { color: #1f6b3a; font-weight: 800; }
+.metric-card--ok .metric-value { color: #1f6b3a; }
+.metric-card--warn { background: #fdf0e1; border-color: #f0d9a8; }
+.metric-card--warn .metric-label { color: #9a5a1a; font-weight: 800; }
+.metric-card--warn .metric-value { color: #9a5a1a; }
+.metric-card--alert { background: #fdecec; border-color: #f4b8b8; }
+.metric-card--alert .metric-label { color: #b3271e; font-weight: 800; }
+.metric-card--alert .metric-value { color: #b3271e; }
+
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 1px 2px rgba(20, 29, 38, 0.05); padding: 16px; margin-bottom: 16px; }
+.panel-title { color: var(--ink); font-size: 1rem; font-weight: 800; margin: 0 0 12px; }
+
+.admin-table { border-collapse: collapse; width: 100%; }
+.admin-table th, .admin-table td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; }
+.admin-table th { color: var(--muted); font-size: 0.82rem; font-weight: 800; }
+.admin-table td { color: var(--ink); font-weight: 600; font-size: 0.92rem; }
+.admin-table tr.selectable { cursor: pointer; }
+.admin-table tr.selectable:hover td { background: #f7f9fc; }
+.admin-table tr.is-selected td { background: #eef2f8; }
+.table-wrap { overflow-x: auto; }
+
+/* Chips de estado */
+.status-chip { border-radius: 999px; display: inline-block; font-size: 0.74rem; font-weight: 800; padding: 2px 10px; white-space: nowrap; }
+.status-chip--pendiente { background: #fdf0e1; color: #9a5a1a; }
+.status-chip--activo { background: #eaf6ee; color: #1f6b3a; }
+.status-chip--baja { background: #eef1f4; color: var(--muted); }
+
+/* Expediente (detalle) */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+.detail-grid .k { color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+.detail-grid .v { color: var(--ink); font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.select-chip { border: 1px solid var(--line); border-radius: var(--radius); background: var(--field-bg); padding: 8px 14px; cursor: pointer; font-weight: 700; color: var(--ink); }
+.select-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+.catalog-feedback { border-radius: var(--radius); font-size: 0.9rem; font-weight: 600; margin: 0 0 14px; padding: 10px 14px; }
+.catalog-feedback--ok { background: #eaf6ee; border: 1px solid #b7e0c4; color: #1f6b3a; }
+
+.footer { padding: 18px; text-align: center; color: var(--muted); font-size: 0.78rem; }
+
+@media (max-width: 620px) {
+  .grid-2, .metric-cards, .detail-grid { grid-template-columns: 1fr; }
+}
+
+/* ---------- Loader estilo Tetris (bloques que caen, colores IAQ) ---------- */
+.loader { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px; }
+.loader__grid { display: grid; grid-template-columns: repeat(2, 16px); grid-auto-rows: 16px; gap: 4px; }
+.loader .b { width: 16px; height: 16px; border-radius: 3px; opacity: 0; animation: tetris-drop 1.3s infinite; }
+.loader .b1 { background: var(--primary); animation-delay: 0s; }
+.loader .b2 { background: var(--green); animation-delay: .16s; }
+.loader .b3 { background: var(--amber); animation-delay: .32s; }
+.loader .b4 { background: var(--rose); animation-delay: .48s; }
+.loader__label { color: var(--muted); font-size: .85rem; font-weight: 600; }
+@keyframes tetris-drop {
+  0% { transform: translateY(-20px); opacity: 0; }
+  25% { transform: translateY(0); opacity: 1; }
+  70% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-20px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader .b { animation-duration: 0s; opacity: 1; }
+}
+
+/* ---------- Modal de confirmación ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15, 29, 56, .45);
+  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
+}
+.modal { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); max-width: 420px; width: 100%; padding: 24px; }
+.modal h2 { margin: 0 0 8px; font-size: 1.1rem; color: var(--ink); }
+.modal p { margin: 0 0 18px; color: var(--muted); }
+.modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
+.btn-danger { background: var(--rose) !important; }
+
+/* ---------- Error de campo ---------- */
+.field-error { color: var(--rose); font-size: .8rem; font-weight: 600; margin: 4px 0 0; }
+.input.invalid, .select.invalid { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(235, 0, 40, .14); }
+
+/* ---------- Impresión del comprobante ---------- */
+@media print {
+  .app-header, .btn-row, .stepper, .top-row, .footer, .no-print { display: none !important; }
+  body { background: #fff; }
+  .page-shell { padding: 0; display: block; }
+  .survey-panel { box-shadow: none; border: 0; max-width: 100%; }
+}

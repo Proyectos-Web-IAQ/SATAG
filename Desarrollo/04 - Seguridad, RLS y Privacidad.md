@@ -1,0 +1,184 @@
+# Seguridad, RLS y Privacidad - SATAV
+
+> **Estado:** primer corte implementable para revision.
+> **Fecha:** 06/07/2026.
+> **Fuente:** Investigacion legal SATAV del 03/07/2026.
+> **Uso:** reglas obligatorias para desarrollo; no sustituye la validacion final de Direccion/Legal del IAQ.
+
+## 1. Objetivo
+
+Este documento traduce la definicion legal y de privacidad de SATAV a reglas tecnicas verificables para el MVP. El sistema debe poder operar sin exponer datos personales, conservar evidencia de aceptacion del reglamento y soportar solicitudes basicas ARCO/cambio/baja.
+
+SATAV trata datos personales ordinarios: nombre, tipo de usuario, datos vehiculares, placas, firma manuscrita digital, metadatos de aceptacion, pago administrativo del TAG y solicitudes operativas. Las placas y firmas deben tratarse como datos personales cuando permitan identificar o asociar a una persona.
+
+## 2. Inventario de datos personales
+
+| Categoria | Datos | Ubicacion prevista | Regla de privacidad |
+|---|---|---|---|
+| Identificacion | Nombre del usuario, nombre del gestionante/firmante, tipo de usuario | `registros`, `aceptaciones` | Solo personal autorizado. No visible para `anon`. |
+| Vehiculo | Marca, modelo, color, placas, indicador sin placas | `registros` | Placas protegidas por RLS; evitar listados publicos. |
+| Firma | Imagen PNG, trazos vectoriales, firmante, sello de tiempo | Storage privado `firmas`, `aceptaciones` | Nunca URL publica permanente; acceso con URL firmada temporal. |
+| Evidencia | Version de reglamento, version de aviso, hash SHA-256 generado en BD, paquete firmado, bitacora | `aceptaciones`, `movimientos` o tabla equivalente | Inmutable despues de firmar. |
+| Pago | Monto, metodo efectivo, fecha y cobrado por | `pagos` | Dato administrativo; por ahora sin folio, recibo ni corte especifico. |
+| Solicitudes | Cambio, baja, rectificacion, oposicion/revocacion | `solicitudes` o modulo equivalente | Debe conservar estado, fecha, solicitante y resolucion. |
+| Observaciones | Comentarios operativos | `registros.observaciones` | Minimizar; evitar datos sensibles; preferir catalogos. |
+
+## 3. Roles y acceso
+
+| Rol | Uso | Permisos minimos |
+|---|---|---|
+| `anon` / autoservicio | Registro inicial | Leer catalogos y reglamento vigente; crear registro solo por RPC controlada; sin lectura directa de PII. |
+| Administracion | Asignacion, cobro, consulta y ARCO operativo | Leer registros, editar datos autorizados, registrar pagos, exportar expediente, procesar bajas/bloqueos. |
+| TI | Instalacion y soporte del TAG | Leer registros necesarios, capturar No. de TAG, gestionar movimientos tecnicos. |
+| Admin sistema | Configuracion y auditoria | Gestionar catalogos, roles, RLS, Storage, usuarios, respaldos y MFA. |
+
+Regla base: ninguna tabla con datos personales (`registros`, `aceptaciones`, `pagos`, `movimientos`, `solicitudes`) debe ser legible por `anon`. Las escrituras publicas del formulario deben pasar por una RPC con validacion y transaccion atomica.
+
+## 4. Reglas RLS y Supabase
+
+- Activar RLS en todas las tablas del esquema publico, incluidos catalogos, expedientes, pagos, aceptaciones, movimientos, solicitudes y logs.
+- Permitir a `anon` solo `select` de catalogos necesarios y del reglamento/aviso vigente.
+- Negar a `anon` lectura directa de registros, firmas, pagos, movimientos y solicitudes.
+- Usar RPC `crear_registro` o equivalente para alta de autoservicio; la RPC debe crear registro, aceptacion, evidencia y movimiento inicial en una sola transaccion.
+- Separar permisos de Administracion y TI cuando se pase de prototipo a produccion; mientras tanto, documentar si ambos usan un rol admin comun.
+- Exigir MFA a cuentas administrativas antes de operacion real.
+- Usar backups y bitacoras para reconstruir incidentes y generar lista de titulares afectados.
+
+## 5. Storage privado de firmas
+
+- El bucket `firmas` debe ser privado.
+- El sistema debe guardar rutas internas, no URLs publicas.
+- La visualizacion de firmas en panel debe usar URLs firmadas temporales.
+- No se deben servir firmas por assets estaticos, CDN publico ni rutas del front.
+- Limitar tamano y tipo de archivo esperado: PNG generado por canvas y JSON de trazos.
+- Los trazos vectoriales se usan solo como evidencia de firma, nunca para identificacion biometrica automatizada.
+
+## 6. Firma simple reforzada
+
+La aceptacion del reglamento y del aviso debe conservar un expediente tecnico de firma con:
+
+- Imagen de firma manuscrita digital.
+- Trazos vectoriales cuando el modulo los capture.
+- Nombre del firmante.
+- Rol del firmante: usuario o gestionante padre/madre/tutor.
+- Version exacta del reglamento firmado.
+- Version exacta del aviso de privacidad aceptado.
+- Hash SHA-256 generado por la base sobre el paquete firmado: reglamento, aviso, datos minimos de firmante, timestamp y versiones.
+- Paquete canonico firmado (`hash_payload`) para poder auditar que se hasheo exactamente.
+- Sello de tiempo UTC de base de datos.
+- Bitacora del evento de aceptacion.
+- IP/user-agent cuando sea viable y proporcional.
+
+La firma no debe depender solo de la imagen PNG. La fuerza probatoria viene del conjunto: identidad declarada, version del documento, hash, timestamp, bitacora y resguardo privado.
+
+## 7. Aviso de privacidad y textos del formulario
+
+Antes de capturar datos, el formulario debe mostrar:
+
+- Aviso simplificado SATAV.
+- Enlace al aviso integral.
+- Finalidades primarias del tratamiento.
+- Datos personales principales que se recaban.
+- Identidad del responsable.
+- Casilla no premarcada de lectura/aceptacion.
+
+Al firmar, el sistema debe asociar el registro con la version vigente del aviso y del reglamento. Si cambia el aviso o reglamento, debe crearse una nueva version y conservar la anterior para evidencia historica.
+
+## 8. Menores de edad
+
+Regla obligatoria: si el usuario del TAG es alumno menor de 18 anos, la aceptacion del reglamento y del aviso debe firmarla padre, madre o tutor como gestionante.
+
+Implementacion minima:
+
+- Capturar si el usuario es alumno.
+- Capturar si el firmante es el propio usuario o un gestionante.
+- Para alumno menor de edad, exigir `gestionante_nombre` y rol `padre/madre/tutor`.
+- Mostrar texto claro: el menor puede ser usuario del beneficio vehicular, pero el consentimiento y aceptacion los otorga su representante.
+- Bloquear el avance si falta gestionante cuando aplique.
+
+## 9. ARCO, revocacion, cambio y baja
+
+SATAV debe soportar, al menos de forma operativa en panel o proceso documentado:
+
+| Derecho/proceso | Soporte minimo |
+|---|---|
+| Acceso | Exportar expediente del titular: datos capturados, vehiculo, firma/evidencia, aviso y reglamento aceptados, pagos, movimientos y solicitudes. |
+| Rectificacion | Editar datos corregibles con bitacora, motivo y responsable de cambio. |
+| Cancelacion | Pasar a estado bloqueado/cancelado cuando proceda; conservar evidencia necesaria durante plazo de responsabilidades. |
+| Oposicion | Registrar solicitud, resolver procedencia y limitar tratamiento no necesario. |
+| Revocacion | Registrar solicitud; no es retroactiva; puede detonar baja/cancelacion si ya no hay finalidad vigente. |
+| Cambio/baja de TAG | Solicitud formal con fecha, solicitante, motivo, estado, resolucion y movimiento asociado. |
+
+El aviso debe indicar el canal institucional ARCO. Hasta que el IAQ confirme un correo/persona responsable, usar marcador pendiente y no publicar como definitivo.
+
+## 10. Conservacion y supresion
+
+Criterio minimo para MVP, pendiente de aprobacion institucional:
+
+- Conservar expediente mientras el TAG este vigente.
+- Al dar de baja, bloquear el registro para usos ordinarios y conservar solo lo necesario para responsabilidades administrativas, legales o contables.
+- Al agotarse la finalidad y plazo de conservacion aprobado, suprimir o disociar datos personales y eliminar firmas del bucket privado.
+- No conservar datos de menores indefinidamente "por si acaso".
+- Definir plazo concreto con Direccion/Legal; recomendacion practica: vigencia del TAG + plazo de prescripcion de responsabilidades aplicable.
+
+## 11. Nube, encargados y transferencias
+
+SATAV usa Supabase como proveedor cloud/encargado tecnologico. Antes de produccion se debe:
+
+- Confirmar region del proyecto Supabase.
+- Firmar o conservar DPA/terminos aplicables de Supabase.
+- Archivar evidencia de controles del proveedor: cifrado, TLS, certificaciones disponibles y subprocesadores.
+- Declarar en aviso integral el uso de encargados tecnologicos/nube, incluyendo infraestructura en EE.UU. si aplica.
+- Distinguir remision a encargado de transferencia a terceros. No compartir datos con terceros externos al IAQ sin validacion del aviso y base legal.
+
+Cloudflare/GoDaddy no deben procesar datos personales del sistema si el front es estatico y el navegador habla directo con Supabase. Si se usa proxy/custom domain para API con datos personales, revisar DPA correspondiente.
+
+## 12. Requisitos de desarrollo
+
+- Agregar versionado de aviso de privacidad (`aviso_versiones` o campo equivalente en `aceptaciones`).
+- Generar en base de datos el hash SHA-256 del paquete firmado; el cliente no debe mandar el hash legal principal.
+- Guardar `hash_payload` para auditoria y verificacion posterior.
+- Guardar trazos vectoriales de firma si el componente los captura.
+- Registrar bitacora de aceptacion y cambios administrativos.
+- Implementar validacion de menor/gestionante.
+- Evitar campo libre de observaciones sin instruccion; limitar longitud y advertir no capturar salud, discapacidad u otros datos sensibles.
+- Implementar export de expediente para acceso ARCO.
+- Implementar estado de bloqueo/cancelacion y no solo borrado fisico inmediato.
+- Probar RLS con usuario `anon` y `authenticated`.
+- Probar que firmas no sean accesibles por URL publica.
+
+## 13. Pendientes institucionales
+
+| Pendiente | Responsable sugerido | Necesario antes de produccion |
+|---|---|---|
+| Aprobar aviso integral SATAV/anexo | Direccion/Legal | Si |
+| Aprobar aviso simplificado y texto de aceptacion | Direccion/Legal | Si |
+| Designar persona/departamento ARCO y correo | Direccion/Administracion | Si |
+| Definir plazo de conservacion/bloqueo/supresion | Direccion/Legal/Administracion | Si |
+| Confirmar region y DPA Supabase | TI/Direccion | Si |
+| Validar reglamento de estacionamiento | Direccion/Legal | Si |
+| Confirmar tratamiento contable del cobro de $100 | Administracion | Si |
+| Cotizar NOM-151 | Direccion/TI | No, fase 2 |
+
+## 14. Criterio NOM-151
+
+NOM-151 no es requisito del MVP. Para fase 1 se implementa hash interno, versionado y sello de tiempo. NOM-151 queda diferida a fase 2/cotizacion si Direccion desea mayor fuerza probatoria o si se anticipan disputas relevantes.
+
+## 15. Pruebas de aceptacion
+
+- `anon` puede leer catalogos y reglamento/aviso vigente.
+- `anon` no puede leer `registros`, `aceptaciones`, `pagos`, `movimientos`, `solicitudes` ni objetos de `firmas`.
+- Alta por autoservicio crea expediente, aceptacion y movimiento inicial atomicos.
+- Firma queda guardada en Storage privado y solo se visualiza con URL temporal.
+- Alumno menor de edad no puede firmar sin gestionante padre/madre/tutor.
+- Export ARCO incluye datos, firma/evidencia, pagos, movimientos y solicitudes.
+- Cancelacion/baja bloquea tratamiento ordinario y conserva evidencia necesaria.
+- Observaciones no admiten captura de datos sensibles sin control.
+
+## 16. Referencias internas
+
+- [Investigacion legal SATAV](../Investigacion/02%20-%20Investigacion%20Legal%20SATAV.md)
+- [Aviso y textos legales SATAV](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAV.md)
+- [Checklist legal y privacidad](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAV.md)
+- [Modelo de Datos y Base de Datos](01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md)
+- [Firma Electronica](06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md)
