@@ -18,7 +18,7 @@ insert into cat_colores (nombre) values
     ('Blanco'), ('Gris'), ('Negro'), ('Azul'), ('Rojo'), ('Plata'),
     ('Arena'), ('Verde'), ('Cafe'), ('Dorado'), ('Guinda'), ('Amarillo'),
     ('Naranja'), ('Beige'), ('Vino'), ('Azul marino')
-on conflict (nombre) do nothing;
+on conflict ((lower(nombre))) do nothing;
 
 -- ---------------------------------------------------------------------
 -- Marcas base
@@ -28,8 +28,8 @@ insert into cat_marcas (nombre) values
     ('KIA'), ('Mazda'), ('Ford'), ('Hyundai'), ('BMW'), ('Jeep'), ('Audi'),
     ('Mercedes Benz'), ('Suzuki'), ('Seat'), ('Volvo'), ('Renault'),
     ('Peugeot'), ('MINI'), ('Subaru'), ('Fiat'), ('Dodge'), ('GMC'),
-    ('Chrysler'), ('Otro')
-on conflict (nombre) do nothing;
+    ('Chrysler')
+on conflict ((lower(nombre))) do nothing;
 
 -- ---------------------------------------------------------------------
 -- Modelos base minimos. El flujo permite "Otro"; el catalogo crece con uso.
@@ -52,10 +52,9 @@ join (
         ('Mazda', 'Mazda 3'),
         ('KIA', 'Sportage'),
         ('Ford', 'Escape'),
-        ('Hyundai', 'Tucson'),
-        ('Otro', 'Otro')
+        ('Hyundai', 'Tucson')
 ) as v(marca, nombre) on v.marca = m.nombre
-on conflict (marca_id, nombre) do nothing;
+on conflict (marca_id, (lower(nombre))) do nothing;
 
 -- ---------------------------------------------------------------------
 -- Reglamento placeholder. Reemplazar por las 22 clausulas reales.

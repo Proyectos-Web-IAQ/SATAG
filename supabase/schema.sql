@@ -34,35 +34,49 @@ create table if not exists estacionamientos (
     descripcion text,
     activo      boolean not null default true,
     created_at  timestamptz not null default now(),
-    constraint estacionamientos_clave_no_vacia check (btrim(clave) <> '')
+    constraint estacionamientos_clave_no_vacia check (btrim(clave) <> ''),
+    constraint estacionamientos_clave_formato check (clave ~ '^E[0-9]+$')
 );
 
 create table if not exists cat_marcas (
     id     uuid primary key default gen_random_uuid(),
-    nombre text not null unique,
-    constraint cat_marcas_nombre_no_vacio check (btrim(nombre) <> '')
+    nombre text not null,
+    constraint cat_marcas_nombre_no_vacio check (btrim(nombre) <> ''),
+    constraint cat_marcas_nombre_sin_espacios check (nombre = btrim(nombre))
 );
+
+create unique index if not exists uq_cat_marcas_nombre_normalizado
+    on cat_marcas (lower(nombre));
 
 create table if not exists cat_modelos (
     id       uuid primary key default gen_random_uuid(),
-    marca_id uuid not null references cat_marcas(id) on delete cascade,
+    marca_id uuid not null references cat_marcas(id),
     nombre   text not null,
     constraint cat_modelos_nombre_no_vacio check (btrim(nombre) <> ''),
-    constraint cat_modelos_unico_por_marca unique (marca_id, nombre)
+    constraint cat_modelos_nombre_sin_espacios check (nombre = btrim(nombre))
 );
+
+create unique index if not exists uq_cat_modelos_marca_nombre_normalizado
+    on cat_modelos (marca_id, lower(nombre));
 
 create table if not exists cat_colores (
     id     uuid primary key default gen_random_uuid(),
-    nombre text not null unique,
-    constraint cat_colores_nombre_no_vacio check (btrim(nombre) <> '')
+    nombre text not null,
+    constraint cat_colores_nombre_no_vacio check (btrim(nombre) <> ''),
+    constraint cat_colores_nombre_sin_espacios check (nombre = btrim(nombre))
 );
+
+create unique index if not exists uq_cat_colores_nombre_normalizado
+    on cat_colores (lower(nombre));
 
 create table if not exists reglamento_versiones (
     id           uuid primary key default gen_random_uuid(),
     version      int not null unique,
     contenido    text not null,
     vigente      boolean not null default false,
-    publicado_en timestamptz not null default now()
+    publicado_en timestamptz not null default now(),
+    constraint reglamento_version_positiva check (version > 0),
+    constraint reglamento_contenido_no_vacio check (btrim(contenido) <> '')
 );
 
 create unique index if not exists uq_reglamento_una_vigente
@@ -74,7 +88,10 @@ create table if not exists aviso_versiones (
     contenido    text not null,
     url_publica  text,
     vigente      boolean not null default false,
-    publicado_en timestamptz not null default now()
+    publicado_en timestamptz not null default now(),
+    constraint aviso_version_positiva check (version > 0),
+    constraint aviso_contenido_no_vacio check (btrim(contenido) <> ''),
+    constraint aviso_url_publica_no_vacia check (url_publica is null or btrim(url_publica) <> '')
 );
 
 create unique index if not exists uq_aviso_una_vigente
@@ -85,13 +102,40 @@ create unique index if not exists uq_aviso_una_vigente
 -- 2) EXPEDIENTE CENTRAL
 -- =====================================================================
 
-create table if not exists registros (
-    id                    uuid primary key default gen_random_uuid(),
+-- Secuencia del folio publico. La consume crear_registro con nextval().
+create sequence if not exists registros_folio_seq;
 
-    -- Persona y gestionante.
-    usuario_nombre        text not null,
-    gestionante_nombre    text,
-    gestionante_relacion  text,
+create table if not exists registros (
+    id                             uuid primary key default gen_random_uuid(),
+    folio                          text not null unique,
+
+    -- Persona titular (datos personales separados).
+    usuario_nombres                text not null,
+    usuario_apellido_paterno       text not null,
+    usuario_apellido_materno       text,
+    usuario_nombre_completo        text generated always as (
+        btrim(
+            usuario_nombres || ' ' || usuario_apellido_paterno ||
+            coalesce(' ' || usuario_apellido_materno, '')
+        )
+    ) stored,
+
+    -- Gestionante (NULL en nombres = mismo que el usuario).
+    gestionante_nombres            text,
+    gestionante_apellido_paterno   text,
+    gestionante_apellido_materno   text,
+    gestionante_nombre_completo    text generated always as (
+        case
+            when gestionante_nombres is null then null
+            else btrim(
+                gestionante_nombres || ' ' ||
+                coalesce(gestionante_apellido_paterno, '') ||
+                coalesce(' ' || gestionante_apellido_materno, '')
+            )
+        end
+    ) stored,
+    gestionante_relacion           text,
+
     usuario_es_menor      boolean not null default false,
     tipo_usuario          text not null default 'padres',
     tipo_validado         boolean not null default false,
@@ -127,15 +171,35 @@ create table if not exists registros (
     observaciones         text,
     created_at            timestamptz not null default now(),
 
+    constraint reg_folio_formato
+        check (folio ~ '^SATAG-[0-9]{6,}$'),
+    constraint reg_usuario_nombres_no_vacio
+        check (btrim(usuario_nombres) <> ''),
+    constraint reg_usuario_apellido_paterno_no_vacio
+        check (btrim(usuario_apellido_paterno) <> ''),
+    constraint reg_usuario_apellido_materno_no_vacio
+        check (usuario_apellido_materno is null or btrim(usuario_apellido_materno) <> ''),
+    constraint reg_gestionante_apellido_materno_no_vacio
+        check (gestionante_apellido_materno is null or btrim(gestionante_apellido_materno) <> ''),
     constraint reg_tipo_usuario_valido
         check (tipo_usuario in ('maestro','padres','alumno','admin')),
     constraint reg_gestionante_relacion_valida
         check (gestionante_relacion is null or gestionante_relacion in ('padre','madre','tutor','otro')),
+    constraint reg_gestionante_completo
+        check (
+            gestionante_nombres is null
+            or (
+                btrim(gestionante_nombres) <> ''
+                and gestionante_apellido_paterno is not null
+                and btrim(gestionante_apellido_paterno) <> ''
+            )
+        ),
     constraint reg_menor_requiere_gestionante
         check (
             usuario_es_menor = false or
             (
-                gestionante_nombre is not null and btrim(gestionante_nombre) <> '' and
+                gestionante_nombres is not null and btrim(gestionante_nombres) <> '' and
+                gestionante_apellido_paterno is not null and btrim(gestionante_apellido_paterno) <> '' and
                 gestionante_relacion in ('padre','madre','tutor')
             )
         ),
@@ -157,8 +221,14 @@ create table if not exists registros (
         check (estado <> 'bloqueado' or (bloqueado_en is not null and bloqueo_motivo is not null))
 );
 
-comment on column registros.usuario_nombre is 'PII (LFPDPPP)';
-comment on column registros.gestionante_nombre is 'PII (LFPDPPP). NULL = mismo que usuario';
+comment on column registros.usuario_nombres is 'PII (LFPDPPP)';
+comment on column registros.usuario_apellido_paterno is 'PII (LFPDPPP)';
+comment on column registros.usuario_apellido_materno is 'PII (LFPDPPP). Opcional (titular con un solo apellido)';
+comment on column registros.usuario_nombre_completo is 'PII (LFPDPPP). Columna GENERATED STORED para busqueda/visualizacion';
+comment on column registros.gestionante_nombres is 'PII (LFPDPPP). NULL = mismo que el usuario';
+comment on column registros.gestionante_apellido_paterno is 'PII (LFPDPPP)';
+comment on column registros.gestionante_apellido_materno is 'PII (LFPDPPP). Opcional';
+comment on column registros.gestionante_nombre_completo is 'PII (LFPDPPP). GENERATED STORED; NULL = mismo que el usuario';
 comment on column registros.placas is 'PII (LFPDPPP)';
 comment on column registros.observaciones is 'PII posible (LFPDPPP)';
 
@@ -169,7 +239,7 @@ create unique index if not exists uq_registros_no_dispositivo_activo
 create index if not exists ix_registros_estado on registros (estado);
 create index if not exists ix_registros_no_dispositivo on registros (no_dispositivo);
 create index if not exists ix_registros_placas on registros (upper(placas));
-create index if not exists ix_registros_usuario_lower on registros (lower(usuario_nombre));
+create index if not exists ix_registros_usuario_lower on registros (lower(usuario_nombre_completo));
 create index if not exists ix_registros_suprimir_despues on registros (suprimir_despues_de);
 
 
@@ -341,7 +411,7 @@ alter table solicitudes enable row level security;
 alter table error_logs enable row level security;
 
 create policy est_lectura_publica on estacionamientos
-    for select to anon, authenticated using (true);
+    for select to anon, authenticated using (activo);
 create policy est_admin on estacionamientos
     for all to authenticated using (true) with check (true);
 
@@ -362,11 +432,15 @@ create policy colores_admin on cat_colores
 
 create policy reglamento_lectura_vigente_anon on reglamento_versiones
     for select to anon using (vigente = true);
+create policy reglamento_lectura_vigente_auth on reglamento_versiones
+    for select to authenticated using (vigente = true);
 create policy reglamento_admin on reglamento_versiones
     for all to authenticated using (true) with check (true);
 
 create policy aviso_lectura_vigente_anon on aviso_versiones
     for select to anon using (vigente = true);
+create policy aviso_lectura_vigente_auth on aviso_versiones
+    for select to authenticated using (vigente = true);
 create policy aviso_admin on aviso_versiones
     for all to authenticated using (true) with check (true);
 
@@ -374,8 +448,9 @@ create policy registros_admin on registros
     for all to authenticated using (true) with check (true);
 create policy regest_admin on registro_estacionamientos
     for all to authenticated using (true) with check (true);
-create policy aceptaciones_admin on aceptaciones
-    for all to authenticated using (true) with check (true);
+-- aceptaciones: evidencia inmutable. authenticated solo lectura; la escribe el RPC (owner).
+create policy aceptaciones_lectura_auth on aceptaciones
+    for select to authenticated using (true);
 create policy pagos_admin on pagos
     for all to authenticated using (true) with check (true);
 create policy movimientos_admin on movimientos
@@ -419,43 +494,56 @@ drop function if exists crear_registro(
     text, text, text, text, text, text, boolean, text, text,
     text, text, boolean, text, jsonb, text, text, text, uuid, uuid
 );
+-- Firma previa a la separacion de nombres (usuario_nombre / gestionante_nombre).
+drop function if exists crear_registro(
+    text, text, text, text, text, text, boolean, text, text,
+    text, text, boolean, text, jsonb, text, inet, text, jsonb, text, text, uuid, uuid
+);
 
 create or replace function crear_registro(
-    p_usuario_nombre        text,
-    p_tipo_usuario          text,
-    p_marca                 text,
-    p_modelo                text,
-    p_color                 text,
-    p_placas                text,
-    p_sin_placas            boolean,
-    p_firmante_nombre       text,
-    p_firma_url             text,
-    p_gestionante_nombre    text default null,
-    p_gestionante_relacion  text default null,
-    p_usuario_es_menor      boolean default false,
-    p_firmante_rol          text default 'usuario',
-    p_firma_trazos          jsonb default null,
-    p_firma_imagen_sha256   text default null,
-    p_ip_origen             inet default null,
-    p_user_agent            text default null,
-    p_metadata              jsonb default '{}'::jsonb,
-    p_procedencia_tag       text default 'escuela',
-    p_observaciones         text default null,
-    p_reglamento_version_id uuid default null,
-    p_aviso_version_id      uuid default null
-) returns uuid
+    p_usuario_nombres              text,
+    p_usuario_apellido_paterno     text,
+    p_tipo_usuario                 text,
+    p_marca                        text,
+    p_modelo                       text,
+    p_color                        text,
+    p_placas                       text,
+    p_sin_placas                   boolean,
+    p_firma_url                    text,
+    p_usuario_apellido_materno     text default null,
+    p_firmante_nombre              text default null,
+    p_gestionante_nombres          text default null,
+    p_gestionante_apellido_paterno text default null,
+    p_gestionante_apellido_materno text default null,
+    p_gestionante_relacion         text default null,
+    p_usuario_es_menor             boolean default false,
+    p_firmante_rol                 text default 'usuario',
+    p_firma_trazos                 jsonb default null,
+    p_firma_imagen_sha256          text default null,
+    p_ip_origen                    inet default null,
+    p_user_agent                   text default null,
+    p_metadata                     jsonb default '{}'::jsonb,
+    p_procedencia_tag              text default 'escuela',
+    p_observaciones                text default null,
+    p_reglamento_version_id        uuid default null,
+    p_aviso_version_id             uuid default null
+) returns jsonb
 language plpgsql
 security definer
-set search_path = public
+-- extensions: en Supabase pgcrypto (digest) vive en el schema extensions.
+set search_path = public, extensions
 as $$
 declare
     v_registro_id uuid;
+    v_folio text;
     v_reglamento_version_id uuid;
     v_reglamento_version int;
     v_reglamento_contenido text;
     v_aviso_version_id uuid;
     v_aviso_version int;
     v_aviso_contenido text;
+    v_usuario_nombre_completo text;
+    v_gestionante_nombre_completo text;
     v_firmante_nombre text;
     v_firmante_rol text;
     v_sello_tiempo timestamptz := clock_timestamp();
@@ -500,8 +588,11 @@ begin
         end if;
     end if;
 
-    if coalesce(btrim(p_usuario_nombre),'') = '' then
-        raise exception 'El nombre del usuario es obligatorio';
+    if coalesce(btrim(p_usuario_nombres),'') = '' then
+        raise exception 'El nombre (usuario_nombres) es obligatorio';
+    end if;
+    if coalesce(btrim(p_usuario_apellido_paterno),'') = '' then
+        raise exception 'El apellido paterno del usuario es obligatorio';
     end if;
     if p_tipo_usuario not in ('maestro','padres','alumno','admin') then
         raise exception 'tipo_usuario invalido: %', p_tipo_usuario;
@@ -518,23 +609,54 @@ begin
     if p_firma_imagen_sha256 is not null and p_firma_imagen_sha256 !~ '^[0-9a-f]{64}$' then
         raise exception 'firma_imagen_sha256 debe ser SHA-256 en hexadecimal';
     end if;
+    -- Gestionante presente si viene el nombre; en ese caso exige apellido paterno.
+    if coalesce(btrim(p_gestionante_nombres),'') <> ''
+       and coalesce(btrim(p_gestionante_apellido_paterno),'') = '' then
+        raise exception 'El gestionante requiere apellido paterno';
+    end if;
     if coalesce(p_usuario_es_menor,false) and (
-        coalesce(btrim(p_gestionante_nombre),'') = '' or
+        coalesce(btrim(p_gestionante_nombres),'') = '' or
+        coalesce(btrim(p_gestionante_apellido_paterno),'') = '' or
         p_gestionante_relacion not in ('padre','madre','tutor')
     ) then
-        raise exception 'Un usuario menor requiere gestionante padre, madre o tutor';
+        raise exception 'Un usuario menor requiere gestionante padre, madre o tutor con nombre y apellido paterno';
     end if;
 
-    v_firmante_nombre := btrim(coalesce(p_firmante_nombre, p_usuario_nombre));
+    v_usuario_nombre_completo := btrim(
+        btrim(p_usuario_nombres) || ' ' || btrim(p_usuario_apellido_paterno) ||
+        coalesce(' ' || nullif(btrim(coalesce(p_usuario_apellido_materno,'')), ''), '')
+    );
+    if coalesce(btrim(p_gestionante_nombres),'') = '' then
+        v_gestionante_nombre_completo := null;
+    else
+        v_gestionante_nombre_completo := btrim(
+            btrim(p_gestionante_nombres) ||
+            coalesce(' ' || nullif(btrim(coalesce(p_gestionante_apellido_paterno,'')), ''), '') ||
+            coalesce(' ' || nullif(btrim(coalesce(p_gestionante_apellido_materno,'')), ''), '')
+        );
+    end if;
+
+    v_firmante_nombre := coalesce(nullif(btrim(coalesce(p_firmante_nombre,'')), ''), v_usuario_nombre_completo);
     v_firmante_rol := coalesce(p_firmante_rol, 'usuario');
 
+    -- Folio publico humano. Se asigna aqui (no como DEFAULT de la tabla).
+    v_folio := 'SATAG-' || lpad(nextval('registros_folio_seq')::text, 6, '0');
+
     insert into registros (
-        usuario_nombre, gestionante_nombre, gestionante_relacion, usuario_es_menor,
+        folio,
+        usuario_nombres, usuario_apellido_paterno, usuario_apellido_materno,
+        gestionante_nombres, gestionante_apellido_paterno, gestionante_apellido_materno,
+        gestionante_relacion, usuario_es_menor,
         tipo_usuario, procedencia_tag, marca, modelo, color, placas, sin_placas,
         observaciones, estado
     ) values (
-        btrim(p_usuario_nombre),
-        nullif(btrim(coalesce(p_gestionante_nombre,'')), ''),
+        v_folio,
+        btrim(p_usuario_nombres),
+        btrim(p_usuario_apellido_paterno),
+        nullif(btrim(coalesce(p_usuario_apellido_materno,'')), ''),
+        nullif(btrim(coalesce(p_gestionante_nombres,'')), ''),
+        nullif(btrim(coalesce(p_gestionante_apellido_paterno,'')), ''),
+        nullif(btrim(coalesce(p_gestionante_apellido_materno,'')), ''),
         nullif(btrim(coalesce(p_gestionante_relacion,'')), ''),
         coalesce(p_usuario_es_menor, false),
         p_tipo_usuario,
@@ -563,8 +685,15 @@ begin
         ),
         'registro', jsonb_build_object(
             'id', v_registro_id,
-            'usuario_nombre', btrim(p_usuario_nombre),
-            'gestionante_nombre', nullif(btrim(coalesce(p_gestionante_nombre,'')), ''),
+            'folio', v_folio,
+            'usuario_nombres', btrim(p_usuario_nombres),
+            'usuario_apellido_paterno', btrim(p_usuario_apellido_paterno),
+            'usuario_apellido_materno', nullif(btrim(coalesce(p_usuario_apellido_materno,'')), ''),
+            'usuario_nombre_completo', v_usuario_nombre_completo,
+            'gestionante_nombres', nullif(btrim(coalesce(p_gestionante_nombres,'')), ''),
+            'gestionante_apellido_paterno', nullif(btrim(coalesce(p_gestionante_apellido_paterno,'')), ''),
+            'gestionante_apellido_materno', nullif(btrim(coalesce(p_gestionante_apellido_materno,'')), ''),
+            'gestionante_nombre_completo', v_gestionante_nombre_completo,
             'gestionante_relacion', nullif(btrim(coalesce(p_gestionante_relacion,'')), ''),
             'usuario_es_menor', coalesce(p_usuario_es_menor, false),
             'tipo_usuario', p_tipo_usuario,
@@ -613,17 +742,22 @@ begin
     insert into movimientos (registro_id, tipo, motivo, hecho_por)
     values (v_registro_id, 'alta', 'Alta por autoservicio', 'autoservicio');
 
-    return v_registro_id;
+    -- anon no puede leer registros (RLS): el RPC devuelve id + folio + estado.
+    return jsonb_build_object(
+        'id', v_registro_id,
+        'folio', v_folio,
+        'estado', 'pendiente'
+    );
 end;
 $$;
 
 revoke all on function crear_registro(
-    text, text, text, text, text, text, boolean, text, text,
-    text, text, boolean, text, jsonb, text, inet, text, jsonb, text, text, uuid, uuid
+    text, text, text, text, text, text, text, boolean, text,
+    text, text, text, text, text, text, boolean, text, jsonb, text, inet, text, jsonb, text, text, uuid, uuid
 ) from public;
 grant execute on function crear_registro(
-    text, text, text, text, text, text, boolean, text, text,
-    text, text, boolean, text, jsonb, text, inet, text, jsonb, text, text, uuid, uuid
+    text, text, text, text, text, text, text, boolean, text,
+    text, text, text, text, text, text, boolean, text, jsonb, text, inet, text, jsonb, text, text, uuid, uuid
 ) to anon, authenticated;
 
 
@@ -678,12 +812,18 @@ grant execute on function crear_solicitud(text, text, text, text, uuid) to anon,
 -- 13) STORAGE
 -- =====================================================================
 
-insert into storage.buckets (id, name, public)
-values ('firmas', 'firmas', false)
-on conflict (id) do nothing;
+-- Bucket privado + limites (anon puede subir: acotamos tamano y tipo).
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('firmas', 'firmas', false, 2097152, array['image/png','image/jpeg'])
+on conflict (id) do update
+    set public             = excluded.public,
+        file_size_limit    = excluded.file_size_limit,
+        allowed_mime_types = excluded.allowed_mime_types;
 
+drop policy if exists firmas_subida_anon on storage.objects;
 create policy firmas_subida_anon on storage.objects
     for insert to anon with check (bucket_id = 'firmas');
+drop policy if exists firmas_admin on storage.objects;
 create policy firmas_admin on storage.objects
     for all to authenticated using (bucket_id = 'firmas') with check (bucket_id = 'firmas');
 

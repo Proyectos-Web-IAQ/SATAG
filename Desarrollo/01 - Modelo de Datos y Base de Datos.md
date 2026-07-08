@@ -27,7 +27,7 @@ El modelo ya debe soportar lo decidido o requerido por E6:
 | No. de TAG venia como numero y se corrompia en Excel | `no_dispositivo` se guarda como `text` con `CHECK` de 6 a 11 digitos. |
 | Hay numeros de TAG reutilizados | Unicidad parcial solo para TAG activo. |
 | Placas faltantes o duplicadas | Placas requeridas en flujo nuevo salvo `sin_placas`; no son unicas. |
-| Gestionante y usuario coinciden casi siempre | Persona denormalizada en `registros`; `gestionante_nombre = NULL` significa mismo usuario. |
+| Gestionante y usuario coinciden casi siempre | Persona denormalizada en `registros`; `gestionante_nombres = NULL` significa mismo usuario. |
 | Tipo de usuario venia vacio en muchos casos | `tipo_usuario` obligatorio y `tipo_validado` por Administracion. |
 | Marca/color/modelo venian sucios | Catalogos de sugerencia: `cat_marcas`, `cat_modelos`, `cat_colores`. |
 | Bajas estaban en notas o sin estructura | `estado`, `motivo_baja`, `fecha_baja` y `movimientos`. |
@@ -85,8 +85,15 @@ erDiagram
 
     registros {
         uuid id PK
-        text usuario_nombre
-        text gestionante_nombre
+        text folio
+        text usuario_nombres
+        text usuario_apellido_paterno
+        text usuario_apellido_materno
+        text usuario_nombre_completo
+        text gestionante_nombres
+        text gestionante_apellido_paterno
+        text gestionante_apellido_materno
+        text gestionante_nombre_completo
         boolean usuario_es_menor
         text tipo_usuario
         boolean tipo_validado
@@ -120,7 +127,10 @@ erDiagram
 
 Campos clave:
 
-- Persona: `usuario_nombre`, `gestionante_nombre`, `gestionante_relacion`, `usuario_es_menor`.
+- Folio: `folio` (`SATAG-######`, unico). Lo asigna el RPC `crear_registro` con la secuencia `registros_folio_seq`; no es DEFAULT de la tabla. El RPC devuelve `{id, folio, estado}` porque `anon` no puede leer `registros`.
+- Persona titular: `usuario_nombres`, `usuario_apellido_paterno`, `usuario_apellido_materno` (opcional) y `usuario_nombre_completo` (columna `GENERATED STORED` para busqueda/visualizacion).
+- Gestionante: `gestionante_nombres`, `gestionante_apellido_paterno`, `gestionante_apellido_materno`, `gestionante_nombre_completo` (`GENERATED STORED`) y `gestionante_relacion`. `gestionante_nombres = NULL` significa mismo que el usuario.
+- Menor: `usuario_es_menor`.
 - Clasificacion: `tipo_usuario`, `tipo_validado`, `tipo_validado_por`, `tipo_validado_en`.
 - Vehiculo: `marca`, `modelo`, `color`, `placas`, `sin_placas`.
 - TAG: `no_dispositivo`, `procedencia_tag`, `tag_apartado`, `tag_apartado_no`.
@@ -213,11 +223,13 @@ Alta publica atomica:
 2. Resuelve aviso vigente.
 3. Valida campos obligatorios.
 4. Valida menor con gestionante padre/madre/tutor.
-5. Inserta `registros`.
-6. Construye `hash_payload` con reglamento, aviso, datos minimos del registro, firmante, firma y sello de tiempo.
-7. Calcula `hash_documento` en PostgreSQL con `pgcrypto`.
-8. Inserta `aceptaciones`.
-9. Inserta movimiento `alta`.
+5. Asigna `folio` (`SATAG-######`) con `nextval('registros_folio_seq')`.
+6. Inserta `registros`.
+7. Construye `hash_payload` con reglamento, aviso, datos minimos del registro, firmante, firma y sello de tiempo.
+8. Calcula `hash_documento` en PostgreSQL con `pgcrypto`.
+9. Inserta `aceptaciones`.
+10. Inserta movimiento `alta`.
+11. Devuelve `jsonb {id, folio, estado}` (anon no puede leer `registros`).
 
 ### `crear_solicitud`
 
@@ -225,8 +237,14 @@ Crea solicitud publica de cambio, baja, ARCO o revocacion sin exponer el expedie
 
 ## 12. Datos personales para aviso
 
-- `registros.usuario_nombre`
-- `registros.gestionante_nombre`
+- `registros.usuario_nombres`
+- `registros.usuario_apellido_paterno`
+- `registros.usuario_apellido_materno`
+- `registros.usuario_nombre_completo`
+- `registros.gestionante_nombres`
+- `registros.gestionante_apellido_paterno`
+- `registros.gestionante_apellido_materno`
+- `registros.gestionante_nombre_completo`
 - `registros.gestionante_relacion`
 - `registros.usuario_es_menor`
 - `registros.placas`

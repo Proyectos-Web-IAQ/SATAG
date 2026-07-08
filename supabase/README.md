@@ -10,6 +10,9 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 |---|---|
 | `schema.sql` | Tablas, constraints, indices, RLS, RPC `crear_registro`, RPC `crear_solicitud` y bucket privado `firmas`. |
 | `seed.sql` | Estacionamientos, catalogos base, modelos base, reglamento placeholder y aviso placeholder. |
+| `sql/` | Version atomica de trabajo para auditar y ejecutar el esquema tabla por tabla. |
+
+> `schema.sql` se conserva como respaldo monolitico. Para auditoria y construccion paso a paso, usar `sql/README.md`.
 
 ## Orden de ejecucion
 
@@ -47,18 +50,19 @@ Si ya se habia ejecutado una version anterior de `schema.sql` en un proyecto vac
 - [ ] **3. Alta por RPC:**
   ```sql
   select crear_registro(
-    'Juan Perez Lopez',
-    'padres',
-    'Toyota',
-    'Sienna',
-    'Blanco',
-    'ABC1234',
-    false,
-    'Juan Perez Lopez',
-    'firmas/demo.png'
+    p_usuario_nombres          => 'Juan',
+    p_usuario_apellido_paterno => 'Perez',
+    p_usuario_apellido_materno => 'Lopez',
+    p_tipo_usuario             => 'padres',
+    p_marca                    => 'Toyota',
+    p_modelo                   => 'Sienna',
+    p_color                    => 'Blanco',
+    p_placas                   => 'ABC1234',
+    p_sin_placas               => false,
+    p_firma_url                => 'firmas/demo.png'
   );
   ```
-  Debe devolver un `uuid`; debe crear 1 registro `pendiente`, 1 aceptacion y 1 movimiento `alta`.
+  Debe devolver un JSON `{ "id": ..., "folio": "SATAG-000001", "estado": "pendiente" }`; debe crear 1 registro `pendiente`, 1 aceptacion y 1 movimiento `alta`.
   El hash debe generarse dentro de Supabase:
   ```sql
   select hash_algoritmo, hash_documento, hash_payload
@@ -76,37 +80,38 @@ Si ya se habia ejecutado una version anterior de `schema.sql` en un proyecto vac
 - [ ] **4. Menor sin tutor falla:**
   ```sql
   select crear_registro(
-    'Alumno Menor',
-    'alumno',
-    'Honda',
-    'Civic',
-    'Gris',
-    'XYZ9876',
-    false,
-    'Alumno Menor',
-    'firmas/demo2.png',
-    null,
-    null,
-    true
+    p_usuario_nombres          => 'Alumno',
+    p_usuario_apellido_paterno => 'Menor',
+    p_tipo_usuario             => 'alumno',
+    p_marca                    => 'Honda',
+    p_modelo                   => 'Civic',
+    p_color                    => 'Gris',
+    p_placas                   => 'XYZ9876',
+    p_sin_placas               => false,
+    p_firma_url                => 'firmas/demo2.png',
+    p_usuario_es_menor         => true
   );
   ```
   Debe fallar porque falta gestionante padre/madre/tutor.
 - [ ] **5. Menor con tutor pasa:**
   ```sql
   select crear_registro(
-    'Alumno Menor',
-    'alumno',
-    'Honda',
-    'Civic',
-    'Gris',
-    'XYZ9876',
-    false,
-    'Tutor Legal',
-    'firmas/demo3.png',
-    'Tutor Legal',
-    'tutor',
-    true,
-    'tutor'
+    p_usuario_nombres              => 'Alumno',
+    p_usuario_apellido_paterno     => 'Menor',
+    p_tipo_usuario                 => 'alumno',
+    p_marca                        => 'Honda',
+    p_modelo                       => 'Civic',
+    p_color                        => 'Gris',
+    p_placas                       => 'XYZ9876',
+    p_sin_placas                   => false,
+    p_firma_url                    => 'firmas/demo3.png',
+    p_firmante_nombre              => 'Tutor Legal Ramirez',
+    p_gestionante_nombres          => 'Tutor',
+    p_gestionante_apellido_paterno => 'Legal',
+    p_gestionante_apellido_materno => 'Ramirez',
+    p_gestionante_relacion         => 'tutor',
+    p_usuario_es_menor             => true,
+    p_firmante_rol                 => 'tutor'
   );
   ```
 - [ ] **6. RLS de PII:**

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SignaturePad from "@/components/SignaturePad";
-import { getMarcas, getColores, getReglamentoVigente, crearRegistro } from "@/lib/mock/api";
+import { getMarcas, getColores, getReglamentoVigente, crearRegistro } from "@/lib/supabase/api";
 import type { TipoUsuario, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
 
 const STEPS = ["Datos", "Vehículo", "Reglamento", "Firma", "Listo"];
@@ -79,6 +79,7 @@ export default function RegistroWizard() {
     }
     if (s === 1) {
       if (!marcaFinal.trim()) e.marca = "Selecciona o escribe la marca.";
+      if (!modelo.trim()) e.modelo = "Escribe el modelo.";
       if (!colorFinal.trim()) e.color = "Selecciona o escribe el color.";
       if (!sinPlacas) {
         if (!placas.trim()) e.placas = "Captura las placas o marca «sin placas».";
@@ -110,9 +111,7 @@ export default function RegistroWizard() {
     setError(null);
     try {
       const res = await crearRegistro({
-        usuarioNombre: conductorNombreCompleto,
         usuarioNombrePartes: conductorNombrePartes,
-        gestionanteNombre: gestionanteDistinto ? gestionanteNombreCompleto : null,
         gestionanteNombrePartes: gestionanteDistinto ? gestionanteNombrePartes : null,
         tipoUsuario,
         marca: marcaFinal, modelo, color: colorFinal,
@@ -229,7 +228,8 @@ export default function RegistroWizard() {
               </div>
               <div className="field">
                 <span>Modelo</span>
-                <input className="input" value={modelo} onChange={(e) => setModelo(e.target.value)} placeholder="Ej. Sienna" />
+                <input className={`input ${errores.modelo ? "invalid" : ""}`} value={modelo} onChange={(e) => setModelo(e.target.value)} placeholder="Ej. Sienna" />
+                {errores.modelo && <p className="field-error">{errores.modelo}</p>}
               </div>
             </div>
             <div className="grid-2">
