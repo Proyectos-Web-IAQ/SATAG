@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import SignaturePad from "@/components/SignaturePad";
-import { getMarcas, getColores, getReglamentoVigente, crearRegistro } from "@/lib/supabase/api";
+import { getMarcas, getModelos, getColores, getReglamentoVigente, crearRegistro } from "@/lib/supabase/api";
 import type { TipoUsuario, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
 
 const STEPS = ["Datos", "Vehículo", "Reglamento", "Firma", "Listo"];
@@ -35,7 +35,9 @@ export default function RegistroWizard() {
   const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>("padres");
   const [marca, setMarca] = useState("");
   const [marcaOtro, setMarcaOtro] = useState("");
+  const [modelos, setModelos] = useState<string[]>([]);
   const [modelo, setModelo] = useState("");
+  const [modeloOtro, setModeloOtro] = useState("");
   const [color, setColor] = useState("");
   const [colorOtro, setColorOtro] = useState("");
   const [placas, setPlacas] = useState("");
@@ -49,7 +51,19 @@ export default function RegistroWizard() {
     getReglamentoVigente().then(setReglamento);
   }, []);
 
+  // Modelo depende de la marca. Al cambiar marca, se recargan los modelos y se
+  // limpia la seleccion previa. Si la marca es "Otro" (o no hay catalogo), el
+  // modelo se captura como texto libre.
+  useEffect(() => {
+    setModeloOtro("");
+    if (!marca) { setModelos([]); setModelo(""); return; }
+    if (marca === "Otro") { setModelos([]); setModelo("Otro"); return; }
+    setModelo("");
+    getModelos(marca).then(setModelos).catch(() => setModelos([]));
+  }, [marca]);
+
   const marcaFinal = marca === "Otro" ? marcaOtro : marca;
+  const modeloFinal = modelo === "Otro" ? modeloOtro : modelo;
   const colorFinal = color === "Otro" ? colorOtro : color;
   const conductorNombrePartes: NombrePersona = {
     nombre: conductorNombre,
@@ -79,7 +93,7 @@ export default function RegistroWizard() {
     }
     if (s === 1) {
       if (!marcaFinal.trim()) e.marca = "Selecciona o escribe la marca.";
-      if (!modelo.trim()) e.modelo = "Escribe el modelo.";
+      if (!modeloFinal.trim()) e.modelo = "Selecciona o escribe el modelo.";
       if (!colorFinal.trim()) e.color = "Selecciona o escribe el color.";
       if (!sinPlacas) {
         if (!placas.trim()) e.placas = "Captura las placas o marca «sin placas».";
@@ -114,7 +128,7 @@ export default function RegistroWizard() {
         usuarioNombrePartes: conductorNombrePartes,
         gestionanteNombrePartes: gestionanteDistinto ? gestionanteNombrePartes : null,
         tipoUsuario,
-        marca: marcaFinal, modelo, color: colorFinal,
+        marca: marcaFinal, modelo: modeloFinal, color: colorFinal,
         placas: sinPlacas ? null : placas, sinPlacas,
         procedenciaTag: "escuela", observaciones: null,
         firmaDataUrl: firma,
@@ -228,7 +242,21 @@ export default function RegistroWizard() {
               </div>
               <div className="field">
                 <span>Modelo</span>
-                <input className={`input ${errores.modelo ? "invalid" : ""}`} value={modelo} onChange={(e) => setModelo(e.target.value)} placeholder="Ej. Sienna" />
+                {marca === "Otro" ? (
+                  <input className={`input ${errores.modelo ? "invalid" : ""}`} value={modeloOtro}
+                    onChange={(e) => setModeloOtro(e.target.value)} placeholder="Escribe el modelo" />
+                ) : (
+                  <>
+                    <select className={`select ${errores.modelo ? "invalid" : ""}`} value={modelo}
+                      onChange={(e) => setModelo(e.target.value)} disabled={!marca}>
+                      <option value="">{marca ? "Selecciona…" : "Elige la marca primero"}</option>
+                      {modelos.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                    {modelo === "Otro" && (
+                      <input className="input" value={modeloOtro} onChange={(e) => setModeloOtro(e.target.value)} placeholder="Especifica el modelo" />
+                    )}
+                  </>
+                )}
                 {errores.modelo && <p className="field-error">{errores.modelo}</p>}
               </div>
             </div>

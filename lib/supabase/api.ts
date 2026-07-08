@@ -24,6 +24,17 @@ export async function getColores(): Promise<string[]> {
   return CON_OTRO(data.map((r) => r.nombre as string));
 }
 
+// Modelos de una marca (por nombre). cat_modelos depende de cat_marcas via marca_id.
+export async function getModelos(marca: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("cat_modelos")
+    .select("nombre, cat_marcas!inner(nombre)")
+    .eq("cat_marcas.nombre", marca)
+    .order("nombre");
+  if (error) throw new Error(`No se pudieron cargar los modelos: ${error.message}`);
+  return CON_OTRO(data.map((r) => r.nombre as string));
+}
+
 export async function getReglamentoVigente(): Promise<ReglamentoVersion> {
   const { data, error } = await supabase
     .from("reglamento_versiones")
@@ -62,15 +73,22 @@ export interface CrearRegistroInput {
   aceptaReglamento: boolean;
 }
 
-// Sube el PNG de la firma al bucket privado y devuelve la ruta a guardar.
-async function subirFirma(dataUrl: string): Promise<string> {
+// SHA-256 en hex (minusculas) de un buffer. Requiere contexto seguro (HTTPS/localhost).
+async function sha256Hex(buf: ArrayBuffer): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Sube el PNG de la firma al bucket privado; devuelve la ruta y el SHA-256 del PNG.
+async function subirFirma(dataUrl: string): Promise<{ path: string; sha256: string }> {
   const blob = await (await fetch(dataUrl)).blob();
+  const sha256 = await sha256Hex(await blob.arrayBuffer());
   const fileName = `${crypto.randomUUID()}.png`;
   const { error } = await supabase.storage
     .from("firmas")
     .upload(fileName, blob, { contentType: "image/png", upsert: false });
   if (error) throw new Error(`No se pudo subir la firma: ${error.message}`);
-  return `firmas/${fileName}`;
+  return { path: `firmas/${fileName}`, sha256 };
 }
 
 export async function crearRegistro(input: CrearRegistroInput): Promise<CrearRegistroResultado> {
@@ -79,7 +97,7 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
 
   // Nota: si el RPC fallara despues de subir, la firma queda huerfana en Storage
   // (anon no puede borrar). Es aceptable para el MVP; se limpia del lado admin.
-  const firmaUrl = await subirFirma(input.firmaDataUrl);
+  const firma = await subirFirma(input.firmaDataUrl);
 
   const g = input.gestionanteNombrePartes;
   const { data, error } = await supabase.rpc("crear_registro", {
@@ -92,7 +110,8 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     p_color: input.color,
     p_placas: input.sinPlacas ? null : input.placas,
     p_sin_placas: input.sinPlacas,
-    p_firma_url: firmaUrl,
+    p_firma_url: firma.path,
+    p_firma_imagen_sha256: firma.sha256,
     p_firmante_nombre: input.firmanteNombre,
     p_gestionante_nombres: g?.nombre.trim() || null,
     p_gestionante_apellido_paterno: g?.apellidoPaterno.trim() || null,
