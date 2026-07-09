@@ -163,6 +163,16 @@ export default function RegistroWizard() {
         firmaTrazos: trazos,
         firmanteNombre: gestionanteDistinto ? gestionanteNombreCompleto : conductorNombreCompleto,
         aceptaReglamento: acepta,
+        metadata: {
+          consentimiento: {
+            aceptaReglamento: acepta,
+            aceptaPrivacidad,
+            reglamentoLeido,
+            avisoLeido,
+            reglamentoVersion: reglamento?.version ?? null,
+            avisoVersion: aviso?.version ?? null,
+          },
+        },
       });
       setResultado(res);
       setStep(5);

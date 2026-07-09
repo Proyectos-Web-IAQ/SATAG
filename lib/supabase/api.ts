@@ -97,6 +97,22 @@ export interface CrearRegistroInput {
   firmaTrazos: FirmaTrazos | null; // vector del trazo (evidencia)
   firmanteNombre: string;
   aceptaReglamento: boolean;
+  metadata?: Record<string, unknown>; // evidencia extra (ej. consentimiento) para aceptaciones.metadata
+}
+
+// Contexto tecnico del cliente (evidencia complementaria, disclosed en el aviso).
+// Se mantiene minimo: no es un fingerprint exhaustivo.
+function contextoCliente(): Record<string, unknown> {
+  if (typeof window === "undefined") return {};
+  return {
+    capturadoEn: new Date().toISOString(),
+    zonaHoraria: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    idioma: navigator.language,
+    plataforma: navigator.platform || null,
+    pantalla: { ancho: window.screen.width, alto: window.screen.height, dpr: window.devicePixelRatio },
+    origen: window.location.href,
+    app: "satag-web",
+  };
 }
 
 // SHA-256 en hex (minusculas) de un buffer. Requiere contexto seguro (HTTPS/localhost).
@@ -139,6 +155,7 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     p_firma_url: firma.path,
     p_firma_imagen_sha256: firma.sha256,
     p_firma_trazos: input.firmaTrazos,
+    p_metadata: { ...contextoCliente(), ...(input.metadata ?? {}) },
     p_firmante_nombre: input.firmanteNombre,
     p_gestionante_nombres: g?.nombre.trim() || null,
     p_gestionante_apellido_paterno: g?.apellidoPaterno.trim() || null,
