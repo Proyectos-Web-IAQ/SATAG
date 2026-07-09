@@ -1,11 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SignaturePad, { type FirmaTrazos } from "@/components/SignaturePad";
-import { getMarcas, getModelos, getColores, getReglamentoVigente, crearRegistro } from "@/lib/supabase/api";
+import {
+  getMarcas, getModelos, getColores, getReglamentoVigente, getAvisoVigente, crearRegistro,
+} from "@/lib/supabase/api";
+import type { AvisoVigente } from "@/lib/supabase/api";
 import type { TipoUsuario, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
 
-const STEPS = ["Datos", "Vehículo", "Reglamento", "Firma", "Listo"];
+const STEPS = ["Datos", "Vehículo", "Aviso", "Reglamento", "Firma", "Listo"];
 
 function nombreCompleto(partes: NombrePersona): string {
   return [partes.nombre, partes.apellidoPaterno, partes.apellidoMaterno]
@@ -14,12 +17,18 @@ function nombreCompleto(partes: NombrePersona): string {
     .join(" ");
 }
 
+// ¿El contenedor esta al final (o no necesita scroll)?
+function alFinal(el: HTMLElement): boolean {
+  return el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+}
+
 export default function RegistroWizard() {
   const [step, setStep] = useState(0);
   const [mostrarErrores, setMostrarErrores] = useState(false);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
   const [reglamento, setReglamento] = useState<ReglamentoVersion | null>(null);
+  const [aviso, setAviso] = useState<AvisoVigente | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CrearRegistroResultado | null>(null);
@@ -42,14 +51,21 @@ export default function RegistroWizard() {
   const [colorOtro, setColorOtro] = useState("");
   const [placas, setPlacas] = useState("");
   const [sinPlacas, setSinPlacas] = useState(false);
+  const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
+  const [avisoLeido, setAvisoLeido] = useState(false);
   const [acepta, setAcepta] = useState(false);
+  const [reglamentoLeido, setReglamentoLeido] = useState(false);
   const [firma, setFirma] = useState("");
   const [trazos, setTrazos] = useState<FirmaTrazos | null>(null);
+
+  const avisoRef = useRef<HTMLDivElement>(null);
+  const reglamentoRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getMarcas().then(setMarcas);
     getColores().then(setColores);
     getReglamentoVigente().then(setReglamento);
+    getAvisoVigente().then(setAviso);
   }, []);
 
   // Modelo depende de la marca. Al cambiar marca, se recargan los modelos y se
@@ -62,6 +78,16 @@ export default function RegistroWizard() {
     setModelo("");
     getModelos(marca).then(setModelos).catch(() => setModelos([]));
   }, [marca]);
+
+  // Si el aviso/reglamento caben sin scroll, se consideran "leidos" al entrar.
+  useEffect(() => {
+    const el = avisoRef.current;
+    if (step === 2 && el && el.scrollHeight <= el.clientHeight + 8) setAvisoLeido(true);
+  }, [step, aviso]);
+  useEffect(() => {
+    const el = reglamentoRef.current;
+    if (step === 3 && el && el.scrollHeight <= el.clientHeight + 8) setReglamentoLeido(true);
+  }, [step, reglamento]);
 
   const marcaFinal = marca === "Otro" ? marcaOtro : marca;
   const modeloFinal = modelo === "Otro" ? modeloOtro : modelo;
@@ -101,8 +127,9 @@ export default function RegistroWizard() {
         else if (!/^[A-Z0-9]{5,8}$/.test(placas.trim())) e.placas = "Formato de placa no válido (5–8 letras o números).";
       }
     }
-    if (s === 2 && !acepta) e.acepta = "Debes aceptar el reglamento para continuar.";
-    if (s === 3 && !firma) e.firma = "Firma en el recuadro para continuar.";
+    if (s === 2 && !aceptaPrivacidad) e.aceptaPrivacidad = "Debes aceptar el aviso de privacidad para continuar.";
+    if (s === 3 && !acepta) e.acepta = "Debes aceptar el reglamento para continuar.";
+    if (s === 4 && !firma) e.firma = "Firma en el recuadro para continuar.";
     return e;
   }
 
@@ -120,7 +147,7 @@ export default function RegistroWizard() {
   }
 
   async function enviarValidado() {
-    const e = validarPaso(3);
+    const e = validarPaso(4);
     if (Object.keys(e).length) { setMostrarErrores(true); return; }
     setEnviando(true);
     setError(null);
@@ -138,7 +165,7 @@ export default function RegistroWizard() {
         aceptaReglamento: acepta,
       });
       setResultado(res);
-      setStep(4);
+      setStep(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocurrió un error.");
     } finally {
@@ -288,24 +315,54 @@ export default function RegistroWizard() {
           </>
         )}
 
-        {/* ----- Paso 2: Reglamento ----- */}
+        {/* ----- Paso 2: Aviso de privacidad ----- */}
         {step === 2 && (
           <>
+            <header className="survey-header"><h1>Aviso de privacidad</h1></header>
+            <p className="lead">Lee el aviso completo. La casilla se habilita al llegar al final.</p>
+            <div
+              className="reglamento"
+              ref={avisoRef}
+              onScroll={(e) => { if (alFinal(e.currentTarget)) setAvisoLeido(true); }}
+            >
+              {(aviso?.parrafos ?? ["Cargando…"]).map((p, i) => (
+                <p key={i} style={{ margin: "0 0 10px" }}>{p}</p>
+              ))}
+            </div>
+            {!avisoLeido && <p className="hint" style={{ marginTop: 8 }}>Desplázate hasta el final para poder aceptar.</p>}
+            <label className="check" style={{ marginTop: 16 }}>
+              <input type="checkbox" checked={aceptaPrivacidad} disabled={!avisoLeido}
+                onChange={(e) => setAceptaPrivacidad(e.target.checked)} />
+              <span>He leído el aviso de privacidad de SATAG y acepto el tratamiento de mis datos personales para las finalidades indicadas.</span>
+            </label>
+            {errores.aceptaPrivacidad && <p className="field-error">{errores.aceptaPrivacidad}</p>}
+          </>
+        )}
+
+        {/* ----- Paso 3: Reglamento ----- */}
+        {step === 3 && (
+          <>
             <header className="survey-header"><h1>Reglamento de acceso</h1></header>
-            <p className="lead">Lee el reglamento y acéptalo para continuar.</p>
-            <div className="reglamento">
+            <p className="lead">Lee el reglamento completo. La casilla se habilita al llegar a la cláusula final.</p>
+            <div
+              className="reglamento"
+              ref={reglamentoRef}
+              onScroll={(e) => { if (alFinal(e.currentTarget)) setReglamentoLeido(true); }}
+            >
               <ol>{(reglamento?.clausulas ?? ["Cargando…"]).map((c, i) => <li key={i}>{c}</li>)}</ol>
             </div>
+            {!reglamentoLeido && <p className="hint" style={{ marginTop: 8 }}>Desplázate hasta la cláusula 22 para poder aceptar.</p>}
             <label className="check" style={{ marginTop: 16 }}>
-              <input type="checkbox" checked={acepta} onChange={(e) => setAcepta(e.target.checked)} />
+              <input type="checkbox" checked={acepta} disabled={!reglamentoLeido}
+                onChange={(e) => setAcepta(e.target.checked)} />
               <span>He leído y acepto el reglamento de acceso vehicular (v{reglamento?.version ?? "—"}).</span>
             </label>
             {errores.acepta && <p className="field-error">{errores.acepta}</p>}
           </>
         )}
 
-        {/* ----- Paso 3: Firma ----- */}
-        {step === 3 && (
+        {/* ----- Paso 4: Firma ----- */}
+        {step === 4 && (
           <>
             <header className="survey-header"><h1>Firma</h1></header>
             <p className="lead">
@@ -317,8 +374,8 @@ export default function RegistroWizard() {
           </>
         )}
 
-        {/* ----- Paso 4: Comprobante ----- */}
-        {step === 4 && resultado && (
+        {/* ----- Paso 5: Comprobante ----- */}
+        {step === 5 && resultado && (
           <div className="comprobante">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img className="brand-sello" src="/sello-asuncion.png" alt="" />
@@ -341,10 +398,10 @@ export default function RegistroWizard() {
 
         {error && <p className="submit-error" role="alert">{error}</p>}
 
-        {step < 4 && (
+        {step < 5 && (
           <div className="btn-row">
             <button type="button" className="ghost-action" onClick={retroceder} disabled={step === 0}>Atrás</button>
-            {step < 3 ? (
+            {step < 4 ? (
               <button type="button" className="primary-action" onClick={avanzar}>Siguiente</button>
             ) : (
               <button type="button" className="primary-action" onClick={enviarValidado} disabled={enviando}>

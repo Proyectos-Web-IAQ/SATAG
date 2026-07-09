@@ -30,6 +30,8 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico:
 20. `19_rpc_crear_registro.sql`
 21. `20_storage_firmas.sql`
 22. `21_seed_cat_modelos.sql`
+23. `22_publicar_aviso_v2.sql`
+24. `23_publicar_reglamento_v2.sql`
 
 ## Ciclo de auditoria por tabla
 
@@ -70,3 +72,5 @@ Para cada archivo:
 | `19_rpc_crear_registro.sql` | Listo para revisar | Alta atomica publica; SECURITY DEFINER; devuelve {id, folio, estado}. |
 | `20_storage_firmas.sql` | Listo para revisar | Bucket privado firmas; anon solo sube; limite 2MB PNG/JPEG. Requiere Supabase. |
 | `21_seed_cat_modelos.sql` | Seed | Modelos comunes por marca; las 24 marcas con modelos. Idempotente. |
+| `22_publicar_aviso_v2.sql` | Contenido | Publica el aviso integral (v2 vigente); v1 placeholder queda historico. |
+| `23_publicar_reglamento_v2.sql` | Contenido | Publica el reglamento oficial IAQ (22 clausulas, v2 vigente). |

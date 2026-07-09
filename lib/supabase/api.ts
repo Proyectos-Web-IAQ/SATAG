@@ -55,6 +55,30 @@ export async function getReglamentoVigente(): Promise<ReglamentoVersion> {
   return { version: data.version as number, vigente: true, clausulas };
 }
 
+export interface AvisoVigente {
+  version: number;
+  urlPublica: string | null;
+  parrafos: string[];
+}
+
+export async function getAvisoVigente(): Promise<AvisoVigente> {
+  const { data, error } = await supabase
+    .from("aviso_versiones")
+    .select("version, contenido, url_publica")
+    .eq("vigente", true)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo cargar el aviso de privacidad: ${error.message}`);
+  if (!data) throw new Error("No hay un aviso de privacidad vigente.");
+
+  const parrafos = String(data.contenido)
+    .split(/\r?\n/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  return { version: data.version as number, urlPublica: data.url_publica as string | null, parrafos };
+}
+
 // ---- Alta publica (paso 3+4): sube firma a Storage y llama al RPC crear_registro ----
 
 // Entrada con nombres separados (espejo de la firma del RPC crear_registro).
