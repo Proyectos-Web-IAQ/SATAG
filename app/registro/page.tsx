@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import SignaturePad from "@/components/SignaturePad";
+import SignaturePad, { type FirmaTrazos } from "@/components/SignaturePad";
 import { getMarcas, getModelos, getColores, getReglamentoVigente, crearRegistro } from "@/lib/supabase/api";
 import type { TipoUsuario, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
 
@@ -44,6 +44,7 @@ export default function RegistroWizard() {
   const [sinPlacas, setSinPlacas] = useState(false);
   const [acepta, setAcepta] = useState(false);
   const [firma, setFirma] = useState("");
+  const [trazos, setTrazos] = useState<FirmaTrazos | null>(null);
 
   useEffect(() => {
     getMarcas().then(setMarcas);
@@ -132,6 +133,7 @@ export default function RegistroWizard() {
         placas: sinPlacas ? null : placas, sinPlacas,
         procedenciaTag: "escuela", observaciones: null,
         firmaDataUrl: firma,
+        firmaTrazos: trazos,
         firmanteNombre: gestionanteDistinto ? gestionanteNombreCompleto : conductorNombreCompleto,
         aceptaReglamento: acepta,
       });
@@ -309,7 +311,7 @@ export default function RegistroWizard() {
             <p className="lead">
               Firmará <strong>{gestionanteDistinto ? gestionanteNombreCompleto || "el gestionante" : conductorNombreCompleto || "el conductor"}</strong>.
             </p>
-            <SignaturePad onChange={setFirma} />
+            <SignaturePad onChange={setFirma} onTrazos={setTrazos} />
             <p className="hint" style={{ marginTop: 8 }}>Puedes firmar con el dedo (táctil) o con el mouse.</p>
             {errores.firma && <p className="field-error">{errores.firma}</p>}
           </>

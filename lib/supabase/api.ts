@@ -8,6 +8,7 @@ import type {
   ProcedenciaTag,
   CrearRegistroResultado,
 } from "@/lib/mock/types";
+import type { FirmaTrazos } from "@/components/SignaturePad";
 
 // "Otro" es opcion de UI, no vive en los catalogos (decision cerrada).
 const CON_OTRO = (nombres: string[]) => [...nombres, "Otro"];
@@ -69,6 +70,7 @@ export interface CrearRegistroInput {
   procedenciaTag: ProcedenciaTag;
   observaciones: string | null;
   firmaDataUrl: string; // PNG en data URL desde el SignaturePad
+  firmaTrazos: FirmaTrazos | null; // vector del trazo (evidencia)
   firmanteNombre: string;
   aceptaReglamento: boolean;
 }
@@ -112,6 +114,7 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     p_sin_placas: input.sinPlacas,
     p_firma_url: firma.path,
     p_firma_imagen_sha256: firma.sha256,
+    p_firma_trazos: input.firmaTrazos,
     p_firmante_nombre: input.firmanteNombre,
     p_gestionante_nombres: g?.nombre.trim() || null,
     p_gestionante_apellido_paterno: g?.apellidoPaterno.trim() || null,
