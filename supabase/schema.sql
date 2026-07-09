@@ -549,6 +549,10 @@ declare
     v_sello_tiempo timestamptz := clock_timestamp();
     v_hash_payload jsonb;
     v_hash_documento text;
+    v_headers json;
+    v_xff text;
+    v_ip_origen inet;
+    v_user_agent text;
 begin
     if p_reglamento_version_id is null then
         select id, version, contenido
@@ -639,6 +643,21 @@ begin
     v_firmante_nombre := coalesce(nullif(btrim(coalesce(p_firmante_nombre,'')), ''), v_usuario_nombre_completo);
     v_firmante_rol := coalesce(p_firmante_rol, 'usuario');
 
+    -- Captura confiable de IP y user-agent desde los headers de la peticion (server-side).
+    -- Supabase/PostgREST exponen los headers en el setting request.headers.
+    v_headers := nullif(current_setting('request.headers', true), '')::json;
+    v_user_agent := coalesce(
+        nullif(btrim(coalesce(v_headers ->> 'user-agent', '')), ''),
+        nullif(btrim(coalesce(p_user_agent, '')), '')
+    );
+    v_xff := btrim(split_part(coalesce(v_headers ->> 'x-forwarded-for', ''), ',', 1));
+    begin
+        v_ip_origen := nullif(v_xff, '')::inet;   -- primer IP del x-forwarded-for
+    exception when others then
+        v_ip_origen := null;                      -- header malformado: no rompe el alta
+    end;
+    v_ip_origen := coalesce(v_ip_origen, p_ip_origen);
+
     -- Folio publico humano. Se asigna aqui (no como DEFAULT de la tabla).
     v_folio := 'SATAG-' || lpad(nextval('registros_folio_seq')::text, 6, '0');
 
@@ -711,8 +730,8 @@ begin
         'aceptacion', jsonb_build_object(
             'acepto_reglamento', true,
             'acepto_privacidad', true,
-            'ip_origen', p_ip_origen,
-            'user_agent', nullif(btrim(coalesce(p_user_agent,'')), ''),
+            'ip_origen', v_ip_origen,
+            'user_agent', v_user_agent,
             'metadata', coalesce(p_metadata, '{}'::jsonb)
         ),
         'firma', jsonb_build_object(
@@ -734,7 +753,7 @@ begin
         v_registro_id, v_reglamento_version_id, v_aviso_version_id,
         btrim(p_firma_url), p_firma_imagen_sha256, p_firma_trazos,
         v_firmante_nombre, v_firmante_rol,
-        true, true, p_ip_origen, nullif(btrim(coalesce(p_user_agent,'')), ''),
+        true, true, v_ip_origen, v_user_agent,
         coalesce(p_metadata, '{}'::jsonb),
         'sha256', v_hash_documento, v_hash_payload, v_sello_tiempo
     );

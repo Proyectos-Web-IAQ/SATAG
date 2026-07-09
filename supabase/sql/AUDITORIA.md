@@ -467,6 +467,7 @@ reset role;
 | Folio | Asigna `SATAG-######` con `nextval('registros_folio_seq')`. |
 | Hash | `hash_documento` = SHA-256 del `hash_payload` canonico (pgcrypto). |
 | Retorno | `jsonb {id, folio, estado}` (anon no puede leer registros). |
+| Evidencia | Captura `ip_origen` y `user_agent` server-side desde `request.headers` (confiable, no del cliente); entran al hash. Disclosed en el aviso. |
 | Validaciones | Obligatorios, tipo_usuario, menor con gestionante, formato firma_imagen_sha256. |
 
 ## Pruebas RPC minimas
