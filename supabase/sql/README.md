@@ -29,6 +29,7 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico:
 19. `18_grants_alta.sql`
 20. `19_rpc_crear_registro.sql`
 21. `20_storage_firmas.sql`
+22. `21_seed_cat_modelos.sql`
 
 ## Ciclo de auditoria por tabla
 
@@ -68,3 +69,4 @@ Para cada archivo:
 | `18_grants_alta.sql` | Listo para revisar | Grants: authenticated lee aceptaciones y administra movimientos; anon nada. |
 | `19_rpc_crear_registro.sql` | Listo para revisar | Alta atomica publica; SECURITY DEFINER; devuelve {id, folio, estado}. |
 | `20_storage_firmas.sql` | Listo para revisar | Bucket privado firmas; anon solo sube; limite 2MB PNG/JPEG. Requiere Supabase. |
+| `21_seed_cat_modelos.sql` | Seed | Modelos comunes por marca; las 24 marcas con modelos. Idempotente. |
