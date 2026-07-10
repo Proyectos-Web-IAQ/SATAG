@@ -136,6 +136,69 @@ Si ya se habia ejecutado una version anterior de `schema.sql` en un proyecto vac
   ```
 - [ ] **8. Storage:** existe bucket privado `firmas`; `anon` puede subir, no leer.
 
+## Auth del panel administrativo
+
+El panel (`/admin`) usa **Supabase Auth** (correo + contrasena). Al iniciar sesion el
+usuario obtiene el rol `authenticated`, que las politicas RLS ya permiten para gestionar el
+padron. El sitio es estatico: la sesion vive en el navegador (`lib/supabase/auth.ts`).
+
+Configuracion en el **Dashboard de Supabase** (no vive en el repo):
+
+1. **Crear usuarios del personal** — Authentication -> Users -> *Add user*. Marca el correo como
+   confirmado (o envia invitacion). **No hay registro publico**: las cuentas se crean aqui a mano.
+2. **Desactivar el alta publica** — Authentication -> Sign In / Providers -> Email ->
+   *Allow new users to sign up* = **OFF** (defensa en profundidad; la app nunca llama a `signUp`).
+3. **Redirect URLs** (para el enlace de recuperacion) — Authentication -> URL Configuration:
+   - **Site URL:** el origen de produccion (ej. `https://satag.vercel.app`).
+   - **Redirect URLs** (allowlist): agrega la ruta de reset en cada entorno, con `/` final:
+     - `http://localhost:3000/admin/reset/`  (desarrollo)
+     - `https://satag.vercel.app/admin/reset/`  (o comodin `https://satag.vercel.app/**`)
+   - Si el correo redirige a una URL fuera de la allowlist, Supabase cae al Site URL y el reset falla.
+4. **Correo (SMTP)** — el SMTP integrado de Supabase sirve para pruebas pero tiene limite bajo y
+   puede caer en spam. Para produccion, configura **Custom SMTP** en Authentication -> Emails.
+5. **MFA (pendiente para produccion)** — E6/CC-12 exige MFA en cuentas administrativas
+   (Authentication -> Multi-Factor). No es bloqueante para el MVP interno, pero queda pendiente.
+
+### Flujo de recuperacion (como funciona)
+
+`/admin` -> *¿Olvidaste tu contrasena?* -> `resetPasswordForEmail(correo, { redirectTo: /admin/reset/ })`
+-> Supabase envia correo -> el enlace regresa a `/admin/reset/` con el token en el **hash**
+(`#access_token=...&type=recovery`, flujo *implicit* para que funcione cross-device) -> la pagina
+establece la sesion de recuperacion y pide la nueva contrasena -> `updateUser({ password })` ->
+cierra sesion y el usuario entra con la contrasena nueva.
+
+### Invitar personal (que cada quien cree su contrasena)
+
+En vez de fijar la contrasena a mano, puedes **invitar** al correo del personal y que
+active su cuenta. Como el sitio es estatico, se usa el patron `token_hash` + `verifyOtp`
+(la app lo procesa en `/admin/invite`, ver `app/admin/invite/page.tsx`).
+
+1. **Site URL** (Authentication -> URL Configuration): el origen del entorno **sin** ruta.
+   - Pruebas locales: `http://localhost:3000`
+   - Produccion: `https://satag.vercel.app` (o el dominio final)
+   > La invitacion construye el enlace a partir del Site URL; cambialo segun donde vayas a probar.
+2. **Plantilla del correo** (Authentication -> Emails -> Templates -> **Invite user**): apunta el
+   boton a la pagina de invitacion con el `token_hash`:
+   ```html
+   <h2>Invitación al panel SATAG</h2>
+   <p>Has sido invitado a administrar el sistema SATAG del IAQ.</p>
+   <p><a href="{{ .SiteURL }}/admin/invite/?token_hash={{ .TokenHash }}&type=invite">Activar mi cuenta y crear contraseña</a></p>
+   ```
+3. **Enviar la invitacion** (Authentication -> Users -> *Add user* -> **Send invitation**). Si habia
+   un usuario pendiente de una invitacion anterior, borralo y reinvitalo para que use la plantilla nueva.
+4. El invitado abre el correo -> `/admin/invite/` valida el token, crea su contrasena y ya puede entrar.
+
+> El enlace de invitacion caduca (por defecto 24 h) y es de un solo uso. Si expira, reenvia la invitacion.
+> Nota: al invitar se crea el usuario en Auth aunque el registro publico este en OFF (lo crea el admin, no el autoservicio).
+
+### Prueba manual
+
+1. Crea un usuario de prueba en el dashboard (paso 1) y agrega los Redirect URLs (paso 3).
+2. `npm run dev` -> abre `http://localhost:3000/admin/` e inicia sesion con ese usuario.
+3. Cierra sesion (**Salir**) y prueba **¿Olvidaste tu contrasena?** con ese correo.
+4. Abre el enlace del correo -> deberia mostrar el formulario de nueva contrasena en `/admin/reset/`.
+5. Guarda la nueva contrasena y verifica que puedas iniciar sesion con ella.
+
 ## Pendientes antes de produccion
 
 - Reemplazar reglamento placeholder por texto oficial.

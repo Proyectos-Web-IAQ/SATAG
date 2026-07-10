@@ -44,6 +44,8 @@ Regla base: ninguna tabla con datos personales (`registros`, `aceptaciones`, `pa
 - Exigir MFA a cuentas administrativas antes de operacion real.
 - Usar backups y bitacoras para reconstruir incidentes y generar lista de titulares afectados.
 
+**Estado de implementacion (Auth del panel, 10-jul-2026):** el panel `/admin` ya usa **Supabase Auth** (correo + contrasena) con sesion persistente en el navegador y recuperacion de contrasena por correo (`/admin/reset`). El personal autenticado obtiene el rol `authenticated`; por ahora Administracion y TI comparten ese rol comun (la separacion fina de roles y el MFA siguen pendientes para produccion, ver §4 arriba y §13). El alta de cuentas es manual desde el dashboard (sin registro publico). Pasos operativos y allowlist de Redirect URLs: [`supabase/README.md`](../supabase/README.md#auth-del-panel-administrativo).
+
 ## 5. Storage privado de firmas
 
 - El bucket `firmas` debe ser privado.

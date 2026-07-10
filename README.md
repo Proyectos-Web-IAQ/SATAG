@@ -57,7 +57,7 @@ gantt
   section Infra y base
     Infraestructura        :crit, a4, after a3, 1d
     Setup Supabase seguro  :crit, a5, after a4, 1.5d
-    Auth panel + reset     :crit, a6, after a5, 0.5d
+    Auth panel + reset     :done, a6, after a5, 0.5d
 
   section Autoservicio
     Formulario captura     :crit, a7, after a6, 1.5d
@@ -114,7 +114,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 |---|---|---|
 | **Modelo de datos + BD** (E1) | 🟡 1.er corte listo | [Doc modelo](Desarrollo/01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md) · [schema.sql](supabase/schema.sql) · [seed.sql](supabase/seed.sql) · [supabase/README](supabase/README.md) |
 | **Modelo de dominio (POO)** | ✅ Listo | [Doc POO](Desarrollo/02%20-%20Modelo%20de%20Dominio%20POO.md) |
-| **Prototipo UI/UX** (autoservicio + panel Admin/TI) | 🟡 Listo (datos *mock*) | **En línea:** [Inicio](https://satag.vercel.app/) · [Registro](https://satag.vercel.app/registro/) · [Panel Admin/TI](https://satag.vercel.app/admin/) *(acceso demo: cualquier correo/contraseña)* |
+| **Prototipo UI/UX** (autoservicio + panel Admin/TI) | 🟡 Listo (datos *mock*) | **En línea:** [Inicio](https://satag.vercel.app/) · [Registro](https://satag.vercel.app/registro/) · [Panel Admin/TI](https://satag.vercel.app/admin/) *(el panel ya requiere credenciales reales de Supabase Auth)* |
 | **Investigación legal y matriz de cumplimiento** | ✅ Listo | [Doc investigación legal](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.md) · [PDF](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.pdf) |
 | **Firma electrónica — mecánica y valor legal** | 🔵 Borrador para decidir con dirección/legal | [Doc firma](Desarrollo/06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md) |
 | **Arquitectura técnica** | ⚪ Pendiente | [Doc](Desarrollo/03%20-%20Arquitectura%20Tecnica.md) |
@@ -147,7 +147,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
   - [ ] RLS por rol + RPC controlada para escrituras críticas (CC-12)
   - [ ] Bucket privado para firmas + URLs firmadas temporales (CC-12)
   - [ ] MFA obligatorio para cuentas administrativas (CC-12)
-- [ ] Auth del panel — *Est. 0.5 d* · hoy login *mock*
+- [x] Auth del panel + reset de contraseña — *Est. 0.5 d* ✅ · login real con Supabase Auth (correo/contraseña), sesión persistente y recuperación por correo (`/admin/reset`). Falta config del dashboard (usuario admin, Redirect URLs, MFA) — ver [supabase/README](supabase/README.md#auth-del-panel-administrativo)
 
 **Autoservicio**
 - [ ] Formulario de captura — *Est. 1.5 d* · 🟡 prototipo listo
@@ -178,7 +178,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 - [ ] Manual + capacitación — *Est. 1.5 d*
 - [ ] Aceptación + acta de cierre — *Est. 0.5 d*
 
-**Avance:** **2 de ~22.5** días-persona terminados (~9 %). La junta de Dirección (03-jul) sumó
+**Avance:** **2.5 de ~22.5** días-persona terminados (~11 %). La junta de Dirección (03-jul) sumó
 **≈ +2.4 días-persona** de alcance nuevo (Caja MVP + Solicitudes; el resto se absorbe en tareas existentes)
 y la investigación legal suma **≈ +2 días-persona** de controles mínimos para producción (opción A:
 aviso SATAG, firma reforzada, RLS/RPC/MFA, menores y ARCO básico). Con ese alcance el cierre serializado
