@@ -10,6 +10,11 @@ Acceso a estacionamiento.xlsx
 # --- Estándar interno de gestión de proyectos (no se versiona en este repo) ---
 /*.docx
 
+# --- Secretos / llaves API: JAMAS versionar ---
+APIkeys.txt
+*.key
+*.pem
+
 # --- Sistema operativo / temporales ---
 Thumbs.db
 desktop.ini
