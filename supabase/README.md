@@ -191,6 +191,49 @@ active su cuenta. Como el sitio es estatico, se usa el patron `token_hash` + `ve
 > El enlace de invitacion caduca (por defecto 24 h) y es de un solo uso. Si expira, reenvia la invitacion.
 > Nota: al invitar se crea el usuario en Auth aunque el registro publico este en OFF (lo crea el admin, no el autoservicio).
 
+### Roles del panel (el usuario elige el suyo)
+
+El panel tiene tres roles y cada uno ve/hace lo suyo:
+
+| Rol | Que ve/hace en el panel |
+|---|---|
+| `admin` | Pestaña **Administración** (asignar estacionamiento, registrar pago) + Consulta. |
+| `ti` | Pestaña **TI** (instalar/reponer TAG, dar de baja) + Consulta. |
+| `consulta` | Solo **Consulta** (lectura del padron, sin acciones). |
+
+**Cada usuario elige su propio rol** la primera vez que entra (pantalla "Elige tu area") y
+puede cambiarlo luego con el enlace *cambiar* junto a su correo. La eleccion se guarda en
+`user_metadata.rol` del usuario de Auth (`lib/supabase/auth.ts` -> `elegirRol`), que el
+propio usuario puede escribir desde el navegador; por eso NO hace falta service_role ni
+tocar el dashboard. **No hay que asignar nada al invitar**: invitas, la persona activa su
+cuenta y al entrar elige su area.
+
+> ⚠️ **El rol auto-seleccionado NO es un control de acceso.** Cualquiera con una cuenta
+> podria elegir `admin`. Solo separa la vista y las acciones del panel. El control real
+> depende de RLS (pendiente, ver `sql/13_rls_registros.sql`); RLS **no debe confiar** en
+> `user_metadata.rol` porque el usuario lo edita.
+
+**Candado opcional del admin.** Si necesitas fijar el rol de alguien para que NO pueda
+cambiarlo, escribelo en `app_metadata` (inescribible por el usuario). Ese valor **gana**
+sobre la eleccion del usuario y le oculta el enlace *cambiar*:
+
+```sql
+-- Fijar (bloquear) el rol de un usuario. Gana sobre su eleccion en user_metadata.
+update auth.users
+   set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"rol":"ti"}'::jsonb
+ where email = 'persona@iaq.mx';
+
+-- Ver el rol elegido por cada quien (user_metadata) y el candado (app_metadata).
+select email,
+       raw_user_meta_data ->> 'rol' as rol_elegido,
+       raw_app_meta_data  ->> 'rol' as rol_bloqueado
+  from auth.users
+ order by email;
+```
+
+> Valores validos: `admin`, `ti`, `consulta`. El rol se lee al iniciar sesion, al elegirlo
+> y al refrescar el token; si lo bloqueas por SQL con la sesion abierta, se aplica al recargar.
+
 ### Prueba manual
 
 1. Crea un usuario de prueba en el dashboard (paso 1) y agrega los Redirect URLs (paso 3).
@@ -198,12 +241,22 @@ active su cuenta. Como el sitio es estatico, se usa el patron `token_hash` + `ve
 3. Cierra sesion (**Salir**) y prueba **¿Olvidaste tu contrasena?** con ese correo.
 4. Abre el enlace del correo -> deberia mostrar el formulario de nueva contrasena en `/admin/reset/`.
 5. Guarda la nueva contrasena y verifica que puedas iniciar sesion con ella.
+6. **Roles:** al entrar por primera vez debe salir la pantalla **"Elige tu area"**. Elige una
+   y verifica que el panel muestre solo la pestaña de ese rol (`admin` -> Administración,
+   `ti` -> TI, `consulta` -> solo lectura) y que el enlace *cambiar* (junto al correo) te deje
+   elegir otra. Para probar el candado, fija `app_metadata.rol` por SQL y confirma que ese rol
+   se impone y desaparece el enlace *cambiar*.
 
 ## Pendientes antes de produccion
 
 - Reemplazar reglamento placeholder por texto oficial.
 - Reemplazar aviso placeholder por texto aprobado.
-- Separar roles finos de Administracion y TI.
+- Endurecer RLS por rol. Hoy el rol lo **elige el propio usuario** (se guarda en
+  `user_metadata.rol`) y el panel solo lo usa para la UI; RLS sigue en `authenticated
+  using(true)`, asi que la separacion es solo visual y evitable. Antes de produccion hay que
+  decidir un modelo de rol **confiable** (RLS **no** debe leer `user_metadata`, que el usuario
+  edita; solo `app_metadata` o una tabla protegida) y atar las politicas cuando la capa real
+  reemplace al mock (ver `supabase/sql/13_rls_registros.sql`).
 - Definir responsable ARCO.
 - Definir plazo final de conservacion/bloqueo/supresion.
 - Confirmar DPA/region Supabase.

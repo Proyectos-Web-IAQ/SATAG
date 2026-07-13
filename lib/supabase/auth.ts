@@ -11,7 +11,7 @@
 // otro dispositivo (no depende de un code_verifier guardado localmente).
 // El hash de recuperacion se procesa a mano en /admin/reset, por eso
 // detectSessionInUrl va en false (evita condiciones de carrera al montar).
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type User } from "@supabase/supabase-js";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -80,5 +80,47 @@ export async function enviarCorreoRecuperacion(email: string): Promise<void> {
 // (establecida en /admin/reset a partir del token del correo).
 export async function actualizarContrasena(password: string): Promise<void> {
   const { error } = await supabaseAuth.auth.updateUser({ password });
+  if (error) throw new Error(mensajeAuth(error.message));
+}
+
+// ---- Roles del panel ----
+//
+// Cada usuario ELIGE su propio rol al entrar; se guarda en `user_metadata.rol`,
+// que el propio usuario puede escribir desde el navegador con updateUser(). Como
+// el sitio es estatico (sin service_role en el navegador), esta es la unica forma
+// de que la eleccion la haga el usuario sin un servidor.
+//
+// IMPORTANTE: al ser auto-seleccionable, el rol NO es una frontera de seguridad
+// (cualquiera podria elegir "admin"). Solo separa la vista/acciones del panel.
+// El control real seguira dependiendo de RLS (pendiente, ver 13_rls_registros.sql).
+//
+// Candado opcional del admin: si un administrador fija `app_metadata.rol` por SQL
+// (inescribible por el usuario), ese valor GANA sobre la eleccion del usuario, lo
+// que permite bloquear el rol de alguien. Ver supabase/README.md.
+export type RolPanel = "admin" | "ti" | "consulta";
+export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta"];
+
+function leerRol(meta: Record<string, unknown> | undefined | null): RolPanel | null {
+  const rol = meta?.rol;
+  return typeof rol === "string" && (ROLES_PANEL as string[]).includes(rol)
+    ? (rol as RolPanel)
+    : null;
+}
+
+// Rol efectivo: primero el candado del admin (app_metadata), si no el que eligio
+// el usuario (user_metadata). null = aun no tiene rol -> la UI le pide elegirlo.
+export function rolDeUsuario(user: User | null | undefined): RolPanel | null {
+  return leerRol(user?.app_metadata) ?? leerRol(user?.user_metadata);
+}
+
+// true si un admin fijo el rol en app_metadata: el usuario no puede cambiarlo.
+export function rolBloqueadoPorAdmin(user: User | null | undefined): boolean {
+  return leerRol(user?.app_metadata) !== null;
+}
+
+// Guarda el rol elegido por el usuario en user_metadata (persiste entre sesiones y
+// dispositivos). Dispara el evento USER_UPDATED para refrescar la sesion local.
+export async function elegirRol(rol: RolPanel): Promise<void> {
+  const { error } = await supabaseAuth.auth.updateUser({ data: { rol } });
   if (error) throw new Error(mensajeAuth(error.message));
 }

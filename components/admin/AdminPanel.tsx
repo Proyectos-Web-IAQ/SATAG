@@ -7,16 +7,39 @@ import {
 } from "@/lib/mock/api";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import type { RolPanel } from "@/lib/supabase/auth";
 
 type Vista = "admin" | "ti" | "consulta";
+
+// Que pestañas puede usar cada rol. La primera es su vista por defecto al entrar.
+// Admin y TI pueden ademas ir a Consulta (solo lectura); Consulta solo consulta.
+const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
+  admin: ["admin", "consulta"],
+  ti: ["ti", "consulta"],
+  consulta: ["consulta"],
+};
+
+const ETIQUETA_VISTA: Record<Vista, string> = {
+  admin: "Administración",
+  ti: "TI",
+  consulta: "Consulta",
+};
 
 function EstadoChip({ estado }: { estado: EstadoRegistro }) {
   const txt = { pendiente: "Pendiente", activo: "Activo", baja: "Baja" }[estado];
   return <span className={`status-chip status-chip--${estado}`}>{txt}</span>;
 }
 
-export default function AdminPanel({ adminEmail, onSignOut }: { adminEmail: string; onSignOut: () => void }) {
-  const [vista, setVista] = useState<Vista>("admin");
+export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }: { adminEmail: string; rol: RolPanel; onCambiarRol?: () => void; onSignOut: () => void }) {
+  const vistasPermitidas = TABS_POR_ROL[rol];
+  const [vista, setVista] = useState<Vista>(vistasPermitidas[0]);
+
+  // Si el rol cambia (refresco de token, otra pestaña) y la vista actual ya no
+  // esta permitida, cae a la primera vista permitida del rol.
+  useEffect(() => {
+    if (!vistasPermitidas.includes(vista)) setVista(vistasPermitidas[0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rol]);
   const [query, setQuery] = useState("");
   const [alcance, setAlcance] = useState<"pendientes" | "todos">("pendientes");
   const [registros, setRegistros] = useState<Registro[]>([]);
@@ -114,12 +137,21 @@ export default function AdminPanel({ adminEmail, onSignOut }: { adminEmail: stri
             <div className="admin-sub">Administración y TI · IAQ</div>
           </div>
           <div className="admin-header-actions">
-            <div className="admin-tabs">
-              <button className={`admin-tab ${vista === "admin" ? "admin-tab--active" : ""}`} onClick={() => setVista("admin")}>Administración</button>
-              <button className={`admin-tab ${vista === "ti" ? "admin-tab--active" : ""}`} onClick={() => setVista("ti")}>TI</button>
-              <button className={`admin-tab ${vista === "consulta" ? "admin-tab--active" : ""}`} onClick={() => setVista("consulta")}>Consulta</button>
-            </div>
-            <span className="admin-whoami">{adminEmail} · <button className="link-action" onClick={onSignOut}>Salir</button></span>
+            {vistasPermitidas.length > 1 && (
+              <div className="admin-tabs">
+                {vistasPermitidas.map((v) => (
+                  <button key={v} className={`admin-tab ${vista === v ? "admin-tab--active" : ""}`} onClick={() => setVista(v)}>
+                    {ETIQUETA_VISTA[v]}
+                  </button>
+                ))}
+              </div>
+            )}
+            <span className="admin-whoami">
+              {adminEmail} · {ETIQUETA_VISTA[rol]}
+              {onCambiarRol && <> (<button className="link-action" onClick={onCambiarRol}>cambiar</button>)</>}
+              {" · "}
+              <button className="link-action" onClick={onSignOut}>Salir</button>
+            </span>
           </div>
         </div>
 

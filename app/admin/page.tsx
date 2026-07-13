@@ -2,12 +2,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminPanel from "@/components/admin/AdminPanel";
+import SeleccionRol from "@/components/admin/SeleccionRol";
 import Loader from "@/components/Loader";
 import {
   supabaseAuth,
   iniciarSesion,
   cerrarSesion,
   enviarCorreoRecuperacion,
+  rolDeUsuario,
+  rolBloqueadoPorAdmin,
+  elegirRol,
+  type RolPanel,
 } from "@/lib/supabase/auth";
 
 type Modo = "login" | "recuperar";
@@ -15,6 +20,9 @@ type Modo = "login" | "recuperar";
 export default function AdminPage() {
   const [verificando, setVerificando] = useState(true); // restaurando sesion previa
   const [email, setEmail] = useState<string | null>(null); // sesion activa
+  const [rol, setRol] = useState<RolPanel | null>(null); // rol efectivo del panel
+  const [rolBloqueado, setRolBloqueado] = useState(false); // rol fijado por un admin
+  const [cambiandoRol, setCambiandoRol] = useState(false); // mostrar el selector aunque ya tenga rol
 
   const [modo, setModo] = useState<Modo>("login");
   const [correo, setCorreo] = useState("");
@@ -30,10 +38,14 @@ export default function AdminPage() {
     supabaseAuth.auth.getSession().then(({ data }) => {
       if (!activo) return;
       setEmail(data.session?.user.email ?? null);
+      setRol(rolDeUsuario(data.session?.user));
+      setRolBloqueado(rolBloqueadoPorAdmin(data.session?.user));
       setVerificando(false);
     });
     const { data: sub } = supabaseAuth.auth.onAuthStateChange((_evento, session) => {
       setEmail(session?.user.email ?? null);
+      setRol(rolDeUsuario(session?.user));
+      setRolBloqueado(rolBloqueadoPorAdmin(session?.user));
     });
     return () => {
       activo = false;
@@ -53,6 +65,8 @@ export default function AdminPage() {
     try {
       const user = await iniciarSesion(correo, password);
       setEmail(user?.email ?? correo.trim());
+      setRol(rolDeUsuario(user));
+      setRolBloqueado(rolBloqueadoPorAdmin(user));
       setPassword("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesion.");
@@ -81,10 +95,20 @@ export default function AdminPage() {
       await cerrarSesion();
     } finally {
       setEmail(null);
+      setRol(null);
+      setRolBloqueado(false);
+      setCambiandoRol(false);
       cambiarModo("login");
       setCorreo("");
       setPassword("");
     }
+  }
+
+  // El usuario elige (o cambia) su rol; se guarda en user_metadata.
+  async function onElegirRol(nuevo: RolPanel) {
+    await elegirRol(nuevo);
+    setRol(nuevo);
+    setCambiandoRol(false);
   }
 
   if (verificando) {
@@ -97,7 +121,28 @@ export default function AdminPage() {
     );
   }
 
-  if (email) return <AdminPanel adminEmail={email} onSignOut={onSignOut} />;
+  // Con sesion pero sin rol (o pidiendo cambiarlo): pantalla de seleccion.
+  if (email && (!rol || cambiandoRol)) {
+    return (
+      <SeleccionRol
+        adminEmail={email}
+        onElegir={onElegirRol}
+        onSignOut={onSignOut}
+        onCancelar={cambiandoRol ? () => setCambiandoRol(false) : undefined}
+      />
+    );
+  }
+
+  if (email && rol) {
+    return (
+      <AdminPanel
+        adminEmail={email}
+        rol={rol}
+        onCambiarRol={rolBloqueado ? undefined : () => setCambiandoRol(true)}
+        onSignOut={onSignOut}
+      />
+    );
+  }
 
   return (
     <main className="page-shell">
