@@ -254,7 +254,7 @@ export default function RegistroWizard() {
             <div className="field">
               <span>Tipo de usuario</span>
               <select className="select" value={tipoUsuario} onChange={(e) => setTipoUsuario(e.target.value as TipoUsuario)}>
-                <option value="padres">Padre / Tutor</option>
+                <option value="padres">Padre / Madre / Tutor</option>
                 <option value="maestro">Maestro</option>
                 <option value="alumno">Alumno</option>
                 <option value="admin">Administración</option>
