@@ -5,6 +5,8 @@ import type {
   ReglamentoVersion,
   NombrePersona,
   TipoUsuario,
+  GestionanteRelacion,
+  FirmanteRol,
   ProcedenciaTag,
   CrearRegistroResultado,
 } from "@/lib/mock/types";
@@ -85,6 +87,9 @@ export async function getAvisoVigente(): Promise<AvisoVigente> {
 export interface CrearRegistroInput {
   usuarioNombrePartes: NombrePersona;
   gestionanteNombrePartes: NombrePersona | null; // null = mismo que el usuario
+  gestionanteRelacion: GestionanteRelacion | null; // relacion del gestionante (menor: padre/madre/tutor)
+  usuarioEsMenor: boolean; // menor de edad: exige gestionante padre/madre/tutor (CC-11)
+  firmanteRol: FirmanteRol; // quien firma: el propio usuario o el gestionante
   tipoUsuario: TipoUsuario;
   marca: string;
   modelo: string;
@@ -157,9 +162,12 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     p_firma_trazos: input.firmaTrazos,
     p_metadata: { ...contextoCliente(), ...(input.metadata ?? {}) },
     p_firmante_nombre: input.firmanteNombre,
+    p_firmante_rol: input.firmanteRol,
     p_gestionante_nombres: g?.nombre.trim() || null,
     p_gestionante_apellido_paterno: g?.apellidoPaterno.trim() || null,
     p_gestionante_apellido_materno: g?.apellidoMaterno.trim() || null,
+    p_gestionante_relacion: input.gestionanteRelacion,
+    p_usuario_es_menor: input.usuarioEsMenor,
     p_procedencia_tag: input.procedenciaTag,
     p_observaciones: input.observaciones,
   });

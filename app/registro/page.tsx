@@ -6,7 +6,7 @@ import {
   getMarcas, getModelos, getColores, getReglamentoVigente, getAvisoVigente, crearRegistro,
 } from "@/lib/supabase/api";
 import type { AvisoVigente } from "@/lib/supabase/api";
-import type { TipoUsuario, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
+import type { TipoUsuario, GestionanteRelacion, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
 
 const STEPS = ["Datos", "Vehículo", "Aviso", "Reglamento", "Firma", "Listo"];
 
@@ -41,6 +41,8 @@ export default function RegistroWizard() {
   const [gestionanteNombre, setGestionanteNombre] = useState("");
   const [gestionanteApellidoPaterno, setGestionanteApellidoPaterno] = useState("");
   const [gestionanteApellidoMaterno, setGestionanteApellidoMaterno] = useState("");
+  const [gestionanteRelacion, setGestionanteRelacion] = useState<GestionanteRelacion | "">("");
+  const [esMenor, setEsMenor] = useState(false);
   const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>("padres");
   const [marca, setMarca] = useState("");
   const [marcaOtro, setMarcaOtro] = useState("");
@@ -105,6 +107,13 @@ export default function RegistroWizard() {
   const conductorNombreCompleto = nombreCompleto(conductorNombrePartes);
   const gestionanteNombreCompleto = nombreCompleto(gestionanteNombrePartes);
 
+  // Un menor de edad SIEMPRE requiere gestionante (su representante firma). CC-11.
+  const hayGestionante = gestionanteDistinto || esMenor;
+  // Relaciones validas del gestionante segun el caso (el menor exige padre/madre/tutor).
+  const relacionesGestionante: GestionanteRelacion[] = esMenor
+    ? ["padre", "madre", "tutor"]
+    : ["padre", "madre", "tutor", "otro"];
+
   // Validación por paso. Devuelve un mapa campo -> mensaje.
   function validarPaso(s: number): Record<string, string> {
     const e: Record<string, string> = {};
@@ -112,10 +121,15 @@ export default function RegistroWizard() {
       if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = "Escribe el apellido paterno.";
       if (!conductorApellidoMaterno.trim()) e.conductorApellidoMaterno = "Escribe el apellido materno.";
       if (!conductorNombre.trim()) e.conductorNombre = "Escribe el nombre o nombres.";
-      if (gestionanteDistinto) {
+      if (hayGestionante) {
         if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = "Escribe el apellido paterno.";
         if (!gestionanteApellidoMaterno.trim()) e.gestionanteApellidoMaterno = "Escribe el apellido materno.";
         if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escribe el nombre o nombres.";
+        if (!gestionanteRelacion) {
+          e.gestionanteRelacion = esMenor
+            ? "Indica si es padre, madre o tutor del menor."
+            : "Indica la relación del gestionante.";
+        }
       }
     }
     if (s === 1) {
@@ -154,14 +168,17 @@ export default function RegistroWizard() {
     try {
       const res = await crearRegistro({
         usuarioNombrePartes: conductorNombrePartes,
-        gestionanteNombrePartes: gestionanteDistinto ? gestionanteNombrePartes : null,
+        gestionanteNombrePartes: hayGestionante ? gestionanteNombrePartes : null,
+        gestionanteRelacion: hayGestionante ? (gestionanteRelacion || null) : null,
+        usuarioEsMenor: esMenor,
+        firmanteRol: hayGestionante ? (gestionanteRelacion || "otro") : "usuario",
         tipoUsuario,
         marca: marcaFinal, modelo: modeloFinal, color: colorFinal,
         placas: sinPlacas ? null : placas, sinPlacas,
         procedenciaTag: "escuela", observaciones: null,
         firmaDataUrl: firma,
         firmaTrazos: trazos,
-        firmanteNombre: gestionanteDistinto ? gestionanteNombreCompleto : conductorNombreCompleto,
+        firmanteNombre: hayGestionante ? gestionanteNombreCompleto : conductorNombreCompleto,
         aceptaReglamento: acepta,
         metadata: {
           consentimiento: {
@@ -224,10 +241,26 @@ export default function RegistroWizard() {
               </div>
             </div>
             <label className="check" style={{ marginBottom: 12 }}>
-              <input type="checkbox" checked={gestionanteDistinto} onChange={(e) => setGestionanteDistinto(e.target.checked)} />
-              <span>El pago y la firma los hace otra persona (padre/tutor/cónyuge).</span>
+              <input type="checkbox" checked={esMenor}
+                onChange={(e) => {
+                  setEsMenor(e.target.checked);
+                  // El menor no puede firmar: si la relación previa era "otro", se limpia.
+                  if (e.target.checked && gestionanteRelacion === "otro") setGestionanteRelacion("");
+                }} />
+              <span>El conductor es <strong>menor de edad</strong>.</span>
             </label>
-            {gestionanteDistinto && (
+            {esMenor && (
+              <p className="hint" style={{ marginTop: -4, marginBottom: 12 }}>
+                El menor puede ser usuario del beneficio vehicular, pero el aviso de privacidad y el
+                reglamento debe aceptarlos y firmarlos su <strong>padre, madre o tutor</strong> como representante.
+              </p>
+            )}
+            <label className="check" style={{ marginBottom: 12 }}>
+              <input type="checkbox" checked={hayGestionante} disabled={esMenor}
+                onChange={(e) => setGestionanteDistinto(e.target.checked)} />
+              <span>El pago y la firma los hace otra persona (padre/madre/tutor/cónyuge).</span>
+            </label>
+            {hayGestionante && (
               <>
                 <div className="field">
                   <span>Nombre(s) del gestionante</span>
@@ -248,6 +281,17 @@ export default function RegistroWizard() {
                       onChange={(e) => setGestionanteApellidoMaterno(e.target.value)} placeholder="Ej. Ruiz" />
                     {errores.gestionanteApellidoMaterno && <p className="field-error">{errores.gestionanteApellidoMaterno}</p>}
                   </div>
+                </div>
+                <div className="field">
+                  <span>{esMenor ? "Relación con el menor" : "Relación con el conductor"}</span>
+                  <select className={`select ${errores.gestionanteRelacion ? "invalid" : ""}`} value={gestionanteRelacion}
+                    onChange={(e) => setGestionanteRelacion(e.target.value as GestionanteRelacion | "")}>
+                    <option value="">Selecciona…</option>
+                    {relacionesGestionante.map((r) => (
+                      <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                    ))}
+                  </select>
+                  {errores.gestionanteRelacion && <p className="field-error">{errores.gestionanteRelacion}</p>}
                 </div>
               </>
             )}
@@ -376,7 +420,7 @@ export default function RegistroWizard() {
           <>
             <header className="survey-header"><h1>Firma</h1></header>
             <p className="lead">
-              Firmará <strong>{gestionanteDistinto ? gestionanteNombreCompleto || "el gestionante" : conductorNombreCompleto || "el conductor"}</strong>.
+              Firmará <strong>{hayGestionante ? gestionanteNombreCompleto || "el gestionante" : conductorNombreCompleto || "el conductor"}</strong>.
             </p>
             <SignaturePad onChange={setFirma} onTrazos={setTrazos} />
             <p className="hint" style={{ marginTop: 8 }}>Puedes firmar con el dedo (táctil) o con el mouse.</p>

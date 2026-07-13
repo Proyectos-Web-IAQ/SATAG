@@ -2,6 +2,8 @@
 // mismos shapes para que al conectar Supabase solo cambie la implementación, no las pantallas.
 
 export type TipoUsuario = "maestro" | "padres" | "alumno" | "admin";
+export type GestionanteRelacion = "padre" | "madre" | "tutor" | "otro";
+export type FirmanteRol = "usuario" | "padre" | "madre" | "tutor" | "otro";
 export type ProcedenciaTag = "escuela" | "propio";
 export type EstadoRegistro = "pendiente" | "activo" | "baja";
 export type TipoMovimiento = "alta" | "baja" | "reposicion" | "cambio" | "prueba";
