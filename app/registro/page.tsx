@@ -246,6 +246,8 @@ export default function RegistroWizard() {
                   setEsMenor(e.target.checked);
                   // El menor no puede firmar: si la relación previa era "otro", se limpia.
                   if (e.target.checked && gestionanteRelacion === "otro") setGestionanteRelacion("");
+                  // Un conductor menor es, por definición, alumno.
+                  if (e.target.checked) setTipoUsuario("alumno");
                 }} />
               <span>El conductor es <strong>menor de edad</strong>.</span>
             </label>
@@ -297,12 +299,14 @@ export default function RegistroWizard() {
             )}
             <div className="field">
               <span>Tipo de usuario</span>
-              <select className="select" value={tipoUsuario} onChange={(e) => setTipoUsuario(e.target.value as TipoUsuario)}>
+              <select className="select" value={tipoUsuario} disabled={esMenor}
+                onChange={(e) => setTipoUsuario(e.target.value as TipoUsuario)}>
                 <option value="padres">Padre / Madre / Tutor</option>
                 <option value="maestro">Maestro</option>
                 <option value="alumno">Alumno</option>
                 <option value="admin">Administración</option>
               </select>
+              {esMenor && <p className="hint" style={{ margin: "6px 0 0" }}>Un conductor menor de edad se registra como alumno.</p>}
             </div>
           </>
         )}
