@@ -55,4 +55,28 @@ export const REGISTROS_DEMO: Registro[] = [
     movimientos: [{ tipo: "alta", fecha: "2026-06-28", motivo: "Alta por autoservicio", hechoPor: "autoservicio" }],
     createdAt: "2026-06-28",
   },
+  // Pagado y con estacionamiento asignado, sin TAG: cola de TI (por instalar).
+  {
+    id: "demo-3", folio: "SATAG-100243",
+    usuarioNombre: "Luis Peña Ortega", gestionanteNombre: null, tipoUsuario: "maestro",
+    marca: "Nissan", modelo: "Versa", color: "Rojo", placas: "UCD4521", sinPlacas: false,
+    noDispositivo: null, procedenciaTag: "escuela", estado: "pendiente",
+    estacionamientos: ["E1"], fechaAdquisicion: "2026-07-10", fechaInstalacion: null,
+    instaladoPor: null, motivoBaja: null, fechaBaja: null,
+    observaciones: null, pagos: [{ monto: 100, metodo: "efectivo", cobradoPor: "Recepción", fecha: "2026-07-10", folio: "R-5544" }],
+    movimientos: [{ tipo: "alta", fecha: "2026-07-09", motivo: "Alta por autoservicio", hechoPor: "autoservicio" }],
+    createdAt: "2026-07-09",
+  },
+  // Pagado pero sin estacionamiento asignado y sin placas: también entra a la cola de TI.
+  {
+    id: "demo-4", folio: "SATAG-100244",
+    usuarioNombre: "Carla Ibarra Núñez", gestionanteNombre: "Jorge Ibarra Soto", tipoUsuario: "alumno",
+    marca: "KIA", modelo: "Rio", color: "Azul", placas: null, sinPlacas: true,
+    noDispositivo: null, procedenciaTag: "propio", estado: "pendiente",
+    estacionamientos: [], fechaAdquisicion: "2026-07-11", fechaInstalacion: null,
+    instaladoPor: null, motivoBaja: null, fechaBaja: null,
+    observaciones: "Permiso provisional; placas en trámite.", pagos: [{ monto: 100, metodo: "efectivo", cobradoPor: "Recepción", fecha: "2026-07-11", folio: "R-5560" }],
+    movimientos: [{ tipo: "alta", fecha: "2026-07-11", motivo: "Alta por autoservicio", hechoPor: "autoservicio" }],
+    createdAt: "2026-07-11",
+  },
 ];

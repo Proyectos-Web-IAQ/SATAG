@@ -1,12 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import type { EstadoRegistro, Registro } from "@/lib/mock/types";
-import {
-  listRegistros, asignarEstacionamiento, registrarPago,
-  instalarTag, darBaja, reponerTag,
-} from "@/lib/mock/api";
+import { listRegistros, asignarEstacionamiento, registrarPago } from "@/lib/mock/api";
 import Loader from "@/components/Loader";
-import ConfirmDialog from "@/components/ConfirmDialog";
+import VistaTi from "@/components/admin/VistaTi";
 import type { RolPanel } from "@/lib/supabase/auth";
 
 type Vista = "admin" | "ti" | "consulta";
@@ -48,20 +45,12 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [confirm, setConfirm] = useState<
-    { title: string; message: string; confirmLabel: string; danger: boolean; action: () => Promise<Registro>; ok: string } | null
-  >(null);
 
-  // Formularios de acciones
+  // Formularios de acciones de Administración (los de TI viven en VistaTi)
   const [estSel, setEstSel] = useState<string[]>([]);
   const [cobradoPor, setCobradoPor] = useState("");
   const [pagoFolio, setPagoFolio] = useState("");
   const [monto, setMonto] = useState("100");
-  const [tagNum, setTagNum] = useState("");
-  const [tiNombre, setTiNombre] = useState("");
-  const [bajaMotivo, setBajaMotivo] = useState("");
-  const [repoNum, setRepoNum] = useState("");
-  const [repoMotivo, setRepoMotivo] = useState("");
 
   async function refresh() {
     setLoading(true);
@@ -79,7 +68,6 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
   // Sincroniza los formularios al cambiar de registro seleccionado
   useEffect(() => {
     setEstSel(selected?.estacionamientos ?? []);
-    setTagNum(""); setBajaMotivo(""); setRepoNum(""); setRepoMotivo("");
     setCobradoPor(""); setPagoFolio(""); setMonto("100");
     setFeedback(null); setError(null);
   }, [selectedId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -93,7 +81,8 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
     if (vista === "consulta" || alcance === "todos") return registros;
     // Con alcance "pendientes", cada vista muestra su cola de trabajo prioritaria.
     if (vista === "admin") return registros.filter((r) => r.estado === "pendiente" && (r.estacionamientos.length === 0 || r.pagos.length === 0));
-    if (vista === "ti") return registros.filter((r) => r.estado !== "baja" && !r.noDispositivo);
+    // TI solo ve registros ya pagados: su trabajo siempre es después del pago.
+    if (vista === "ti") return registros.filter((r) => r.estado !== "baja" && !r.noDispositivo && r.pagos.length > 0);
     return registros;
   }, [registros, vista, buscando, alcance]);
 
@@ -103,7 +92,7 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
       vista === "admin"
         ? registros.filter((r) => r.estado === "pendiente" && (r.estacionamientos.length === 0 || r.pagos.length === 0)).length
         : vista === "ti"
-          ? registros.filter((r) => r.estado !== "baja" && !r.noDispositivo).length
+          ? registros.filter((r) => r.estado !== "baja" && !r.noDispositivo && r.pagos.length > 0).length
           : registros.filter((r) => r.estado === "pendiente").length;
     return {
       total: registros.length,
@@ -264,49 +253,7 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
             )}
 
             {/* ---- Acciones de TI ---- */}
-            {vista === "ti" && (
-              <>
-                <div className="panel">
-                  <p className="panel-title">Instalar y activar TAG</p>
-                  <div className="grid-2">
-                    <div className="field"><span>No. de TAG (6–11 dígitos)</span><input className="input" value={tagNum} onChange={(e) => setTagNum(e.target.value)} placeholder="Ej. 9426780" /></div>
-                    <div className="field"><span>Instalado por</span><input className="input" value={tiNombre} onChange={(e) => setTiNombre(e.target.value)} placeholder="Nombre de TI" /></div>
-                  </div>
-                  <button className="primary-action" disabled={busy} onClick={() => run(() => instalarTag(selected.id, tagNum, tiNombre), "TAG instalado y activado.")}>
-                    Instalar y activar
-                  </button>
-                </div>
-                <div className="panel">
-                  <p className="panel-title">Reposición de TAG</p>
-                  <div className="grid-2">
-                    <div className="field"><span>Nuevo No. de TAG</span><input className="input" value={repoNum} onChange={(e) => setRepoNum(e.target.value)} /></div>
-                    <div className="field"><span>Motivo</span><input className="input" value={repoMotivo} onChange={(e) => setRepoMotivo(e.target.value)} placeholder="Ej. daño, pérdida" /></div>
-                  </div>
-                  <button className="ghost-action" disabled={busy || !selected.noDispositivo} onClick={() => setConfirm({
-                    title: "Reposición de TAG",
-                    message: `Se reemplazará el TAG actual (${selected.noDispositivo}) por ${repoNum || "el nuevo número"} y el anterior quedará inactivo. ¿Continuar?`,
-                    confirmLabel: "Reponer", danger: true,
-                    action: () => reponerTag(selected.id, repoNum, repoMotivo, tiNombre),
-                    ok: "Reposición registrada (inactiva el anterior).",
-                  })}>
-                    Reponer (inactiva el anterior)
-                  </button>
-                </div>
-                <div className="panel">
-                  <p className="panel-title">Dar de baja</p>
-                  <div className="field"><span>Motivo de baja</span><input className="input" value={bajaMotivo} onChange={(e) => setBajaMotivo(e.target.value)} placeholder="Ej. egreso, cambio de vehículo" /></div>
-                  <button className="ghost-action" disabled={busy || selected.estado === "baja"} onClick={() => setConfirm({
-                    title: "Dar de baja",
-                    message: `Se dará de baja el registro ${selected.folio} y su TAG quedará inactivo. ¿Continuar?`,
-                    confirmLabel: "Dar de baja", danger: true,
-                    action: () => darBaja(selected.id, bajaMotivo, tiNombre),
-                    ok: "Registro dado de baja.",
-                  })}>
-                    Dar de baja
-                  </button>
-                </div>
-              </>
-            )}
+            {vista === "ti" && <VistaTi selected={selected} busy={busy} run={run} />}
 
             {vista === "consulta" && <p className="notice">Vista de solo consulta. Cambia a <strong>Administración</strong> o <strong>TI</strong> para ejecutar acciones.</p>}
 
@@ -327,16 +274,6 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
               </div>
             )}
           </div>
-        )}
-        {confirm && (
-          <ConfirmDialog
-            title={confirm.title}
-            message={confirm.message}
-            confirmLabel={confirm.confirmLabel}
-            danger={confirm.danger}
-            onCancel={() => setConfirm(null)}
-            onConfirm={() => { const c = confirm; setConfirm(null); run(c.action, c.ok); }}
-          />
         )}
       </div>
     </main>
