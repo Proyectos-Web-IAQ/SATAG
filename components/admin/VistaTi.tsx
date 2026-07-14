@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CambiosRegistro, Registro } from "@/lib/mock/types";
 import { listRegistros, getMarcas, getColores, instalarTag, actualizarRegistro, darBaja } from "@/lib/mock/api";
 import Loader from "@/components/Loader";
@@ -17,6 +17,10 @@ type ConfirmCfg = {
 const TAG_RE = /^[0-9]{6,11}$/;
 // Semáforo de los contadores: verde (0), amarillo (pocos), rojo (muchos).
 const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
+
+// Scroll suave salvo que el sistema pida movimiento reducido.
+const scrollBehavior = (): ScrollBehavior =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 
 // Pantalla completa del rol TI, pensada para usarse desde el celular en el
 // estacionamiento: tres tarjetas de acción (instalar / actualizar / dar de baja)
@@ -83,6 +87,8 @@ export default function VistaTi() {
       await refresh();
       setSelId(null); setAccionPadron(null);
       setFeedback(ok);
+      // Sube al inicio para que el aviso de éxito quede a la vista.
+      window.scrollTo({ top: 0, behavior: scrollBehavior() });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally { setBusy(false); }
@@ -275,9 +281,15 @@ export default function VistaTi() {
 function TarjetaRegistro({ r, abierto, onToggle, children }: {
   r: Registro; abierto: boolean; onToggle: () => void; children?: ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // Al abrir, lleva la tarjeta al inicio de la pantalla (respetando el header
+  // fijo via scroll-margin-top) para que el formulario quede a la vista.
+  useEffect(() => {
+    if (abierto) ref.current?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+  }, [abierto]);
   const solicitudes = r.solicitudes.filter((s) => !s.atendida);
   return (
-    <div className={`ti-card ${abierto ? "is-open" : ""}`}>
+    <div ref={ref} className={`ti-card ${abierto ? "is-open" : ""}`}>
       <button type="button" className="ti-card__head" onClick={onToggle} aria-expanded={abierto}>
         <span className="ti-card__row">
           <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? "SIN PLACAS" : "—")}</span>
@@ -309,7 +321,7 @@ function DetalleRegistro({ r }: { r: Registro }) {
       <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
       <div><div className="k">Estacionamiento</div><div className="v">{r.estacionamientos.join(" + ") || "Sin asignar"}</div></div>
       {r.fechaInstalacion && <div><div className="k">Instalado</div><div className="v">{r.fechaInstalacion}{r.instaladoPor ? ` · ${r.instaladoPor}` : ""}</div></div>}
-      {r.observaciones && <div><div className="k">Observaciones</div><div className="v">{r.observaciones}</div></div>}
+      {r.observaciones && <div style={{ gridColumn: "1 / -1" }}><div className="k">Observaciones</div><div className="v">{r.observaciones}</div></div>}
     </div>
   );
 }

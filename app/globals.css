@@ -236,6 +236,13 @@ a { color: var(--primary-strong); }
 
 @media (max-width: 620px) {
   .grid-2, .metric-cards, .detail-grid { grid-template-columns: 1fr; }
+  /* Encabezado compacto en celular: apilado, titulo en una linea legible y
+     correo que hace wrap en lugar de cortarse en el borde. */
+  .admin-shell { padding: 8px 12px 32px; }
+  .admin-header { flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 14px; padding: 10px 0 12px; }
+  .admin-header h1 { font-size: 1.15rem; }
+  .admin-header-actions { align-items: flex-start; }
+  .admin-whoami { overflow-wrap: anywhere; }
 }
 
 /* =====================================================================
@@ -267,7 +274,7 @@ a { color: var(--primary-strong); }
 .ti-back:hover { background: var(--field-bg); }
 
 .ti-cards { display: grid; gap: 10px; }
-.ti-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.ti-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; scroll-margin-top: calc(var(--header-h) + 10px); }
 .ti-card.is-open { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 46, 108, 0.10); }
 .ti-card__head { background: none; border: 0; cursor: pointer; display: block; padding: 14px; text-align: left; width: 100%; }
 .ti-card__row { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
@@ -280,6 +287,9 @@ a { color: var(--primary-strong); }
   font-size: 0.82rem; font-weight: 700; margin-top: 8px; padding: 6px 10px;
 }
 .ti-card__body { border-top: 1px solid var(--line); padding: 14px; }
+/* Dentro de la tarjeta el detalle va compacto a 2 columnas (tambien en celular)
+   para que el formulario quede lo mas arriba posible. */
+.ti-card__body .detail-grid { gap: 6px 14px; grid-template-columns: 1fr 1fr; }
 
 .ti-form { border-top: 1px dashed var(--line); margin-top: 12px; padding-top: 14px; }
 .ti-form .primary-action { width: 100%; }
