@@ -9,13 +9,19 @@ alter table registros enable row level security;
 -- directamente. El alta publica ocurre solo via RPC crear_registro
 -- (SECURITY DEFINER), que corre con privilegios del owner.
 
+-- MFA obligatorio: el personal interno solo accede al expediente con la sesion
+-- en aal2 (contrasena + segundo factor TOTP). El nivel viaja en el JWT (claim
+-- aal). Ver Desarrollo/07 - MFA (Autenticacion Multifactor).md.
 drop policy if exists registros_admin on registros;
 create policy registros_admin on registros
-    for all to authenticated using (true) with check (true);
+    for all to authenticated
+    using ((auth.jwt() ->> 'aal') = 'aal2')
+    with check ((auth.jwt() ->> 'aal') = 'aal2');
 
 -- Nota de auditoria:
 -- "authenticated" = personal interno por ahora. Antes de produccion,
 -- separar roles finos Admin/TI y limitar lectura/escritura de PII.
+-- El alta publica NO se ve afectada: crear_registro es SECURITY DEFINER y omite RLS.
 --
 -- El panel usa un rol (admin/ti/consulta) que HOY elige el propio usuario y se
 -- guarda en user_metadata.rol. CUIDADO: RLS NO debe confiar en user_metadata,

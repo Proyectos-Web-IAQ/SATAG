@@ -21,12 +21,14 @@ drop policy if exists firmas_subida_anon on storage.objects;
 create policy firmas_subida_anon on storage.objects
     for insert to anon with check (bucket_id = 'firmas');
 
--- authenticated (Admin/TI): acceso completo al bucket firmas (ver evidencia).
+-- authenticated (Admin/TI): acceso completo al bucket firmas (ver evidencia),
+-- pero SOLO con la sesion en aal2 (segundo factor). La firma es PII.
+-- Ver Desarrollo/07 - MFA (Autenticacion Multifactor).md.
 drop policy if exists firmas_admin on storage.objects;
 create policy firmas_admin on storage.objects
     for all to authenticated
-    using (bucket_id = 'firmas')
-    with check (bucket_id = 'firmas');
+    using (bucket_id = 'firmas' and (auth.jwt() ->> 'aal') = 'aal2')
+    with check (bucket_id = 'firmas' and (auth.jwt() ->> 'aal') = 'aal2');
 
 -- Auditoria esperada:
 -- - Bucket privado: sin lectura por URL publica.

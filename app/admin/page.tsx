@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminPanel from "@/components/admin/AdminPanel";
 import SeleccionRol from "@/components/admin/SeleccionRol";
+import GateMfa from "@/components/admin/GateMfa";
 import Loader from "@/components/Loader";
 import {
   supabaseAuth,
@@ -12,6 +13,7 @@ import {
   rolDeUsuario,
   rolBloqueadoPorAdmin,
   elegirRol,
+  nivelMfa,
   type RolPanel,
 } from "@/lib/supabase/auth";
 
@@ -20,6 +22,7 @@ type Modo = "login" | "recuperar";
 export default function AdminPage() {
   const [verificando, setVerificando] = useState(true); // restaurando sesion previa
   const [email, setEmail] = useState<string | null>(null); // sesion activa
+  const [mfaOk, setMfaOk] = useState(false); // sesion en aal2 (segundo factor superado)
   const [rol, setRol] = useState<RolPanel | null>(null); // rol efectivo del panel
   const [rolBloqueado, setRolBloqueado] = useState(false); // rol fijado por un admin
   const [cambiandoRol, setCambiandoRol] = useState(false); // mostrar el selector aunque ya tenga rol
@@ -31,21 +34,35 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  // Lee el AAL de la sesion: true solo si el segundo factor ya se supero (aal2).
+  // Si no hay sesion o falla la lectura, se trata como NO superado (muestra el gate).
+  async function refrescarMfa(hayUsuario: boolean): Promise<void> {
+    if (!hayUsuario) { setMfaOk(false); return; }
+    try {
+      const nivel = await nivelMfa();
+      setMfaOk(nivel.actual === "aal2");
+    } catch {
+      setMfaOk(false);
+    }
+  }
+
   // Restaura la sesion guardada y se mantiene en sync (login/logout, refresco de
-  // token, o cierre desde otra pestana).
+  // token, verificacion de MFA, o cierre desde otra pestana).
   useEffect(() => {
     let activo = true;
-    supabaseAuth.auth.getSession().then(({ data }) => {
+    supabaseAuth.auth.getSession().then(async ({ data }) => {
       if (!activo) return;
       setEmail(data.session?.user.email ?? null);
       setRol(rolDeUsuario(data.session?.user));
       setRolBloqueado(rolBloqueadoPorAdmin(data.session?.user));
-      setVerificando(false);
+      await refrescarMfa(!!data.session?.user);
+      if (activo) setVerificando(false);
     });
     const { data: sub } = supabaseAuth.auth.onAuthStateChange((_evento, session) => {
       setEmail(session?.user.email ?? null);
       setRol(rolDeUsuario(session?.user));
       setRolBloqueado(rolBloqueadoPorAdmin(session?.user));
+      void refrescarMfa(!!session?.user);
     });
     return () => {
       activo = false;
@@ -95,6 +112,7 @@ export default function AdminPage() {
       await cerrarSesion();
     } finally {
       setEmail(null);
+      setMfaOk(false);
       setRol(null);
       setRolBloqueado(false);
       setCambiandoRol(false);
@@ -118,6 +136,18 @@ export default function AdminPage() {
           <Loader label="Verificando sesion…" />
         </section>
       </main>
+    );
+  }
+
+  // Con sesion pero sin segundo factor superado (aal2): gate de MFA. Va ANTES de
+  // la seleccion de rol y del panel: nadie opera sin pasar el segundo factor.
+  if (email && !mfaOk) {
+    return (
+      <GateMfa
+        adminEmail={email}
+        onVerificado={() => setMfaOk(true)}
+        onSignOut={onSignOut}
+      />
     );
   }
 

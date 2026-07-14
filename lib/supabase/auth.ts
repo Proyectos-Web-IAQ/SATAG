@@ -48,6 +48,13 @@ function mensajeAuth(mensaje: string): string {
   if (m.includes("rate limit") || m.includes("too many") || m.includes("for security purposes")) {
     return "Demasiados intentos. Espera un momento e intentalo de nuevo.";
   }
+  if (m.includes("invalid totp") || m.includes("mfa_verification_failed") ||
+      (m.includes("code") && m.includes("invalid"))) {
+    return "El codigo de verificacion no es valido o ya expiro. Escribe el codigo actual de tu app.";
+  }
+  if (m.includes("friendly name") && m.includes("already")) {
+    return "Ya existe un factor con ese nombre. Refresca e intenta de nuevo.";
+  }
   if (m.includes("new password should be different")) return "La nueva contrasena debe ser distinta a la anterior.";
   if (m.includes("password should be at least") || m.includes("weak")) return "La contrasena no cumple el minimo de seguridad.";
   if (m.includes("session") && m.includes("missing")) return "La sesion expiro. Solicita un nuevo enlace de recuperacion.";
@@ -122,5 +129,66 @@ export function rolBloqueadoPorAdmin(user: User | null | undefined): boolean {
 // dispositivos). Dispara el evento USER_UPDATED para refrescar la sesion local.
 export async function elegirRol(rol: RolPanel): Promise<void> {
   const { error } = await supabaseAuth.auth.updateUser({ data: { rol } });
+  if (error) throw new Error(mensajeAuth(error.message));
+}
+
+// ---- MFA (segundo factor TOTP) ----
+//
+// El panel exige aal2 (contrasena + codigo TOTP) para operar; la frontera REAL
+// la aplica la RLS (aal = 'aal2'), no estos wrappers. Ver el runbook completo en
+// Desarrollo/07 - MFA (Autenticacion Multifactor).md.
+
+export type NivelAssurance = "aal1" | "aal2";
+
+export interface NivelMfa {
+  actual: NivelAssurance | null;    // aal de la sesion actual
+  siguiente: NivelAssurance | null; // aal maximo alcanzable por el usuario
+}
+
+// Lee el AAL de la sesion para decidir el gate del panel:
+//   actual 'aal1' + siguiente 'aal1' -> NO tiene factor: pedir alta (QR).
+//   actual 'aal1' + siguiente 'aal2' -> tiene factor, falta el codigo de hoy.
+//   actual 'aal2'                     -> ya cumplio.
+export async function nivelMfa(): Promise<NivelMfa> {
+  const { data, error } = await supabaseAuth.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error) throw new Error(mensajeAuth(error.message));
+  return {
+    actual: data.currentLevel as NivelAssurance | null,
+    siguiente: data.nextLevel as NivelAssurance | null,
+  };
+}
+
+export interface InscripcionTotp {
+  factorId: string;
+  qrSvg: string;  // SVG del QR (se pinta inline; sin servicios externos)
+  secret: string; // secreto en texto: guardar en gestor de contrasenas (respaldo)
+}
+
+// Inicia el alta de un factor TOTP. Crea un factor NO verificado hasta que se
+// confirme con el primer codigo (verificarTotp).
+export async function inscribirTotp(friendlyName = "SATAG"): Promise<InscripcionTotp> {
+  const { data, error } = await supabaseAuth.auth.mfa.enroll({ factorType: "totp", friendlyName });
+  if (error) throw new Error(mensajeAuth(error.message));
+  return { factorId: data.id, qrSvg: data.totp.qr_code, secret: data.totp.secret };
+}
+
+// Verifica un codigo TOTP contra un factor: la 1.a vez marca el factor como
+// verificado y, en cada sesion, sube el nivel a aal2 (challenge + verify en uno).
+export async function verificarTotp(factorId: string, codigo: string): Promise<void> {
+  const { error } = await supabaseAuth.auth.mfa.challengeAndVerify({ factorId, code: codigo.trim() });
+  if (error) throw new Error(mensajeAuth(error.message));
+}
+
+// Lista los factores TOTP del usuario (verificados y no verificados).
+export async function factoresTotp() {
+  const { data, error } = await supabaseAuth.auth.mfa.listFactors();
+  if (error) throw new Error(mensajeAuth(error.message));
+  return data.totp;
+}
+
+// Elimina un factor (p. ej. limpiar un alta abandonada no verificada). El reset
+// por dispositivo perdido NO se hace aqui: requiere service_role (runbook §6).
+export async function desinscribirFactor(factorId: string): Promise<void> {
+  const { error } = await supabaseAuth.auth.mfa.unenroll({ factorId });
   if (error) throw new Error(mensajeAuth(error.message));
 }

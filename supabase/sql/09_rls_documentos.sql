@@ -14,9 +14,13 @@ drop policy if exists reglamento_lectura_vigente_auth on reglamento_versiones;
 create policy reglamento_lectura_vigente_auth on reglamento_versiones
     for select to authenticated using (vigente = true);
 
+-- Escritura del texto legal: solo con la sesion en aal2 (segundo factor). La
+-- lectura de la version vigente no cambia. Ver Desarrollo/07 - MFA.
 drop policy if exists reglamento_admin on reglamento_versiones;
 create policy reglamento_admin on reglamento_versiones
-    for all to authenticated using (true) with check (true);
+    for all to authenticated
+    using ((auth.jwt() ->> 'aal') = 'aal2')
+    with check ((auth.jwt() ->> 'aal') = 'aal2');
 
 drop policy if exists aviso_lectura_vigente_anon on aviso_versiones;
 create policy aviso_lectura_vigente_anon on aviso_versiones
@@ -28,7 +32,9 @@ create policy aviso_lectura_vigente_auth on aviso_versiones
 
 drop policy if exists aviso_admin on aviso_versiones;
 create policy aviso_admin on aviso_versiones
-    for all to authenticated using (true) with check (true);
+    for all to authenticated
+    using ((auth.jwt() ->> 'aal') = 'aal2')
+    with check ((auth.jwt() ->> 'aal') = 'aal2');
 
 -- Nota de auditoria:
 -- Las politicas admin quedan amplias por ahora. Antes de produccion deben
