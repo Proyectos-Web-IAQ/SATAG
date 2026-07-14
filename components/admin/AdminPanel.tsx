@@ -1,18 +1,20 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import type { EstadoRegistro, Registro } from "@/lib/mock/types";
+import type { Registro } from "@/lib/mock/types";
 import { listRegistros, asignarEstacionamiento, registrarPago } from "@/lib/mock/api";
 import Loader from "@/components/Loader";
+import EstadoChip from "@/components/admin/EstadoChip";
 import VistaTi from "@/components/admin/VistaTi";
 import type { RolPanel } from "@/lib/supabase/auth";
 
 type Vista = "admin" | "ti" | "consulta";
 
 // Que pestañas puede usar cada rol. La primera es su vista por defecto al entrar.
-// Admin y TI pueden ademas ir a Consulta (solo lectura); Consulta solo consulta.
+// Admin puede ademas ir a Consulta (solo lectura). TI no la necesita: su pantalla
+// ya incluye el padron completo con acciones.
 const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
   admin: ["admin", "consulta"],
-  ti: ["ti", "consulta"],
+  ti: ["ti"],
   consulta: ["consulta"],
 };
 
@@ -21,11 +23,6 @@ const ETIQUETA_VISTA: Record<Vista, string> = {
   ti: "TI",
   consulta: "Consulta",
 };
-
-function EstadoChip({ estado }: { estado: EstadoRegistro }) {
-  const txt = { pendiente: "Pendiente", activo: "Activo", baja: "Baja" }[estado];
-  return <span className={`status-chip status-chip--${estado}`}>{txt}</span>;
-}
 
 export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }: { adminEmail: string; rol: RolPanel; onCambiarRol?: () => void; onSignOut: () => void }) {
   const vistasPermitidas = TABS_POR_ROL[rol];
@@ -79,21 +76,18 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
     // "Todos" o la vista de consulta muestran el padrón completo (p. ej. para dar de
     // baja o cambiar un TAG ya activo).
     if (vista === "consulta" || alcance === "todos") return registros;
-    // Con alcance "pendientes", cada vista muestra su cola de trabajo prioritaria.
+    // Con alcance "pendientes", Admin muestra su cola de trabajo prioritaria.
+    // (La vista TI no pasa por aqui: VistaTi maneja sus propias colas.)
     if (vista === "admin") return registros.filter((r) => r.estado === "pendiente" && (r.estacionamientos.length === 0 || r.pagos.length === 0));
-    // TI solo ve registros ya pagados: su trabajo siempre es después del pago.
-    if (vista === "ti") return registros.filter((r) => r.estado !== "baja" && !r.noDispositivo && r.pagos.length > 0);
     return registros;
   }, [registros, vista, buscando, alcance]);
 
   const metrics = useMemo(() => {
-    // "Pendientes" según la vista: por gestionar (Admin), por instalar (TI), o total (Consulta).
+    // "Pendientes" según la vista: por gestionar (Admin) o total (Consulta).
     const pendientesVista =
       vista === "admin"
         ? registros.filter((r) => r.estado === "pendiente" && (r.estacionamientos.length === 0 || r.pagos.length === 0)).length
-        : vista === "ti"
-          ? registros.filter((r) => r.estado !== "baja" && !r.noDispositivo && r.pagos.length > 0).length
-          : registros.filter((r) => r.estado === "pendiente").length;
+        : registros.filter((r) => r.estado === "pendiente").length;
     return {
       total: registros.length,
       pendientes: pendientesVista,
@@ -144,6 +138,10 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
           </div>
         </div>
 
+        {/* La pantalla de TI es autonoma (colas propias, mobile-first). El resto
+            de vistas comparte metricas + buscador + tabla + expediente. */}
+        {vista === "ti" ? <VistaTi /> : (
+        <>
         <div className="metric-cards">
           <div
             className={`metric-card metric-card--${metrics.pendientes === 0 ? "ok" : metrics.pendientes <= 4 ? "warn" : "alert"}`}
@@ -151,7 +149,7 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
             title="Ver la cola de pendientes"
             onClick={() => { setAlcance("pendientes"); setQuery(""); }}
           >
-            <span className="metric-label">{vista === "ti" ? "Pendientes por instalar" : vista === "admin" ? "Pendientes por gestionar" : "Pendientes"}</span>
+            <span className="metric-label">{vista === "admin" ? "Pendientes por gestionar" : "Pendientes"}</span>
             <span className="metric-value">{metrics.pendientes}</span>
           </div>
           <div className="metric-card"><span className="metric-label">Registros</span><span className="metric-value">{metrics.total}</span></div>
@@ -173,8 +171,7 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
           <p className="panel-title">
             {buscando ? "Resultados de búsqueda"
               : vista === "consulta" || alcance === "todos" ? "Todos los registros"
-              : vista === "admin" ? "Pendientes de estacionamiento / pago"
-              : "Pendientes de instalación"}
+              : "Pendientes de estacionamiento / pago"}
             {" "}({filtrados.length})
           </p>
           {loading && registros.length === 0 && <Loader label="Cargando registros…" />}
@@ -252,10 +249,7 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
               </>
             )}
 
-            {/* ---- Acciones de TI ---- */}
-            {vista === "ti" && <VistaTi selected={selected} busy={busy} run={run} />}
-
-            {vista === "consulta" && <p className="notice">Vista de solo consulta. Cambia a <strong>Administración</strong> o <strong>TI</strong> para ejecutar acciones.</p>}
+            {vista === "consulta" && <p className="notice">Vista de solo consulta. Las acciones se ejecutan desde la pestaña <strong>Administración</strong>.</p>}
 
             {/* Bitácora */}
             {selected.movimientos.length > 0 && (
@@ -274,6 +268,8 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
               </div>
             )}
           </div>
+        )}
+        </>
         )}
       </div>
     </main>

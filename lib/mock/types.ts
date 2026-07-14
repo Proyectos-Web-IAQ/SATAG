@@ -28,6 +28,18 @@ export interface Pago {
   folio: string | null;
 }
 
+export type TipoSolicitud = "actualizacion" | "baja";
+
+// Solicitud levantada sobre un registro existente (p. ej. en recepción o, a futuro,
+// desde el autoservicio): alimenta los contadores de pendientes de la pantalla TI.
+// PENDIENTE: definir quién la captura y su tabla al conectar Supabase.
+export interface Solicitud {
+  tipo: TipoSolicitud;
+  detalle: string;
+  fecha: string;
+  atendida: boolean;
+}
+
 export interface Movimiento {
   tipo: TipoMovimiento;
   fecha: string;
@@ -71,8 +83,20 @@ export interface Registro {
   fechaBaja: string | null;
   observaciones: string | null;
   pagos: Pago[];
+  solicitudes: Solicitud[];
   movimientos: Movimiento[];
   createdAt: string;
+}
+
+// Cambios que TI puede aplicar a un registro existente (pantalla TI, acción
+// "Actualizar datos"). Espejo del futuro RPC. Cambiar noDispositivo = reposición.
+export interface CambiosRegistro {
+  noDispositivo?: string;
+  placas?: string | null;
+  sinPlacas?: boolean;
+  marca?: string;
+  modelo?: string;
+  color?: string;
 }
 
 // Entrada del alta de autoservicio (espejo del RPC crear_registro).

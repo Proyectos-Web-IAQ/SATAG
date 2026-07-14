@@ -1,7 +1,7 @@
 // Capa mock: imita la API que después dará Supabase (catálogos + crear_registro +
 // acciones de administración/TI). Al conectar la BD real se reemplaza SOLO este archivo.
 import { ESTACIONAMIENTOS, MARCAS, COLORES, REGLAMENTO_VIGENTE, REGISTROS_DEMO } from "./data";
-import type { CrearRegistroInput, CrearRegistroResultado, Registro } from "./types";
+import type { CambiosRegistro, CrearRegistroInput, CrearRegistroResultado, Registro, TipoSolicitud } from "./types";
 
 const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -50,6 +50,7 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     motivoBaja: null, fechaBaja: null,
     observaciones: input.observaciones?.trim() || null,
     pagos: [],
+    solicitudes: [],
     movimientos: [{ tipo: "alta", fecha: hoy(), motivo: "Alta por autoservicio", hechoPor: "autoservicio" }],
     createdAt: new Date().toISOString(),
   });
@@ -85,6 +86,10 @@ export async function registrarPago(
 }
 
 // ---- TI (Momento 3) ----
+function marcarSolicitudesAtendidas(r: Registro, tipo: TipoSolicitud) {
+  for (const s of r.solicitudes) if (s.tipo === tipo && !s.atendida) s.atendida = true;
+}
+
 export async function instalarTag(id: string, noDispositivo: string, instaladoPor: string): Promise<Registro> {
   await delay(300);
   const r = find(id);
@@ -106,17 +111,47 @@ export async function darBaja(id: string, motivo: string, hechoPor: string): Pro
   r.motivoBaja = motivo.trim();
   r.fechaBaja = hoy();
   r.movimientos.push({ tipo: "baja", fecha: hoy(), motivo: motivo.trim(), hechoPor: hechoPor || "TI" });
+  marcarSolicitudesAtendidas(r, "baja");
   return { ...r };
 }
-export async function reponerTag(id: string, nuevoNoDispositivo: string, motivo: string, hechoPor: string): Promise<Registro> {
+// Actualización de un registro existente (pantalla TI): datos del vehículo/placas y,
+// si cambia el número de dispositivo, reposición del TAG (el anterior queda inactivo).
+export async function actualizarRegistro(
+  id: string, cambios: CambiosRegistro, motivo: string, hechoPor: string,
+): Promise<Registro> {
   await delay(300);
   const r = find(id);
-  const nuevo = nuevoNoDispositivo.trim();
-  if (!/^[0-9]{6,11}$/.test(nuevo)) throw new Error("El nuevo No. de TAG debe tener de 6 a 11 dígitos.");
-  const anterior = r.noDispositivo;
-  r.movimientos.push({ tipo: "reposicion", fecha: hoy(), motivo: motivo.trim() || "Reposición de TAG", hechoPor: hechoPor || "TI", noDispositivoAnterior: anterior, noDispositivoNuevo: nuevo });
-  r.noDispositivo = nuevo;
-  r.estado = "activo";
-  r.fechaInstalacion = hoy();
+  const quien = hechoPor || "TI";
+  let huboReposicion = false;
+  const detalles: string[] = [];
+
+  if (cambios.noDispositivo !== undefined && cambios.noDispositivo !== r.noDispositivo) {
+    const nuevo = cambios.noDispositivo.trim();
+    if (!/^[0-9]{6,11}$/.test(nuevo)) throw new Error("El nuevo No. de TAG debe tener de 6 a 11 dígitos.");
+    const dup = registrosMem.find((x) => x.id !== id && x.noDispositivo === nuevo && x.estado !== "baja");
+    if (dup) throw new Error(`El TAG ${nuevo} ya está activo en otro registro (${dup.folio}).`);
+    r.movimientos.push({ tipo: "reposicion", fecha: hoy(), motivo: motivo.trim() || "Reposición de TAG", hechoPor: quien, noDispositivoAnterior: r.noDispositivo, noDispositivoNuevo: nuevo });
+    r.noDispositivo = nuevo;
+    r.fechaInstalacion = hoy();
+    huboReposicion = true;
+  }
+  if (cambios.sinPlacas !== undefined || cambios.placas !== undefined) {
+    const sinPlacas = cambios.sinPlacas ?? r.sinPlacas;
+    const placas = sinPlacas ? null : ((cambios.placas ?? r.placas ?? "").trim().toUpperCase() || null);
+    if (!sinPlacas && !placas) throw new Error("Captura las placas o marca «sin placas».");
+    if (placas !== r.placas || sinPlacas !== r.sinPlacas) {
+      detalles.push(`placas ${r.placas ?? "sin placas"} → ${placas ?? "sin placas"}`);
+      r.placas = placas; r.sinPlacas = sinPlacas;
+    }
+  }
+  if (cambios.marca !== undefined && cambios.marca !== r.marca) { detalles.push(`marca ${r.marca} → ${cambios.marca}`); r.marca = cambios.marca; }
+  if (cambios.modelo !== undefined && cambios.modelo.trim() && cambios.modelo.trim() !== r.modelo) { detalles.push(`modelo ${r.modelo} → ${cambios.modelo.trim()}`); r.modelo = cambios.modelo.trim(); }
+  if (cambios.color !== undefined && cambios.color !== r.color) { detalles.push(`color ${r.color} → ${cambios.color}`); r.color = cambios.color; }
+
+  if (!huboReposicion && detalles.length === 0) throw new Error("No hay cambios que guardar.");
+  if (detalles.length > 0) {
+    r.movimientos.push({ tipo: "cambio", fecha: hoy(), motivo: `Actualización: ${detalles.join("; ")}${motivo.trim() ? ` — ${motivo.trim()}` : ""}`, hechoPor: quien });
+  }
+  marcarSolicitudesAtendidas(r, "actualizacion");
   return { ...r };
 }
