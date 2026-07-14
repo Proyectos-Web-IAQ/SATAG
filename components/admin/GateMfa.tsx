@@ -6,7 +6,6 @@ import {
   factoresTotp,
   inscribirTotp,
   verificarTotp,
-  desinscribirFactor,
   type InscripcionTotp,
 } from "@/lib/supabase/auth";
 
@@ -58,11 +57,9 @@ export default function GateMfa({
           return;
         }
 
-        // Sin factor verificado: limpiar altas abandonadas (no verificadas) e inscribir.
-        const factores = await factoresTotp();
-        await Promise.all(
-          factores.filter((f) => f.status !== "verified").map((f) => desinscribirFactor(f.id)),
-        );
+        // Sin factor verificado: inscribir. inscribirTotp limpia por dentro las
+        // altas abandonadas (no verificadas) y es idempotente ante montajes
+        // dobles, asi que evita el mfa_factor_name_conflict.
         const alta = await inscribirTotp();
         setInscripcion(alta);
         setFactorId(alta.factorId);

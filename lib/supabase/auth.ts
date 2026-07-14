@@ -164,12 +164,50 @@ export interface InscripcionTotp {
   secret: string; // secreto en texto: guardar en gestor de contrasenas (respaldo)
 }
 
-// Inicia el alta de un factor TOTP. Crea un factor NO verificado hasta que se
-// confirme con el primer codigo (verificarTotp).
-export async function inscribirTotp(friendlyName = "SATAG"): Promise<InscripcionTotp> {
-  const { data, error } = await supabaseAuth.auth.mfa.enroll({ factorType: "totp", friendlyName });
+// Un factor NO verificado con el mismo friendlyName bloquea un enroll nuevo
+// (error mfa_factor_name_conflict). Estas altas abandonadas aparecen SOLO en
+// listFactors().all: data.totp trae unicamente los verificados, por eso la
+// limpieza DEBE mirar `all` (si no, el huerfano nunca se borra y el alta se
+// atora para siempre).
+async function limpiarFactoresTotpNoVerificados(): Promise<void> {
+  const { data, error } = await supabaseAuth.auth.mfa.listFactors();
   if (error) throw new Error(mensajeAuth(error.message));
-  return { factorId: data.id, qrSvg: data.totp.qr_code, secret: data.totp.secret };
+  const abandonados = data.all.filter((f) => f.factor_type === "totp" && f.status !== "verified");
+  await Promise.all(abandonados.map((f) => desinscribirFactor(f.id)));
+}
+
+function esConflictoNombreFactor(mensaje: string): boolean {
+  const m = mensaje.toLowerCase();
+  return m.includes("friendly name") && m.includes("already");
+}
+
+// Enroll real: limpia altas abandonadas antes de inscribir y, si aun asi el
+// nombre choca (factor huerfano de otra pestana o de una carrera), limpia y
+// reintenta una vez.
+async function enrollTotp(friendlyName: string): Promise<InscripcionTotp> {
+  await limpiarFactoresTotpNoVerificados();
+  let res = await supabaseAuth.auth.mfa.enroll({ factorType: "totp", friendlyName });
+  if (res.error && esConflictoNombreFactor(res.error.message)) {
+    await limpiarFactoresTotpNoVerificados();
+    res = await supabaseAuth.auth.mfa.enroll({ factorType: "totp", friendlyName });
+  }
+  if (res.error) throw new Error(mensajeAuth(res.error.message));
+  return { factorId: res.data.id, qrSvg: res.data.totp.qr_code, secret: res.data.totp.secret };
+}
+
+// Alta en vuelo: si el gate se monta dos veces (StrictMode en dev, o un
+// re-render por cambio de sesion), dos POST /factors simultaneos chocarian por
+// nombre repetido. Ambas llamadas comparten esta misma promesa.
+let inscripcionEnCurso: Promise<InscripcionTotp> | null = null;
+
+// Inicia el alta de un factor TOTP. Crea un factor NO verificado hasta que se
+// confirme con el primer codigo (verificarTotp). Idempotente ante montajes
+// dobles y auto-limpia altas abandonadas.
+export function inscribirTotp(friendlyName = "SATAG"): Promise<InscripcionTotp> {
+  if (!inscripcionEnCurso) {
+    inscripcionEnCurso = enrollTotp(friendlyName).finally(() => { inscripcionEnCurso = null; });
+  }
+  return inscripcionEnCurso;
 }
 
 // Verifica un codigo TOTP contra un factor: la 1.a vez marca el factor como
