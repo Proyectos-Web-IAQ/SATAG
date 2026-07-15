@@ -92,57 +92,31 @@ export async function actualizarContrasena(password: string): Promise<void> {
 
 // ---- Roles del panel ----
 //
-// Cada usuario ELIGE su propio rol al entrar; se guarda en `user_metadata.rol`,
-// que el propio usuario puede escribir desde el navegador con updateUser(). Como
-// el sitio es estatico (sin service_role en el navegador), esta es la unica forma
-// de que la eleccion la haga el usuario sin un servidor.
+// El rol vive UNICAMENTE en `app_metadata.rol` y lo fija un administrador por
+// SQL (runbook en supabase/sql/README.md, PASO 0). user_metadata ya no se lee:
+// el usuario puede escribirla con updateUser() desde el navegador, y desde que
+// la RLS exige app_metadata (bloques 27 y 30) un rol auto-elegido solo
+// produciria una UI que promete pestanas que la BD niega.
 //
-// IMPORTANTE: al ser auto-seleccionable, el rol NO es una frontera de seguridad
-// (cualquiera podria elegir "admin"). Solo separa la vista/acciones del panel.
-// El control real seguira dependiendo de RLS (pendiente, ver 13_rls_registros.sql).
-//
-// Candado opcional del admin: si un administrador fija `app_metadata.rol` por SQL
-// (inescribible por el usuario), ese valor GANA sobre la eleccion del usuario, lo
-// que permite bloquear el rol de alguien. Ver supabase/README.md.
+// Sin rol asignado -> el panel muestra "pide tu rol al administrador" (y la
+// BD no le deja leer nada de todas formas).
 export type RolPanel = "admin" | "ti" | "consulta" | "super";
 
 // Roles que un admin puede fijar en app_metadata. Es la fuente de verdad de la
 // RLS (bloques 27 y 30) y de la guardia de los RPCs (panel_exigir_rol).
 export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta", "super"];
 
-// Roles que un usuario puede AUTO-ELEGIR. 'super' no esta aqui a proposito:
-// solo lo fija un admin por SQL. Si fuera elegible, cualquiera se lo pondria
-// con updateUser() desde la consola del navegador y se daria todas las
-// pestanas (la BD igual se las negaria, pero la UI mentiria).
-export const ROLES_ELEGIBLES: RolPanel[] = ["admin", "ti", "consulta"];
-
-function leerRol(
-  meta: Record<string, unknown> | undefined | null,
-  permitidos: RolPanel[],
-): RolPanel | null {
+function leerRol(meta: Record<string, unknown> | undefined | null): RolPanel | null {
   const rol = meta?.rol;
-  return typeof rol === "string" && (permitidos as string[]).includes(rol)
+  return typeof rol === "string" && (ROLES_PANEL as string[]).includes(rol)
     ? (rol as RolPanel)
     : null;
 }
 
-// Rol efectivo: primero el candado del admin (app_metadata), si no el que eligio
-// el usuario (user_metadata). null = aun no tiene rol -> la UI le pide elegirlo.
+// Rol efectivo: solo app_metadata (espejo exacto de lo que la RLS va a
+// permitir). null = sin rol asignado.
 export function rolDeUsuario(user: User | null | undefined): RolPanel | null {
-  return leerRol(user?.app_metadata, ROLES_PANEL)
-    ?? leerRol(user?.user_metadata, ROLES_ELEGIBLES);
-}
-
-// true si un admin fijo el rol en app_metadata: el usuario no puede cambiarlo.
-export function rolBloqueadoPorAdmin(user: User | null | undefined): boolean {
-  return leerRol(user?.app_metadata, ROLES_PANEL) !== null;
-}
-
-// Guarda el rol elegido por el usuario en user_metadata (persiste entre sesiones y
-// dispositivos). Dispara el evento USER_UPDATED para refrescar la sesion local.
-export async function elegirRol(rol: RolPanel): Promise<void> {
-  const { error } = await supabaseAuth.auth.updateUser({ data: { rol } });
-  if (error) throw new Error(mensajeAuth(error.message));
+  return leerRol(user?.app_metadata);
 }
 
 // ---- MFA (segundo factor TOTP) ----

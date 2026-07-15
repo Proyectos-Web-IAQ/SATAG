@@ -191,48 +191,36 @@ active su cuenta. Como el sitio es estatico, se usa el patron `token_hash` + `ve
 > El enlace de invitacion caduca (por defecto 24 h) y es de un solo uso. Si expira, reenvia la invitacion.
 > Nota: al invitar se crea el usuario en Auth aunque el registro publico este en OFF (lo crea el admin, no el autoservicio).
 
-### Roles del panel (el usuario elige el suyo)
+### Roles del panel (`app_metadata`)
 
-El panel tiene tres roles y cada uno ve/hace lo suyo:
+El rol es un control de acceso real: lo asigna un administrador en
+`app_metadata.rol`, la UI lo lee de la sesión y las RLS/RPC lo vuelven a validar
+en la base de datos. El usuario no puede elegirlo ni cambiarlo desde el panel.
 
 | Rol | Que ve/hace en el panel |
 |---|---|
-| `admin` | Pestaña **Administración** (asignar estacionamiento, registrar pago) + Consulta. |
-| `ti` | Pestaña **TI** (instalar/reponer TAG, dar de baja) + Consulta. |
+| `admin` | Pestaña **Administración** (registrar pago) + Consulta. |
+| `ti` | Pestaña **TI** (asignar estacionamiento, instalar/reponer TAG, actualizar, dar de baja y atender solicitudes). |
 | `consulta` | Solo **Consulta** (lectura del padron, sin acciones). |
+| `super` | Las tres pestañas y todos los RPC del panel; solo para soporte/pruebas integrales. |
 
-**Cada usuario elige su propio rol** la primera vez que entra (pantalla "Elige tu area") y
-puede cambiarlo luego con el enlace *cambiar* junto a su correo. La eleccion se guarda en
-`user_metadata.rol` del usuario de Auth (`lib/supabase/auth.ts` -> `elegirRol`), que el
-propio usuario puede escribir desde el navegador; por eso NO hace falta service_role ni
-tocar el dashboard. **No hay que asignar nada al invitar**: invitas, la persona activa su
-cuenta y al entrar elige su area.
-
-> ⚠️ **El rol auto-seleccionado NO es un control de acceso.** Cualquiera con una cuenta
-> podria elegir `admin`. Solo separa la vista y las acciones del panel. El control real
-> depende de RLS (pendiente, ver `sql/13_rls_registros.sql`); RLS **no debe confiar** en
-> `user_metadata.rol` porque el usuario lo edita.
-
-**Candado opcional del admin.** Si necesitas fijar el rol de alguien para que NO pueda
-cambiarlo, escribelo en `app_metadata` (inescribible por el usuario). Ese valor **gana**
-sobre la eleccion del usuario y le oculta el enlace *cambiar*:
+Asigna el rol después de invitar/crear al usuario y antes de que opere el panel:
 
 ```sql
--- Fijar (bloquear) el rol de un usuario. Gana sobre su eleccion en user_metadata.
+-- Valores: admin | ti | consulta | super
 update auth.users
    set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb) || '{"rol":"ti"}'::jsonb
- where email = 'persona@iaq.mx';
+ where email = 'persona@asuncionqro.edu.mx';
 
--- Ver el rol elegido por cada quien (user_metadata) y el candado (app_metadata).
+-- Auditar la asignacion efectiva.
 select email,
-       raw_user_meta_data ->> 'rol' as rol_elegido,
-       raw_app_meta_data  ->> 'rol' as rol_bloqueado
+       raw_app_meta_data ->> 'rol' as rol
   from auth.users
- order by email;
+  order by email;
 ```
 
-> Valores validos: `admin`, `ti`, `consulta`. El rol se lee al iniciar sesion, al elegirlo
-> y al refrescar el token; si lo bloqueas por SQL con la sesion abierta, se aplica al recargar.
+El rol viaja dentro del JWT. Después de asignarlo o cambiarlo, la persona debe
+cerrar sesión y volver a entrar; recargar la página no sustituye ese paso.
 
 ### Prueba manual
 
@@ -241,22 +229,17 @@ select email,
 3. Cierra sesion (**Salir**) y prueba **¿Olvidaste tu contrasena?** con ese correo.
 4. Abre el enlace del correo -> deberia mostrar el formulario de nueva contrasena en `/admin/reset/`.
 5. Guarda la nueva contrasena y verifica que puedas iniciar sesion con ella.
-6. **Roles:** al entrar por primera vez debe salir la pantalla **"Elige tu area"**. Elige una
-   y verifica que el panel muestre solo la pestaña de ese rol (`admin` -> Administración,
-   `ti` -> TI, `consulta` -> solo lectura) y que el enlace *cambiar* (junto al correo) te deje
-   elegir otra. Para probar el candado, fija `app_metadata.rol` por SQL y confirma que ese rol
-   se impone y desaparece el enlace *cambiar*.
+6. **Roles:** sin `app_metadata.rol`, después de MFA debe aparecer **"Sin rol asignado"**.
+   Asigna el rol por SQL, cierra sesión y vuelve a entrar. Verifica que `admin`, `ti` y
+   `consulta` solo vean sus pestañas; usa `super` únicamente para recorrer el flujo integral.
 
 ## Pendientes antes de produccion
 
 - Reemplazar reglamento placeholder por texto oficial.
 - Reemplazar aviso placeholder por texto aprobado.
-- Endurecer RLS por rol. Hoy el rol lo **elige el propio usuario** (se guarda en
-  `user_metadata.rol`) y el panel solo lo usa para la UI; RLS sigue en `authenticated
-  using(true)`, asi que la separacion es solo visual y evitable. Antes de produccion hay que
-  decidir un modelo de rol **confiable** (RLS **no** debe leer `user_metadata`, que el usuario
-  edita; solo `app_metadata` o una tabla protegida) y atar las politicas cuando la capa real
-  reemplace al mock (ver `supabase/sql/13_rls_registros.sql`).
+- Endurecer a rol `admin` las escrituras de catálogos, documentos y Storage de firmas
+  (SQL 05, 09 y 20 todavía aceptan cualquier sesión `authenticated + aal2`).
+- Agregar rate limiting/CAPTCHA al RPC público `crear_solicitud` antes de exponerlo ampliamente.
 - Definir responsable ARCO.
 - Definir plazo final de conservacion/bloqueo/supresion.
 - Confirmar DPA/region Supabase.

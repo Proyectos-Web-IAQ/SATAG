@@ -40,13 +40,13 @@ Regla base: ninguna tabla con datos personales (`registros`, `aceptaciones`, `pa
 - Permitir a `anon` solo `select` de catalogos necesarios y del reglamento/aviso vigente.
 - Negar a `anon` lectura directa de registros, firmas, pagos, movimientos y solicitudes.
 - Usar RPC `crear_registro` o equivalente para alta de autoservicio; la RPC debe crear registro, aceptacion, evidencia y movimiento inicial en una sola transaccion.
-- Separar permisos de Administracion y TI cuando se pase de prototipo a produccion; mientras tanto, documentar si ambos usan un rol admin comun.
-- Exigir MFA a cuentas administrativas antes de operacion real.
+- Mantener separados los permisos de Administracion, TI y Consulta mediante `app_metadata.rol` y guardias dentro de cada RPC.
+- Exigir MFA (`aal2`) a todas las cuentas del panel antes de operar.
 - Usar backups y bitacoras para reconstruir incidentes y generar lista de titulares afectados.
 
 **Estado de implementacion (Auth del panel, 10-jul-2026):** el panel `/admin` ya usa **Supabase Auth** (correo + contrasena) con sesion persistente en el navegador y recuperacion de contrasena por correo (`/admin/reset`). El personal autenticado obtiene el rol `authenticated`. El alta de cuentas es manual desde el dashboard (sin registro publico). Pasos operativos y allowlist de Redirect URLs: [`supabase/README.md`](../supabase/README.md#auth-del-panel-administrativo).
 
-**Roles del panel (13-jul-2026):** existen tres roles: `admin` (asignar estacionamiento y registrar pago), `ti` (instalar/reponer TAG y dar de baja) y `consulta` (solo lectura). **Cada usuario elige su propio rol** al entrar (pantalla "Elige tu área") y puede cambiarlo; la elección se guarda en `user_metadata.rol`, que el propio usuario escribe con `updateUser()` (unica via sin service_role en un sitio estatico). El panel ata la UI al rol: cada quien ve solo su pestaña y sus acciones. **Advertencia de seguridad:** al ser auto-seleccionable, el rol **NO es un control de acceso** —cualquiera podria elegir `admin`— y **RLS no debe confiar en `user_metadata`**. Hoy el enforcement es solo visual (RLS sigue en `authenticated using(true)` y las acciones corren sobre el mock). Como **candado opcional**, un admin puede fijar el rol en `app_metadata` (inescribible por el usuario); ese valor gana sobre la eleccion y oculta el enlace *cambiar*. La **RLS dura por rol** queda pendiente y debe apoyarse en una fuente confiable (`app_metadata` o tabla de perfiles), no en el rol auto-seleccionado. Detalle y SQL: [`supabase/README.md`](../supabase/README.md#roles-del-panel-el-usuario-elige-el-suyo).
+**Roles del panel (actualizado 15-jul-2026):** la fuente de verdad es exclusivamente `app_metadata.rol`, asignada por un administrador; `user_metadata` no participa en autorización. `admin` registra pagos, `ti` asigna estacionamiento e instala/actualiza/da de baja, `consulta` solo lee y `super` permite pruebas integrales controladas. Las RLS exigen `aal2` + rol para leer y las escrituras del expediente pasan por RPC `SECURITY DEFINER` que vuelve a validar el rol. Un usuario sin rol no lee el expediente ni entra al panel operativo. SQL y runbook: [`supabase/README.md`](../supabase/README.md).
 
 ## 5. Storage privado de firmas
 

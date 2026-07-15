@@ -1,36 +1,47 @@
 "use client";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { CambiosRegistro, Registro } from "@/lib/mock/types";
-import { listRegistros, getMarcas, getColores, instalarTag, actualizarRegistro, darBaja } from "@/lib/mock/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { CambiosRegistro, Registro, Solicitud } from "@/lib/mock/types";
+import { getMarcas, getColores } from "@/lib/supabase/api";
+import {
+  listRegistros,
+  getEstacionamientos,
+  instalarTagConEstacionamiento,
+  actualizarRegistroConEstacionamiento,
+  darBaja,
+  descartarSolicitud,
+  type AccionResultado,
+} from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import EstadoChip from "@/components/admin/EstadoChip";
+import { DetalleRegistro, TarjetaRegistro, scrollAlAviso } from "@/components/admin/RegistroCard";
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja";
 type Accion = "instalar" | "actualizar" | "baja";
 
 type ConfirmCfg = {
   title: string; message: string; confirmLabel: string; danger: boolean;
-  action: () => Promise<Registro>; ok: string;
+  action: () => Promise<AccionResultado>; ok: string;
 };
+
+// Compara asignaciones de estacionamiento sin importar el orden de los chips.
+const mismaAsignacion = (a: string[], b: string[]) =>
+  [...a].sort().join("+") === [...b].sort().join("+");
 
 const TAG_RE = /^[0-9]{6,11}$/;
 // Semáforo de los contadores: verde (0), amarillo (pocos), rojo (muchos).
 const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
 
-// Scroll suave salvo que el sistema pida movimiento reducido.
-const scrollBehavior = (): ScrollBehavior =>
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
-
 // Pantalla completa del rol TI, pensada para usarse desde el celular en el
 // estacionamiento: tres tarjetas de acción (instalar / actualizar / dar de baja)
 // que abren un flujo enfocado, y abajo el padrón completo con las mismas acciones.
-// Carga sus propios datos; al conectar Supabase solo cambia la capa lib/mock/api.
-export default function VistaTi() {
+// Lee de Supabase (lib/supabase/apiPanel); TI también define el estacionamiento
+// al instalar o actualizar (SC-002).
+export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
+  const [estacionamientos, setEstacionamientos] = useState<string[]>([]);
 
   const [modo, setModo] = useState<Modo>("inicio");
   const [query, setQuery] = useState("");
@@ -40,26 +51,43 @@ export default function VistaTi() {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmCfg | null>(null);
+  const bannersRef = useRef<HTMLDivElement>(null);
 
-  // Nombre de quien atiende: se conserva entre registros y visitas (localStorage).
-  // Con Supabase real se prellenará desde el usuario autenticado.
-  const [tiNombre, setTiNombreState] = useState(() =>
-    typeof window === "undefined" ? "" : window.localStorage.getItem("satag.tiNombre") ?? "");
-  function setTiNombre(v: string) {
-    setTiNombreState(v);
-    try { window.localStorage.setItem("satag.tiNombre", v); } catch { /* storage bloqueado: no es crítico */ }
-  }
+  // Nombre de quien atiende: se toma de la sesión autenticada y se conserva
+  // mientras esta vista siga montada. No se persiste entre sesiones: los
+  // dispositivos de caseta pueden ser compartidos y no debemos atribuirle una
+  // acción al usuario que inició sesión anteriormente.
+  const [tiNombre, setTiNombre] = useState(nombreSesion ?? "");
 
   async function refresh() {
-    const list = await listRegistros();
-    setRegistros(list);
-    setLoading(false);
+    setLoading(true);
+    try {
+      const list = await listRegistros();
+      setRegistros(list);
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los registros.");
+    } finally {
+      setLoading(false);
+    }
   }
-  useEffect(() => { refresh(); getMarcas().then(setMarcas); getColores().then(setColores); }, []);
+  useEffect(() => {
+    refresh();
+    // Catálogos: si fallan, los formularios siguen operables con lo que el
+    // registro ya trae; la BD valida las claves reales al asignar.
+    getMarcas().then(setMarcas).catch(() => {});
+    getColores().then(setColores).catch(() => {});
+    getEstacionamientos()
+      .then((es) => setEstacionamientos(es.map((e) => e.clave)))
+      .catch(() => setEstacionamientos(["E1", "E2"]));
+  }, []);
 
+  // Alineado con el RPC instalar_tag: solo registros PENDIENTES sin TAG y con
+  // pago. (Un bloqueado no entra a la cola; el RPC lo rechazaría igual.)
   const porInstalar = useMemo(
-    () => registros.filter((r) => r.estado !== "baja" && !r.noDispositivo && r.pagos.length > 0),
+    () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0),
     [registros]);
   const solicitanActualizar = useMemo(
     () => registros.filter((r) => r.estado !== "baja" && r.solicitudes.some((s) => !s.atendida && s.tipo === "actualizacion")),
@@ -80,18 +108,23 @@ export default function VistaTi() {
     ? registros.filter((r) => r.estado !== "baja" && !listaSolicitudes.includes(r) && coincide(r))
     : [];
 
-  async function run(fn: () => Promise<Registro>, ok: string) {
+  async function run(fn: () => Promise<AccionResultado>, ok: string) {
+    if (busy) return;
     setBusy(true); setError(null); setFeedback(null);
     try {
       await fn();
       await refresh();
       setSelId(null); setAccionPadron(null);
       setFeedback(ok);
-      // Sube al inicio para que el aviso de éxito quede a la vista.
-      window.scrollTo({ top: 0, behavior: scrollBehavior() });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+      // Éxito o error, el aviso queda a la vista: los formularios pueden estar
+      // muy abajo en el padrón móvil y una acción sin reacción visible se
+      // siente como que no pasó nada.
+      scrollAlAviso(bannersRef.current);
+    }
   }
 
   function irA(m: Modo) {
@@ -104,22 +137,25 @@ export default function VistaTi() {
   }
 
   // Confirmaciones: en campo, el error caro es activar un número equivocado,
-  // así que las tres acciones repiten el dato clave antes de ejecutar.
-  function confirmarInstalar(r: Registro, tag: string) {
+  // así que las acciones repiten el dato clave antes de ejecutar.
+  // Instalar define también el estacionamiento (SC-002): el SQL 31 ejecuta
+  // asignación + TAG en una sola transacción, con la persona presente.
+  function confirmarInstalar(r: Registro, tag: string, claves: string[]) {
     setConfirm({
       title: "Instalar y activar TAG",
-      message: `Se instalará el TAG ${tag} en el ${r.marca} ${r.modelo} ${r.color} (${r.placas ?? "sin placas"}) de ${r.usuarioNombre} y el registro quedará activo. Revisa bien el número. ¿Continuar?`,
+      message: `Se instalará el TAG ${tag} en el ${r.marca} ${r.modelo} ${r.color} (${r.placas ?? "sin placas"}) de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo. Revisa bien el número. ¿Continuar?`,
       confirmLabel: "Instalar", danger: false,
-      action: () => instalarTag(r.id, tag, tiNombre),
+      action: () => instalarTagConEstacionamiento(r.id, tag, claves, tiNombre),
       ok: `TAG ${tag} instalado y activado (${r.folio}).`,
     });
   }
-  function confirmarActualizar(r: Registro, cambios: CambiosRegistro, resumen: string, motivo: string) {
+  // claves null = el estacionamiento no cambió (no se llama a su RPC).
+  function confirmarActualizar(r: Registro, cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) {
     setConfirm({
       title: "Actualizar registro",
       message: `Cambios en ${r.folio} (${r.usuarioNombre}): ${resumen}. ¿Guardar?`,
       confirmLabel: "Guardar cambios", danger: false,
-      action: () => actualizarRegistro(r.id, cambios, motivo, tiNombre),
+      action: () => actualizarRegistroConEstacionamiento(r.id, cambios, claves, motivo, tiNombre),
       ok: `Registro ${r.folio} actualizado.`,
     });
   }
@@ -132,23 +168,52 @@ export default function VistaTi() {
       ok: `Registro ${r.folio} dado de baja.`,
     });
   }
+  // Cierra una solicitud improcedente sin tocar el registro (motivo obligatorio).
+  function confirmarDescartar(r: Registro, sol: Solicitud, motivo: string) {
+    setConfirm({
+      title: "Descartar solicitud",
+      message: `Se descartará la solicitud de ${sol.tipo === "actualizacion" ? "actualización" : "baja"} de ${r.folio} (${r.usuarioNombre}) sin aplicar ningún cambio. Motivo: ${motivo}. ¿Continuar?`,
+      confirmLabel: "Descartar", danger: true,
+      action: () => descartarSolicitud(sol.id, motivo, tiNombre),
+      ok: `Solicitud descartada (${r.folio}).`,
+    });
+  }
 
   const banners = (
-    <div className="ti-banners" aria-live="polite">
+    <div className="ti-banners" aria-live="polite" ref={bannersRef}>
       {feedback && <p className="catalog-feedback catalog-feedback--ok">{feedback}</p>}
       {error && <p className="submit-error">{error}</p>}
+      {loadError && (
+        <p className="submit-error">
+          {loadError}{" "}
+          <button type="button" className="link-action" onClick={() => refresh()}>Reintentar</button>
+        </p>
+      )}
     </div>
   );
 
   function formPara(accion: Accion, r: Registro) {
     if (accion === "instalar")
-      return <FormInstalar busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag) => confirmarInstalar(r, tag)} />;
+      return <FormInstalar r={r} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves) => confirmarInstalar(r, tag, claves)} />;
     if (accion === "actualizar")
-      return <FormActualizar r={r} marcas={marcas} colores={colores} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(c, res, mot) => confirmarActualizar(r, c, res, mot)} />;
+      return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
     return <FormBaja r={r} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(m) => confirmarBaja(r, m)} />;
   }
 
   if (loading && registros.length === 0) return <Loader label="Cargando registros…" />;
+
+  // Una carga fallida no equivale a una cola vacía. Evita mostrar contadores
+  // verdes o "Todo al día" cuando todavía no conocemos el estado de la BD.
+  if (loadError && registros.length === 0) {
+    return (
+      <div className="ti-banners">
+        <p className="submit-error" role="alert">
+          {loadError}{" "}
+          <button type="button" className="link-action" onClick={() => refresh()}>Reintentar</button>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -177,13 +242,13 @@ export default function VistaTi() {
             <div className="ti-cards">
               {padron.map((r) => (
                 <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
-                  <DetalleRegistro r={r} />
+                  <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                   {r.estado === "baja" ? (
                     <p className="ti-hint">Registro dado de baja{r.fechaBaja ? ` el ${r.fechaBaja}` : ""}{r.motivoBaja ? ` — ${r.motivoBaja}` : ""}.</p>
                   ) : (
                     <>
                       <div className="ti-chips">
-                        {!r.noDispositivo && r.pagos.length > 0 && (
+                        {r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0 && (
                           <button type="button" className={`select-chip ${accionPadron === "instalar" ? "on" : ""}`}
                             onClick={() => setAccionPadron((a) => (a === "instalar" ? null : "instalar"))}>Instalar TAG</button>
                         )}
@@ -200,7 +265,9 @@ export default function VistaTi() {
                   )}
                 </TarjetaRegistro>
               ))}
-              {padron.length === 0 && <p className="ti-hint">Sin resultados para «{query}».</p>}
+              {padron.length === 0 && (
+                <p className="ti-hint">{q ? `Sin resultados para «${query}».` : "Aún no hay registros en el padrón."}</p>
+              )}
             </div>
           </div>
         </>
@@ -219,7 +286,7 @@ export default function VistaTi() {
                 <div className="ti-cards">
                   {porInstalar.map((r) => (
                     <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
-                      <DetalleRegistro r={r} />
+                      <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                       {formPara("instalar", r)}
                     </TarjetaRegistro>
                   ))}
@@ -235,7 +302,7 @@ export default function VistaTi() {
                   <div className="ti-cards" style={{ marginBottom: 18 }}>
                     {listaSolicitudes.map((r) => (
                       <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
-                        <DetalleRegistro r={r} />
+                        <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                         {formPara(modo, r)}
                       </TarjetaRegistro>
                     ))}
@@ -251,7 +318,7 @@ export default function VistaTi() {
                 <div className="ti-cards">
                   {resultadosAccion.map((r) => (
                     <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
-                      <DetalleRegistro r={r} />
+                      <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                       {formPara(modo, r)}
                     </TarjetaRegistro>
                   ))}
@@ -277,63 +344,29 @@ export default function VistaTi() {
   );
 }
 
-// ---- Tarjeta de registro (área táctil completa, info para ubicar el vehículo) ----
-function TarjetaRegistro({ r, abierto, onToggle, children }: {
-  r: Registro; abierto: boolean; onToggle: () => void; children?: ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  // Al abrir, lleva la tarjeta al inicio de la pantalla (respetando el header
-  // fijo via scroll-margin-top) para que el formulario quede a la vista.
-  useEffect(() => {
-    if (abierto) ref.current?.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
-  }, [abierto]);
-  const solicitudes = r.solicitudes.filter((s) => !s.atendida);
-  return (
-    <div ref={ref} className={`ti-card ${abierto ? "is-open" : ""}`}>
-      <button type="button" className="ti-card__head" onClick={onToggle} aria-expanded={abierto}>
-        <span className="ti-card__row">
-          <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? "SIN PLACAS" : "—")}</span>
-          <EstadoChip estado={r.estado} />
-        </span>
-        <span className="ti-card__veh">{r.marca} {r.modelo} · {r.color}</span>
-        <span className="ti-card__sub">{r.usuarioNombre} · <span style={{ textTransform: "capitalize" }}>{r.tipoUsuario}</span></span>
-        <span className="ti-card__meta">
-          {r.folio}
-          {r.estacionamientos.length > 0 ? ` · ${r.estacionamientos.join(" + ")}` : ""}
-          {r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}
-        </span>
-        {solicitudes.map((s, i) => (
-          <span key={i} className="ti-card__solicitud">
-            Solicita {s.tipo === "actualizacion" ? "actualización" : "baja"} ({s.fecha}): {s.detalle}
-          </span>
-        ))}
-      </button>
-      {abierto && <div className="ti-card__body">{children}</div>}
-    </div>
-  );
-}
-
-function DetalleRegistro({ r }: { r: Registro }) {
-  return (
-    <div className="detail-grid" style={{ marginBottom: 12 }}>
-      <div><div className="k">Gestionante (paga y firma)</div><div className="v">{r.gestionanteNombre ?? "El mismo conductor"}</div></div>
-      <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>
-      <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
-      <div><div className="k">Estacionamiento</div><div className="v">{r.estacionamientos.join(" + ") || "Sin asignar"}</div></div>
-      {r.fechaInstalacion && <div><div className="k">Instalado</div><div className="v">{r.fechaInstalacion}{r.instaladoPor ? ` · ${r.instaladoPor}` : ""}</div></div>}
-      {r.observaciones && <div style={{ gridColumn: "1 / -1" }}><div className="k">Observaciones</div><div className="v">{r.observaciones}</div></div>}
-    </div>
-  );
-}
-
 // ---- Formularios de acción ----
-function FormInstalar({ busy, tiNombre, onTiNombre, onSubmit }: {
-  busy: boolean; tiNombre: string; onTiNombre: (v: string) => void; onSubmit: (tag: string) => void;
+function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmit }: {
+  r: Registro; estacionamientos: string[]; busy: boolean; tiNombre: string;
+  onTiNombre: (v: string) => void; onSubmit: (tag: string, claves: string[]) => void;
 }) {
   const [tag, setTag] = useState("");
+  // TI define el estacionamiento al instalar (SC-002); al menos uno: un TAG
+  // sin acceso a ningún estacionamiento no sirve de nada.
+  const [claves, setClaves] = useState<string[]>(r.estacionamientos);
   const valido = TAG_RE.test(tag);
+  const toggle = (c: string) =>
+    setClaves((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
   return (
     <div className="ti-form">
+      <div className="field">
+        <span>Estacionamiento (acceso del TAG)</span>
+        <div className="chip-row">
+          {estacionamientos.map((c) => (
+            <button key={c} type="button" className={`select-chip ${claves.includes(c) ? "on" : ""}`} onClick={() => toggle(c)}>{c}</button>
+          ))}
+        </div>
+        {claves.length === 0 && <p className="field-error">Elige al menos un estacionamiento.</p>}
+      </div>
       <div className="field">
         <span>No. de TAG (6–11 dígitos)</span>
         <input className={`input ${tag !== "" && !valido ? "invalid" : ""}`} inputMode="numeric" autoComplete="off"
@@ -342,17 +375,17 @@ function FormInstalar({ busy, tiNombre, onTiNombre, onSubmit }: {
         {tag !== "" && !valido && <p className="field-error">Lleva {tag.length} dígito{tag.length === 1 ? "" : "s"}; deben ser de 6 a 11.</p>}
       </div>
       <div className="field"><span>Instalado por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Tu nombre" /></div>
-      <button type="button" className="primary-action" disabled={busy || !valido} onClick={() => onSubmit(tag)}>
+      <button type="button" className="primary-action" disabled={busy || !valido || claves.length === 0} onClick={() => onSubmit(tag, claves)}>
         {valido ? `Instalar y activar TAG ${tag}` : "Instalar y activar"}
       </button>
     </div>
   );
 }
 
-function FormActualizar({ r, marcas, colores, busy, tiNombre, onTiNombre, onSubmit }: {
-  r: Registro; marcas: string[]; colores: string[]; busy: boolean;
+function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, onTiNombre, onSubmit }: {
+  r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[]; busy: boolean;
   tiNombre: string; onTiNombre: (v: string) => void;
-  onSubmit: (cambios: CambiosRegistro, resumen: string, motivo: string) => void;
+  onSubmit: (cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) => void;
 }) {
   const [tag, setTag] = useState(r.noDispositivo ?? "");
   const [sinPlacas, setSinPlacas] = useState(r.sinPlacas);
@@ -360,6 +393,7 @@ function FormActualizar({ r, marcas, colores, busy, tiNombre, onTiNombre, onSubm
   const [marca, setMarca] = useState(r.marca);
   const [modelo, setModelo] = useState(r.modelo);
   const [color, setColor] = useState(r.color);
+  const [claves, setClaves] = useState<string[]>(r.estacionamientos);
   const [motivo, setMotivo] = useState("");
 
   const tieneTag = r.noDispositivo !== null;
@@ -367,6 +401,11 @@ function FormActualizar({ r, marcas, colores, busy, tiNombre, onTiNombre, onSubm
   const tagValido = !tieneTag || TAG_RE.test(tag);
   const placasFinal = sinPlacas ? null : (placas.trim().toUpperCase() || null);
   const placasValidas = sinPlacas || placasFinal !== null;
+  // Aquí sí se permite dejarlo vacío (corregir una asignación equivocada);
+  // al instalar es donde se exige al menos uno.
+  const estCambia = !mismaAsignacion(claves, r.estacionamientos);
+  const toggleEst = (c: string) =>
+    setClaves((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
 
   const cambios: CambiosRegistro = {};
   const resumen: string[] = [];
@@ -375,6 +414,7 @@ function FormActualizar({ r, marcas, colores, busy, tiNombre, onTiNombre, onSubm
   if (marca !== r.marca) { cambios.marca = marca; resumen.push(`marca ${r.marca} → ${marca}`); }
   if (modelo.trim() && modelo.trim() !== r.modelo) { cambios.modelo = modelo.trim(); resumen.push(`modelo ${r.modelo} → ${modelo.trim()}`); }
   if (color !== r.color) { cambios.color = color; resumen.push(`color ${r.color} → ${color}`); }
+  if (estCambia) resumen.push(`estacionamiento ${r.estacionamientos.join(" + ") || "sin asignar"} → ${claves.join(" + ") || "sin asignar"}`);
   const hayCambios = resumen.length > 0;
 
   return (
@@ -419,9 +459,17 @@ function FormActualizar({ r, marcas, colores, busy, tiNombre, onTiNombre, onSubm
         </div>
         <div className="field"><span>Motivo (opcional)</span><input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. placas nuevas, TAG dañado" /></div>
       </div>
+      <div className="field">
+        <span>Estacionamiento (acceso del TAG)</span>
+        <div className="chip-row">
+          {estacionamientos.map((c) => (
+            <button key={c} type="button" className={`select-chip ${claves.includes(c) ? "on" : ""}`} onClick={() => toggleEst(c)}>{c}</button>
+          ))}
+        </div>
+      </div>
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Tu nombre" /></div>
       <button type="button" className="primary-action" disabled={busy || !hayCambios || !tagValido || !placasValidas}
-        onClick={() => onSubmit(cambios, resumen.join("; "), motivo)}>
+        onClick={() => onSubmit(cambios, estCambia ? claves : null, resumen.join("; "), motivo)}>
         Guardar cambios
       </button>
       {!hayCambios && <p className="hint" style={{ marginTop: 8 }}>Modifica algún dato para poder guardar.</p>}

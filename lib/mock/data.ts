@@ -42,7 +42,7 @@ export const REGISTROS_DEMO: Registro[] = [
     instaladoPor: "TI", motivoBaja: null, fechaBaja: null,
     observaciones: null, pagos: [{ monto: 100, metodo: "efectivo", cobradoPor: "Recepción", fecha: "2025-08-19", folio: "R-5521" }],
     // Solicitud pendiente: alimenta el contador "Actualizar datos" de la pantalla TI.
-    solicitudes: [{ tipo: "actualizacion", detalle: "Cambio de placas: trae placas nuevas del mismo vehículo", fecha: "2026-07-12", atendida: false }],
+    solicitudes: [{ id: "sol-demo-1", tipo: "actualizacion", detalle: "Cambio de placas: trae placas nuevas del mismo vehículo", fecha: "2026-07-12", atendida: false }],
     movimientos: [{ tipo: "alta", fecha: "2025-08-19", motivo: "Alta por autoservicio", hechoPor: "autoservicio" }],
     createdAt: "2025-08-19",
   },
@@ -92,7 +92,7 @@ export const REGISTROS_DEMO: Registro[] = [
     estacionamientos: ["E1"], fechaAdquisicion: "2025-08-21", fechaInstalacion: "2025-08-22",
     instaladoPor: "TI", motivoBaja: null, fechaBaja: null,
     observaciones: null, pagos: [{ monto: 100, metodo: "efectivo", cobradoPor: "Recepción", fecha: "2025-08-21", folio: "R-5530" }],
-    solicitudes: [{ tipo: "baja", detalle: "Egreso: terminó la preparatoria", fecha: "2026-07-11", atendida: false }],
+    solicitudes: [{ id: "sol-demo-2", tipo: "baja", detalle: "Egreso: terminó la preparatoria", fecha: "2026-07-11", atendida: false }],
     movimientos: [{ tipo: "alta", fecha: "2025-08-21", motivo: "Alta por autoservicio", hechoPor: "autoservicio" }],
     createdAt: "2025-08-21",
   },

@@ -221,6 +221,7 @@ a { color: var(--primary-strong); }
 .status-chip--pendiente { background: #fdf0e1; color: #9a5a1a; }
 .status-chip--activo { background: #eaf6ee; color: #1f6b3a; }
 .status-chip--baja { background: #eef1f4; color: var(--muted); }
+.status-chip--bloqueado { background: #fde8e7; color: #a22620; }
 
 /* Expediente (detalle) */
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
@@ -251,6 +252,9 @@ a { color: var(--primary-strong); }
    ===================================================================== */
 .ti-actions { display: grid; gap: 12px; margin-bottom: 18px; }
 @media (min-width: 720px) { .ti-actions { grid-template-columns: repeat(3, 1fr); } }
+/* Administracion solo tiene una cola operativa: cobrar. La tarjeta conserva el
+   mismo peso visual que las tres acciones de TI sin quedar reducida a un tercio. */
+@media (min-width: 720px) { .ti-actions.admin-actions { grid-template-columns: minmax(0, 1fr); } }
 .ti-action {
   align-items: center; background: #f2f5fb; border: 1px solid #d3dae7; border-radius: 10px;
   cursor: pointer; display: flex; gap: 12px; justify-content: space-between;
@@ -296,6 +300,7 @@ a { color: var(--primary-strong); }
 .ti-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
 .ti-chips .select-chip { min-height: 44px; }
 .ti-check-placas { align-self: center; margin-bottom: 16px; }
+.ti-banners { scroll-margin-top: calc(var(--header-h) + 10px); }
 .ti-banners .catalog-feedback, .ti-banners .submit-error { margin: 0 0 14px; }
 .ti-empty {
   background: #eaf6ee; border: 1px solid #b7e0c4; border-radius: var(--radius);
@@ -305,6 +310,23 @@ a { color: var(--primary-strong); }
 .ti-section-title {
   color: var(--muted); font-size: 0.8rem; font-weight: 800;
   letter-spacing: 0.05em; margin: 16px 0 8px; text-transform: uppercase;
+}
+
+/* Detalle de cobro dentro de las tarjetas compartidas con TI. */
+.admin-payment-history { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 2px; }
+.admin-auto-receipt { margin: 0 0 16px; padding: 10px 12px; }
+.admin-payment-row {
+  align-items: flex-start; background: var(--field-bg); border-radius: var(--radius);
+  display: flex; gap: 4px 12px; justify-content: space-between; margin-bottom: 8px;
+  padding: 9px 10px;
+}
+.admin-payment-row strong { color: var(--ink); white-space: nowrap; }
+.admin-payment-row span { color: var(--muted); font-size: 0.82rem; font-weight: 600; text-align: right; }
+.admin-paid-hint { background: #eaf6ee; border-radius: var(--radius); color: #1f6b3a; padding: 10px 12px; }
+
+@media (max-width: 480px) {
+  .admin-payment-row { display: grid; }
+  .admin-payment-row span { text-align: left; }
 }
 
 /* ---------- Loader estilo Tetris (bloques que caen, colores IAQ) ---------- */

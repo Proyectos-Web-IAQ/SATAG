@@ -24,8 +24,8 @@ de cada TAG a lo largo de su ciclo de vida, más un **panel administrativo**.
 
 **Proceso en 3 momentos:**
 1. **Usuario (autoservicio):** captura sus datos y **firma** el reglamento → registro *pendiente*.
-2. **Administración:** asigna el **estacionamiento** y cobra el **TAG ($100, efectivo)**.
-3. **Departamento de TI:** al instalar, captura el **No. de Dispositivo** → registro *instalado*.
+2. **Administración:** cobra el **TAG ($100, efectivo)**.
+3. **Departamento de TI:** con la persona presente, asigna el **estacionamiento** y captura el **No. de Dispositivo** al instalar → registro *activo*.
 
 **Fuera de alcance:** integración con hardware de acceso (lector/pluma), pago en línea, app nativa.
 
@@ -167,7 +167,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
   - [ ] 🆕 Reporte de incompletos (registros con datos faltantes) (B2)
 - [ ] Instalación (TI) — *Est. 1 d* · 🟡 prototipo listo
   - [ ] 🆕 Bandeja de solicitudes (atender cambio/baja → movimiento) — *Est. ~0.5 d* (B6)
-- [ ] Administración (estacionamiento + pago) — *Est. 1 d* · 🟡 prototipo listo
+- [ ] Administración (registro de pago) — *Est. 1 d* · 🟡 conexión real lista, pendiente prueba integral
   - [ ] 🆕 Cobrar también TAG propio + apartar TAG (B1)
   - [ ] 🆕 Validar tipo de usuario al cobrar (B5)
 - [ ] Caja / POS (MVP) — diferido hasta que Administración solicite folio/recibo/corte específico (B3)

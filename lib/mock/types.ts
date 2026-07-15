@@ -5,8 +5,10 @@ export type TipoUsuario = "maestro" | "padres" | "alumno" | "admin";
 export type GestionanteRelacion = "padre" | "madre" | "tutor" | "otro";
 export type FirmanteRol = "usuario" | "padre" | "madre" | "tutor" | "otro";
 export type ProcedenciaTag = "escuela" | "propio";
-export type EstadoRegistro = "pendiente" | "activo" | "baja";
-export type TipoMovimiento = "alta" | "baja" | "reposicion" | "cambio" | "prueba";
+// 'bloqueado' existe en la BD (12_registros.sql) aunque el panel aun no lo
+// produce: el tipo lo incluye para que un registro bloqueado no truene la UI.
+export type EstadoRegistro = "pendiente" | "activo" | "baja" | "bloqueado";
+export type TipoMovimiento = "alta" | "baja" | "reposicion" | "cambio" | "prueba" | "bloqueo" | "rectificacion";
 
 export interface Estacionamiento {
   clave: string; // 'E1' | 'E2'
@@ -30,10 +32,12 @@ export interface Pago {
 
 export type TipoSolicitud = "actualizacion" | "baja";
 
-// Solicitud levantada sobre un registro existente (p. ej. en recepción o, a futuro,
-// desde el autoservicio): alimenta los contadores de pendientes de la pantalla TI.
-// PENDIENTE: definir quién la captura y su tabla al conectar Supabase.
+// Solicitud levantada sobre un registro existente (página pública /solicitudes
+// o, a futuro, captura interna): alimenta los contadores de la pantalla TI.
+// Tabla: solicitudes (26_solicitudes.sql). El id permite descartarla (RPC
+// descartar_solicitud) cuando resulta improcedente.
 export interface Solicitud {
+  id: string;
   tipo: TipoSolicitud;
   detalle: string;
   fecha: string;

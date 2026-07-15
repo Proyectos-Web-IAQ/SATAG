@@ -177,3 +177,28 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
   const r = data as { id: string; folio: string; estado: string };
   return { id: r.id, folio: r.folio, estado: r.estado as CrearRegistroResultado["estado"] };
 }
+
+// ---- Solicitud publica de actualizacion/baja sobre un registro existente ----
+// RPC crear_solicitud (SECURITY DEFINER): valida folio + placas (o No. de TAG)
+// y encola trabajo para TI. Nunca devuelve datos del registro; la solicitud es
+// inerte y el cambio real lo ejecuta TI con la persona presente (CC-06).
+export async function crearSolicitud(input: {
+  folio: string;
+  placasOTag: string;
+  tipo: "actualizacion" | "baja";
+  detalle: string;
+}): Promise<void> {
+  const { error } = await supabase.rpc("crear_solicitud", {
+    p_folio: input.folio.trim(),
+    p_placas_o_tag: input.placasOTag.trim(),
+    p_tipo: input.tipo,
+    p_detalle: input.detalle.trim(),
+  });
+  if (error) {
+    const m = error.message.toLowerCase();
+    if (m.includes("failed to fetch") || m.includes("networkerror") || m.includes("load failed")) {
+      throw new Error("Sin conexion con el servidor. Revisa tu red e intenta de nuevo.");
+    }
+    throw new Error(error.message);
+  }
+}

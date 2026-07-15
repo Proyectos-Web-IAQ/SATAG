@@ -6,7 +6,7 @@ import {
   getMarcas, getModelos, getColores, getReglamentoVigente, getAvisoVigente, crearRegistro,
 } from "@/lib/supabase/api";
 import type { AvisoVigente } from "@/lib/supabase/api";
-import type { TipoUsuario, GestionanteRelacion, CrearRegistroResultado, NombrePersona, ReglamentoVersion } from "@/lib/mock/types";
+import type { TipoUsuario, GestionanteRelacion, CrearRegistroResultado, NombrePersona, ProcedenciaTag, ReglamentoVersion } from "@/lib/mock/types";
 
 const STEPS = ["Datos", "Vehículo", "Aviso", "Reglamento", "Firma", "Listo"];
 
@@ -53,6 +53,9 @@ export default function RegistroWizard() {
   const [colorOtro, setColorOtro] = useState("");
   const [placas, setPlacas] = useState("");
   const [sinPlacas, setSinPlacas] = useState(false);
+  // CC-01: el TAG puede ser de la escuela o propio (traido por el titular).
+  // En ambos casos el tramite se cobra igual; la procedencia queda registrada.
+  const [procedenciaTag, setProcedenciaTag] = useState<ProcedenciaTag>("escuela");
   const [aceptaPrivacidad, setAceptaPrivacidad] = useState(false);
   const [avisoLeido, setAvisoLeido] = useState(false);
   const [acepta, setAcepta] = useState(false);
@@ -175,7 +178,7 @@ export default function RegistroWizard() {
         tipoUsuario,
         marca: marcaFinal, modelo: modeloFinal, color: colorFinal,
         placas: sinPlacas ? null : placas, sinPlacas,
-        procedenciaTag: "escuela", observaciones: null,
+        procedenciaTag, observaciones: null,
         firmaDataUrl: firma,
         firmaTrazos: trazos,
         firmanteNombre: hayGestionante ? gestionanteNombreCompleto : conductorNombreCompleto,
@@ -370,6 +373,18 @@ export default function RegistroWizard() {
               <input type="checkbox" checked={sinPlacas} onChange={(e) => setSinPlacas(e.target.checked)} />
               <span>El vehículo aún no tiene placas (nuevo o con permiso).</span>
             </label>
+            <div className="field">
+              <span>TAG</span>
+              <div className="chip-row">
+                <button type="button" className={`select-chip ${procedenciaTag === "escuela" ? "on" : ""}`}
+                  onClick={() => setProcedenciaTag("escuela")}>Lo compro a la escuela</button>
+                <button type="button" className={`select-chip ${procedenciaTag === "propio" ? "on" : ""}`}
+                  onClick={() => setProcedenciaTag("propio")}>Ya tengo TAG propio</button>
+              </div>
+              {procedenciaTag === "propio" && (
+                <p className="hint">El registro y la activación de un TAG propio tienen el mismo costo ($100); llévalo el día de la instalación.</p>
+              )}
+            </div>
           </>
         )}
 

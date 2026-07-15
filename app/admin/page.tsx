@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminPanel from "@/components/admin/AdminPanel";
-import SeleccionRol from "@/components/admin/SeleccionRol";
 import GateMfa from "@/components/admin/GateMfa";
 import Loader from "@/components/Loader";
 import {
@@ -11,8 +10,6 @@ import {
   cerrarSesion,
   enviarCorreoRecuperacion,
   rolDeUsuario,
-  rolBloqueadoPorAdmin,
-  elegirRol,
   nivelMfa,
   type RolPanel,
 } from "@/lib/supabase/auth";
@@ -23,9 +20,7 @@ export default function AdminPage() {
   const [verificando, setVerificando] = useState(true); // restaurando sesion previa
   const [email, setEmail] = useState<string | null>(null); // sesion activa
   const [mfaOk, setMfaOk] = useState(false); // sesion en aal2 (segundo factor superado)
-  const [rol, setRol] = useState<RolPanel | null>(null); // rol efectivo del panel
-  const [rolBloqueado, setRolBloqueado] = useState(false); // rol fijado por un admin
-  const [cambiandoRol, setCambiandoRol] = useState(false); // mostrar el selector aunque ya tenga rol
+  const [rol, setRol] = useState<RolPanel | null>(null); // rol asignado (app_metadata)
 
   const [modo, setModo] = useState<Modo>("login");
   const [correo, setCorreo] = useState("");
@@ -54,14 +49,12 @@ export default function AdminPage() {
       if (!activo) return;
       setEmail(data.session?.user.email ?? null);
       setRol(rolDeUsuario(data.session?.user));
-      setRolBloqueado(rolBloqueadoPorAdmin(data.session?.user));
       await refrescarMfa(!!data.session?.user);
       if (activo) setVerificando(false);
     });
     const { data: sub } = supabaseAuth.auth.onAuthStateChange((_evento, session) => {
       setEmail(session?.user.email ?? null);
       setRol(rolDeUsuario(session?.user));
-      setRolBloqueado(rolBloqueadoPorAdmin(session?.user));
       void refrescarMfa(!!session?.user);
     });
     return () => {
@@ -83,7 +76,6 @@ export default function AdminPage() {
       const user = await iniciarSesion(correo, password);
       setEmail(user?.email ?? correo.trim());
       setRol(rolDeUsuario(user));
-      setRolBloqueado(rolBloqueadoPorAdmin(user));
       setPassword("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo iniciar sesion.");
@@ -114,19 +106,10 @@ export default function AdminPage() {
       setEmail(null);
       setMfaOk(false);
       setRol(null);
-      setRolBloqueado(false);
-      setCambiandoRol(false);
       cambiarModo("login");
       setCorreo("");
       setPassword("");
     }
-  }
-
-  // El usuario elige (o cambia) su rol; se guarda en user_metadata.
-  async function onElegirRol(nuevo: RolPanel) {
-    await elegirRol(nuevo);
-    setRol(nuevo);
-    setCambiandoRol(false);
   }
 
   if (verificando) {
@@ -151,15 +134,24 @@ export default function AdminPage() {
     );
   }
 
-  // Con sesion pero sin rol (o pidiendo cambiarlo): pantalla de seleccion.
-  if (email && (!rol || cambiandoRol)) {
+  // Con sesion y MFA pero sin rol asignado: el rol lo fija un administrador en
+  // app_metadata (PASO 0 del runbook); no hay autoseleccion. La RLS tampoco le
+  // dejaria leer nada, asi que aqui se le dice claramente que le falta.
+  if (email && !rol) {
     return (
-      <SeleccionRol
-        adminEmail={email}
-        onElegir={onElegirRol}
-        onSignOut={onSignOut}
-        onCancelar={cambiandoRol ? () => setCambiandoRol(false) : undefined}
-      />
+      <main className="page-shell">
+        <section className="survey-panel login-panel">
+          <header className="survey-header">
+            <h1>Sin rol asignado</h1>
+            <p>
+              Tu cuenta ({email}) aún no tiene un rol del panel. Pídele al
+              administrador del sistema que te lo asigne y vuelve a iniciar
+              sesión para que se aplique.
+            </p>
+          </header>
+          <button className="primary-action" onClick={onSignOut}>Cerrar sesión</button>
+        </section>
+      </main>
     );
   }
 
@@ -168,7 +160,6 @@ export default function AdminPage() {
       <AdminPanel
         adminEmail={email}
         rol={rol}
-        onCambiarRol={rolBloqueado ? undefined : () => setCambiandoRol(true)}
         onSignOut={onSignOut}
       />
     );

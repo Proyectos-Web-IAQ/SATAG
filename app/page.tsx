@@ -19,17 +19,19 @@ export default function Inicio() {
           <ol style={{ margin: "0 0 16px", paddingLeft: 20, color: "var(--ink)" }}>
             <li>Capturas tus datos y los de tu vehículo.</li>
             <li>Lees y <strong>firmas</strong> el reglamento de acceso.</li>
-            <li>Recibes un comprobante; administración asigna estacionamiento y cobra el TAG.</li>
+            <li>Recibes un comprobante; pagas el TAG en administración y Sistemas lo instala.</li>
           </ol>
           <Link href="/registro/" className="primary-action" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
             Iniciar registro
           </Link>
         </div>
 
-        <div className="notice">
-          <strong>Aviso de privacidad.</strong> Los datos que proporciones (nombre, vehículo y placas)
-          se usan únicamente para gestionar el acceso vehicular al plantel, conforme a la LFPDPPP. No se
-          comparten con terceros. <em>(Texto legal completo pendiente.)</em>
+        <div className="panel">
+          <p className="panel-title">¿Ya tienes TAG?</p>
+          <p style={{ margin: "0 0 12px", color: "var(--ink)" }}>
+            Solicita una actualización de datos (placas, vehículo, reposición) o la baja de tu registro.
+          </p>
+          <Link href="/solicitudes/" className="link-action">Solicitar actualización o baja →</Link>
         </div>
 
         <p style={{ marginTop: 16, textAlign: "right" }}>
