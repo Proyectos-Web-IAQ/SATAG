@@ -4,7 +4,8 @@
 -- aceptaciones) con roles finos del panel, y elimina la escritura directa:
 -- a partir de aqui TODO write pasa por RPCs SECURITY DEFINER.
 --
--- Fuente de verdad del rol: app_metadata.rol ('admin' | 'ti' | 'consulta').
+-- Fuente de verdad del rol: app_metadata.rol
+-- ('admin' | 'ti' | 'consulta' | 'super').
 -- app_metadata solo lo fija un admin (service_role); user_metadata.rol es
 -- solo preferencia de UI y NUNCA se usa en RLS (el usuario puede editarlo).
 -- Cierra el pendiente documentado en 13_rls_registros.sql y 17_rls_alta.sql.
@@ -15,7 +16,7 @@
 -- 1) Asignar el rol a CADA usuario del personal (SQL editor, como owner):
 --      update auth.users
 --         set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
---             || jsonb_build_object('rol', 'ti')   -- 'admin' | 'ti' | 'consulta'
+--             || jsonb_build_object('rol', 'ti')   -- admin | ti | consulta | super
 --       where email = 'persona@asuncionqro.edu.mx';
 --
 -- 2) Cada usuario debe cerrar sesion y volver a entrar (el rol viaja en el
@@ -23,8 +24,8 @@
 --
 -- 3) Aplicar este script.
 --
--- Nota: el panel ya respeta app_metadata.rol como candado sobre la eleccion
--- de user_metadata (ver commit CC-MFA), asi que la UI queda alineada sola.
+-- Nota: el panel lee UNICAMENTE app_metadata.rol. Ya no existe eleccion de rol
+-- por el usuario ni se consulta user_metadata.rol.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

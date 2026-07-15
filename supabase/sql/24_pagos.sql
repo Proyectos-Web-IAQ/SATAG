@@ -39,6 +39,5 @@ create unique index if not exists uq_pagos_folio_recibo
 -- - anon: sin acceso. authenticated: SOLO lectura (roles admin/ti/consulta, aal2).
 -- - La escritura ocurre unicamente via RPC registrar_pago (SECURITY DEFINER, rol admin).
 -- - No se edita ni borra un pago desde la app; es historial (correcciones: decision abierta).
--- - Decision abierta: un pago SIN folio de recibo sigue pudiendo duplicarse por
---   doble clic. Si en CC-03 (caja) el folio pasa a ser obligatorio, el hueco se
---   cierra solo; mientras tanto la UI debe deshabilitar el boton al enviar.
+-- - Decision cerrada en 32_folios_recibo_automaticos.sql: el folio pasa a ser
+--   automatico/obligatorio y cada expediente admite un solo pago.

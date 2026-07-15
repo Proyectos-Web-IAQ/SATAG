@@ -16,7 +16,7 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 >    ```sql
 >    update auth.users
 >       set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
->           || jsonb_build_object('rol', 'ti')   -- 'admin' | 'ti' | 'consulta'
+>           || jsonb_build_object('rol', 'ti')   -- admin | ti | consulta | super
 >     where email = 'persona@asuncionqro.edu.mx';
 >    ```
 > 2. Cada usuario cierra sesion y vuelve a entrar. El rol viaja en el JWT: un
@@ -59,6 +59,8 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 29. `28_rpc_crear_solicitud.sql`
 30. `29_rpc_panel.sql`
 31. `30_roles_finos.sql` (requiere el PASO 0 hecho; sin el, el personal pierde el panel)
+32. `31_rpc_flujos_atomicos.sql` (reemplaza las acciones compuestas del cliente por RPCs atómicos)
+33. `32_folios_recibo_automaticos.sql` (genera el recibo en PostgreSQL e impide doble pago por expediente)
 
 ## Ciclo de auditoria por tabla
 
@@ -108,3 +110,5 @@ Para cada archivo:
 | `28_rpc_crear_solicitud.sql` | Listo para revisar | RPC publico: folio + placas (o No. de TAG); respuesta honesta sin datos. Modelo de amenaza documentado: el folio es secuencial, no es secreto fuerte. |
 | `29_rpc_panel.sql` | Listo para revisar | 6 acciones del panel como RPCs SECURITY DEFINER con guardia aal2 + rol. admin: registrar_pago. ti: el resto. |
 | `30_roles_finos.sql` | Listo para revisar | Endurece registros/movimientos/aceptaciones a roles finos; exige el PASO 0. |
+| `31_rpc_flujos_atomicos.sql` | Listo para aplicar | Instalación y actualización con estacionamiento en una sola transacción; cierra solicitudes atendidas solo con cambio de estacionamiento y revoca los RPC internos al cliente. |
+| `32_folios_recibo_automaticos.sql` | Listo para aplicar | Folio `SATAG-AAAA-000001` generado por secuencia; un solo pago por expediente y nueva firma de `registrar_pago`. |
