@@ -6,7 +6,27 @@ Esta carpeta descompone `../schema.sql` en piezas pequenas para poder auditar, e
 
 ## Orden de ejecucion
 
-Ejecutar en Supabase SQL Editor siguiendo el orden numerico:
+Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
+
+> **PASO 0 — OBLIGATORIO ANTES DEL BLOQUE 24-30.**
+> A partir de `27_rls_grants_panel.sql` la RLS exige `app_metadata.rol`. Si se
+> aplica ese bloque sin haber preparado al personal, el panel deja de leer.
+>
+> 1. Asignar el rol a CADA usuario del personal (SQL editor, como owner):
+>    ```sql
+>    update auth.users
+>       set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
+>           || jsonb_build_object('rol', 'ti')   -- 'admin' | 'ti' | 'consulta'
+>     where email = 'persona@asuncionqro.edu.mx';
+>    ```
+> 2. Cada usuario cierra sesion y vuelve a entrar. El rol viaja en el JWT: un
+>    token emitido antes del paso 1 no lo trae, y su sesion queda sin acceso.
+> 3. Recien entonces aplicar `24` a `30` en orden.
+>
+> Verificacion rapida (debe devolver una fila por persona, con su rol):
+> ```sql
+> select email, raw_app_meta_data ->> 'rol' as rol from auth.users order by email;
+> ```
 
 1. `00_extensions.sql`
 2. `01_estacionamientos.sql`
@@ -32,6 +52,13 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico:
 22. `21_seed_cat_modelos.sql`
 23. `22_publicar_aviso_v2.sql`
 24. `23_publicar_reglamento_v2.sql`
+25. `24_pagos.sql`
+26. `25_registro_estacionamientos.sql`
+27. `26_solicitudes.sql`
+28. `27_rls_grants_panel.sql`
+29. `28_rpc_crear_solicitud.sql`
+30. `29_rpc_panel.sql`
+31. `30_roles_finos.sql` (requiere el PASO 0 hecho; sin el, el personal pierde el panel)
 
 ## Ciclo de auditoria por tabla
 
@@ -74,3 +101,10 @@ Para cada archivo:
 | `21_seed_cat_modelos.sql` | Seed | Modelos comunes por marca; las 24 marcas con modelos. Idempotente. |
 | `22_publicar_aviso_v2.sql` | Contenido | Publica el aviso integral (v2 vigente); v1 placeholder queda historico. |
 | `23_publicar_reglamento_v2.sql` | Contenido | Publica el reglamento oficial IAQ (22 clausulas, v2 vigente). |
+| `24_pagos.sql` | Listo para revisar | Historial de pagos por registro; escritura solo via RPC registrar_pago (rol admin). |
+| `25_registro_estacionamientos.sql` | Listo para revisar | Asignacion E1/E2 por registro; FK a estacionamientos.clave; la asigna TI (SC-002). |
+| `26_solicitudes.sql` | Listo para revisar | Solicitudes publicas de actualizacion/baja (inertes); max 1 pendiente por tipo; resolucion ejecutada/descartada. |
+| `27_rls_grants_panel.sql` | Listo para revisar | RLS/grants de las 3 tablas nuevas: solo SELECT con aal2 + rol del panel. Exige el PASO 0. |
+| `28_rpc_crear_solicitud.sql` | Listo para revisar | RPC publico: folio + placas (o No. de TAG); respuesta honesta sin datos. Modelo de amenaza documentado: el folio es secuencial, no es secreto fuerte. |
+| `29_rpc_panel.sql` | Listo para revisar | 6 acciones del panel como RPCs SECURITY DEFINER con guardia aal2 + rol. admin: registrar_pago. ti: el resto. |
+| `30_roles_finos.sql` | Listo para revisar | Endurece registros/movimientos/aceptaciones a roles finos; exige el PASO 0. |
