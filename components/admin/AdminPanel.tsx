@@ -12,16 +12,29 @@ type Vista = "admin" | "ti" | "consulta";
 // Que pestañas puede usar cada rol. La primera es su vista por defecto al entrar.
 // Admin puede ademas ir a Consulta (solo lectura). TI no la necesita: su pantalla
 // ya incluye el padron completo con acciones.
+// 'super' es rol de soporte/pruebas: ve las tres para recorrer el flujo completo
+// sin cambiar de sesion. No se auto-elige, lo fija un admin por SQL.
 const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
   admin: ["admin", "consulta"],
   ti: ["ti"],
   consulta: ["consulta"],
+  super: ["admin", "ti", "consulta"],
 };
 
 const ETIQUETA_VISTA: Record<Vista, string> = {
   admin: "Administración",
   ti: "TI",
   consulta: "Consulta",
+};
+
+// Etiqueta del ROL de la persona, que no es lo mismo que la VISTA en la que
+// esta parada: 'super' es un rol pero no es una vista. Coincidian mientras
+// ambos tipos tenian los mismos valores.
+const ETIQUETA_ROL: Record<RolPanel, string> = {
+  admin: "Administración",
+  ti: "TI",
+  consulta: "Consulta",
+  super: "Super",
 };
 
 export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }: { adminEmail: string; rol: RolPanel; onCambiarRol?: () => void; onSignOut: () => void }) {
@@ -130,7 +143,7 @@ export default function AdminPanel({ adminEmail, rol, onCambiarRol, onSignOut }:
               </div>
             )}
             <span className="admin-whoami">
-              {adminEmail} · {ETIQUETA_VISTA[rol]}
+              {adminEmail} · {ETIQUETA_ROL[rol]}
               {onCambiarRol && <> (<button className="link-action" onClick={onCambiarRol}>cambiar</button>)</>}
               {" · "}
               <button className="link-action" onClick={onSignOut}>Salir</button>

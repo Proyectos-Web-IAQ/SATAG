@@ -104,12 +104,24 @@ export async function actualizarContrasena(password: string): Promise<void> {
 // Candado opcional del admin: si un administrador fija `app_metadata.rol` por SQL
 // (inescribible por el usuario), ese valor GANA sobre la eleccion del usuario, lo
 // que permite bloquear el rol de alguien. Ver supabase/README.md.
-export type RolPanel = "admin" | "ti" | "consulta";
-export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta"];
+export type RolPanel = "admin" | "ti" | "consulta" | "super";
 
-function leerRol(meta: Record<string, unknown> | undefined | null): RolPanel | null {
+// Roles que un admin puede fijar en app_metadata. Es la fuente de verdad de la
+// RLS (bloques 27 y 30) y de la guardia de los RPCs (panel_exigir_rol).
+export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta", "super"];
+
+// Roles que un usuario puede AUTO-ELEGIR. 'super' no esta aqui a proposito:
+// solo lo fija un admin por SQL. Si fuera elegible, cualquiera se lo pondria
+// con updateUser() desde la consola del navegador y se daria todas las
+// pestanas (la BD igual se las negaria, pero la UI mentiria).
+export const ROLES_ELEGIBLES: RolPanel[] = ["admin", "ti", "consulta"];
+
+function leerRol(
+  meta: Record<string, unknown> | undefined | null,
+  permitidos: RolPanel[],
+): RolPanel | null {
   const rol = meta?.rol;
-  return typeof rol === "string" && (ROLES_PANEL as string[]).includes(rol)
+  return typeof rol === "string" && (permitidos as string[]).includes(rol)
     ? (rol as RolPanel)
     : null;
 }
@@ -117,12 +129,13 @@ function leerRol(meta: Record<string, unknown> | undefined | null): RolPanel | n
 // Rol efectivo: primero el candado del admin (app_metadata), si no el que eligio
 // el usuario (user_metadata). null = aun no tiene rol -> la UI le pide elegirlo.
 export function rolDeUsuario(user: User | null | undefined): RolPanel | null {
-  return leerRol(user?.app_metadata) ?? leerRol(user?.user_metadata);
+  return leerRol(user?.app_metadata, ROLES_PANEL)
+    ?? leerRol(user?.user_metadata, ROLES_ELEGIBLES);
 }
 
 // true si un admin fijo el rol en app_metadata: el usuario no puede cambiarlo.
 export function rolBloqueadoPorAdmin(user: User | null | undefined): boolean {
-  return leerRol(user?.app_metadata) !== null;
+  return leerRol(user?.app_metadata, ROLES_PANEL) !== null;
 }
 
 // Guarda el rol elegido por el usuario en user_metadata (persiste entre sesiones y
