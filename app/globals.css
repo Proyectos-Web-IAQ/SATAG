@@ -214,11 +214,6 @@ a { color: var(--primary-strong); }
 .admin-table tr.selectable { cursor: pointer; }
 .admin-table tr.selectable:hover td { background: #f7f9fc; }
 .admin-table tr.is-selected td { background: #eef2f8; }
-/* Señal operativa: fila de un vehículo sin placas (permiso/nuevo). Amarillo
-   del sistema para detectarlo de un vistazo; el estado seleccionado conserva
-   el tinte para no perder la señal. */
-.admin-table tr.sin-placas td { background: #fdf3d6; }
-.admin-table tr.sin-placas.is-selected td { background: #f7e6b8; }
 .table-wrap { overflow-x: auto; }
 
 /* Chips de estado */
@@ -322,6 +317,12 @@ a { color: var(--primary-strong); }
   color: var(--muted); font-size: 0.8rem; font-weight: 800;
   letter-spacing: 0.05em; margin: 16px 0 8px; text-transform: uppercase;
 }
+
+/* Bitácora dentro de la tarjeta de Consulta (solo lectura): mismo lenguaje
+   visual que el historial de pagos, en tabla compacta que hace scroll en
+   celular sin desbordar la tarjeta. */
+.consulta-bitacora { border-top: 1px dashed var(--line); margin-top: 4px; }
+.consulta-bitacora .admin-table th, .consulta-bitacora .admin-table td { font-size: 0.82rem; padding: 8px 10px; }
 
 /* Detalle de cobro dentro de las tarjetas compartidas con TI. */
 .admin-payment-history { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 2px; }

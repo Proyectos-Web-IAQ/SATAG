@@ -5,9 +5,9 @@ import type { Registro } from "@/lib/mock/types";
 import { listRegistros, nombreDesdeEmail } from "@/lib/supabase/apiPanel";
 import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
-import EstadoChip from "@/components/admin/EstadoChip";
 import VistaAdmin from "@/components/admin/VistaAdmin";
 import VistaTi from "@/components/admin/VistaTi";
+import { DetalleRegistro, TarjetaRegistro } from "@/components/admin/RegistroCard";
 
 type Vista = "admin" | "ti" | "consulta";
 
@@ -84,12 +84,13 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
   );
 }
 
-// Consulta mantiene la tabla densa de escritorio: aquí no hay acciones de
-// campo, y comparar muchos expedientes a la vez sí aporta valor.
+// Consulta comparte el patrón de tarjetas expandibles de Administración y TI,
+// en modo solo lectura: sin acciones ni formularios. Al abrir una tarjeta se ve
+// el expediente y, cuando existe, la bitácora completa del registro.
 function VistaConsulta() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [query, setQuery] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selId, setSelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -108,24 +109,21 @@ function VistaConsulta() {
 
   useEffect(() => { refresh(); }, []);
 
+  const q = query.trim().toLowerCase();
   const filtrados = useMemo(() => {
-    const q = query.trim().toLowerCase();
     if (!q) return registros;
     return registros.filter((r) =>
       [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
         .join(" ").toLowerCase().includes(q));
-  }, [query, registros]);
-
-  const selected = useMemo(
-    () => registros.find((r) => r.id === selectedId) ?? null,
-    [registros, selectedId],
-  );
+  }, [q, registros]);
 
   const metrics = useMemo(() => ({
     total: registros.length,
     pendientes: registros.filter((r) => r.estado === "pendiente").length,
     activos: registros.filter((r) => r.estado === "activo").length,
   }), [registros]);
+
+  const toggleSel = (id: string) => setSelId((cur) => (cur === id ? null : id));
 
   if (loading && registros.length === 0) return <Loader label="Cargando registros…" />;
 
@@ -149,85 +147,56 @@ function VistaConsulta() {
         <div className="metric-card"><span className="metric-label">Activos</span><span className="metric-value">{metrics.activos}</span></div>
       </div>
 
-      <div className="toolbar">
-        <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
-          value={query} onChange={(e) => setQuery(e.target.value)} />
-      </div>
-
       <div className="panel">
-        <p className="panel-title">{query.trim() ? "Resultados de búsqueda" : "Todos los registros"} ({filtrados.length})</p>
+        <p className="panel-title">Padrón completo ({filtrados.length})</p>
+        <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
+          value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
+        <p className="ti-hint">Vista de solo consulta: las acciones se ejecutan desde Administración o TI, según corresponda.</p>
         {loadError && (
           <p className="submit-error" role="alert">
             {loadError}{" "}
             <button type="button" className="link-action" onClick={() => refresh()}>Reintentar</button>
           </p>
         )}
-        <div className="table-wrap">
-          <table className="admin-table">
-            <thead>
-              <tr><th>Folio</th><th>Conductor</th><th>Placas</th><th>Tipo</th><th>Estac.</th><th>No. TAG</th><th>Estado</th></tr>
-            </thead>
-            <tbody>
-              {filtrados.map((r) => (
-                <tr key={r.id} className={`selectable ${r.id === selectedId ? "is-selected" : ""} ${r.sinPlacas ? "sin-placas" : ""}`}
-                  onClick={() => setSelectedId((actual) => actual === r.id ? null : r.id)}>
-                  <td>{r.folio}</td>
-                  <td>{r.usuarioNombre}</td>
-                  <td>{r.placas ?? (r.sinPlacas ? "— sin placas" : "—")}</td>
-                  <td style={{ textTransform: "capitalize" }}>{r.tipoUsuario}</td>
-                  <td>{r.estacionamientos.join(" + ") || "—"}</td>
-                  <td>{r.noDispositivo ?? "—"}</td>
-                  <td><EstadoChip estado={r.estado} /></td>
-                </tr>
-              ))}
-              {filtrados.length === 0 && (
-                <tr><td colSpan={7} style={{ color: "var(--muted)" }}>Sin registros en esta vista.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {selected && (
-        <div className="panel">
-          <p className="panel-title">Expediente · {selected.folio}</p>
-          <div className="detail-grid" style={{ marginBottom: 16 }}>
-            <div><div className="k">Conductor (usa el vehículo)</div><div className="v">{selected.usuarioNombre}</div></div>
-            <div><div className="k">Gestionante (paga y firma)</div><div className="v">{selected.gestionanteNombre ?? "El mismo conductor"}</div></div>
-            <div><div className="k">Tipo</div><div className="v" style={{ textTransform: "capitalize" }}>{selected.tipoUsuario}</div></div>
-            <div><div className="k">Vehículo</div><div className="v">{selected.marca} {selected.modelo} · {selected.color}</div></div>
-            <div><div className="k">Placas</div><div className="v">{selected.placas ?? (selected.sinPlacas ? "Sin placas (permiso/nuevo)" : "—")}</div></div>
-            <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{selected.procedenciaTag}</div></div>
-            <div><div className="k">Estacionamiento</div><div className="v">{selected.estacionamientos.join(" + ") || "Sin asignar"}</div></div>
-            <div><div className="k">No. de TAG</div><div className="v">{selected.noDispositivo ?? "Sin instalar"}</div></div>
-            <div><div className="k">Estado</div><div className="v"><EstadoChip estado={selected.estado} /></div></div>
-            <div><div className="k">Pagos</div><div className="v">{selected.pagos.length ? `$${selected.pagos.reduce((a, p) => a + p.monto, 0)} (${selected.pagos.length})` : "Sin pago"}</div></div>
-          </div>
-
-          <p className="notice">Vista de solo consulta. Las acciones se ejecutan desde Administración o TI, según corresponda.</p>
-
-          {selected.movimientos.length > 0 && (
-            <div className="panel" style={{ marginBottom: 0 }}>
-              <p className="panel-title">Bitácora</p>
-              <div className="table-wrap">
-                <table className="admin-table">
-                  <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th><th>Por</th></tr></thead>
-                  <tbody>
-                    {selected.movimientos.map((m, i) => (
-                      <tr key={`${m.fecha}-${m.tipo}-${i}`}>
-                        <td>{m.fecha}</td>
-                        <td style={{ textTransform: "capitalize" }}>{m.tipo}</td>
-                        <td>{m.motivo ?? "—"}</td>
-                        <td>{m.hechoPor ?? "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <div className="ti-cards">
+          {filtrados.map((r) => (
+            <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+              <DetalleRegistro r={r} />
+              <BitacoraConsulta r={r} />
+            </TarjetaRegistro>
+          ))}
+          {filtrados.length === 0 && (
+            <p className="ti-hint">{q ? `Sin resultados para «${query}».` : "Aún no hay registros en el padrón."}</p>
           )}
         </div>
-      )}
+      </div>
     </>
+  );
+}
+
+// Bitácora del registro dentro de la tarjeta de Consulta. Es el dato extra que
+// Consulta sí muestra y las pantallas de acción (Admin/TI) no necesitan: aquí
+// se investiga el historial, allá se opera.
+function BitacoraConsulta({ r }: { r: Registro }) {
+  if (r.movimientos.length === 0) return null;
+  return (
+    <div className="consulta-bitacora">
+      <p className="ti-section-title">Bitácora</p>
+      <div className="table-wrap">
+        <table className="admin-table">
+          <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th><th>Por</th></tr></thead>
+          <tbody>
+            {r.movimientos.map((m, i) => (
+              <tr key={`${m.fecha}-${m.tipo}-${i}`}>
+                <td>{m.fecha}</td>
+                <td style={{ textTransform: "capitalize" }}>{m.tipo}</td>
+                <td>{m.motivo ?? "—"}</td>
+                <td>{m.hechoPor ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
