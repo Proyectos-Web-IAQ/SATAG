@@ -95,6 +95,16 @@ function alternar<T>(lista: T[], valor: T): T[] {
   return lista.includes(valor) ? lista.filter((x) => x !== valor) : [...lista, valor];
 }
 
+// Embudo para el botón "Filtros".
+function IconoFiltro() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 5h18l-7 8v6l-4-2v-4z" />
+    </svg>
+  );
+}
+
 // Consulta comparte el patrón de tarjetas expandibles de Administración y TI,
 // en modo solo lectura: sin acciones ni formularios. Al abrir una tarjeta se ve
 // el expediente y, cuando existe, la bitácora completa del registro. Arriba,
@@ -112,6 +122,9 @@ function VistaConsulta() {
   const [tagFiltro, setTagFiltro] = useState<"con" | "sin" | null>(null);
   const [estacs, setEstacs] = useState<string[]>([]);
   const [soloSinPlacas, setSoloSinPlacas] = useState(false);
+  // La barra de filtros arranca colapsada: pantalla limpia para leer, y los
+  // filtros activos quedan visibles como resumen aunque esté cerrada.
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -153,6 +166,15 @@ function VistaConsulta() {
   const hayFiltros = estados.length > 0 || soloSinPlacas || tagFiltro !== null || estacs.length > 0;
   const limpiar = () => { setEstados([]); setSoloSinPlacas(false); setTagFiltro(null); setEstacs([]); };
 
+  // Resumen de filtros activos: cada píldora se quita por su cuenta cuando la
+  // barra está colapsada. El contador del botón "Filtros" es su longitud.
+  const activos: { label: string; quitar: () => void }[] = [
+    ...estados.map((e) => ({ label: ETIQUETA_ESTADO[e], quitar: () => setEstados((s) => s.filter((x) => x !== e)) })),
+    ...(tagFiltro ? [{ label: tagFiltro === "con" ? "Con TAG" : "Sin TAG", quitar: () => setTagFiltro(null) }] : []),
+    ...estacs.map((c) => ({ label: c, quitar: () => setEstacs((s) => s.filter((x) => x !== c)) })),
+    ...(soloSinPlacas ? [{ label: "Sin placas", quitar: () => setSoloSinPlacas(false) }] : []),
+  ];
+
   const metrics = useMemo(() => ({
     total: registros.length,
     pendientes: registros.filter((r) => r.estado === "pendiente").length,
@@ -189,47 +211,67 @@ function VistaConsulta() {
           value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
 
         <div className="consulta-filtros">
-          {estadosDisponibles.length > 0 && (
-            <div className="filtro-grupo">
-              <span className="filtro-label">Estado</span>
-              <div className="chip-row">
-                {estadosDisponibles.map((e) => (
-                  <button key={e} type="button" className={`select-chip ${estados.includes(e) ? "on" : ""}`}
-                    onClick={() => setEstados((s) => alternar(s, e))}>{ETIQUETA_ESTADO[e]}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="filtro-grupo">
-            <span className="filtro-label">TAG</span>
-            <div className="chip-row">
-              <button type="button" className={`select-chip ${tagFiltro === "con" ? "on" : ""}`}
-                onClick={() => setTagFiltro((t) => (t === "con" ? null : "con"))}>Con TAG</button>
-              <button type="button" className={`select-chip ${tagFiltro === "sin" ? "on" : ""}`}
-                onClick={() => setTagFiltro((t) => (t === "sin" ? null : "sin"))}>Sin TAG</button>
-            </div>
+          <div className="filtros-toolbar">
+            <button type="button" className="filtros-toggle" aria-expanded={filtrosAbiertos}
+              onClick={() => setFiltrosAbiertos((v) => !v)}>
+              <IconoFiltro />
+              Filtros
+              {activos.length > 0 && <span className="filtros-badge">{activos.length}</span>}
+              <span aria-hidden="true">{filtrosAbiertos ? "▴" : "▾"}</span>
+            </button>
+            {!filtrosAbiertos && activos.map((f, i) => (
+              <span key={i} className="filtro-activo">
+                {f.label}
+                <button type="button" aria-label={`Quitar filtro ${f.label}`} onClick={f.quitar}>×</button>
+              </span>
+            ))}
+            {hayFiltros && (
+              <button type="button" className="link-action" onClick={limpiar}>Limpiar</button>
+            )}
           </div>
-          {estacDisponibles.length > 0 && (
-            <div className="filtro-grupo">
-              <span className="filtro-label">Estacionamiento</span>
-              <div className="chip-row">
-                {estacDisponibles.map((c) => (
-                  <button key={c} type="button" className={`select-chip ${estacs.includes(c) ? "on" : ""}`}
-                    onClick={() => setEstacs((s) => alternar(s, c))}>{c}</button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="filtro-grupo">
-            <span className="filtro-label">Otros</span>
-            <div className="chip-row">
-              <button type="button" className={`select-chip ${soloSinPlacas ? "on" : ""}`}
-                onClick={() => setSoloSinPlacas((v) => !v)}>Sin placas</button>
-              {hayFiltros && (
-                <button type="button" className="link-action" onClick={limpiar}>Limpiar filtros</button>
+
+          {filtrosAbiertos && (
+            <div className="filtros-bar">
+              {estadosDisponibles.length > 0 && (
+                <div className="filtro-grupo">
+                  <span className="filtro-label">Estado</span>
+                  <div className="chip-row">
+                    {estadosDisponibles.map((e) => (
+                      <button key={e} type="button" className={`select-chip ${estados.includes(e) ? "on" : ""}`}
+                        onClick={() => setEstados((s) => alternar(s, e))}>{ETIQUETA_ESTADO[e]}</button>
+                    ))}
+                  </div>
+                </div>
               )}
+              <div className="filtro-grupo">
+                <span className="filtro-label">TAG</span>
+                <div className="chip-row">
+                  <button type="button" className={`select-chip ${tagFiltro === "con" ? "on" : ""}`}
+                    onClick={() => setTagFiltro((t) => (t === "con" ? null : "con"))}>Con TAG</button>
+                  <button type="button" className={`select-chip ${tagFiltro === "sin" ? "on" : ""}`}
+                    onClick={() => setTagFiltro((t) => (t === "sin" ? null : "sin"))}>Sin TAG</button>
+                </div>
+              </div>
+              {estacDisponibles.length > 0 && (
+                <div className="filtro-grupo">
+                  <span className="filtro-label">Estacionamiento</span>
+                  <div className="chip-row">
+                    {estacDisponibles.map((c) => (
+                      <button key={c} type="button" className={`select-chip ${estacs.includes(c) ? "on" : ""}`}
+                        onClick={() => setEstacs((s) => alternar(s, c))}>{c}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="filtro-grupo">
+                <span className="filtro-label">Vehículo</span>
+                <div className="chip-row">
+                  <button type="button" className={`select-chip ${soloSinPlacas ? "on" : ""}`}
+                    onClick={() => setSoloSinPlacas((v) => !v)}>Sin placas</button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <p className="ti-hint">Vista de solo consulta: las acciones se ejecutan desde Administración o TI, según corresponda.</p>
