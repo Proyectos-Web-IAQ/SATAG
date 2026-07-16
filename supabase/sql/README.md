@@ -62,6 +62,7 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 32. `31_rpc_flujos_atomicos.sql` (reemplaza las acciones compuestas del cliente por RPCs atómicos)
 33. `32_folios_recibo_automaticos.sql` (genera el recibo en PostgreSQL e impide doble pago por expediente)
 34. `33_apartar_tag.sql` (CC-01: apartar TAG al instalar + procedencia editable por TI; drop+recreate de los wrappers de instalar/actualizar)
+35. `34_buzon_notas_sin_folio.sql` (SC-003: buzon publico de notas sin folio; registro_id opcional, RPC publico sin busqueda y vinculacion de TI)
 
 ## Ciclo de auditoria por tabla
 
@@ -114,3 +115,4 @@ Para cada archivo:
 | `31_rpc_flujos_atomicos.sql` | Listo para aplicar | Instalación y actualización con estacionamiento en una sola transacción; cierra solicitudes atendidas solo con cambio de estacionamiento y revoca los RPC internos al cliente. |
 | `32_folios_recibo_automaticos.sql` | Listo para aplicar | Folio `SATAG-AAAA-000001` generado por secuencia; un solo pago por expediente y nueva firma de `registrar_pago`. |
 | `33_apartar_tag.sql` | Aplicado | CC-01: apartar TAG al instalar (procedencia propio) y procedencia editable por TI (nunca por el titular). CHECK de coherencia + indice unico del numero apartado; drop+recreate de los wrappers instalar/actualizar. |
+| `34_buzon_notas_sin_folio.sql` | Aplicado | SC-003: buzon publico de notas sin folio ni placa. registro_id opcional + columnas de la nota; RPC publico crear_nota_solicitud (sin busqueda, no revela nada) y vincular_nota (rol ti). CC-06 folio+placa intacto. Falta UI (publica + TI). |
