@@ -33,8 +33,10 @@ export function TarjetaRegistro({ r, abierto, onToggle, children }: {
   }, [abierto]);
 
   const solicitudes = r.solicitudes.filter((s) => !s.atendida);
+  // Señal operativa: un vehículo sin placas (permiso/nuevo) se resalta en
+  // amarillo para que TI/Admin lo detecten de un vistazo en el padrón.
   return (
-    <div ref={ref} className={`ti-card ${abierto ? "is-open" : ""}`}>
+    <div ref={ref} className={`ti-card ${abierto ? "is-open" : ""} ${r.sinPlacas ? "ti-card--sin-placas" : ""}`}>
       <button type="button" className="ti-card__head" onClick={onToggle} aria-expanded={abierto}>
         <span className="ti-card__row">
           <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? "SIN PLACAS" : "—")}</span>

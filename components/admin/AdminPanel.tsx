@@ -169,7 +169,7 @@ function VistaConsulta() {
             </thead>
             <tbody>
               {filtrados.map((r) => (
-                <tr key={r.id} className={`selectable ${r.id === selectedId ? "is-selected" : ""}`}
+                <tr key={r.id} className={`selectable ${r.id === selectedId ? "is-selected" : ""} ${r.sinPlacas ? "sin-placas" : ""}`}
                   onClick={() => setSelectedId((actual) => actual === r.id ? null : r.id)}>
                   <td>{r.folio}</td>
                   <td>{r.usuarioNombre}</td>
