@@ -318,6 +318,16 @@ a { color: var(--primary-strong); }
   letter-spacing: 0.05em; margin: 16px 0 8px; text-transform: uppercase;
 }
 
+/* Filtros rápidos de Consulta: filas etiquetadas de chips que se combinan. */
+.consulta-filtros { display: grid; gap: 8px; margin-bottom: 12px; }
+.filtro-grupo { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.filtro-label {
+  color: var(--muted); font-size: 0.75rem; font-weight: 800;
+  letter-spacing: 0.04em; min-width: 116px; text-transform: uppercase;
+}
+.consulta-filtros .select-chip { font-size: 0.85rem; padding: 6px 12px; }
+@media (max-width: 620px) { .filtro-label { min-width: 100%; } }
+
 /* Bitácora dentro de la tarjeta de Consulta (solo lectura): mismo lenguaje
    visual que el historial de pagos, en tabla compacta que hace scroll en
    celular sin desbordar la tarjeta. */

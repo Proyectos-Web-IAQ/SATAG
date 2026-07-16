@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { Registro } from "@/lib/mock/types";
+import type { EstadoRegistro, Registro } from "@/lib/mock/types";
 import { listRegistros, nombreDesdeEmail } from "@/lib/supabase/apiPanel";
 import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
@@ -84,15 +84,34 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
   );
 }
 
+// Etiqueta y orden de presentación de los estados en el filtro de Consulta.
+const ETIQUETA_ESTADO: Record<EstadoRegistro, string> = {
+  pendiente: "Pendiente", activo: "Activo", bloqueado: "Bloqueado", baja: "Baja",
+};
+const ORDEN_ESTADO: EstadoRegistro[] = ["pendiente", "activo", "bloqueado", "baja"];
+
+// Alterna un valor dentro de una lista (chips de filtro que se combinan).
+function alternar<T>(lista: T[], valor: T): T[] {
+  return lista.includes(valor) ? lista.filter((x) => x !== valor) : [...lista, valor];
+}
+
 // Consulta comparte el patrón de tarjetas expandibles de Administración y TI,
 // en modo solo lectura: sin acciones ni formularios. Al abrir una tarjeta se ve
-// el expediente y, cuando existe, la bitácora completa del registro.
+// el expediente y, cuando existe, la bitácora completa del registro. Arriba,
+// filtros rápidos (estado, TAG, estacionamiento, sin placas) que se combinan
+// entre sí y con el buscador de texto.
 function VistaConsulta() {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [query, setQuery] = useState("");
   const [selId, setSelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Filtros rápidos: cada dimensión acota (AND entre dimensiones); dentro de
+  // estado y estacionamiento, varias selecciones suman (OR).
+  const [estados, setEstados] = useState<EstadoRegistro[]>([]);
+  const [tagFiltro, setTagFiltro] = useState<"con" | "sin" | null>(null);
+  const [estacs, setEstacs] = useState<string[]>([]);
+  const [soloSinPlacas, setSoloSinPlacas] = useState(false);
 
   async function refresh() {
     setLoading(true);
@@ -110,12 +129,29 @@ function VistaConsulta() {
   useEffect(() => { refresh(); }, []);
 
   const q = query.trim().toLowerCase();
-  const filtrados = useMemo(() => {
-    if (!q) return registros;
-    return registros.filter((r) =>
-      [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
-        .join(" ").toLowerCase().includes(q));
-  }, [q, registros]);
+  const filtrados = useMemo(() => registros.filter((r) => {
+    if (estados.length && !estados.includes(r.estado)) return false;
+    if (soloSinPlacas && !r.sinPlacas) return false;
+    if (tagFiltro === "con" && !r.noDispositivo) return false;
+    if (tagFiltro === "sin" && r.noDispositivo) return false;
+    if (estacs.length && !r.estacionamientos.some((e) => estacs.includes(e))) return false;
+    if (q && ![r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
+      .join(" ").toLowerCase().includes(q)) return false;
+    return true;
+  }), [registros, estados, soloSinPlacas, tagFiltro, estacs, q]);
+
+  // Opciones que se muestran: solo estados y estacionamientos presentes en el
+  // padrón, para no ofrecer filtros que no devolverían nada.
+  const estadosDisponibles = useMemo(() => {
+    const presentes = new Set(registros.map((r) => r.estado));
+    return ORDEN_ESTADO.filter((e) => presentes.has(e));
+  }, [registros]);
+  const estacDisponibles = useMemo(
+    () => [...new Set(registros.flatMap((r) => r.estacionamientos))].sort(),
+    [registros]);
+
+  const hayFiltros = estados.length > 0 || soloSinPlacas || tagFiltro !== null || estacs.length > 0;
+  const limpiar = () => { setEstados([]); setSoloSinPlacas(false); setTagFiltro(null); setEstacs([]); };
 
   const metrics = useMemo(() => ({
     total: registros.length,
@@ -151,6 +187,51 @@ function VistaConsulta() {
         <p className="panel-title">Padrón completo ({filtrados.length})</p>
         <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
           value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
+
+        <div className="consulta-filtros">
+          {estadosDisponibles.length > 0 && (
+            <div className="filtro-grupo">
+              <span className="filtro-label">Estado</span>
+              <div className="chip-row">
+                {estadosDisponibles.map((e) => (
+                  <button key={e} type="button" className={`select-chip ${estados.includes(e) ? "on" : ""}`}
+                    onClick={() => setEstados((s) => alternar(s, e))}>{ETIQUETA_ESTADO[e]}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="filtro-grupo">
+            <span className="filtro-label">TAG</span>
+            <div className="chip-row">
+              <button type="button" className={`select-chip ${tagFiltro === "con" ? "on" : ""}`}
+                onClick={() => setTagFiltro((t) => (t === "con" ? null : "con"))}>Con TAG</button>
+              <button type="button" className={`select-chip ${tagFiltro === "sin" ? "on" : ""}`}
+                onClick={() => setTagFiltro((t) => (t === "sin" ? null : "sin"))}>Sin TAG</button>
+            </div>
+          </div>
+          {estacDisponibles.length > 0 && (
+            <div className="filtro-grupo">
+              <span className="filtro-label">Estacionamiento</span>
+              <div className="chip-row">
+                {estacDisponibles.map((c) => (
+                  <button key={c} type="button" className={`select-chip ${estacs.includes(c) ? "on" : ""}`}
+                    onClick={() => setEstacs((s) => alternar(s, c))}>{c}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="filtro-grupo">
+            <span className="filtro-label">Otros</span>
+            <div className="chip-row">
+              <button type="button" className={`select-chip ${soloSinPlacas ? "on" : ""}`}
+                onClick={() => setSoloSinPlacas((v) => !v)}>Sin placas</button>
+              {hayFiltros && (
+                <button type="button" className="link-action" onClick={limpiar}>Limpiar filtros</button>
+              )}
+            </div>
+          </div>
+        </div>
+
         <p className="ti-hint">Vista de solo consulta: las acciones se ejecutan desde Administración o TI, según corresponda.</p>
         {loadError && (
           <p className="submit-error" role="alert">
@@ -166,7 +247,9 @@ function VistaConsulta() {
             </TarjetaRegistro>
           ))}
           {filtrados.length === 0 && (
-            <p className="ti-hint">{q ? `Sin resultados para «${query}».` : "Aún no hay registros en el padrón."}</p>
+            <p className="ti-hint">
+              {q || hayFiltros ? "Sin resultados con los filtros actuales." : "Aún no hay registros en el padrón."}
+            </p>
           )}
         </div>
       </div>
