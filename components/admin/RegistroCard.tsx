@@ -20,11 +20,15 @@ export function scrollAlAviso(el: HTMLElement | null) {
 
 // Tarjeta compartida por Administracion y TI. En celular, toda la cabecera es
 // tactil y al abrirse lleva el expediente al inicio visible de la pantalla.
-export function TarjetaRegistro({ r, abierto, onToggle, children }: {
+export function TarjetaRegistro({ r, abierto, onToggle, children, chip }: {
   r: Registro;
   abierto: boolean;
   onToggle: () => void;
   children?: ReactNode;
+  // Chip opcional a la derecha de las placas. Por defecto se muestra el estado
+  // real del registro; Administración lo sustituye por un chip de cobro para
+  // que su única señal sea el pago (TI y Consulta conservan el estado).
+  chip?: ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -40,7 +44,7 @@ export function TarjetaRegistro({ r, abierto, onToggle, children }: {
       <button type="button" className="ti-card__head" onClick={onToggle} aria-expanded={abierto}>
         <span className="ti-card__row">
           <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? "SIN PLACAS" : "—")}</span>
-          <EstadoChip estado={r.estado} />
+          {chip ?? <EstadoChip estado={r.estado} />}
         </span>
         <span className="ti-card__veh">{r.marca} {r.modelo} · {r.color}</span>
         <span className="ti-card__sub">{r.usuarioNombre} · <span style={{ textTransform: "capitalize" }}>{r.tipoUsuario}</span></span>

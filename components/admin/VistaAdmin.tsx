@@ -31,6 +31,17 @@ const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MX
 
 const porCobrar = (r: Registro) => r.estado === "pendiente" && r.pagos.length === 0;
 
+// Orden del padrón en Admin: primero lo que Admin debe cobrar; luego lo que
+// sigue en proceso (pagado esperando que TI instale, o con solicitud abierta);
+// al final lo que ya no requiere movimiento (activo al día o dado de baja).
+const grupoAdmin = (r: Registro): number => {
+  if (porCobrar(r)) return 0;
+  if (r.estado === "baja") return 2;
+  const solAbiertas = r.solicitudes.some((s) => !s.atendida);
+  if (r.estado === "pendiente" || r.estado === "bloqueado" || solAbiertas) return 1;
+  return 2;
+};
+
 // Pantalla de Administracion alineada con la experiencia de TI: una cola de
 // trabajo enfocada y, debajo, el padron completo en tarjetas tactiles.
 export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
@@ -68,10 +79,12 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
   const pendientesPago = useMemo(() => registros.filter(porCobrar), [registros]);
   const q = query.trim().toLowerCase();
   const padron = useMemo(() => {
-    if (!q) return registros;
-    return registros.filter((r) =>
+    const base = !q ? registros : registros.filter((r) =>
       [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
         .join(" ").toLowerCase().includes(q));
+    // sort() es estable: dentro de cada grupo se conserva el orden que ya trae
+    // listRegistros (nuevos primero).
+    return [...base].sort((a, b) => grupoAdmin(a) - grupoAdmin(b));
   }, [q, registros]);
 
   async function run(fn: () => Promise<AccionResultado>, ok: (resultado: AccionResultado) => string) {
@@ -160,7 +173,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
             {banners}
             <div className="ti-cards">
               {padron.map((r) => (
-                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}>
                   <DetalleRegistro r={r} />
                   <HistorialPagos r={r} />
                   {porCobrar(r) ? (
@@ -189,7 +202,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
           ) : (
             <div className="ti-cards">
               {pendientesPago.map((r) => (
-                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}>
                   <DetalleRegistro r={r} />
                   <FormPago r={r} busy={busy} cobradoPor={cobradoPor} onCobradoPor={setCobradoPor}
                     onSubmit={(pago) => confirmarPago(r, pago)} />
@@ -211,6 +224,16 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
       )}
     </>
   );
+}
+
+// Chip de cobro para Admin: la señal es el pago, no el ciclo de vida. Un
+// registro pagado pero sin instalar sigue 'pendiente' en la base (lo instala
+// TI), pero para Admin ya está "Pagado". Reusa las clases de status-chip
+// (ámbar/verde/gris) sin estilos nuevos.
+function ChipCobro({ r }: { r: Registro }) {
+  if (r.estado === "baja") return <span className="status-chip status-chip--baja">Baja</span>;
+  if (r.pagos.length === 0) return <span className="status-chip status-chip--pendiente">Por cobrar</span>;
+  return <span className="status-chip status-chip--activo">Pagado</span>;
 }
 
 function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
