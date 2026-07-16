@@ -77,6 +77,10 @@ export interface Registro {
   // Dispositivo
   noDispositivo: string | null;
   procedenciaTag: ProcedenciaTag;
+  // Apartado (CC-01): cuando la familia usa su propio TAG, la escuela reserva
+  // el que le tocaba. tagApartado = hay reserva; tagApartadoNo = su numero.
+  tagApartado: boolean;
+  tagApartadoNo: string | null;
   // Ciclo de vida
   estado: EstadoRegistro;
   estacionamientos: string[]; // claves asignadas (admin)
@@ -101,6 +105,8 @@ export interface CambiosRegistro {
   marca?: string;
   modelo?: string;
   color?: string;
+  // TI puede corregir propio/escuela (el titular solo lo declara en el alta).
+  procedenciaTag?: ProcedenciaTag;
 }
 
 // Entrada del alta de autoservicio (espejo del RPC crear_registro).

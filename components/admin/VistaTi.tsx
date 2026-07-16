@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CambiosRegistro, Registro, Solicitud } from "@/lib/mock/types";
+import type { CambiosRegistro, ProcedenciaTag, Registro, Solicitud } from "@/lib/mock/types";
 import { getMarcas, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
@@ -156,13 +156,19 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   // así que las acciones repiten el dato clave antes de ejecutar.
   // Instalar define también el estacionamiento (SC-002): el SQL 31 ejecuta
   // asignación + TAG en una sola transacción, con la persona presente.
-  function confirmarInstalar(r: Registro, tag: string, claves: string[]) {
+  function confirmarInstalar(r: Registro, tag: string, claves: string[], propio: boolean, apartadoNo: string) {
+    const procedencia: ProcedenciaTag = propio ? "propio" : "escuela";
+    const apartado = propio ? (apartadoNo.trim() || null) : null;
+    const cambiaProcedencia = procedencia !== r.procedenciaTag;
     setConfirm({
       title: "Instalar y activar TAG",
-      message: `Se instalará el TAG ${tag} en el ${r.marca} ${r.modelo} ${r.color} (${r.placas ?? "sin placas"}) de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo. Revisa bien el número. ¿Continuar?`,
+      message: `Se instalará el TAG ${tag} en el ${r.marca} ${r.modelo} ${r.color} (${r.placas ?? "sin placas"}) de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo.`
+        + (apartado ? ` Se apartará el TAG ${apartado} de la escuela.` : "")
+        + (cambiaProcedencia ? ` El TAG quedará marcado como ${procedencia}.` : "")
+        + " Revisa bien el número. ¿Continuar?",
       confirmLabel: "Instalar", danger: false,
-      action: () => instalarTagConEstacionamiento(r.id, tag, claves, tiNombre),
-      ok: `TAG ${tag} instalado y activado (${r.folio}).`,
+      action: () => instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia }),
+      ok: `TAG ${tag} instalado y activado (${r.folio}).` + (apartado ? ` TAG ${apartado} apartado.` : ""),
     });
   }
   // claves null = el estacionamiento no cambió (no se llama a su RPC).
@@ -210,7 +216,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
 
   function formPara(accion: Accion, r: Registro) {
     if (accion === "instalar")
-      return <FormInstalar r={r} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves) => confirmarInstalar(r, tag, claves)} />;
+      return <FormInstalar r={r} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo) => confirmarInstalar(r, tag, claves, propio, apartadoNo)} />;
     if (accion === "actualizar")
       return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
     return <FormBaja r={r} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(m) => confirmarBaja(r, m)} />;
@@ -363,13 +369,20 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
 // ---- Formularios de acción ----
 function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmit }: {
   r: Registro; estacionamientos: string[]; busy: boolean; tiNombre: string;
-  onTiNombre: (v: string) => void; onSubmit: (tag: string, claves: string[]) => void;
+  onTiNombre: (v: string) => void;
+  onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string) => void;
 }) {
   const [tag, setTag] = useState("");
   // TI define el estacionamiento al instalar (SC-002); al menos uno: un TAG
   // sin acceso a ningún estacionamiento no sirve de nada.
   const [claves, setClaves] = useState<string[]>(r.estacionamientos);
+  // CC-01: si la familia trae su propio TAG, el que se instala es el propio y la
+  // escuela aparta el suyo. El número apartado es opcional en el momento.
+  const [propio, setPropio] = useState(r.procedenciaTag === "propio");
+  const [apartadoNo, setApartadoNo] = useState(r.tagApartadoNo ?? "");
   const valido = TAG_RE.test(tag);
+  const apartadoLleno = propio && apartadoNo.trim() !== "";
+  const apartadoValido = !apartadoLleno || (TAG_RE.test(apartadoNo) && apartadoNo !== tag);
   const toggle = (c: string) =>
     setClaves((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
   return (
@@ -384,14 +397,29 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
         {claves.length === 0 && <p className="field-error">Elige al menos un estacionamiento.</p>}
       </div>
       <div className="field">
-        <span>No. de TAG (6–11 dígitos)</span>
+        <span>No. de TAG (6–11 dígitos){propio ? " — el propio de la familia" : ""}</span>
         <input className={`input ${tag !== "" && !valido ? "invalid" : ""}`} inputMode="numeric" autoComplete="off"
           maxLength={11} placeholder="Ej. 9426780" value={tag}
           onChange={(e) => setTag(e.target.value.replace(/[^0-9]/g, ""))} />
         {tag !== "" && !valido && <p className="field-error">Lleva {tag.length} dígito{tag.length === 1 ? "" : "s"}; deben ser de 6 a 11.</p>}
       </div>
+      <label className="check">
+        <input type="checkbox" checked={propio} onChange={(e) => setPropio(e.target.checked)} />
+        <span>La familia trae su propio TAG (se aparta el de la escuela)</span>
+      </label>
+      {propio && (
+        <div className="field">
+          <span>No. del TAG apartado (opcional, 6–11 dígitos)</span>
+          <input className={`input ${apartadoLleno && !apartadoValido ? "invalid" : ""}`} inputMode="numeric" autoComplete="off"
+            maxLength={11} placeholder="TAG de la escuela reservado" value={apartadoNo}
+            onChange={(e) => setApartadoNo(e.target.value.replace(/[^0-9]/g, ""))} />
+          {apartadoLleno && !TAG_RE.test(apartadoNo) && <p className="field-error">Lleva {apartadoNo.length} dígito{apartadoNo.length === 1 ? "" : "s"}; deben ser de 6 a 11.</p>}
+          {apartadoLleno && TAG_RE.test(apartadoNo) && apartadoNo === tag && <p className="field-error">El TAG apartado no puede ser el mismo que el que se instala.</p>}
+          <p className="ti-hint">Queda reservado, sin instalar, para una reposición futura.</p>
+        </div>
+      )}
       <div className="field"><span>Instalado por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Tu nombre" /></div>
-      <button type="button" className="primary-action" disabled={busy || !valido || claves.length === 0} onClick={() => onSubmit(tag, claves)}>
+      <button type="button" className="primary-action" disabled={busy || !valido || claves.length === 0 || !apartadoValido} onClick={() => onSubmit(tag, claves, propio, apartadoNo)}>
         {valido ? `Instalar y activar TAG ${tag}` : "Instalar y activar"}
       </button>
     </div>
@@ -409,6 +437,8 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
   const [marca, setMarca] = useState(r.marca);
   const [modelo, setModelo] = useState(r.modelo);
   const [color, setColor] = useState(r.color);
+  // CC-01: TI puede corregir propio/escuela (el titular solo lo declara en el alta).
+  const [procedencia, setProcedencia] = useState<ProcedenciaTag>(r.procedenciaTag);
   const [claves, setClaves] = useState<string[]>(r.estacionamientos);
   const [motivo, setMotivo] = useState("");
 
@@ -430,6 +460,7 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
   if (marca !== r.marca) { cambios.marca = marca; resumen.push(`marca ${r.marca} → ${marca}`); }
   if (modelo.trim() && modelo.trim() !== r.modelo) { cambios.modelo = modelo.trim(); resumen.push(`modelo ${r.modelo} → ${modelo.trim()}`); }
   if (color !== r.color) { cambios.color = color; resumen.push(`color ${r.color} → ${color}`); }
+  if (procedencia !== r.procedenciaTag) { cambios.procedenciaTag = procedencia; resumen.push(`procedencia ${r.procedenciaTag} → ${procedencia}`); }
   if (estCambia) resumen.push(`estacionamiento ${r.estacionamientos.join(" + ") || "sin asignar"} → ${claves.join(" + ") || "sin asignar"}`);
   const hayCambios = resumen.length > 0;
 
@@ -474,6 +505,13 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
           </select>
         </div>
         <div className="field"><span>Motivo (opcional)</span><input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. placas nuevas, TAG dañado" /></div>
+      </div>
+      <div className="field">
+        <span>Procedencia del TAG</span>
+        <select className="select" value={procedencia} onChange={(e) => setProcedencia(e.target.value as ProcedenciaTag)}>
+          <option value="escuela">Escuela</option>
+          <option value="propio">Propio (la familia trae su TAG)</option>
+        </select>
       </div>
       <div className="field">
         <span>Estacionamiento (acceso del TAG)</span>

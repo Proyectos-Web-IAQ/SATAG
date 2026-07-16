@@ -61,6 +61,7 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 31. `30_roles_finos.sql` (requiere el PASO 0 hecho; sin el, el personal pierde el panel)
 32. `31_rpc_flujos_atomicos.sql` (reemplaza las acciones compuestas del cliente por RPCs atómicos)
 33. `32_folios_recibo_automaticos.sql` (genera el recibo en PostgreSQL e impide doble pago por expediente)
+34. `33_apartar_tag.sql` (CC-01: apartar TAG al instalar + procedencia editable por TI; drop+recreate de los wrappers de instalar/actualizar)
 
 ## Ciclo de auditoria por tabla
 
@@ -112,3 +113,4 @@ Para cada archivo:
 | `30_roles_finos.sql` | Listo para revisar | Endurece registros/movimientos/aceptaciones a roles finos; exige el PASO 0. |
 | `31_rpc_flujos_atomicos.sql` | Listo para aplicar | Instalación y actualización con estacionamiento en una sola transacción; cierra solicitudes atendidas solo con cambio de estacionamiento y revoca los RPC internos al cliente. |
 | `32_folios_recibo_automaticos.sql` | Listo para aplicar | Folio `SATAG-AAAA-000001` generado por secuencia; un solo pago por expediente y nueva firma de `registrar_pago`. |
+| `33_apartar_tag.sql` | Aplicado | CC-01: apartar TAG al instalar (procedencia propio) y procedencia editable por TI (nunca por el titular). CHECK de coherencia + indice unico del numero apartado; drop+recreate de los wrappers instalar/actualizar. |

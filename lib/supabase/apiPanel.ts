@@ -91,6 +91,8 @@ interface RegistroRow {
   sin_placas: boolean;
   no_dispositivo: string | null;
   procedencia_tag: string;
+  tag_apartado: boolean;
+  tag_apartado_no: string | null;
   estado: string;
   motivo_baja: string | null;
   fecha_baja: string | null;
@@ -107,7 +109,8 @@ interface RegistroRow {
 
 const SELECT_REGISTRO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
-  marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag, estado,
+  marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
+  tag_apartado, tag_apartado_no, estado,
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por,
   observaciones, created_at,
   pagos ( monto, metodo, cobrado_por, folio_recibo, fecha, created_at ),
@@ -173,6 +176,8 @@ function mapRegistro(r: RegistroRow): Registro {
     sinPlacas: r.sin_placas,
     noDispositivo: r.no_dispositivo,
     procedenciaTag: r.procedencia_tag as ProcedenciaTag,
+    tagApartado: r.tag_apartado,
+    tagApartadoNo: r.tag_apartado_no,
     estado: r.estado as EstadoRegistro,
     estacionamientos: r.registro_estacionamientos.map((e) => e.estacionamiento_clave).sort(),
     fechaAdquisicion: r.fecha_adquisicion,
@@ -241,12 +246,17 @@ export async function instalarTagConEstacionamiento(
   noDispositivo: string,
   claves: string[],
   instaladoPor: string,
+  // CC-01: TI puede apartar el TAG de la escuela y corregir la procedencia en el
+  // mismo acto. Ambos opcionales; el RPC valida (apartar exige procedencia propio).
+  opts?: { tagApartadoNo?: string | null; procedenciaTag?: ProcedenciaTag | null },
 ): Promise<AccionResultado> {
   return rpc("instalar_tag_con_estacionamiento", {
     p_registro_id: id,
     p_no_dispositivo: noDispositivo,
     p_claves: claves,
     p_instalado_por: instaladoPor.trim() || null,
+    p_tag_apartado_no: opts?.tagApartadoNo?.trim() || null,
+    p_procedencia_tag: opts?.procedenciaTag ?? null,
   });
 }
 
@@ -271,6 +281,7 @@ export async function actualizarRegistroConEstacionamiento(
     p_color: cambios.color ?? null,
     p_motivo: motivo.trim() || null,
     p_hecho_por: hechoPor.trim() || null,
+    p_procedencia_tag: cambios.procedenciaTag ?? null,
   });
 }
 

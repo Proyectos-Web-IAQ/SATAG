@@ -77,6 +77,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
       <div className="detail-grid" style={{ marginBottom: 12 }}>
         <div><div className="k">Gestionante (paga y firma)</div><div className="v">{r.gestionanteNombre ?? "El mismo conductor"}</div></div>
         <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>
+        {r.tagApartado && <div><div className="k">TAG apartado</div><div className="v">{r.tagApartadoNo}</div></div>}
         <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
         <div><div className="k">Estacionamiento</div><div className="v">{r.estacionamientos.join(" + ") || "Sin asignar"}</div></div>
         {r.fechaInstalacion && <div><div className="k">Instalado</div><div className="v">{r.fechaInstalacion}{r.instaladoPor ? ` · ${r.instaladoPor}` : ""}</div></div>}

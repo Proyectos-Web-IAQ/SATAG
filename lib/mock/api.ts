@@ -45,6 +45,7 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     placas: input.sinPlacas ? null : (input.placas ?? "").trim().toUpperCase() || null,
     sinPlacas: input.sinPlacas,
     noDispositivo: null, procedenciaTag: input.procedenciaTag,
+    tagApartado: false, tagApartadoNo: null,
     estado: "pendiente", estacionamientos: [],
     fechaAdquisicion: null, fechaInstalacion: null, instaladoPor: null,
     motivoBaja: null, fechaBaja: null,
