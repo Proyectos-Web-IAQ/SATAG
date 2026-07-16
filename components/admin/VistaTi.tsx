@@ -31,6 +31,20 @@ const TAG_RE = /^[0-9]{6,11}$/;
 // Semáforo de los contadores: verde (0), amarillo (pocos), rojo (muchos).
 const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
 
+// Orden del padrón en TI: primero lo que TI puede resolver ya (instalar), luego
+// las solicitudes pendientes (baja antes que actualización) y, al final, lo que
+// no requiere acción de TI: por cobrar (espera a Admin) y sin pendientes.
+const grupoTi = (r: Registro): number => {
+  if (r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0) return 0; // por instalar
+  if (r.estado !== "baja") {
+    const solPend = r.solicitudes.filter((s) => !s.atendida);
+    if (solPend.some((s) => s.tipo === "baja")) return 1;          // por dar de baja
+    if (solPend.some((s) => s.tipo === "actualizacion")) return 2; // por actualizar
+  }
+  if (r.estado === "pendiente" && r.pagos.length === 0) return 3;  // por cobrar (Admin)
+  return 4;                                                        // sin pendientes
+};
+
 // Pantalla completa del rol TI, pensada para usarse desde el celular en el
 // estacionamiento: tres tarjetas de acción (instalar / actualizar / dar de baja)
 // que abren un flujo enfocado, y abajo el padrón completo con las mismas acciones.
@@ -100,7 +114,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const coincide = (r: Registro) =>
     [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
       .join(" ").toLowerCase().includes(q);
-  const padron = q ? registros.filter(coincide) : registros;
+  // sort() es estable: dentro de cada grupo se conserva el orden de listRegistros
+  // (nuevos primero).
+  const padron = [...(q ? registros.filter(coincide) : registros)].sort((a, b) => grupoTi(a) - grupoTi(b));
   // Búsqueda dentro de "Actualizar datos" / "Dar de baja" para atender a quien
   // llega sin solicitud previa (el caso normal: se atiende en el momento).
   const listaSolicitudes = modo === "actualizar" ? solicitanActualizar : modo === "baja" ? solicitanBaja : [];
