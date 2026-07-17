@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Registro, Solicitud, TipoUsuario } from "@/lib/mock/types";
+import type { Registro, Solicitud, TipoUsuario, TramiteSolicitado } from "@/lib/mock/types";
 import EstadoChip from "@/components/admin/EstadoChip";
 
 // Rol de quien deja una nota del buzon (SC-003), en texto legible.
@@ -12,13 +12,21 @@ export const ROL_LABEL: Record<TipoUsuario, string> = {
   alumno: "alumno",
 };
 
+// Tramite que pide el cliente en una nota (SC-003), en texto legible.
+export const TRAMITE_LABEL: Record<TramiteSolicitado, string> = {
+  instalacion: "Instalar TAG",
+  actualizacion: "Actualizar datos",
+  baja: "Dar de baja",
+};
+
 // Linea que resume una solicitud pendiente en la tarjeta. Una nota (SC-003) dice
-// de quien viene; una actualizacion/baja dice que pide.
+// de quien viene y que tramite pidio; una actualizacion/baja dice que pide.
 export function textoSolicitud(s: Solicitud): string {
   if (s.tipo === "nota") {
     const rol = s.solicitanteRol ? ` (${ROL_LABEL[s.solicitanteRol]})` : "";
     const quien = s.solicitanteNombre ? `Nota de ${s.solicitanteNombre}${rol}` : "Nota";
-    return `${quien} (${s.fecha}): ${s.detalle}`;
+    const pide = s.tramiteSolicitado ? ` — pidió ${TRAMITE_LABEL[s.tramiteSolicitado]}` : "";
+    return `${quien}${pide} (${s.fecha}): ${s.detalle}`;
   }
   return `Solicita ${s.tipo === "actualizacion" ? "actualización" : "baja"} (${s.fecha}): ${s.detalle}`;
 }

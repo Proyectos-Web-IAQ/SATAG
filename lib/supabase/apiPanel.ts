@@ -22,6 +22,7 @@ import type {
   TipoMovimiento,
   TipoSolicitud,
   TipoUsuario,
+  TramiteSolicitado,
 } from "@/lib/mock/types";
 
 export interface AccionResultado {
@@ -71,6 +72,7 @@ interface SolicitudRow {
   // Solo en notas (SC-003); null en actualizacion/baja.
   solicitante_nombre: string | null;
   solicitante_rol: string | null;
+  tramite_solicitado: string | null;
   alumno_nombre: string | null;
   alumno_grado: string | null;
   vehiculo_desc: string | null;
@@ -121,13 +123,13 @@ const SELECT_REGISTRO = `
   observaciones, created_at,
   pagos ( monto, metodo, cobrado_por, folio_recibo, fecha, created_at ),
   registro_estacionamientos ( estacionamiento_clave ),
-  solicitudes ( id, tipo, detalle, atendida, created_at, solicitante_nombre, solicitante_rol, alumno_nombre, alumno_grado, vehiculo_desc ),
+  solicitudes ( id, tipo, detalle, atendida, created_at, solicitante_nombre, solicitante_rol, tramite_solicitado, alumno_nombre, alumno_grado, vehiculo_desc ),
   movimientos ( tipo, fecha, motivo, hecho_por, no_dispositivo_anterior, no_dispositivo_nuevo, created_at )
 `;
 
 // Columnas de una nota sin vincular (registro_id null): mismo shape que el embed
 // pero consultado directo sobre solicitudes (no cuelga de ningun registro).
-const SELECT_NOTA = `id, tipo, detalle, atendida, created_at, solicitante_nombre, solicitante_rol, alumno_nombre, alumno_grado, vehiculo_desc`;
+const SELECT_NOTA = `id, tipo, detalle, atendida, created_at, solicitante_nombre, solicitante_rol, tramite_solicitado, alumno_nombre, alumno_grado, vehiculo_desc`;
 
 const porCreatedAt = (a: { created_at: string }, b: { created_at: string }) =>
   a.created_at.localeCompare(b.created_at);
@@ -161,6 +163,7 @@ function mapSolicitud(s: SolicitudRow): Solicitud {
     atendida: s.atendida,
     solicitanteNombre: s.solicitante_nombre,
     solicitanteRol: (s.solicitante_rol as TipoUsuario | null) ?? null,
+    tramiteSolicitado: (s.tramite_solicitado as TramiteSolicitado | null) ?? null,
     alumnoNombre: s.alumno_nombre,
     alumnoGrado: s.alumno_grado,
     vehiculoDesc: s.vehiculo_desc,

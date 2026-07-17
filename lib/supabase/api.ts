@@ -210,6 +210,7 @@ export async function crearSolicitud(input: {
 export async function crearNota(input: {
   solicitanteNombre: string;
   solicitanteRol: "padres" | "maestro" | "admin";
+  tramiteSolicitado: "instalacion" | "actualizacion" | "baja";
   alumnoNombre: string;
   alumnoGrado: string;
   detalle: string;
@@ -218,6 +219,7 @@ export async function crearNota(input: {
   const { error } = await supabase.rpc("crear_nota_solicitud", {
     p_solicitante_nombre: input.solicitanteNombre.trim(),
     p_solicitante_rol: input.solicitanteRol,
+    p_tramite_solicitado: input.tramiteSolicitado,
     p_alumno_nombre: input.alumnoNombre.trim() || null,
     p_alumno_grado: input.alumnoGrado.trim() || null,
     p_detalle: input.detalle.trim(),

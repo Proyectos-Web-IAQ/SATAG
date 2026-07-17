@@ -25,6 +25,15 @@ const ROLES: { valor: RolSolicitante; etiqueta: string }[] = [
   { valor: "admin", etiqueta: "Administrativo" },
 ];
 
+// Que tramite pide quien deja la nota. Sistemas lo ve y lo corrobora: puede
+// aplicar otro si el que se pidio no corresponde al caso.
+type TramiteNota = "instalacion" | "actualizacion" | "baja";
+const TRAMITES: { valor: TramiteNota; etiqueta: string }[] = [
+  { valor: "instalacion", etiqueta: "Instalar TAG" },
+  { valor: "actualizacion", etiqueta: "Actualizar datos" },
+  { valor: "baja", etiqueta: "Dar de baja" },
+];
+
 // El folio impreso es SATAG-000123; la gente a veces teclea solo los dígitos.
 // Se normaliza aquí para que "123" o "satag-123" encuentren su registro.
 function normalizarFolio(v: string): string {
@@ -50,6 +59,7 @@ export default function SolicitudesPage() {
   // Ruta sin folio: nota (SC-003).
   const [solicitante, setSolicitante] = useState("");
   const [solicitanteRol, setSolicitanteRol] = useState<RolSolicitante | null>(null);
+  const [tramite, setTramite] = useState<TramiteNota | null>(null);
   const [alumno, setAlumno] = useState("");
   const [grado, setGrado] = useState("");
   const [notaDetalle, setNotaDetalle] = useState("");
@@ -61,6 +71,7 @@ export default function SolicitudesPage() {
   const listoFolio = tipo !== null && folio.trim() !== "" && placasOTag.trim() !== "" && detalle.trim() !== "";
   const listoNota =
     solicitanteRol !== null &&
+    tramite !== null &&
     solicitante.trim() !== "" &&
     notaDetalle.trim() !== "" &&
     (!esPadres || (alumno.trim() !== "" && grado.trim() !== ""));
@@ -87,13 +98,14 @@ export default function SolicitudesPage() {
 
   async function enviarNota(e: React.FormEvent) {
     e.preventDefault();
-    if (!solicitanteRol) return;
+    if (!solicitanteRol || !tramite) return;
     setEnviando(true);
     setError(null);
     try {
       await crearNota({
         solicitanteNombre: solicitante,
         solicitanteRol,
+        tramiteSolicitado: tramite,
         // Alumno y grado solo aplican a padres; para el resto van vacíos.
         alumnoNombre: esPadres ? alumno : "",
         alumnoGrado: esPadres ? grado : "",
@@ -259,9 +271,20 @@ export default function SolicitudesPage() {
 
               <div className="field">
                 <span>¿Qué necesita?</span>
+                <div className="chip-row">
+                  {TRAMITES.map((t) => (
+                    <button key={t.valor} type="button"
+                      className={`select-chip ${tramite === t.valor ? "on" : ""}`}
+                      onClick={() => setTramite(t.valor)}>{t.etiqueta}</button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="field">
+                <span>Cuéntenos más (detalles)</span>
                 <textarea className="input" rows={3} maxLength={500} value={notaDetalle}
                   onChange={(e) => setNotaDetalle(e.target.value)}
-                  placeholder="Ej. reposición de TAG dañado, cambio de vehículo, dar de baja…" />
+                  placeholder="Ej. TAG dañado, egreso del colegio, cambio de vehículo…" />
                 <p className="hint">{notaDetalle.length}/500</p>
               </div>
 

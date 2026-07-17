@@ -32,6 +32,10 @@ export interface Pago {
 
 export type TipoSolicitud = "actualizacion" | "baja" | "nota";
 
+// Lo que el cliente PIDE en una nota del buzon (SC-003). Es su peticion, no lo
+// que TI decide: TI lo corrobora y puede aplicar otro tramite si no corresponde.
+export type TramiteSolicitado = "instalacion" | "actualizacion" | "baja";
+
 // Solicitud levantada sobre un registro existente (página pública /solicitudes
 // o, a futuro, captura interna): alimenta los contadores de la pantalla TI.
 // Tabla: solicitudes (26_solicitudes.sql). El id permite descartarla (RPC
@@ -39,7 +43,8 @@ export type TipoSolicitud = "actualizacion" | "baja" | "nota";
 //
 // 'nota' (SC-003): buzón público sin folio. Llega SIN vincular (registroId null)
 // y TI la empata a mano con un expediente. Los campos solicitante*/alumno*/
-// vehiculo solo vienen en las notas; en actualizacion/baja quedan en null.
+// vehiculo/tramiteSolicitado solo vienen en las notas; en actualizacion/baja
+// quedan en null.
 export interface Solicitud {
   id: string;
   tipo: TipoSolicitud;
@@ -49,6 +54,7 @@ export interface Solicitud {
   // Solo en notas (SC-003):
   solicitanteNombre?: string | null;
   solicitanteRol?: TipoUsuario | null;
+  tramiteSolicitado?: TramiteSolicitado | null;
   alumnoNombre?: string | null;
   alumnoGrado?: string | null;
   vehiculoDesc?: string | null;

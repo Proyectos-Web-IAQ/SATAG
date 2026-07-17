@@ -15,7 +15,7 @@ import {
 } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, scrollAlAviso } from "@/components/admin/RegistroCard";
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas";
 type Accion = "instalar" | "actualizar" | "baja";
@@ -633,6 +633,7 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
         <div className="detail-grid" style={{ marginBottom: 12 }}>
           <div><div className="k">Solicitante</div><div className="v">{nota.solicitanteNombre ?? "—"}</div></div>
           <div><div className="k">Quién solicita</div><div className="v">{nota.solicitanteRol ? ROL_LABEL[nota.solicitanteRol] : "—"}</div></div>
+          <div style={{ gridColumn: "1 / -1" }}><div className="k">Pidió</div><div className="v"><strong>{nota.tramiteSolicitado ? TRAMITE_LABEL[nota.tramiteSolicitado] : "—"}</strong></div></div>
           {nota.alumnoNombre && <div><div className="k">Alumno</div><div className="v">{nota.alumnoNombre}</div></div>}
           {nota.alumnoGrado && <div><div className="k">Grado</div><div className="v">{nota.alumnoGrado}</div></div>}
           {nota.vehiculoDesc && <div><div className="k">Coche</div><div className="v">{nota.vehiculoDesc}</div></div>}
