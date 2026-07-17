@@ -147,7 +147,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
   - [ ] RLS por rol + RPC controlada para escrituras críticas (CC-12)
   - [ ] Bucket privado para firmas + URLs firmadas temporales (CC-12)
   - [ ] MFA obligatorio para cuentas administrativas (CC-12)
-- [x] Auth del panel + reset de contraseña — *Est. 0.5 d* ✅ · login real con Supabase Auth (correo/contraseña), sesión persistente y recuperación por correo (`/admin/reset`). Falta config del dashboard (usuario admin, Redirect URLs, MFA) — ver [supabase/README](supabase/README.md#auth-del-panel-administrativo)
+- [x] Auth del panel + reset de contraseña — *Est. 0.5 d* ✅ · login real con Supabase Auth (correo/contraseña), sesión persistente y recuperación por correo (`/reset-password`). Falta config del dashboard (usuario admin, Redirect URLs, MFA) — ver [supabase/README](supabase/README.md#auth-del-panel-administrativo)
 
 **Autoservicio**
 - [ ] Formulario de captura — *Est. 1.5 d* · 🟡 prototipo listo

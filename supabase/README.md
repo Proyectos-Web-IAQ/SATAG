@@ -151,8 +151,8 @@ Configuracion en el **Dashboard de Supabase** (no vive en el repo):
 3. **Redirect URLs** (para el enlace de recuperacion) — Authentication -> URL Configuration:
    - **Site URL:** el origen de produccion (ej. `https://satag.vercel.app`).
    - **Redirect URLs** (allowlist): agrega la ruta de reset en cada entorno, con `/` final:
-     - `http://localhost:3000/admin/reset/`  (desarrollo)
-     - `https://satag.vercel.app/admin/reset/`  (o comodin `https://satag.vercel.app/**`)
+     - `http://localhost:3000/reset-password/`  (desarrollo)
+     - `https://satag.vercel.app/reset-password/`  (o comodin `https://satag.vercel.app/**`)
    - Si el correo redirige a una URL fuera de la allowlist, Supabase cae al Site URL y el reset falla.
 4. **Correo (SMTP)** — el SMTP integrado de Supabase sirve para pruebas pero tiene limite bajo y
    puede caer en spam. Para produccion, configura **Custom SMTP** en Authentication -> Emails.
@@ -161,8 +161,8 @@ Configuracion en el **Dashboard de Supabase** (no vive en el repo):
 
 ### Flujo de recuperacion (como funciona)
 
-`/admin` -> *¿Olvidaste tu contrasena?* -> `resetPasswordForEmail(correo, { redirectTo: /admin/reset/ })`
--> Supabase envia correo -> el enlace regresa a `/admin/reset/` con el token en el **hash**
+`/admin` -> *¿Olvidaste tu contrasena?* -> `resetPasswordForEmail(correo, { redirectTo: /reset-password/ })`
+-> Supabase envia correo -> el enlace regresa a `/reset-password/` con el token en el **hash**
 (`#access_token=...&type=recovery`, flujo *implicit* para que funcione cross-device) -> la pagina
 establece la sesion de recuperacion y pide la nueva contrasena -> `updateUser({ password })` ->
 cierra sesion y el usuario entra con la contrasena nueva.
@@ -227,7 +227,7 @@ cerrar sesión y volver a entrar; recargar la página no sustituye ese paso.
 1. Crea un usuario de prueba en el dashboard (paso 1) y agrega los Redirect URLs (paso 3).
 2. `npm run dev` -> abre `http://localhost:3000/admin/` e inicia sesion con ese usuario.
 3. Cierra sesion (**Salir**) y prueba **¿Olvidaste tu contrasena?** con ese correo.
-4. Abre el enlace del correo -> deberia mostrar el formulario de nueva contrasena en `/admin/reset/`.
+4. Abre el enlace del correo -> deberia mostrar el formulario de nueva contrasena en `/reset-password/`.
 5. Guarda la nueva contrasena y verifica que puedas iniciar sesion con ella.
 6. **Roles:** sin `app_metadata.rol`, después de MFA debe aparecer **"Sin rol asignado"**.
    Asigna el rol por SQL, cierra sesión y vuelve a entrar. Verifica que `admin`, `ti` y
