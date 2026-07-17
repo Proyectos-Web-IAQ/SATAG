@@ -3,13 +3,23 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import Loader from "@/components/Loader";
-import { supabaseAuth, actualizarContrasena } from "@/lib/supabase/auth";
+import {
+  supabaseAuth,
+  actualizarContrasena,
+  nivelMfa,
+  factoresTotp,
+  verificarTotp,
+} from "@/lib/supabase/auth";
 
 // Landing del enlace de recuperacion (/admin/reset-password). Supabase redirige aqui
-// con el token en el hash: #access_token=...&refresh_token=...&type=recovery
-// (o #error=...&error_description=...). Se procesa a mano (detectSessionInUrl:
-// false) para evitar condiciones de carrera.
-type Estado = "verificando" | "listo" | "sin-token" | "expirado" | "hecho";
+// con el token en el hash (#access_token=...&type=recovery) o, para sitios
+// estaticos, en el query (?token_hash=...&type=recovery). Se procesa a mano
+// (detectSessionInUrl: false) para evitar condiciones de carrera.
+//
+// El enlace deja una sesion aal1. Si la cuenta tiene MFA, updateUser({password})
+// exige aal2, asi que primero se pide el codigo TOTP (estado "mfa") para subir el
+// nivel; recien entonces se muestra el formulario de nueva contrasena.
+type Estado = "verificando" | "mfa" | "listo" | "sin-token" | "expirado" | "hecho";
 
 const MIN_PASSWORD = 8;
 
@@ -21,6 +31,10 @@ export default function ResetPage() {
   const [confirmar, setConfirmar] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Paso MFA (si la cuenta tiene segundo factor): subir la sesion a aal2.
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [codigo, setCodigo] = useState("");
 
   useEffect(() => {
     // El correo puede llegar de dos formas: el patron recomendado para sitios
@@ -47,6 +61,19 @@ export default function ResetPage() {
       window.history.replaceState(null, "", window.location.pathname);
     }
 
+    // Con sesion de recuperacion establecida (aal1): si la cuenta tiene un factor
+    // MFA verificado, hay que subir a aal2 (pedir el codigo) antes de cambiar la
+    // contrasena; si no, se pasa directo al formulario.
+    async function decidirGate() {
+      const nivel = await nivelMfa();
+      if (nivel.actual === "aal2") { setEstado("listo"); return; }
+      if (nivel.siguiente === "aal2") {
+        const verificado = (await factoresTotp()).find((f) => f.status === "verified");
+        if (verificado) { setFactorId(verificado.id); setEstado("mfa"); return; }
+      }
+      setEstado("listo");
+    }
+
     async function establecer() {
       try {
         // Metodo recomendado: canjear el token_hash del correo.
@@ -54,7 +81,7 @@ export default function ResetPage() {
           const { error: err } = await supabaseAuth.auth.verifyOtp({ token_hash: tokenHash, type: tipo });
           if (err) throw err;
           limpiarUrl();
-          setEstado("listo");
+          await decidirGate();
           return;
         }
         // Respaldo: sesion en el hash (redirect por defecto de Supabase).
@@ -62,12 +89,12 @@ export default function ResetPage() {
           const { error: err } = await supabaseAuth.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
           if (err) throw err;
           limpiarUrl();
-          setEstado("listo");
+          await decidirGate();
           return;
         }
         // Sin token: quiza ya habia una sesion de recuperacion; si no, entrada directa.
         const { data } = await supabaseAuth.auth.getSession();
-        setEstado(data.session ? "listo" : "sin-token");
+        if (data.session) { await decidirGate(); } else { setEstado("sin-token"); }
       } catch {
         setErrorLink("El enlace no es válido o ya expiró.");
         setEstado("expirado");
@@ -76,6 +103,22 @@ export default function ResetPage() {
 
     establecer();
   }, []);
+
+  async function verificarMfa(e: React.FormEvent) {
+    e.preventDefault();
+    if (!factorId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await verificarTotp(factorId, codigo);
+      setEstado("listo");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo verificar el código.");
+      setCodigo("");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -112,6 +155,27 @@ export default function ResetPage() {
         </header>
 
         {estado === "verificando" && <Loader label="Validando enlace…" />}
+
+        {estado === "mfa" && (
+          <>
+            <p className="notice">
+              Tu cuenta tiene verificación en dos pasos. Escribe el código de tu app de autenticación
+              para continuar con el cambio de contraseña.
+            </p>
+            <form onSubmit={verificarMfa} style={{ display: "grid", gap: 16, marginTop: 8 }}>
+              <label className="field">
+                <span>Código de verificación</span>
+                <input className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+                  placeholder="000000" value={codigo}
+                  onChange={(e) => setCodigo(e.target.value.replace(/\D/g, ""))} autoFocus />
+              </label>
+              <button className="primary-action" type="submit" disabled={busy || codigo.length !== 6}>
+                {busy ? "Verificando…" : "Verificar"}
+              </button>
+              {error && <p className="submit-error" role="alert">{error}</p>}
+            </form>
+          </>
+        )}
 
         {estado === "listo" && (
           <form className="login-form" onSubmit={onSubmit} style={{ display: "grid", gap: 16 }}>
