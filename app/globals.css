@@ -251,9 +251,11 @@ a { color: var(--primary-strong); }
    Areas tactiles grandes, placas como dato principal, poco scroll.
    ===================================================================== */
 .ti-actions { display: grid; gap: 12px; margin-bottom: 18px; }
-@media (min-width: 720px) { .ti-actions { grid-template-columns: repeat(3, 1fr); } }
+/* TI tiene cuatro colas (instalar, actualizar, baja, notas): 2x2 en pantalla
+   ancha las deja balanceadas, sin una tarjeta huerfana en su propia fila. */
+@media (min-width: 720px) { .ti-actions { grid-template-columns: repeat(2, 1fr); } }
 /* Administracion solo tiene una cola operativa: cobrar. La tarjeta conserva el
-   mismo peso visual que las tres acciones de TI sin quedar reducida a un tercio. */
+   mismo peso visual que las acciones de TI sin quedar reducida a una fraccion. */
 @media (min-width: 720px) { .ti-actions.admin-actions { grid-template-columns: minmax(0, 1fr); } }
 .ti-action {
   align-items: center; background: #f2f5fb; border: 1px solid #d3dae7; border-radius: 10px;

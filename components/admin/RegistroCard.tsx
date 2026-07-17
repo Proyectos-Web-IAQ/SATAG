@@ -1,8 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import type { Registro, Solicitud } from "@/lib/mock/types";
+import type { Registro, Solicitud, TipoUsuario } from "@/lib/mock/types";
 import EstadoChip from "@/components/admin/EstadoChip";
+
+// Rol de quien deja una nota del buzon (SC-003), en texto legible.
+export const ROL_LABEL: Record<TipoUsuario, string> = {
+  padres: "padre/madre/tutor",
+  maestro: "maestro",
+  admin: "administrativo",
+  alumno: "alumno",
+};
+
+// Linea que resume una solicitud pendiente en la tarjeta. Una nota (SC-003) dice
+// de quien viene; una actualizacion/baja dice que pide.
+export function textoSolicitud(s: Solicitud): string {
+  if (s.tipo === "nota") {
+    const rol = s.solicitanteRol ? ` (${ROL_LABEL[s.solicitanteRol]})` : "";
+    const quien = s.solicitanteNombre ? `Nota de ${s.solicitanteNombre}${rol}` : "Nota";
+    return `${quien} (${s.fecha}): ${s.detalle}`;
+  }
+  return `Solicita ${s.tipo === "actualizacion" ? "actualización" : "baja"} (${s.fecha}): ${s.detalle}`;
+}
 
 // Scroll suave salvo que el sistema pida movimiento reducido.
 export const scrollBehavior = (): ScrollBehavior =>
@@ -54,9 +73,7 @@ export function TarjetaRegistro({ r, abierto, onToggle, children, chip }: {
           {r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}
         </span>
         {solicitudes.map((s) => (
-          <span key={s.id} className="ti-card__solicitud">
-            Solicita {s.tipo === "actualizacion" ? "actualización" : "baja"} ({s.fecha}): {s.detalle}
-          </span>
+          <span key={s.id} className="ti-card__solicitud">{textoSolicitud(s)}</span>
         ))}
       </button>
       {abierto && <div className="ti-card__body">{children}</div>}
@@ -99,25 +116,24 @@ function SolicitudPendiente({ s, busy, onDescartar }: {
 }) {
   const [abierto, setAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
+  const esNota = s.tipo === "nota";
   return (
     <div className="ti-form" style={{ marginBottom: 12 }}>
-      <p className="ti-hint" style={{ marginBottom: 8 }}>
-        Solicita {s.tipo === "actualizacion" ? "actualización" : "baja"} ({s.fecha}): {s.detalle}
-      </p>
+      <p className="ti-hint" style={{ marginBottom: 8 }}>{textoSolicitud(s)}</p>
       {!abierto ? (
         <button type="button" className="link-action" disabled={busy} onClick={() => setAbierto(true)}>
-          Descartar esta solicitud sin aplicar cambios…
+          {esNota ? "Cerrar esta nota…" : "Descartar esta solicitud sin aplicar cambios…"}
         </button>
       ) : (
         <>
           <div className="field">
-            <span>¿Por qué se descarta?</span>
+            <span>{esNota ? "¿Por qué se cierra?" : "¿Por qué se descarta?"}</span>
             <input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Ej. ya estaba aplicado, duplicada, no procede" />
+              placeholder={esNota ? "Ej. ya se atendió, no procede, dato incorrecto" : "Ej. ya estaba aplicado, duplicada, no procede"} />
           </div>
           <div className="ti-chips">
             <button type="button" className="select-chip" disabled={busy || !motivo.trim()}
-              onClick={() => onDescartar(s, motivo.trim())}>Descartar solicitud</button>
+              onClick={() => onDescartar(s, motivo.trim())}>{esNota ? "Cerrar nota" : "Descartar solicitud"}</button>
             <button type="button" className="link-action" disabled={busy}
               onClick={() => { setAbierto(false); setMotivo(""); }}>Cancelar</button>
           </div>

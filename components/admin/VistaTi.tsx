@@ -4,23 +4,27 @@ import type { CambiosRegistro, ProcedenciaTag, Registro, Solicitud } from "@/lib
 import { getMarcas, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
+  listNotasSinExpediente,
   getEstacionamientos,
   instalarTagConEstacionamiento,
   actualizarRegistroConEstacionamiento,
   darBaja,
   descartarSolicitud,
+  vincularNota,
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { DetalleRegistro, TarjetaRegistro, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, scrollAlAviso } from "@/components/admin/RegistroCard";
 
-type Modo = "inicio" | "instalar" | "actualizar" | "baja";
+type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas";
 type Accion = "instalar" | "actualizar" | "baja";
 
 type ConfirmCfg = {
   title: string; message: string; confirmLabel: string; danger: boolean;
   action: () => Promise<AccionResultado>; ok: string;
+  // Se ejecuta tras el refresh exitoso: p.ej. abrir el expediente recien vinculado.
+  after?: () => void;
 };
 
 // Compara asignaciones de estacionamiento sin importar el orden de los chips.
@@ -52,6 +56,7 @@ const grupoTi = (r: Registro): number => {
 // al instalar o actualizar (SC-002).
 export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
+  const [notas, setNotas] = useState<Solicitud[]>([]);
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
@@ -78,8 +83,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const list = await listRegistros();
+      const [list, notasList] = await Promise.all([listRegistros(), listNotasSinExpediente()]);
       setRegistros(list);
+      setNotas(notasList);
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los registros.");
@@ -124,7 +130,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     ? registros.filter((r) => r.estado !== "baja" && !listaSolicitudes.includes(r) && coincide(r))
     : [];
 
-  async function run(fn: () => Promise<AccionResultado>, ok: string) {
+  async function run(fn: () => Promise<AccionResultado>, ok: string, after?: () => void) {
     if (busy) return;
     setBusy(true); setError(null); setFeedback(null);
     try {
@@ -132,6 +138,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       await refresh();
       setSelId(null); setAccionPadron(null);
       setFeedback(ok);
+      after?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error");
     } finally {
@@ -165,7 +172,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       message: `Se instalará el TAG ${tag} en el ${r.marca} ${r.modelo} ${r.color} (${r.placas ?? "sin placas"}) de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo.`
         + (apartado ? ` Se apartará el TAG ${apartado} de la escuela.` : "")
         + (cambiaProcedencia ? ` El TAG quedará marcado como ${procedencia}.` : "")
-        + " Revisa bien el número. ¿Continuar?",
+        + " Revise bien el número. ¿Continuar?",
       confirmLabel: "Instalar", danger: false,
       action: () => instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia }),
       ok: `TAG ${tag} instalado y activado (${r.folio}).` + (apartado ? ` TAG ${apartado} apartado.` : ""),
@@ -191,13 +198,40 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     });
   }
   // Cierra una solicitud improcedente sin tocar el registro (motivo obligatorio).
+  // Una nota ya vinculada se "cierra" con el mismo RPC una vez atendida.
   function confirmarDescartar(r: Registro, sol: Solicitud, motivo: string) {
+    const esNota = sol.tipo === "nota";
     setConfirm({
-      title: "Descartar solicitud",
-      message: `Se descartará la solicitud de ${sol.tipo === "actualizacion" ? "actualización" : "baja"} de ${r.folio} (${r.usuarioNombre}) sin aplicar ningún cambio. Motivo: ${motivo}. ¿Continuar?`,
-      confirmLabel: "Descartar", danger: true,
+      title: esNota ? "Cerrar nota" : "Descartar solicitud",
+      message: esNota
+        ? `Se cerrará la nota de ${r.folio} (${r.usuarioNombre}). Motivo: ${motivo}. ¿Continuar?`
+        : `Se descartará la solicitud de ${sol.tipo === "actualizacion" ? "actualización" : "baja"} de ${r.folio} (${r.usuarioNombre}) sin aplicar ningún cambio. Motivo: ${motivo}. ¿Continuar?`,
+      confirmLabel: esNota ? "Cerrar nota" : "Descartar", danger: true,
       action: () => descartarSolicitud(sol.id, motivo, tiNombre),
-      ok: `Solicitud descartada (${r.folio}).`,
+      ok: esNota ? `Nota cerrada (${r.folio}).` : `Solicitud descartada (${r.folio}).`,
+    });
+  }
+
+  // SC-003: empata una nota del buzon con un expediente y abre ese expediente
+  // para que TI aplique el cambio real y luego cierre la nota.
+  function confirmarVincular(nota: Solicitud, r: Registro) {
+    setConfirm({
+      title: "Vincular nota al expediente",
+      message: `Se vinculará la nota de ${nota.solicitanteNombre ?? "—"} al expediente ${r.folio} (${r.usuarioNombre}). Quedará pendiente en ese expediente para que usted aplique el cambio y luego la cierre. ¿Continuar?`,
+      confirmLabel: "Vincular", danger: false,
+      action: () => vincularNota(nota.id, r.id, tiNombre),
+      ok: `Nota vinculada a ${r.folio}. Ya aparece en el expediente.`,
+      after: () => { setModo("inicio"); setSelId(r.id); },
+    });
+  }
+  // Descarta una nota del buzon SIN vincularla (spam / no procede).
+  function confirmarDescartarNota(nota: Solicitud, motivo: string) {
+    setConfirm({
+      title: "Descartar nota",
+      message: `Se descartará la nota de ${nota.solicitanteNombre ?? "—"} sin vincularla a ningún expediente. Motivo: ${motivo}. ¿Continuar?`,
+      confirmLabel: "Descartar", danger: true,
+      action: () => descartarSolicitud(nota.id, motivo, tiNombre),
+      ok: "Nota descartada.",
     });
   }
 
@@ -254,6 +288,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
               <span><span className="ti-action__title">Dar de baja</span><span className="ti-action__sub">Egresos y cancelaciones</span></span>
               <span className={`ti-action__count ti-action__count--${sem(solicitanBaja.length)}`}>{solicitanBaja.length}</span>
             </button>
+            <button type="button" className="ti-action" onClick={() => irA("notas")}>
+              <span><span className="ti-action__title">Notas sin expediente</span><span className="ti-action__sub">Buzón sin folio: vincular o descartar</span></span>
+              <span className={`ti-action__count ti-action__count--${sem(notas.length)}`}>{notas.length}</span>
+            </button>
           </div>
 
           <div className="panel">
@@ -297,7 +335,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         <>
           <div className="ti-topbar">
             <button type="button" className="ti-back" onClick={() => irA("inicio")}>← Inicio</button>
-            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : "Dar de baja"}</h2>
+            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : "Dar de baja"}</h2>
           </div>
           {banners}
 
@@ -335,7 +373,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
               <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
                 value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
               {q === "" ? (
-                <p className="ti-hint">Busca el registro de la persona para {modo === "actualizar" ? "actualizar sus datos" : "darla de baja"}.</p>
+                <p className="ti-hint">Busque el registro de la persona para {modo === "actualizar" ? "actualizar sus datos" : "darla de baja"}.</p>
               ) : (
                 <div className="ti-cards">
                   {resultadosAccion.map((r) => (
@@ -349,6 +387,26 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
               )}
             </>
           )}
+
+          {modo === "notas" && (
+            notas.length === 0
+              ? <p className="ti-empty">✓ No hay notas sin expediente. Todo al día.</p>
+              : (
+                <>
+                  <p className="ti-hint" style={{ marginBottom: 12 }}>
+                    Notas del buzón público (sin folio). Búsquelas por nombre y vincúlelas al
+                    expediente correcto, o descártelas si son spam.
+                  </p>
+                  <div className="ti-cards">
+                    {notas.map((n) => (
+                      <TarjetaNota key={n.id} nota={n} registros={registros} busy={busy}
+                        onVincular={(r) => confirmarVincular(n, r)}
+                        onDescartar={(m) => confirmarDescartarNota(n, m)} />
+                    ))}
+                  </div>
+                </>
+              )
+          )}
         </>
       )}
 
@@ -359,7 +417,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
           confirmLabel={confirm.confirmLabel}
           danger={confirm.danger}
           onCancel={() => setConfirm(null)}
-          onConfirm={() => { const c = confirm; setConfirm(null); run(c.action, c.ok); }}
+          onConfirm={() => { const c = confirm; setConfirm(null); run(c.action, c.ok, c.after); }}
         />
       )}
     </>
@@ -394,7 +452,7 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
             <button key={c} type="button" className={`select-chip ${claves.includes(c) ? "on" : ""}`} onClick={() => toggle(c)}>{c}</button>
           ))}
         </div>
-        {claves.length === 0 && <p className="field-error">Elige al menos un estacionamiento.</p>}
+        {claves.length === 0 && <p className="field-error">Elija al menos un estacionamiento.</p>}
       </div>
       <div className="field">
         <span>No. de TAG (6–11 dígitos){propio ? " — el propio de la familia" : ""}</span>
@@ -418,7 +476,7 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
           <p className="ti-hint">Queda reservado, sin instalar, para una reposición futura.</p>
         </div>
       )}
-      <div className="field"><span>Instalado por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Tu nombre" /></div>
+      <div className="field"><span>Instalado por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action" disabled={busy || !valido || claves.length === 0 || !apartadoValido} onClick={() => onSubmit(tag, claves, propio, apartadoNo)}>
         {valido ? `Instalar y activar TAG ${tag}` : "Instalar y activar"}
       </button>
@@ -521,12 +579,12 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
           ))}
         </div>
       </div>
-      <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Tu nombre" /></div>
+      <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action" disabled={busy || !hayCambios || !tagValido || !placasValidas}
         onClick={() => onSubmit(cambios, estCambia ? claves : null, resumen.join("; "), motivo)}>
         Guardar cambios
       </button>
-      {!hayCambios && <p className="hint" style={{ marginTop: 8 }}>Modifica algún dato para poder guardar.</p>}
+      {!hayCambios && <p className="hint" style={{ marginTop: 8 }}>Modifique algún dato para poder guardar.</p>}
     </div>
   );
 }
@@ -539,10 +597,101 @@ function FormBaja({ r, busy, tiNombre, onTiNombre, onSubmit }: {
   return (
     <div className="ti-form">
       <div className="field"><span>Motivo de baja</span><input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. egreso, cambio de vehículo" /></div>
-      <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Tu nombre" /></div>
+      <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action btn-danger" disabled={busy || !motivo.trim()} onClick={() => onSubmit(motivo)}>
         Dar de baja
       </button>
+    </div>
+  );
+}
+
+// SC-003: una nota del buzon sin vincular. Muestra quien la dejo y que necesita,
+// y ofrece las dos salidas de TI: vincularla al expediente correcto (buscandolo
+// por nombre) o descartarla si es spam. Recolectar es publico; buscar es privado:
+// aqui es donde TI hace la busqueda que el publico nunca ve.
+function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
+  nota: Solicitud;
+  registros: Registro[];
+  busy: boolean;
+  onVincular: (r: Registro) => void;
+  onDescartar: (motivo: string) => void;
+}) {
+  const [accion, setAccion] = useState<null | "vincular" | "descartar">(null);
+  const [q, setQ] = useState("");
+  const [motivo, setMotivo] = useState("");
+  const query = q.trim().toLowerCase();
+  // No se puede vincular a un registro dado de baja. Tope de 8 para no volcar
+  // el padron entero dentro de la tarjeta.
+  const resultados = query
+    ? registros.filter((r) => r.estado !== "baja" &&
+        [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.folio, r.marca, r.modelo]
+          .join(" ").toLowerCase().includes(query)).slice(0, 8)
+    : [];
+  return (
+    <div className="ti-card is-open">
+      <div className="ti-card__body">
+        <div className="detail-grid" style={{ marginBottom: 12 }}>
+          <div><div className="k">Solicitante</div><div className="v">{nota.solicitanteNombre ?? "—"}</div></div>
+          <div><div className="k">Quién solicita</div><div className="v">{nota.solicitanteRol ? ROL_LABEL[nota.solicitanteRol] : "—"}</div></div>
+          {nota.alumnoNombre && <div><div className="k">Alumno</div><div className="v">{nota.alumnoNombre}</div></div>}
+          {nota.alumnoGrado && <div><div className="k">Grado</div><div className="v">{nota.alumnoGrado}</div></div>}
+          {nota.vehiculoDesc && <div><div className="k">Coche</div><div className="v">{nota.vehiculoDesc}</div></div>}
+          <div><div className="k">Fecha</div><div className="v">{nota.fecha}</div></div>
+          <div style={{ gridColumn: "1 / -1" }}><div className="k">Qué necesita</div><div className="v">{nota.detalle}</div></div>
+        </div>
+
+        <div className="ti-chips">
+          <button type="button" className={`select-chip ${accion === "vincular" ? "on" : ""}`}
+            onClick={() => setAccion((a) => (a === "vincular" ? null : "vincular"))}>Vincular a un expediente</button>
+          <button type="button" className={`select-chip ${accion === "descartar" ? "on" : ""}`}
+            onClick={() => setAccion((a) => (a === "descartar" ? null : "descartar"))}>Descartar</button>
+        </div>
+
+        {accion === "vincular" && (
+          <div className="ti-form" style={{ marginTop: 12 }}>
+            <div className="field">
+              <span>Busque el expediente por nombre, placa o folio</span>
+              <input className="input search" type="search" value={q} onChange={(e) => setQ(e.target.value)}
+                placeholder="Nombre del alumno o del titular…" />
+            </div>
+            {query === "" ? (
+              <p className="ti-hint">Escriba para buscar el expediente al que corresponde esta nota.</p>
+            ) : resultados.length === 0 ? (
+              <p className="ti-hint">Sin resultados para «{q}».</p>
+            ) : (
+              <div className="ti-cards">
+                {resultados.map((r) => (
+                  <div key={r.id} className="ti-card is-open">
+                    <div className="ti-card__body">
+                      <span className="ti-card__veh">{r.usuarioNombre}</span>
+                      <span className="ti-card__sub">{r.marca} {r.modelo} · {r.color} · {r.placas ?? (r.sinPlacas ? "sin placas" : "—")}</span>
+                      <span className="ti-card__meta">{r.folio}{r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}</span>
+                      <button type="button" className="primary-action" disabled={busy} style={{ marginTop: 10 }}
+                        onClick={() => onVincular(r)}>Vincular esta nota a {r.folio}</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {accion === "descartar" && (
+          <div className="ti-form" style={{ marginTop: 12 }}>
+            <div className="field">
+              <span>¿Por qué se descarta?</span>
+              <input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)}
+                placeholder="Ej. spam, datos falsos, no procede" />
+            </div>
+            <div className="ti-chips">
+              <button type="button" className="select-chip" disabled={busy || !motivo.trim()}
+                onClick={() => onDescartar(motivo.trim())}>Descartar nota</button>
+              <button type="button" className="link-action" disabled={busy}
+                onClick={() => { setAccion(null); setMotivo(""); }}>Cancelar</button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -34,13 +34,13 @@ export interface AccionResultado {
 function traducirError(mensaje: string): string {
   const m = mensaje.toLowerCase();
   if (m.includes("failed to fetch") || m.includes("networkerror") || m.includes("load failed") || m.includes("fetch failed")) {
-    return "Sin conexion con el servidor. Revisa tu red e intenta de nuevo.";
+    return "Sin conexion con el servidor. Revise su red e intente de nuevo.";
   }
   if (m.includes("jwt") && (m.includes("expired") || m.includes("invalid"))) {
-    return "La sesion expiro. Cierra sesion y vuelve a entrar.";
+    return "La sesion expiro. Cierre sesion y vuelva a entrar.";
   }
   if (m.includes("permission denied") || m.includes("not authorized")) {
-    return "Tu usuario no tiene permiso para esta accion. Verifica tu rol con el administrador.";
+    return "Su usuario no tiene permiso para esta accion. Verifique su rol con el administrador.";
   }
   return mensaje;
 }
@@ -68,6 +68,12 @@ interface SolicitudRow {
   detalle: string;
   atendida: boolean;
   created_at: string;
+  // Solo en notas (SC-003); null en actualizacion/baja.
+  solicitante_nombre: string | null;
+  solicitante_rol: string | null;
+  alumno_nombre: string | null;
+  alumno_grado: string | null;
+  vehiculo_desc: string | null;
 }
 interface MovimientoRow {
   tipo: string;
@@ -115,9 +121,13 @@ const SELECT_REGISTRO = `
   observaciones, created_at,
   pagos ( monto, metodo, cobrado_por, folio_recibo, fecha, created_at ),
   registro_estacionamientos ( estacionamiento_clave ),
-  solicitudes ( id, tipo, detalle, atendida, created_at ),
+  solicitudes ( id, tipo, detalle, atendida, created_at, solicitante_nombre, solicitante_rol, alumno_nombre, alumno_grado, vehiculo_desc ),
   movimientos ( tipo, fecha, motivo, hecho_por, no_dispositivo_anterior, no_dispositivo_nuevo, created_at )
 `;
+
+// Columnas de una nota sin vincular (registro_id null): mismo shape que el embed
+// pero consultado directo sobre solicitudes (no cuelga de ningun registro).
+const SELECT_NOTA = `id, tipo, detalle, atendida, created_at, solicitante_nombre, solicitante_rol, alumno_nombre, alumno_grado, vehiculo_desc`;
 
 const porCreatedAt = (a: { created_at: string }, b: { created_at: string }) =>
   a.created_at.localeCompare(b.created_at);
@@ -140,6 +150,23 @@ function fechaLocal(iso: string): string {
   return `${partes.year}-${partes.month}-${partes.day}`;
 }
 
+// Fila de solicitud (embebida o suelta) -> shape del dominio. Los campos de nota
+// solo traen valor cuando tipo='nota'; en el resto quedan en null.
+function mapSolicitud(s: SolicitudRow): Solicitud {
+  return {
+    id: s.id,
+    tipo: s.tipo as TipoSolicitud,
+    detalle: s.detalle,
+    fecha: fechaLocal(s.created_at),
+    atendida: s.atendida,
+    solicitanteNombre: s.solicitante_nombre,
+    solicitanteRol: (s.solicitante_rol as TipoUsuario | null) ?? null,
+    alumnoNombre: s.alumno_nombre,
+    alumnoGrado: s.alumno_grado,
+    vehiculoDesc: s.vehiculo_desc,
+  };
+}
+
 function mapRegistro(r: RegistroRow): Registro {
   const pagos: Pago[] = [...r.pagos].sort(porCreatedAt).map((p) => ({
     monto: Number(p.monto),
@@ -148,13 +175,7 @@ function mapRegistro(r: RegistroRow): Registro {
     fecha: p.fecha,
     folio: p.folio_recibo,
   }));
-  const solicitudes: Solicitud[] = [...r.solicitudes].sort(porCreatedAt).map((s) => ({
-    id: s.id,
-    tipo: s.tipo as TipoSolicitud,
-    detalle: s.detalle,
-    fecha: fechaLocal(s.created_at),
-    atendida: s.atendida,
-  }));
+  const solicitudes: Solicitud[] = [...r.solicitudes].sort(porCreatedAt).map(mapSolicitud);
   const movimientos: Movimiento[] = [...r.movimientos].sort(porCreatedAt).map((m) => ({
     tipo: m.tipo as TipoMovimiento,
     fecha: m.fecha,
@@ -209,6 +230,22 @@ export async function listRegistros(filtro?: string): Promise<Registro[]> {
   return registros.filter((r) =>
     [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio]
       .join(" ").toLowerCase().includes(q));
+}
+
+// Notas del buzon publico sin folio aun SIN vincular (SC-003): tipo 'nota',
+// registro_id null y sin atender. No cuelgan de ningun registro, asi que se
+// consultan directo. TI las empata a un expediente (vincularNota) o las descarta
+// (descartarSolicitud) si son spam. La RLS ya las deja leer a aal2 + rol panel.
+export async function listNotasSinExpediente(): Promise<Solicitud[]> {
+  const { data, error } = await supabaseAuth
+    .from("solicitudes")
+    .select(SELECT_NOTA)
+    .eq("tipo", "nota")
+    .is("registro_id", null)
+    .eq("atendida", false)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as SolicitudRow[]).map(mapSolicitud);
 }
 
 // Catalogo de estacionamientos activos (para los chips de asignacion en TI).
@@ -294,10 +331,23 @@ export async function darBaja(id: string, motivo: string, hechoPor: string): Pro
 }
 
 // Cierra una solicitud improcedente SIN tocar el registro (motivo obligatorio).
+// Tambien cierra notas (vinculadas o no): sirve para cerrar una nota ya atendida
+// o para descartar spam del buzon.
 export async function descartarSolicitud(solicitudId: string, motivo: string, hechoPor: string): Promise<AccionResultado> {
   return rpc("descartar_solicitud", {
     p_solicitud_id: solicitudId,
     p_motivo: motivo,
+    p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
+// Empata una nota del buzon (SC-003) con un expediente: solo setea registro_id y
+// deja movimiento (RPC vincular_nota, rol ti). La nota queda pendiente bajo el
+// expediente; TI aplica el cambio real y luego la cierra con descartarSolicitud.
+export async function vincularNota(solicitudId: string, registroId: string, hechoPor: string): Promise<AccionResultado> {
+  return rpc("vincular_nota", {
+    p_solicitud_id: solicitudId,
+    p_registro_id: registroId,
     p_hecho_por: hechoPor.trim() || null,
   });
 }

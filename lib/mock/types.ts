@@ -30,18 +30,28 @@ export interface Pago {
   folio: string | null;
 }
 
-export type TipoSolicitud = "actualizacion" | "baja";
+export type TipoSolicitud = "actualizacion" | "baja" | "nota";
 
 // Solicitud levantada sobre un registro existente (página pública /solicitudes
 // o, a futuro, captura interna): alimenta los contadores de la pantalla TI.
 // Tabla: solicitudes (26_solicitudes.sql). El id permite descartarla (RPC
 // descartar_solicitud) cuando resulta improcedente.
+//
+// 'nota' (SC-003): buzón público sin folio. Llega SIN vincular (registroId null)
+// y TI la empata a mano con un expediente. Los campos solicitante*/alumno*/
+// vehiculo solo vienen en las notas; en actualizacion/baja quedan en null.
 export interface Solicitud {
   id: string;
   tipo: TipoSolicitud;
   detalle: string;
   fecha: string;
   atendida: boolean;
+  // Solo en notas (SC-003):
+  solicitanteNombre?: string | null;
+  solicitanteRol?: TipoUsuario | null;
+  alumnoNombre?: string | null;
+  alumnoGrado?: string | null;
+  vehiculoDesc?: string | null;
 }
 
 export interface Movimiento {
