@@ -9,20 +9,20 @@ import { crearSolicitud, crearNota } from "@/lib/supabase/api";
 //
 //  - CON folio (CC-06): el titular demuestra serlo con folio + placas (o No. de
 //    TAG). Ruta rápida, sin cambios respecto a antes.
-//  - SIN folio (SC-003): deja una nota con su nombre y quién es (padres, maestro,
-//    administrativo o alumno); Sistemas la empata a mano por nombre. Recolectar
+//  - SIN folio (SC-003): deja una nota con su nombre y quién es (padre/madre/tutor,
+//    maestro o administrativo); Sistemas la empata a mano por nombre. Recolectar
 //    es público; buscar es privado.
 type TipoSolicitud = "actualizacion" | "baja";
 type Modo = "elegir" | "folio" | "nota";
 
-// Alineado con el catálogo reg_tipo_usuario_valido (maestro/padres/alumno/admin).
-// El valor "admin" se muestra como "Administrativo".
-type RolSolicitante = "padres" | "maestro" | "admin" | "alumno";
+// Roles que pueden dejar una nota sin folio. El catálogo reg_tipo_usuario_valido
+// tambien incluye 'alumno', pero el buzón público no lo ofrece: los alumnos no
+// hacen este trámite. El valor "admin" se muestra como "Administrativo".
+type RolSolicitante = "padres" | "maestro" | "admin";
 const ROLES: { valor: RolSolicitante; etiqueta: string }[] = [
-  { valor: "padres", etiqueta: "Padres" },
+  { valor: "padres", etiqueta: "Padre/Madre/Tutor" },
   { valor: "maestro", etiqueta: "Maestro" },
   { valor: "admin", etiqueta: "Administrativo" },
-  { valor: "alumno", etiqueta: "Alumno" },
 ];
 
 // El folio impreso es SATAG-000123; la gente a veces teclea solo los dígitos.

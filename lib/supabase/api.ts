@@ -209,7 +209,7 @@ export async function crearSolicitud(input: {
 // un expediente buscando por nombre. Recolectar es publico; buscar es privado.
 export async function crearNota(input: {
   solicitanteNombre: string;
-  solicitanteRol: "padres" | "maestro" | "admin" | "alumno";
+  solicitanteRol: "padres" | "maestro" | "admin";
   alumnoNombre: string;
   alumnoGrado: string;
   detalle: string;
