@@ -4,7 +4,7 @@ import Link from "next/link";
 import Loader from "@/components/Loader";
 import { supabaseAuth, actualizarContrasena } from "@/lib/supabase/auth";
 
-// Landing del enlace de recuperacion (/reset-password). Supabase redirige aqui
+// Landing del enlace de recuperacion (/admin/reset-password). Supabase redirige aqui
 // con el token en el hash: #access_token=...&refresh_token=...&type=recovery
 // (o #error=...&error_description=...). Se procesa a mano (detectSessionInUrl:
 // false) para evitar condiciones de carrera.

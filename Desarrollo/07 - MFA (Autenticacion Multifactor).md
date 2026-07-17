@@ -177,7 +177,7 @@ necesidad real hoy.
   verificar; conviene limpiarlo (`unenroll`) al reintentar.
 - **QR sin dependencias externas:** `enroll` devuelve el QR como SVG/data-URL; se pinta inline, sin
   llamar a ningún servicio externo (compatible con export estático / CSP).
-- **Recuperación de contraseña** (`/reset-password`): tras resetear, la sesión es `aal1`; si la persona ya
+- **Recuperación de contraseña** (`/admin/reset-password`): tras resetear, la sesión es `aal1`; si la persona ya
   tenía factor, se le pedirá el código. Cuidar que esa pantalla no lea PII antes de `aal2`.
 - **Rol ≠ permisos:** MFA endurece *quién entra*, no *qué puede hacer cada rol*. Limitar `consulta` a
   solo lectura es RLS por `app_metadata.rol` — trabajo **hermano pero separado** de MFA.

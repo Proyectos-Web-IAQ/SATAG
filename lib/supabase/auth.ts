@@ -9,7 +9,7 @@
 // navegador. Se usa flujo `implicit` (token en el hash de la URL) para que el
 // enlace de recuperacion de contrasena funcione aunque el correo se abra en
 // otro dispositivo (no depende de un code_verifier guardado localmente).
-// El hash de recuperacion se procesa a mano en /reset-password, por eso
+// El hash de recuperacion se procesa a mano en /admin/reset-password, por eso
 // detectSessionInUrl va en false (evita condiciones de carrera al montar).
 import { createClient, type User } from "@supabase/supabase-js";
 
@@ -27,7 +27,7 @@ export const supabaseAuth = createClient(url, key, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false, // el hash de recuperacion se procesa a mano en /reset-password
+    detectSessionInUrl: false, // el hash de recuperacion se procesa a mano en /admin/reset-password
     flowType: "implicit", // recuperacion cross-device: token en el hash, sin code_verifier
     storageKey: "satag-admin-auth", // clave propia: no choca con el cliente publico anon
   },
@@ -35,9 +35,9 @@ export const supabaseAuth = createClient(url, key, {
 
 // Ruta a la que Supabase redirige desde el correo de recuperacion. DEBE estar
 // en la allowlist de Auth -> URL Configuration -> Redirect URLs (local y prod).
-// trailingSlash: true en next.config -> la ruta estatica es /reset-password/.
+// trailingSlash: true en next.config -> la ruta estatica es /admin/reset-password/.
 export function resetRedirectUrl(): string {
-  return `${window.location.origin}/reset-password/`;
+  return `${window.location.origin}/admin/reset-password/`;
 }
 
 // Traduce los errores de Supabase Auth (en ingles) a mensajes claros en espanol.
@@ -84,7 +84,7 @@ export async function enviarCorreoRecuperacion(email: string): Promise<void> {
 }
 
 // Fija la nueva contrasena. Requiere una sesion de recuperacion activa
-// (establecida en /reset-password a partir del token del correo).
+// (establecida en /admin/reset-password a partir del token del correo).
 export async function actualizarContrasena(password: string): Promise<void> {
   const { error } = await supabaseAuth.auth.updateUser({ password });
   if (error) throw new Error(mensajeAuth(error.message));
