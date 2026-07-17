@@ -197,7 +197,36 @@ export async function crearSolicitud(input: {
   if (error) {
     const m = error.message.toLowerCase();
     if (m.includes("failed to fetch") || m.includes("networkerror") || m.includes("load failed")) {
-      throw new Error("Sin conexion con el servidor. Revisa tu red e intenta de nuevo.");
+      throw new Error("Sin conexion con el servidor. Revise su red e intente de nuevo.");
+    }
+    throw new Error(error.message);
+  }
+}
+
+// ---- Nota publica SIN folio ni placa (SC-003) ----
+// RPC crear_nota_solicitud (SECURITY DEFINER): recolecta una nota sin consultar
+// la base ni revelar nada (solo devuelve { recibida }). TI la empata despues con
+// un expediente buscando por nombre. Recolectar es publico; buscar es privado.
+export async function crearNota(input: {
+  solicitanteNombre: string;
+  solicitanteRol: "padres" | "maestro" | "admin" | "alumno";
+  alumnoNombre: string;
+  alumnoGrado: string;
+  detalle: string;
+  vehiculoDesc?: string;
+}): Promise<void> {
+  const { error } = await supabase.rpc("crear_nota_solicitud", {
+    p_solicitante_nombre: input.solicitanteNombre.trim(),
+    p_solicitante_rol: input.solicitanteRol,
+    p_alumno_nombre: input.alumnoNombre.trim() || null,
+    p_alumno_grado: input.alumnoGrado.trim() || null,
+    p_detalle: input.detalle.trim(),
+    p_vehiculo_desc: input.vehiculoDesc?.trim() || null,
+  });
+  if (error) {
+    const m = error.message.toLowerCase();
+    if (m.includes("failed to fetch") || m.includes("networkerror") || m.includes("load failed")) {
+      throw new Error("Sin conexion con el servidor. Revise su red e intente de nuevo.");
     }
     throw new Error(error.message);
   }
