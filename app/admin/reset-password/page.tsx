@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import type { EmailOtpType } from "@supabase/supabase-js";
 import Loader from "@/components/Loader";
 import { supabaseAuth, actualizarContrasena } from "@/lib/supabase/auth";
 
@@ -22,38 +23,58 @@ export default function ResetPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.hash.slice(1));
+    // El correo puede llegar de dos formas: el patron recomendado para sitios
+    // estaticos usa ?token_hash=...&type=recovery en el QUERY (se canjea con
+    // verifyOtp); el redirect por defecto usa #access_token=... en el HASH
+    // (se establece con setSession). Se soportan ambos, como en /admin/invite.
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.slice(1));
 
-    const errDesc = params.get("error_description");
+    const errDesc = query.get("error_description") ?? hash.get("error_description");
     if (errDesc) {
       setErrorLink(decodeURIComponent(errDesc.replace(/\+/g, " ")));
       setEstado("expirado");
       return;
     }
 
-    const accessToken = params.get("access_token");
-    const refreshToken = params.get("refresh_token");
-    if (accessToken && refreshToken) {
-      supabaseAuth.auth
-        .setSession({ access_token: accessToken, refresh_token: refreshToken })
-        .then(({ error: err }) => {
-          if (err) {
-            setErrorLink("El enlace no es válido o ya expiró.");
-            setEstado("expirado");
-          } else {
-            // Quita el token de la barra de direcciones y del historial.
-            window.history.replaceState(null, "", window.location.pathname);
-            setEstado("listo");
-          }
-        });
-      return;
+    const tokenHash = query.get("token_hash");
+    const tipo = (query.get("type") as EmailOtpType | null) ?? "recovery";
+    const accessToken = hash.get("access_token");
+    const refreshToken = hash.get("refresh_token");
+
+    function limpiarUrl() {
+      // Quita el token de la barra de direcciones y del historial.
+      window.history.replaceState(null, "", window.location.pathname);
     }
 
-    // Sin token en el hash: quiza ya habia una sesion de recuperacion; si no,
-    // se entro directo a la ruta sin venir del correo.
-    supabaseAuth.auth.getSession().then(({ data }) => {
-      setEstado(data.session ? "listo" : "sin-token");
-    });
+    async function establecer() {
+      try {
+        // Metodo recomendado: canjear el token_hash del correo.
+        if (tokenHash) {
+          const { error: err } = await supabaseAuth.auth.verifyOtp({ token_hash: tokenHash, type: tipo });
+          if (err) throw err;
+          limpiarUrl();
+          setEstado("listo");
+          return;
+        }
+        // Respaldo: sesion en el hash (redirect por defecto de Supabase).
+        if (accessToken && refreshToken) {
+          const { error: err } = await supabaseAuth.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          if (err) throw err;
+          limpiarUrl();
+          setEstado("listo");
+          return;
+        }
+        // Sin token: quiza ya habia una sesion de recuperacion; si no, entrada directa.
+        const { data } = await supabaseAuth.auth.getSession();
+        setEstado(data.session ? "listo" : "sin-token");
+      } catch {
+        setErrorLink("El enlace no es válido o ya expiró.");
+        setEstado("expirado");
+      }
+    }
+
+    establecer();
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
