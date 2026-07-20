@@ -20,16 +20,19 @@
 --   (sin folio) 6 NOTAS SIN VINCULAR -> TI "Notas sin expediente".
 --            Cada una tiene su registro "gemelo" 201-206 (mismo nombre) para
 --            probar la vinculacion: TI busca el nombre y lo encuentra.
---              Paula Nieto  -> SATAG-000201 (pendiente CON pago, pide instalar)
---              Raul Ochoa   -> SATAG-000202 (pendiente SIN pago, pide instalar)
+--              Paula Nieto  -> SATAG-000201 (activo, pide actualizar)
+--              Raul Ochoa   -> SATAG-000202 (activo, pide baja)
 --              Sara Quiroz  -> SATAG-000203 (activo, pide actualizar)
 --              Tomas Rivas  -> SATAG-000204 (activo, pide actualizar)
 --              Ursula Sena  -> SATAG-000205 (activo, pide baja)
 --              Victor Tello -> SATAG-000206 (activo, pide baja)
 --   161-164  Activo + nota vinculada pide BAJA       -> TI "Dar de baja"
 --   171-174  Activo + nota vinculada pide ACTUALIZAR -> TI "Actualizar datos"
---   181-184  Pendiente CON pago + nota pide INSTALAR -> TI "Instalar TAG" (listos)
---   191-194  Pendiente SIN pago + nota pide INSTALAR -> TI "Instalar TAG" (Esperando pago, gris)
+--   181-184  Pendiente CON pago (flujo de alta) -> TI "Instalar TAG" (listos)
+--   191-194  Pendiente SIN pago (flujo de alta) -> TI "Instalar TAG" (Esperando pago, gris)
+--   201-206  Registros "gemelos" de las 6 notas sin vincular (para vincular)
+--   211-214  Activo con TAG propio + TAG apartado + solicitud de reinstalacion
+--            (CC-01) -> TI "Actualizar datos", boton "Usar el TAG apartado"
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -104,12 +107,31 @@ values
 -- 201-206  Registros "gemelos" de las 6 NOTAS SIN VINCULAR: mismo nombre que el
 --          solicitante de la nota, para que TI busque por nombre y los encuentre
 --          al vincular. Estado segun el tramite que pide la nota.
-('SATAG-000201','Paula','Nieto','Cruz','padres','Nissan','Versa','Blanco','ABC1301',false,null,'escuela','pendiente',null,null,current_date,null,null),
-('SATAG-000202','Raul','Ochoa',null,'maestro','Nissan','Sentra','Gris','ABC1302',false,null,'escuela','pendiente',null,null,null,null,null),
+('SATAG-000201','Paula','Nieto','Cruz','padres','Nissan','Versa','Blanco','ABC1301',false,'7000201','escuela','activo',null,null,current_date - 30,current_date - 25,'TI Prueba'),
+('SATAG-000202','Raul','Ochoa',null,'maestro','Nissan','Sentra','Gris','ABC1302',false,'7000202','escuela','activo',null,null,current_date - 28,current_date - 24,'TI Prueba'),
 ('SATAG-000203','Sara','Quiroz','Lara','padres','Volkswagen','Jetta','Azul','ABC1303',false,'7000203','escuela','activo',null,null,current_date - 30,current_date - 25,'TI Prueba'),
 ('SATAG-000204','Tomas','Rivas',null,'admin','Mazda','CX-5','Negro','ABC1304',false,'7000204','escuela','activo',null,null,current_date - 28,current_date - 24,'TI Prueba'),
 ('SATAG-000205','Ursula','Sena','Paz','padres','Toyota','RAV4','Rojo','ABC1305',false,'7000205','propio','activo',null,null,current_date - 26,current_date - 22,'TI Prueba'),
-('SATAG-000206','Victor','Tello',null,'maestro','Nissan','March','Gris','ABC1306',false,'7000206','escuela','activo',null,null,current_date - 24,current_date - 20,'TI Prueba');
+('SATAG-000206','Victor','Tello',null,'maestro','Nissan','March','Gris','ABC1306',false,'7000206','escuela','activo',null,null,current_date - 24,current_date - 20,'TI Prueba'),
+-- 211-214  Activo con TAG PROPIO en uso + TAG de la escuela APARTADO (CC-01).
+--          El apartado se agrega en el paso 1b (columnas tag_apartado_*).
+('SATAG-000211','Rodrigo','Fierro','Paz','padres','Toyota','Corolla','Blanco','ABC1311',false,'7000211','propio','activo',null,null,current_date - 35,current_date - 30,'TI Prueba'),
+('SATAG-000212','Sonia','Gallardo',null,'maestro','Nissan','Versa','Gris','ABC1312',false,'7000212','propio','activo',null,null,current_date - 33,current_date - 28,'TI Prueba'),
+('SATAG-000213','Tulio','Herrera','Sol','padres','Honda','Civic','Negro','ABC1313',false,'7000213','propio','activo',null,null,current_date - 31,current_date - 26,'TI Prueba'),
+('SATAG-000214','Ulises','Ibarra','Rey','admin','Mazda','CX-5','Rojo',null,true,'7000214','propio','activo',null,null,current_date - 29,current_date - 24,'TI Prueba');
+
+-- ---------------------------------------------------------------------
+-- 1b) Apartado (CC-01): 211-214 usan su TAG propio y la escuela les reservo un
+--     TAG (tag_apartado_no), sin instalar, para probar "usar el TAG apartado".
+-- ---------------------------------------------------------------------
+update registros set tag_apartado = true, tag_apartado_no = v.apartado
+  from (values
+    ('SATAG-000211','9426781'),
+    ('SATAG-000212','9426782'),
+    ('SATAG-000213','9426783'),
+    ('SATAG-000214','9426784')
+  ) as v(folio, apartado)
+ where registros.folio = v.folio;
 
 -- ---------------------------------------------------------------------
 -- 2) Pagos ($100): todos los ACTIVOS (se instalaron tras pagar) y los
@@ -145,6 +167,11 @@ select id, 'actualizacion', 'Cambio de placas y de color del vehiculo', 'publico
 insert into solicitudes (registro_id, tipo, detalle, origen)
 select id, 'baja', 'Egreso del alumno al terminar el ciclo', 'publico'
   from registros where folio ~ '^SATAG-00015[1-4]$';
+-- Reinstalacion (CC-01): 211-214 piden actualizar porque su TAG propio se dano;
+-- asi aparecen en "Actualizar datos" y TI los atiende con el TAG apartado.
+insert into solicitudes (registro_id, tipo, detalle, origen)
+select id, 'actualizacion', 'Mi TAG se dano, solicito la reinstalacion', 'publico'
+  from registros where folio ~ '^SATAG-00021[1-4]$';
 
 -- ---------------------------------------------------------------------
 -- 5) Notas SIN vincular (buzon, registro_id null). Roles variados; para
@@ -155,8 +182,8 @@ insert into solicitudes
      solicitante_nombre, solicitante_rol, tramite_solicitado,
      alumno_nombre, alumno_grado, vehiculo_desc)
 values
-(null,'nota','Quiero que me instalen mi TAG, ya pague','publico','Paula Nieto','padres','instalacion','Sofia Nieto','2A','Versa blanco'),
-(null,'nota','Necesito instalar mi TAG nuevo','publico','Raul Ochoa','maestro','instalacion',null,null,'Sentra gris'),
+(null,'nota','Cambie de coche, hay que actualizar mis datos','publico','Paula Nieto','padres','actualizacion','Sofia Nieto','2A','Versa blanco'),
+(null,'nota','Mi hijo egresa, solicito la baja','publico','Raul Ochoa','maestro','baja',null,null,'Sentra gris'),
 (null,'nota','Cambie de coche, hay que actualizar mis datos','publico','Sara Quiroz','padres','actualizacion','Mateo Quiroz','5B','Jetta azul'),
 (null,'nota','Actualizar placas nuevas','publico','Tomas Rivas','admin','actualizacion',null,null,'CX5 negro'),
 (null,'nota','Dar de baja, mi hijo egresa este ano','publico','Ursula Sena','padres','baja','Iker Sena','6A','RAV4 roja'),
@@ -190,30 +217,9 @@ select r.id, 'nota', v.detalle, 'publico', v.nombre, v.rol, 'actualizacion', v.a
     ('SATAG-000174','Gael Mejia','alumno','Actualizar mis datos',null,null)
   ) as v(folio, nombre, rol, detalle, alumno, grado)
   join registros r on r.folio = v.folio;
--- Piden INSTALAR, registro CON pago (181-184) -> "Instalar TAG" (listos)
-insert into solicitudes
-    (registro_id, tipo, detalle, origen, solicitante_nombre, solicitante_rol,
-     tramite_solicitado, alumno_nombre, alumno_grado)
-select r.id, 'nota', v.detalle, 'publico', v.nombre, v.rol, 'instalacion', v.alumno, v.grado
-  from (values
-    ('SATAG-000181','Hilda Rincon','padres','Ya pague, quiero mi TAG','Ivan Rincon','3C'),
-    ('SATAG-000182','Ivan Guzman','maestro','Instalar TAG',null,null),
-    ('SATAG-000183','Julia Peralta','padres','Instalacion de TAG','Noa Peralta','5A'),
-    ('SATAG-000184','Kevin Andrade','admin','Requiero TAG',null,null)
-  ) as v(folio, nombre, rol, detalle, alumno, grado)
-  join registros r on r.folio = v.folio;
--- Piden INSTALAR, registro SIN pago (191-194) -> "Esperando pago" (gris)
-insert into solicitudes
-    (registro_id, tipo, detalle, origen, solicitante_nombre, solicitante_rol,
-     tramite_solicitado, alumno_nombre, alumno_grado)
-select r.id, 'nota', v.detalle, 'publico', v.nombre, v.rol, 'instalacion', v.alumno, v.grado
-  from (values
-    ('SATAG-000191','Lucia Cabrera','padres','Quiero instalar mi TAG','Diana Cabrera','2A'),
-    ('SATAG-000192','Mario Escobar','maestro','Instalar TAG nuevo',null,null),
-    ('SATAG-000193','Nadia Trejo','padres','Instalacion pendiente','Ivo Trejo','4A'),
-    ('SATAG-000194','Omar Barrera','admin','Necesito mi TAG',null,null)
-  ) as v(folio, nombre, rol, detalle, alumno, grado)
-  join registros r on r.folio = v.folio;
+-- (181-184 pendientes CON pago y 191-194 pendientes SIN pago NO llevan nota: son
+--  el flujo de instalacion por ALTA. 181-184 salen en "Instalar TAG" (listos) y
+--  191-194 en "Esperando pago". Instalar ya no es un tramite de solicitud.)
 
 -- ---------------------------------------------------------------------
 -- 7) Deja la secuencia de folios por encima del seed (que llega a 206), para
