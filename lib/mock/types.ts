@@ -34,7 +34,9 @@ export type TipoSolicitud = "actualizacion" | "baja" | "nota";
 
 // Lo que el cliente PIDE en una nota del buzon (SC-003). Es su peticion, no lo
 // que TI decide: TI lo corrobora y puede aplicar otro tramite si no corresponde.
-export type TramiteSolicitado = "instalacion" | "actualizacion" | "baja";
+// Solo actualizacion o baja: el TAG se instala por el alta (registro), nunca por
+// una solicitud (una solicitud es siempre posterior a la instalacion).
+export type TramiteSolicitado = "actualizacion" | "baja";
 
 // Solicitud levantada sobre un registro existente (página pública /solicitudes
 // o, a futuro, captura interna): alimenta los contadores de la pantalla TI.

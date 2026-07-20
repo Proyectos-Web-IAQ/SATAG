@@ -333,6 +333,16 @@ export async function darBaja(id: string, motivo: string, hechoPor: string): Pro
   });
 }
 
+// CC-01: activa el TAG apartado (reposicion). no_dispositivo pasa al numero
+// apartado, la procedencia queda en escuela y se limpia la reserva. El TAG
+// anterior queda inactivo (RPC usar_tag_apartado, rol ti).
+export async function usarTagApartado(id: string, hechoPor: string): Promise<AccionResultado> {
+  return rpc("usar_tag_apartado", {
+    p_registro_id: id,
+    p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
 // Cierra una solicitud improcedente SIN tocar el registro (motivo obligatorio).
 // Tambien cierra notas (vinculadas o no): sirve para cerrar una nota ya atendida
 // o para descartar spam del buzon.

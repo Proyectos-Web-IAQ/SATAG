@@ -11,6 +11,7 @@ import {
   darBaja,
   descartarSolicitud,
   vincularNota,
+  usarTagApartado,
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
@@ -32,8 +33,9 @@ const mismaAsignacion = (a: string[], b: string[]) =>
   [...a].sort().join("+") === [...b].sort().join("+");
 
 const TAG_RE = /^[0-9]{6,11}$/;
-// Tramites que TI puede corroborar al vincular una nota (mismo catalogo que el buzon).
-const TRAMITES_TI: TramiteSolicitado[] = ["instalacion", "actualizacion", "baja"];
+// Tramites que TI puede corroborar al vincular una nota (mismo catalogo que el
+// buzon): solo actualizacion o baja; instalar es del alta, no de una solicitud.
+const TRAMITES_TI: TramiteSolicitado[] = ["actualizacion", "baja"];
 // Semáforo de los contadores: verde (0), amarillo (pocos), rojo (muchos).
 const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
 
@@ -53,13 +55,9 @@ const fechaEsperaTramite = (r: Registro, tramite: "actualizacion" | "baja"): str
     .sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
   return s?.fecha ?? r.createdAt.slice(0, 10);
 };
-// Para instalar: la nota que pidio instalar si la hay; si no, el pago (quedo
-// listo al pagar); en ultimo caso el alta.
+// Para la cola "Instalar TAG": la familia espera desde que pago (ahi quedo lista
+// la instalacion); si no hay pago, desde el alta.
 const fechaEsperaInstalar = (r: Registro): string => {
-  const nota = r.solicitudes
-    .filter((x) => !x.atendida && x.tipo === "nota" && x.tramiteSolicitado === "instalacion")
-    .sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
-  if (nota) return nota.fecha;
   const pago = [...r.pagos].filter((p) => p.fecha).sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? ""))[0];
   return pago?.fecha ?? r.createdAt.slice(0, 10);
 };
@@ -141,12 +139,11 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0)
       .sort(porUrgencia(fechaEsperaInstalar)),
     [registros]);
-  // Notas del buzon que piden instalar pero el registro aun no tiene pago: no se
-  // pueden instalar todavia (falta que Administracion cobre), pero se muestran
-  // atenuadas para que TI sepa que la peticion existe y no se "pierda".
+  // Registros del alta que aun NO pueden instalarse porque falta el pago
+  // (Administracion cobra primero). Se muestran atenuados en "Instalar TAG" como
+  // "Esperando pago", para que TI sepa que estan en la fila de instalacion.
   const instalarSinPago = useMemo(
-    () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length === 0
-      && r.solicitudes.some((s) => !s.atendida && s.tipo === "nota" && s.tramiteSolicitado === "instalacion"))
+    () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length === 0)
       .sort(porUrgencia(fechaEsperaInstalar)),
     [registros]);
   const solicitanActualizar = useMemo(
@@ -239,6 +236,17 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       ok: `Registro ${r.folio} dado de baja.`,
     });
   }
+  // CC-01: reposición desde el TAG apartado. Activa el reservado, deja inactivo el
+  // actual y pasa la procedencia a escuela; se limpia la reserva.
+  function confirmarUsarApartado(r: Registro) {
+    setConfirm({
+      title: "Usar el TAG apartado",
+      message: `Se activará el TAG apartado ${r.tagApartadoNo} en ${r.folio} (${r.usuarioNombre}). El TAG actual ${r.noDispositivo ?? "—"} quedará inactivo y la procedencia pasará a escuela. ¿Continuar?`,
+      confirmLabel: "Usar TAG apartado", danger: false,
+      action: () => usarTagApartado(r.id, tiNombre),
+      ok: `TAG apartado ${r.tagApartadoNo} activado en ${r.folio}. El anterior quedó inactivo.`,
+    });
+  }
   // Cierra una solicitud improcedente sin tocar el registro (motivo obligatorio).
   // Una nota ya vinculada se "cierra" con el mismo RPC una vez atendida.
   function confirmarDescartar(r: Registro, sol: Solicitud, motivo: string) {
@@ -259,9 +267,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   // el expediente abierto (al ejecutarlo, la nota se cierra sola, bloque 38).
   function confirmarVincular(nota: Solicitud, r: Registro, tramite: TramiteSolicitado) {
     const destino: { modo: Modo; label: string } =
-      tramite === "baja" ? { modo: "baja", label: "Dar de baja" }
-      : tramite === "actualizacion" ? { modo: "actualizar", label: "Actualizar datos" }
-      : { modo: "instalar", label: "Instalar TAG" };
+      tramite === "baja"
+        ? { modo: "baja", label: "Dar de baja" }
+        : { modo: "actualizar", label: "Actualizar datos" };
     const cambio = nota.tramiteSolicitado && nota.tramiteSolicitado !== tramite
       ? ` El cliente había pedido ${TRAMITE_LABEL[nota.tramiteSolicitado]}; se atenderá como ${destino.label}.`
       : "";
@@ -302,7 +310,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     if (accion === "instalar")
       return <FormInstalar r={r} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo) => confirmarInstalar(r, tag, claves, propio, apartadoNo)} />;
     if (accion === "actualizar")
-      return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
+      return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onUsarApartado={() => confirmarUsarApartado(r)} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
     return <FormBaja r={r} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(m) => confirmarBaja(r, m)} />;
   }
 
@@ -554,9 +562,10 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
   );
 }
 
-function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, onTiNombre, onSubmit }: {
+function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, onTiNombre, onUsarApartado, onSubmit }: {
   r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[]; busy: boolean;
   tiNombre: string; onTiNombre: (v: string) => void;
+  onUsarApartado: () => void;
   onSubmit: (cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) => void;
 }) {
   const [tag, setTag] = useState(r.noDispositivo ?? "");
@@ -594,6 +603,18 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
 
   return (
     <div className="ti-form">
+      {r.tagApartado && r.tagApartadoNo && (
+        <div className="notice" style={{ marginBottom: 4 }}>
+          <strong>Reinstalación con el TAG apartado.</strong> Este registro tiene reservado el TAG {r.tagApartadoNo}.
+          Si el TAG actual ({r.noDispositivo ?? "—"}) se dañó o se perdió, actívelo: el apartado queda en uso, la
+          procedencia pasa a escuela y el TAG anterior queda inactivo.
+          <div className="ti-chips" style={{ marginTop: 8 }}>
+            <button type="button" className="primary-action" disabled={busy} onClick={onUsarApartado}>
+              Usar el TAG apartado {r.tagApartadoNo}
+            </button>
+          </div>
+        </div>
+      )}
       {tieneTag ? (
         <div className="field">
           <span>No. de TAG (cambiarlo registra una reposición)</span>
@@ -640,6 +661,9 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
           <option value="escuela">Escuela</option>
           <option value="propio">Propio (la familia trae su TAG)</option>
         </select>
+        {r.tagApartado && procedencia === "escuela" && (
+          <p className="field-error">Este registro tiene un TAG apartado ({r.tagApartadoNo}). Para pasar a escuela, use «Usar TAG apartado» desde el expediente.</p>
+        )}
       </div>
       <div className="field">
         <span>Estacionamiento (acceso del TAG)</span>
@@ -650,7 +674,8 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
         </div>
       </div>
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
-      <button type="button" className="primary-action" disabled={busy || !hayCambios || !tagValido || !placasValidas}
+      <button type="button" className="primary-action"
+        disabled={busy || !hayCambios || !tagValido || !placasValidas || (r.tagApartado && procedencia === "escuela")}
         onClick={() => onSubmit(cambios, estCambia ? claves : null, resumen.join("; "), motivo)}>
         Guardar cambios
       </button>

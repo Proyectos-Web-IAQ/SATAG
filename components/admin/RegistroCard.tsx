@@ -14,7 +14,6 @@ export const ROL_LABEL: Record<TipoUsuario, string> = {
 
 // Tramite que pide el cliente en una nota (SC-003), en texto legible.
 export const TRAMITE_LABEL: Record<TramiteSolicitado, string> = {
-  instalacion: "Instalar TAG",
   actualizacion: "Actualizar datos",
   baja: "Dar de baja",
 };

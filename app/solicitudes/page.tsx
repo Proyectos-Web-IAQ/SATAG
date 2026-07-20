@@ -26,10 +26,10 @@ const ROLES: { valor: RolSolicitante; etiqueta: string }[] = [
 ];
 
 // Que tramite pide quien deja la nota. Sistemas lo ve y lo corrobora: puede
-// aplicar otro si el que se pidio no corresponde al caso.
-type TramiteNota = "instalacion" | "actualizacion" | "baja";
+// aplicar otro si el que se pidio no corresponde al caso. El TAG se instala por
+// el alta (registro), no por una solicitud: solo actualizar datos o dar de baja.
+type TramiteNota = "actualizacion" | "baja";
 const TRAMITES: { valor: TramiteNota; etiqueta: string }[] = [
-  { valor: "instalacion", etiqueta: "Instalar TAG" },
   { valor: "actualizacion", etiqueta: "Actualizar datos" },
   { valor: "baja", etiqueta: "Dar de baja" },
 ];

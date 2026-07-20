@@ -210,7 +210,7 @@ export async function crearSolicitud(input: {
 export async function crearNota(input: {
   solicitanteNombre: string;
   solicitanteRol: "padres" | "maestro" | "admin";
-  tramiteSolicitado: "instalacion" | "actualizacion" | "baja";
+  tramiteSolicitado: "actualizacion" | "baja";
   alumnoNombre: string;
   alumnoGrado: string;
   detalle: string;
