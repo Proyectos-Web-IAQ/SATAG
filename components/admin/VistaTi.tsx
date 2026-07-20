@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CambiosRegistro, ProcedenciaTag, Registro, Solicitud } from "@/lib/mock/types";
+import type { CambiosRegistro, ProcedenciaTag, Registro, Solicitud, TramiteSolicitado } from "@/lib/mock/types";
 import { getMarcas, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
@@ -32,6 +32,8 @@ const mismaAsignacion = (a: string[], b: string[]) =>
   [...a].sort().join("+") === [...b].sort().join("+");
 
 const TAG_RE = /^[0-9]{6,11}$/;
+// Tramites que TI puede corroborar al vincular una nota (mismo catalogo que el buzon).
+const TRAMITES_TI: TramiteSolicitado[] = ["instalacion", "actualizacion", "baja"];
 // Semáforo de los contadores: verde (0), amarillo (pocos), rojo (muchos).
 const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
 
@@ -252,20 +254,22 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     });
   }
 
-  // SC-003: empata una nota del buzon con un expediente y lleva a TI directo a la
-  // cola del tramite que pidio la nota, con el expediente abierto: ahi lo atiende
-  // (y al ejecutar el tramite la nota se cierra sola, bloque 38).
-  function confirmarVincular(nota: Solicitud, r: Registro) {
+  // SC-003: empata una nota con un expediente usando el tramite que TI CORROBORO
+  // (puede ser el pedido u otro). Lleva a TI directo a la cola de ese tramite con
+  // el expediente abierto (al ejecutarlo, la nota se cierra sola, bloque 38).
+  function confirmarVincular(nota: Solicitud, r: Registro, tramite: TramiteSolicitado) {
     const destino: { modo: Modo; label: string } =
-      nota.tramiteSolicitado === "baja" ? { modo: "baja", label: "Dar de baja" }
-      : nota.tramiteSolicitado === "actualizacion" ? { modo: "actualizar", label: "Actualizar datos" }
-      : nota.tramiteSolicitado === "instalacion" ? { modo: "instalar", label: "Instalar TAG" }
-      : { modo: "inicio", label: "el padrón" };
+      tramite === "baja" ? { modo: "baja", label: "Dar de baja" }
+      : tramite === "actualizacion" ? { modo: "actualizar", label: "Actualizar datos" }
+      : { modo: "instalar", label: "Instalar TAG" };
+    const cambio = nota.tramiteSolicitado && nota.tramiteSolicitado !== tramite
+      ? ` El cliente había pedido ${TRAMITE_LABEL[nota.tramiteSolicitado]}; se atenderá como ${destino.label}.`
+      : "";
     setConfirm({
       title: "Vincular nota al expediente",
-      message: `Se vinculará la nota de ${nota.solicitanteNombre ?? "—"} al expediente ${r.folio} (${r.usuarioNombre}) y aparecerá en «${destino.label}» para atenderlo. ¿Continuar?`,
+      message: `Se vinculará la nota de ${nota.solicitanteNombre ?? "—"} al expediente ${r.folio} (${r.usuarioNombre}) y aparecerá en «${destino.label}».${cambio} ¿Continuar?`,
       confirmLabel: "Vincular", danger: false,
-      action: () => vincularNota(nota.id, r.id, tiNombre),
+      action: () => vincularNota(nota.id, r.id, tramite, tiNombre),
       ok: `Nota vinculada a ${r.folio}. Aparece en «${destino.label}».`,
       after: () => { setModo(destino.modo); setSelId(r.id); setQuery(""); },
     });
@@ -466,7 +470,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                   <div className="ti-cards">
                     {notas.map((n) => (
                       <TarjetaNota key={n.id} nota={n} registros={registros} busy={busy}
-                        onVincular={(r) => confirmarVincular(n, r)}
+                        onVincular={(r, tramite) => confirmarVincular(n, r, tramite)}
                         onDescartar={(m) => confirmarDescartarNota(n, m)} />
                     ))}
                   </div>
@@ -682,12 +686,16 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
   nota: Solicitud;
   registros: Registro[];
   busy: boolean;
-  onVincular: (r: Registro) => void;
+  onVincular: (r: Registro, tramite: TramiteSolicitado) => void;
   onDescartar: (motivo: string) => void;
 }) {
   const [accion, setAccion] = useState<null | "vincular" | "descartar">(null);
   const [q, setQ] = useState("");
   const [motivo, setMotivo] = useState("");
+  // Paso 2 de vincular: expediente elegido + tramite que TI corrobora (arranca en
+  // el que pidio el cliente y TI lo confirma o lo cambia).
+  const [elegido, setElegido] = useState<Registro | null>(null);
+  const [tramite, setTramite] = useState<TramiteSolicitado>(nota.tramiteSolicitado ?? "actualizacion");
   const query = q.trim().toLowerCase();
   // No se puede vincular a un registro dado de baja. Tope de 8 para no volcar
   // el padron entero dentro de la tarjeta.
@@ -696,6 +704,10 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
         [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.folio, r.marca, r.modelo]
           .join(" ").toLowerCase().includes(query)).slice(0, 8)
     : [];
+  function elegir(r: Registro) {
+    setElegido(r);
+    setTramite(nota.tramiteSolicitado ?? "actualizacion");
+  }
   return (
     <div className="ti-card is-open">
       <div className="ti-card__body">
@@ -712,12 +724,12 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
 
         <div className="ti-chips">
           <button type="button" className={`select-chip ${accion === "vincular" ? "on" : ""}`}
-            onClick={() => setAccion((a) => (a === "vincular" ? null : "vincular"))}>Vincular a un expediente</button>
+            onClick={() => { setAccion((a) => (a === "vincular" ? null : "vincular")); setElegido(null); }}>Vincular a un expediente</button>
           <button type="button" className={`select-chip ${accion === "descartar" ? "on" : ""}`}
             onClick={() => setAccion((a) => (a === "descartar" ? null : "descartar"))}>Descartar</button>
         </div>
 
-        {accion === "vincular" && (
+        {accion === "vincular" && !elegido && (
           <div className="ti-form" style={{ marginTop: 12 }}>
             <div className="field">
               <span>Busque el expediente por nombre, placa o folio</span>
@@ -737,12 +749,32 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
                       <span className="ti-card__sub">{r.marca} {r.modelo} · {r.color} · {r.placas ?? (r.sinPlacas ? "sin placas" : "—")}</span>
                       <span className="ti-card__meta">{r.folio}{r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}</span>
                       <button type="button" className="primary-action" disabled={busy} style={{ marginTop: 10 }}
-                        onClick={() => onVincular(r)}>Vincular esta nota a {r.folio}</button>
+                        onClick={() => elegir(r)}>Elegir este expediente</button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {accion === "vincular" && elegido && (
+          <div className="ti-form" style={{ marginTop: 12 }}>
+            <p className="ti-hint" style={{ marginBottom: 4 }}>
+              Expediente: <strong>{elegido.folio}</strong> — {elegido.usuarioNombre}{" "}
+              <button type="button" className="link-action" onClick={() => setElegido(null)}>cambiar</button>
+            </p>
+            <div className="field">
+              <span>El cliente pidió <strong>{nota.tramiteSolicitado ? TRAMITE_LABEL[nota.tramiteSolicitado] : "—"}</strong>. ¿Qué trámite corresponde?</span>
+              <div className="chip-row">
+                {TRAMITES_TI.map((t) => (
+                  <button key={t} type="button" className={`select-chip ${tramite === t ? "on" : ""}`}
+                    onClick={() => setTramite(t)}>{TRAMITE_LABEL[t]}</button>
+                ))}
+              </div>
+            </div>
+            <button type="button" className="primary-action" disabled={busy}
+              onClick={() => onVincular(elegido, tramite)}>Vincular como {TRAMITE_LABEL[tramite]}</button>
           </div>
         )}
 

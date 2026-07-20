@@ -344,13 +344,21 @@ export async function descartarSolicitud(solicitudId: string, motivo: string, he
   });
 }
 
-// Empata una nota del buzon (SC-003) con un expediente: solo setea registro_id y
-// deja movimiento (RPC vincular_nota, rol ti). La nota queda pendiente bajo el
-// expediente; TI aplica el cambio real y luego la cierra con descartarSolicitud.
-export async function vincularNota(solicitudId: string, registroId: string, hechoPor: string): Promise<AccionResultado> {
+// Empata una nota del buzon (SC-003) con un expediente (RPC vincular_nota, rol
+// ti). TI corrobora el tramite al vincular: si p_tramite difiere del que pidio el
+// cliente, el RPC actualiza tramite_solicitado para que caiga en la cola correcta
+// y el auto-cierre (bloque 38) coincida. La nota queda pendiente bajo el
+// expediente hasta que TI ejecute el tramite.
+export async function vincularNota(
+  solicitudId: string,
+  registroId: string,
+  tramite: TramiteSolicitado,
+  hechoPor: string,
+): Promise<AccionResultado> {
   return rpc("vincular_nota", {
     p_solicitud_id: solicitudId,
     p_registro_id: registroId,
+    p_tramite: tramite,
     p_hecho_por: hechoPor.trim() || null,
   });
 }
