@@ -19,6 +19,31 @@ export const TRAMITE_LABEL: Record<TramiteSolicitado, string> = {
   baja: "Dar de baja",
 };
 
+// Dias que lleva esperando una peticion, desde su fecha (YYYY-MM-DD) hasta hoy.
+// Corre en el navegador (no es un script de workflow), asi que new Date() va bien.
+export function diasEspera(fecha: string): number {
+  const [y, m, d] = fecha.split("-").map(Number);
+  if (!y || !m || !d) return 0;
+  const inicio = new Date(y, m - 1, d).setHours(0, 0, 0, 0);
+  const hoy = new Date().setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((hoy - inicio) / 86400000));
+}
+
+// Badge de urgencia (SC-003): cuanto lleva esperando la familia desde que dejo su
+// peticion. Ayuda a TI a priorizar; las colas van de mas antiguo a mas nuevo.
+//
+// UMBRALES (fuente de verdad para soporte / manual de usuario):
+//   - Verde  (ok):    0 a 2 dias    -> reciente, sin prisa
+//   - Ambar  (warn):  3 a 6 dias    -> conviene atenderla pronto
+//   - Rojo   (alert): 7 dias o mas  -> urgente, lleva una semana o mas
+// Si estos numeros cambian, actualiza tambien el manual y [[satag-sc003-buzon]].
+export function BadgeEspera({ fecha }: { fecha: string }) {
+  const dias = diasEspera(fecha);
+  const nivel = dias >= 7 ? "alert" : dias >= 3 ? "warn" : "ok";
+  const texto = dias === 0 ? "hoy" : dias === 1 ? "hace 1 día" : `hace ${dias} días`;
+  return <span className={`espera-badge espera-badge--${nivel}`} title={`Solicitado el ${fecha}`}>{texto}</span>;
+}
+
 // Linea que resume una solicitud pendiente en la tarjeta. Una nota (SC-003) dice
 // de quien viene y que tramite pidio; una actualizacion/baja dice que pide.
 export function textoSolicitud(s: Solicitud): string {
@@ -47,7 +72,7 @@ export function scrollAlAviso(el: HTMLElement | null) {
 
 // Tarjeta compartida por Administracion y TI. En celular, toda la cabecera es
 // tactil y al abrirse lleva el expediente al inicio visible de la pantalla.
-export function TarjetaRegistro({ r, abierto, onToggle, children, chip }: {
+export function TarjetaRegistro({ r, abierto, onToggle, children, chip, espera }: {
   r: Registro;
   abierto: boolean;
   onToggle: () => void;
@@ -56,6 +81,9 @@ export function TarjetaRegistro({ r, abierto, onToggle, children, chip }: {
   // real del registro; Administración lo sustituye por un chip de cobro para
   // que su única señal sea el pago (TI y Consulta conservan el estado).
   chip?: ReactNode;
+  // Fecha (YYYY-MM-DD) de la petición que trae a este registro a una cola de TI;
+  // si viene, la cabecera muestra el badge de "hace X días" para priorizar.
+  espera?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -80,6 +108,7 @@ export function TarjetaRegistro({ r, abierto, onToggle, children, chip }: {
           {r.estacionamientos.length > 0 ? ` · ${r.estacionamientos.join(" + ")}` : ""}
           {r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}
         </span>
+        {espera && <span className="ti-card__espera"><BadgeEspera fecha={espera} /></span>}
         {solicitudes.map((s) => (
           <span key={s.id} className="ti-card__solicitud">{textoSolicitud(s)}</span>
         ))}

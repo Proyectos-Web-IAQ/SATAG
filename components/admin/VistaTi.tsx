@@ -15,7 +15,7 @@ import {
 } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas";
 type Accion = "instalar" | "actualizar" | "baja";
@@ -42,6 +42,28 @@ const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
 const pidePendiente = (r: Registro, tramite: "actualizacion" | "baja") =>
   r.solicitudes.some((s) => !s.atendida &&
     (s.tipo === tramite || (s.tipo === "nota" && s.tramiteSolicitado === tramite)));
+
+// Fecha (YYYY-MM-DD) desde la que la familia espera atencion en una cola. Es la
+// peticion pendiente MAS ANTIGUA del tramite (para ordenar por urgencia).
+const fechaEsperaTramite = (r: Registro, tramite: "actualizacion" | "baja"): string => {
+  const s = r.solicitudes
+    .filter((x) => !x.atendida && (x.tipo === tramite || (x.tipo === "nota" && x.tramiteSolicitado === tramite)))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+  return s?.fecha ?? r.createdAt.slice(0, 10);
+};
+// Para instalar: la nota que pidio instalar si la hay; si no, el pago (quedo
+// listo al pagar); en ultimo caso el alta.
+const fechaEsperaInstalar = (r: Registro): string => {
+  const nota = r.solicitudes
+    .filter((x) => !x.atendida && x.tipo === "nota" && x.tramiteSolicitado === "instalacion")
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))[0];
+  if (nota) return nota.fecha;
+  const pago = [...r.pagos].filter((p) => p.fecha).sort((a, b) => (a.fecha ?? "").localeCompare(b.fecha ?? ""))[0];
+  return pago?.fecha ?? r.createdAt.slice(0, 10);
+};
+// Orden por urgencia: la peticion mas antigua primero (la familia que mas espera).
+const porUrgencia = (fecha: (r: Registro) => string) =>
+  (a: Registro, b: Registro) => fecha(a).localeCompare(fecha(b));
 
 // Orden del padrón en TI: primero lo que TI puede resolver ya (instalar), luego
 // las solicitudes pendientes (baja antes que actualización) y, al final, lo que
@@ -114,20 +136,24 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   // Alineado con el RPC instalar_tag: solo registros PENDIENTES sin TAG y con
   // pago. (Un bloqueado no entra a la cola; el RPC lo rechazaría igual.)
   const porInstalar = useMemo(
-    () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0),
+    () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0)
+      .sort(porUrgencia(fechaEsperaInstalar)),
     [registros]);
   // Notas del buzon que piden instalar pero el registro aun no tiene pago: no se
   // pueden instalar todavia (falta que Administracion cobre), pero se muestran
   // atenuadas para que TI sepa que la peticion existe y no se "pierda".
   const instalarSinPago = useMemo(
     () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length === 0
-      && r.solicitudes.some((s) => !s.atendida && s.tipo === "nota" && s.tramiteSolicitado === "instalacion")),
+      && r.solicitudes.some((s) => !s.atendida && s.tipo === "nota" && s.tramiteSolicitado === "instalacion"))
+      .sort(porUrgencia(fechaEsperaInstalar)),
     [registros]);
   const solicitanActualizar = useMemo(
-    () => registros.filter((r) => r.estado !== "baja" && pidePendiente(r, "actualizacion")),
+    () => registros.filter((r) => r.estado !== "baja" && pidePendiente(r, "actualizacion"))
+      .sort(porUrgencia((r) => fechaEsperaTramite(r, "actualizacion"))),
     [registros]);
   const solicitanBaja = useMemo(
-    () => registros.filter((r) => r.estado !== "baja" && pidePendiente(r, "baja")),
+    () => registros.filter((r) => r.estado !== "baja" && pidePendiente(r, "baja"))
+      .sort(porUrgencia((r) => fechaEsperaTramite(r, "baja"))),
     [registros]);
 
   const q = query.trim().toLowerCase();
@@ -367,7 +393,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                   {porInstalar.length > 0 && (
                     <div className="ti-cards">
                       {porInstalar.map((r) => (
-                        <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+                        <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                           <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                           {formPara("instalar", r)}
                         </TarjetaRegistro>
@@ -381,7 +407,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                       </p>
                       <div className="ti-cards ti-cards--muted">
                         {instalarSinPago.map((r) => (
-                          <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+                          <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                             <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                             <p className="ti-hint">Falta registrar el pago en Administración; el TAG se instala después del pago.</p>
                           </TarjetaRegistro>
@@ -400,7 +426,8 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                   <p className="ti-section-title">Con solicitud pendiente ({listaSolicitudes.length})</p>
                   <div className="ti-cards" style={{ marginBottom: 18 }}>
                     {listaSolicitudes.map((r) => (
-                      <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+                      <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}
+                        espera={fechaEsperaTramite(r, modo === "actualizar" ? "actualizacion" : "baja")}>
                         <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                         {formPara(modo, r)}
                       </TarjetaRegistro>
@@ -679,7 +706,7 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
           {nota.alumnoNombre && <div><div className="k">Alumno</div><div className="v">{nota.alumnoNombre}</div></div>}
           {nota.alumnoGrado && <div><div className="k">Grado</div><div className="v">{nota.alumnoGrado}</div></div>}
           {nota.vehiculoDesc && <div><div className="k">Coche</div><div className="v">{nota.vehiculoDesc}</div></div>}
-          <div><div className="k">Fecha</div><div className="v">{nota.fecha}</div></div>
+          <div><div className="k">Fecha</div><div className="v">{nota.fecha} <BadgeEspera fecha={nota.fecha} /></div></div>
           <div style={{ gridColumn: "1 / -1" }}><div className="k">Qué necesita</div><div className="v">{nota.detalle}</div></div>
         </div>
 

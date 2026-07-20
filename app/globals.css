@@ -303,6 +303,13 @@ a { color: var(--primary-strong); }
   background: #fdf0e1; border-radius: 6px; color: #9a5a1a; display: block;
   font-size: 0.82rem; font-weight: 700; margin-top: 8px; padding: 6px 10px;
 }
+.ti-card__espera { display: block; margin-top: 6px; }
+/* Badge de urgencia (SC-003): cuanto lleva esperando la familia. Reusa el
+   semaforo de los contadores (verde/ambar/rojo). */
+.espera-badge { border-radius: 999px; font-size: 0.72rem; font-weight: 800; padding: 2px 9px; white-space: nowrap; }
+.espera-badge--ok { background: #eaf6ee; color: #1f6b3a; }
+.espera-badge--warn { background: #fdf0e1; color: #9a5a1a; }
+.espera-badge--alert { background: #fdecec; color: #b3271e; }
 .ti-card__body { border-top: 1px solid var(--line); padding: 14px; }
 /* Dentro de la tarjeta el detalle va compacto a 2 columnas (tambien en celular)
    para que el formulario quede lo mas arriba posible. */
