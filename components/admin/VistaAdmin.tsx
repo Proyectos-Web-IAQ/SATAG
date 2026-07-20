@@ -76,7 +76,11 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
 
   useEffect(() => { refresh(); }, []);
 
-  const pendientesPago = useMemo(() => registros.filter(porCobrar), [registros]);
+  // Por urgencia: el que lleva mas tiempo esperando su cobro (desde el alta)
+  // primero, igual que las colas de TI.
+  const pendientesPago = useMemo(
+    () => registros.filter(porCobrar).sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    [registros]);
   const q = query.trim().toLowerCase();
   const padron = useMemo(() => {
     const base = !q ? registros : registros.filter((r) =>
@@ -173,7 +177,8 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
             {banners}
             <div className="ti-cards">
               {padron.map((r) => (
-                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}>
+                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}
+                  espera={porCobrar(r) ? r.createdAt.slice(0, 10) : undefined}>
                   <DetalleRegistro r={r} />
                   <HistorialPagos r={r} />
                   {porCobrar(r) ? (
@@ -202,7 +207,8 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
           ) : (
             <div className="ti-cards">
               {pendientesPago.map((r) => (
-                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}>
+                <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}
+                  espera={r.createdAt.slice(0, 10)}>
                   <DetalleRegistro r={r} />
                   <FormPago r={r} busy={busy} cobradoPor={cobradoPor} onCobradoPor={setCobradoPor}
                     onSubmit={(pago) => confirmarPago(r, pago)} />

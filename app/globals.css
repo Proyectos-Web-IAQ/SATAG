@@ -287,12 +287,13 @@ a { color: var(--primary-strong); }
 .ti-cards--muted .ti-card.is-open { opacity: 1; }
 .ti-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; scroll-margin-top: calc(var(--header-h) + 10px); }
 .ti-card.is-open { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 46, 108, 0.10); }
-/* Señal operativa: tarjeta de un vehículo sin placas (permiso/nuevo), resaltada
-   en amarillo del sistema. Las placas (que aquí dicen "SIN PLACAS") toman el
-   tono ámbar para reforzar el motivo del resalte. El anillo azul de .is-open
-   sigue ganando al abrir, así que el foco de selección no se pierde. */
-.ti-card--sin-placas { background: #fdf3d6; border-color: #eecf8a; }
-.ti-card--sin-placas .ti-card__placas { color: #9a5a1a; }
+/* Señal de vehículo sin placas (permiso/nuevo): en vez de entintar toda la
+   tarjeta —demasiado peso visual—, solo el título "SIN PLACAS" toma un tono
+   ámbar de píldora. Menos invasivo y la señal sigue legible de un vistazo. */
+.ti-card--sin-placas .ti-card__placas {
+  background: #fdf0e1; border-radius: 6px; color: #9a5a1a;
+  font-size: 1rem; letter-spacing: 0.02em; padding: 2px 10px;
+}
 .ti-card__head { background: none; border: 0; cursor: pointer; display: block; padding: 14px; text-align: left; width: 100%; }
 .ti-card__row { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
 .ti-card__placas { color: var(--ink); font-size: 1.25rem; font-weight: 800; letter-spacing: 0.04em; }
