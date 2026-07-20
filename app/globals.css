@@ -280,6 +280,11 @@ a { color: var(--primary-strong); }
 .ti-back:hover { background: var(--field-bg); }
 
 .ti-cards { display: grid; gap: 10px; }
+/* "Esperando pago" (SC-003): peticiones de instalar que aun no proceden porque
+   falta el cobro de Administracion. Se muestran atenuadas —presentes pero no
+   accionables— y recuperan opacidad al abrirse para poder leerlas. */
+.ti-cards--muted .ti-card { opacity: 0.6; }
+.ti-cards--muted .ti-card.is-open { opacity: 1; }
 .ti-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; scroll-margin-top: calc(var(--header-h) + 10px); }
 .ti-card.is-open { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 46, 108, 0.10); }
 /* Señal operativa: tarjeta de un vehículo sin placas (permiso/nuevo), resaltada

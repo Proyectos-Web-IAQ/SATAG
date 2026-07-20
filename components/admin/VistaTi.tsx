@@ -35,15 +35,22 @@ const TAG_RE = /^[0-9]{6,11}$/;
 // Semáforo de los contadores: verde (0), amarillo (pocos), rojo (muchos).
 const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
 
+// ¿El registro tiene una peticion pendiente de este tramite? Cuenta la solicitud
+// de folio de ese tipo (actualizacion/baja) Y una nota vinculada (SC-003) cuyo
+// tramite pedido coincide: asi una nota que pidio "dar de baja" hace que el
+// registro entre a la cola de bajas, no solo al banner del expediente.
+const pidePendiente = (r: Registro, tramite: "actualizacion" | "baja") =>
+  r.solicitudes.some((s) => !s.atendida &&
+    (s.tipo === tramite || (s.tipo === "nota" && s.tramiteSolicitado === tramite)));
+
 // Orden del padrón en TI: primero lo que TI puede resolver ya (instalar), luego
 // las solicitudes pendientes (baja antes que actualización) y, al final, lo que
 // no requiere acción de TI: por cobrar (espera a Admin) y sin pendientes.
 const grupoTi = (r: Registro): number => {
   if (r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0) return 0; // por instalar
   if (r.estado !== "baja") {
-    const solPend = r.solicitudes.filter((s) => !s.atendida);
-    if (solPend.some((s) => s.tipo === "baja")) return 1;          // por dar de baja
-    if (solPend.some((s) => s.tipo === "actualizacion")) return 2; // por actualizar
+    if (pidePendiente(r, "baja")) return 1;          // por dar de baja
+    if (pidePendiente(r, "actualizacion")) return 2; // por actualizar
   }
   if (r.estado === "pendiente" && r.pagos.length === 0) return 3;  // por cobrar (Admin)
   return 4;                                                        // sin pendientes
@@ -109,11 +116,18 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const porInstalar = useMemo(
     () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length > 0),
     [registros]);
+  // Notas del buzon que piden instalar pero el registro aun no tiene pago: no se
+  // pueden instalar todavia (falta que Administracion cobre), pero se muestran
+  // atenuadas para que TI sepa que la peticion existe y no se "pierda".
+  const instalarSinPago = useMemo(
+    () => registros.filter((r) => r.estado === "pendiente" && !r.noDispositivo && r.pagos.length === 0
+      && r.solicitudes.some((s) => !s.atendida && s.tipo === "nota" && s.tramiteSolicitado === "instalacion")),
+    [registros]);
   const solicitanActualizar = useMemo(
-    () => registros.filter((r) => r.estado !== "baja" && r.solicitudes.some((s) => !s.atendida && s.tipo === "actualizacion")),
+    () => registros.filter((r) => r.estado !== "baja" && pidePendiente(r, "actualizacion")),
     [registros]);
   const solicitanBaja = useMemo(
-    () => registros.filter((r) => r.estado !== "baja" && r.solicitudes.some((s) => !s.atendida && s.tipo === "baja")),
+    () => registros.filter((r) => r.estado !== "baja" && pidePendiente(r, "baja")),
     [registros]);
 
   const q = query.trim().toLowerCase();
@@ -212,16 +226,22 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     });
   }
 
-  // SC-003: empata una nota del buzon con un expediente y abre ese expediente
-  // para que TI aplique el cambio real y luego cierre la nota.
+  // SC-003: empata una nota del buzon con un expediente y lleva a TI directo a la
+  // cola del tramite que pidio la nota, con el expediente abierto: ahi lo atiende
+  // (y al ejecutar el tramite la nota se cierra sola, bloque 38).
   function confirmarVincular(nota: Solicitud, r: Registro) {
+    const destino: { modo: Modo; label: string } =
+      nota.tramiteSolicitado === "baja" ? { modo: "baja", label: "Dar de baja" }
+      : nota.tramiteSolicitado === "actualizacion" ? { modo: "actualizar", label: "Actualizar datos" }
+      : nota.tramiteSolicitado === "instalacion" ? { modo: "instalar", label: "Instalar TAG" }
+      : { modo: "inicio", label: "el padrón" };
     setConfirm({
       title: "Vincular nota al expediente",
-      message: `Se vinculará la nota de ${nota.solicitanteNombre ?? "—"} al expediente ${r.folio} (${r.usuarioNombre}). Quedará pendiente en ese expediente para que usted aplique el cambio y luego la cierre. ¿Continuar?`,
+      message: `Se vinculará la nota de ${nota.solicitanteNombre ?? "—"} al expediente ${r.folio} (${r.usuarioNombre}) y aparecerá en «${destino.label}» para atenderlo. ¿Continuar?`,
       confirmLabel: "Vincular", danger: false,
       action: () => vincularNota(nota.id, r.id, tiNombre),
-      ok: `Nota vinculada a ${r.folio}. Ya aparece en el expediente.`,
-      after: () => { setModo("inicio"); setSelId(r.id); },
+      ok: `Nota vinculada a ${r.folio}. Aparece en «${destino.label}».`,
+      after: () => { setModo(destino.modo); setSelId(r.id); setQuery(""); },
     });
   }
   // Descarta una nota del buzon SIN vincularla (spam / no procede).
@@ -277,8 +297,8 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         <>
           <div className="ti-actions">
             <button type="button" className="ti-action" onClick={() => irA("instalar")}>
-              <span><span className="ti-action__title">Instalar TAG</span><span className="ti-action__sub">Pagados, en espera de instalación</span></span>
-              <span className={`ti-action__count ti-action__count--${sem(porInstalar.length)}`}>{porInstalar.length}</span>
+              <span><span className="ti-action__title">Instalar TAG</span><span className="ti-action__sub">En espera de instalación</span></span>
+              <span className={`ti-action__count ti-action__count--${sem(porInstalar.length + instalarSinPago.length)}`}>{porInstalar.length + instalarSinPago.length}</span>
             </button>
             <button type="button" className="ti-action" onClick={() => irA("actualizar")}>
               <span><span className="ti-action__title">Actualizar datos</span><span className="ti-action__sub">Placas, vehículo o reposición de TAG</span></span>
@@ -340,17 +360,36 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
           {banners}
 
           {modo === "instalar" && (
-            porInstalar.length === 0
+            porInstalar.length === 0 && instalarSinPago.length === 0
               ? <p className="ti-empty">✓ No hay TAGs pendientes de instalar. Todo al día.</p>
               : (
-                <div className="ti-cards">
-                  {porInstalar.map((r) => (
-                    <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
-                      <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
-                      {formPara("instalar", r)}
-                    </TarjetaRegistro>
-                  ))}
-                </div>
+                <>
+                  {porInstalar.length > 0 && (
+                    <div className="ti-cards">
+                      {porInstalar.map((r) => (
+                        <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+                          <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
+                          {formPara("instalar", r)}
+                        </TarjetaRegistro>
+                      ))}
+                    </div>
+                  )}
+                  {instalarSinPago.length > 0 && (
+                    <>
+                      <p className="ti-section-title" style={{ marginTop: porInstalar.length > 0 ? 18 : 0 }}>
+                        Esperando pago ({instalarSinPago.length})
+                      </p>
+                      <div className="ti-cards ti-cards--muted">
+                        {instalarSinPago.map((r) => (
+                          <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
+                            <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
+                            <p className="ti-hint">Falta registrar el pago en Administración; el TAG se instala después del pago.</p>
+                          </TarjetaRegistro>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
               )
           )}
 
@@ -592,8 +631,11 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
 function FormBaja({ r, busy, tiNombre, onTiNombre, onSubmit }: {
   r: Registro; busy: boolean; tiNombre: string; onTiNombre: (v: string) => void; onSubmit: (motivo: string) => void;
 }) {
-  // Si hay solicitud de baja pendiente, su detalle prellena el motivo.
-  const [motivo, setMotivo] = useState(() => r.solicitudes.find((s) => !s.atendida && s.tipo === "baja")?.detalle ?? "");
+  // Si hay una peticion de baja pendiente (solicitud de folio o nota vinculada
+  // que pidio baja), su detalle prellena el motivo.
+  const [motivo, setMotivo] = useState(() =>
+    r.solicitudes.find((s) => !s.atendida &&
+      (s.tipo === "baja" || (s.tipo === "nota" && s.tramiteSolicitado === "baja")))?.detalle ?? "");
   return (
     <div className="ti-form">
       <div className="field"><span>Motivo de baja</span><input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. egreso, cambio de vehículo" /></div>
