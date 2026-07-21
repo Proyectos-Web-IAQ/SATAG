@@ -71,6 +71,23 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 | R11 | **Configuración incorrecta de RLS/RPC/Storage** que exponga firmas o placas | Media | Alto | **Alto** | **Mitigar:** pruebas RLS/RPC, bucket privado, URLs firmadas, revisión por rol y MFA admin | Gerardo / Auditor |
 | R12 | **NOM-151 no presupuestada** si se exige mayor fuerza probatoria | Baja | Medio | **Medio** | **Aceptar/Diferir:** no incluir en MVP; cotizar Cincel/ATEB/PSC acreditados como fase 2 | Auditor / Dirección |
 
+> ### Estado de los riesgos a 20-jul-2026
+>
+> Verificado contra el sistema en producción (bloques SQL `00`→`41`):
+>
+> - **Mitigados y verificados:** **R1** (RLS estricta con `aal2` + roles finos, escrituras solo por RPC,
+>   Storage privado, MFA obligatorio), **R2** (firma reforzada: hash SHA-256 generado en la base,
+>   versionado de reglamento/aviso y sello de tiempo), **R9** (aviso específico SATAG publicado como v2
+>   vigente), **R10** (menores exigen gestionante por constraint, no solo por UI) y **R11** (bucket
+>   privado, lectura de la firma restringida a `admin`/`super`).
+> - **Residual:** **R5** — el pago ya se registra con folio de recibo automático, quién cobró y cuándo;
+>   para cerrarlo falta el **corte de caja** (siguiente feature).
+> - **Vigentes:** **R4** (las colas de pendientes existen, pero el *reporte de incompletos* no se
+>   implementó), **R7** (falta verificar y documentar la política de respaldos), **R12** (diferido).
+> - ⚠️ **Matiz de cumplimiento:** R1 y R9 están mitigados en lo **técnico**, pero la **aprobación
+>   institucional del aviso sigue pendiente** mientras el sistema ya opera en producción con usuarios
+>   reales (ver Checklist E6 §6).
+
 *(R5 hosting/infra "no definido" del Charter quedó **cerrado**: se reutiliza la infraestructura de SEVAD.)*
 
 ---
@@ -101,8 +118,14 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 |---|---|---|
 | **Gerardo Sánchez** | Único desarrollador (full-stack, PM del proyecto) | Desarrollo completo |
 | **Departamento de TI** (4 personas) | Definen y prueban la fase de instalación | Puntual (fase 3 + pruebas) |
-| **Personal administrativo** | Define el registro de pago y asignación de estacionamiento | Puntual (fase 2 + pruebas) |
-| **Herramientas** | Next.js + Supabase + GoDaddy + Cloudflare + GitHub Actions · ProjectLibre (cronograma) | — |
+| **Personal administrativo** | Define el registro de pago *(la asignación de estacionamiento pasó a TI — SC-002)* | Puntual (fase 2 + pruebas) |
+| **Herramientas** | Next.js + Supabase + **Vercel** (despliegue desde `main`) · ProjectLibre (cronograma) | — |
+
+> **Cómo se traducen estos actores a los roles del sistema** (implementados el 15-jul-2026 en
+> `app_metadata.rol`): *Administración* → **`admin`** (solo cobra); *TI* → **`ti`** (estacionamiento,
+> instalación, actualización, baja, apartar/usar TAG y buzón de notas); *consulta* → **`consulta`**
+> (solo lectura, sin escritura); *soporte y pruebas integrales* → **`super`**. Un usuario sin rol no
+> entra al panel. La asignación de roles la hace un administrador con `service_role`, fuera de la app.
 
 ---
 

@@ -38,11 +38,11 @@ El proceso se cubre en **tres momentos / tres actores**:
 |---|---|---|
 | E1 | **Modelo de datos + BD (Supabase)** | Esquema, RLS, RPC de guardado atómico, almacenamiento de la firma |
 | E2 | **Formulario de autoservicio** | Reglamento + captura + **firma manuscrita digital** + comprobante |
-| E3 | **Módulo de administración** | Asignación de estacionamiento + registro de pago |
-| E4 | **Módulo de instalación (TI)** | Captura del No. de TAG + cambio de estado + ciclo de vida |
-| E5 | **Panel administrativo** | Login, búsqueda/consulta, edición, control de TAGs/estados/pagos, reporte de pendientes |
+| E3 | **Módulo de administración** | Registro de pago con folio de recibo automático *(la asignación de estacionamiento pasó a TI — SC-002)* |
+| E4 | **Módulo de instalación (TI)** | Asignación de estacionamiento + captura del No. de TAG + cambio de estado + ciclo de vida + apartar y usar el TAG apartado (CC-01) |
+| E5 | **Panel administrativo** | Login con MFA y roles finos, búsqueda/consulta, edición, control de TAGs/estados/pagos, colas de pendientes y **buzón de notas sin folio (SC-003)** |
 | E6 | **Cumplimiento legal y privacidad** | Aviso específico SATAG/anexo, aviso simplificado, ARCO básico, menores y firma reforzada |
-| E7 | **Infraestructura y despliegue** | Subdominio GoDaddy + Cloudflare + proyecto Supabase + GitHub Action |
+| E7 | **Infraestructura y despliegue** | Proyecto Supabase + despliegue en **Vercel desde `main`** *(el plan original contemplaba subdominio GoDaddy/Cloudflare + GitHub Action; no se adoptó)* |
 | E8 | **Documentación y manual** | Docs técnicas + manual breve para administrativos/TI |
 
 ### Criterios de aceptación
@@ -152,7 +152,7 @@ paquetes como actividades.)*
 | 1.4 | Fase 1 — Autoservicio | Formulario, aviso simplificado, reglamento+versión, firma reforzada, guardado "pendiente", comprobante | Formulario funcional | Usuario captura y firma; registro queda "pendiente"; menores firman por gestionante/tutor |
 | 1.4.5 🆕 | Solicitud de cambio/baja | Formulario público: identifica su registro + tipo (cambio/baja) + detalle; RPC `crear_solicitud` | Solicitud registrada | La solicitud cae en la bandeja de TI (1.6.3) |
 | 1.5 | Fase 2 — Administración | Asignación de estacionamiento + registro de pago ($100 efectivo); **cobra también TAG propio** y **valida el tipo de usuario** | Módulo de administración | Admin asigna estacionamiento, cobra (incl. tag propio) y valida tipo |
-| 1.5.3 🆕 | Caja / POS (diferido) | Queda fuera del modelo MVP actual mientras Administracion no solicite folio, recibo o corte especifico | Pendiente futuro | Por ahora solo se registra el pago administrativo interno |
+| 1.5.3 🆕 | Caja / POS (parcial) | **Folio de recibo: HECHO** (automático, inmutable y único por expediente; bloque 32, 15-jul-2026). **Corte de caja: PENDIENTE** — es la siguiente feature (vista de finanzas para Administración con corte y conciliación de efectivo) | Folio hecho · Corte pendiente | La premisa original ("no requiere folio ni recibo") quedó superada por la implementación |
 | 1.6 | Fase 3 — Instalación (TI) | Captura del No. de TAG + estado + ciclo de vida (inactivo/repuesto) | Módulo de instalación | TI captura TAG; el estado pasa a "instalado" |
 | 1.6.3 🆕 | Bandeja de solicitudes (TI) | Ver "tag pendiente", atender cambio/baja → genera movimiento | Bandeja operativa | TI resuelve y la solicitud queda "atendida" |
 | 1.7 | Panel administrativo | Auth+reset, búsqueda/consulta, edición/control, reporte de pendientes **e incompletos** | Panel operativo | Busca por nombre/placa/TAG/estac. en < 5 s; lista incompletos |

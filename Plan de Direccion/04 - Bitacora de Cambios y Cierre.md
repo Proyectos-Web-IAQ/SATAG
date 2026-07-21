@@ -53,20 +53,33 @@
 >
 > 📌 **Ajustes derivados de la investigación legal (03-jul, `CC-09…CC-14`):** se documentan abajo como
 > resumen para actualizar la línea base del plan. Deben copiarse también al Sheet de Drive para mantener
-> la fuente operativa completa.
+> la fuente operativa completa. **Estado a 20-jul: CC-09…CC-12 implementados, CC-13 parcial, CC-14 diferido.**
+>
+> 📌 **Cambios de ejecución (15-20 jul, `CC-18…CC-20`):** mejoras que Administración y TI pidieron
+> durante la construcción (folio de recibo automático, apartar/usar el TAG apartado y buzón de notas sin
+> folio). Se registran abajo ya como **Implementado**, con la fecha real tomada del historial del
+> repositorio. Copiar también al Sheet de Drive.
+>
+> ⚠️ **No confundir las dos numeraciones.** Los `CC-xx` de esta bitácora son *cambios de control del
+> Plan de Dirección*. Los identificadores que aparecen en el código, el SQL y los mensajes de commit
+> (`CC-01` = apartar TAG, `SC-002` = estacionamiento a cargo de TI, `SC-003` = buzón de notas) son
+> **otra numeración interna de desarrollo**, sin relación con los `CC-xx` de esta tabla.
 
 | ID | Fecha | Solicitante | Cambio solicitado | Impacto (Alcance / Tiempo / Costo) | Prioridad | Decisión | Aprobó | Estado |
 |----|-------|-------------|-------------------|-------------------------------------|-----------|----------|--------|--------|
 | CC-01 | 01/07/26 | *(ejemplo)* | Agregar campo "correo" al formulario | Campo nuevo / +0.5 día / — | Media | Aprobado | M. Á. González | Implementado |
-| CC-09 | 03/07/26 | Responsable / investigación legal | Crear aviso de privacidad específico SATAG o anexo al aviso general IAQ, más aviso simplificado para formulario | Alcance legal/documental nuevo / +0.5 a 1 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Aprobado |
-| CC-10 | 03/07/26 | Responsable / investigación legal | Reforzar firma con hash SHA-256, versión de reglamento/aviso y sello de tiempo | Alcance técnico de evidencia / +0.5 a 1 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Aprobado |
-| CC-11 | 03/07/26 | Responsable / investigación legal | Agregar tratamiento de menores: firma obligatoria de padre/madre/tutor cuando aplique | Ajuste formulario/validaciones / +0.5 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Aprobado |
-| CC-12 | 03/07/26 | Responsable / investigación legal | Endurecer Supabase: RLS por rol, RPC controlada, Storage privado y MFA admin | Reformulación de seguridad / +1 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Aprobado |
-| CC-13 | 03/07/26 | Responsable / investigación legal | Incorporar soporte ARCO básico: acceso, rectificación, cancelación/bloqueo y oposición mediante panel/flujo cambio-baja | Amplía cambio/baja y panel / +0.5 a 1 d / $0 | 🟡 Media | Aprobado | M. Á. González | Aprobado |
+| CC-09 | 03/07/26 | Responsable / investigación legal | Crear aviso de privacidad específico SATAG o anexo al aviso general IAQ, más aviso simplificado para formulario | Alcance legal/documental nuevo / +0.5 a 1 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Implementado (bloque 22; falta aprobación institucional) |
+| CC-10 | 03/07/26 | Responsable / investigación legal | Reforzar firma con hash SHA-256, versión de reglamento/aviso y sello de tiempo | Alcance técnico de evidencia / +0.5 a 1 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Implementado (`15_aceptaciones` + RPC `crear_registro`) |
+| CC-11 | 03/07/26 | Responsable / investigación legal | Agregar tratamiento de menores: firma obligatoria de padre/madre/tutor cuando aplique | Ajuste formulario/validaciones / +0.5 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Implementado (constraint `reg_menor_requiere_gestionante`) |
+| CC-12 | 03/07/26 | Responsable / investigación legal | Endurecer Supabase: RLS por rol, RPC controlada, Storage privado y MFA admin | Reformulación de seguridad / +1 d / $0 | 🔴 Alta | Aprobado | M. Á. González | Implementado 15/07 (bloques 20, 27, 29, 30: roles admin/ti/consulta/super + `aal2`) |
+| CC-13 | 03/07/26 | Responsable / investigación legal | Incorporar soporte ARCO básico: acceso, rectificación, cancelación/bloqueo y oposición mediante panel/flujo cambio-baja | Amplía cambio/baja y panel / +0.5 a 1 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado parcial (solicitudes actualización/baja + estado `bloqueado`; procedimiento ARCO formal pendiente) |
 | CC-14 | 03/07/26 | Responsable / investigación legal | Evaluar NOM-151 como mejora futura/cotización, no requisito del MVP | Sin impacto inmediato; posible costo futuro por constancia/API / 0 d MVP / costo por cotizar | 🟢 Baja | Diferido | M. Á. González | Diferido |
-| CC-15 | 06/07/26 | Responsable / planeación diaria | Crear guía operativa de sesiones y mover textos legales a subcarpeta E6 para revisión en GitHub | Orden documental / 0 d / $0 | 🟡 Media | Aprobado internamente | Gerardo Sánchez | Pendiente aprobación Dirección/Legal |
-| CC-16 | 07/07/26 | Contador / reunion de prototipo | Cambiar nombre del proyecto/producto de SATAG a SATAG | Ajuste de identidad, textos visibles, documentacion y posibles rutas/nombres internos / <0.125 d / $0 | 🟡 Media | Solicitado | Pendiente | En evaluacion |
-| CC-17 | 07/07/26 | Contador / reunion de prototipo | Separar el nombre del usuario en el formulario: apellido paterno, apellido materno y nombres | Ajuste de formulario, modelo de datos, validaciones, busqueda y migracion de datos existentes / <0.125 d / $0 | 🟡 Media | Solicitado | Pendiente | En evaluacion |
+| CC-15 | 06/07/26 | Responsable / planeación diaria | Crear guía operativa de sesiones y mover textos legales a subcarpeta E6 para revisión en GitHub | Orden documental / 0 d / $0 | 🟡 Media | Aprobado internamente | Gerardo Sánchez | Implementado (pendiente aprobación Dirección/Legal) |
+| CC-16 | 07/07/26 | Contador / reunion de prototipo | Cambiar nombre del proyecto/producto a SATAG | Ajuste de identidad, textos visibles, documentacion y rutas/nombres internos / <0.125 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado (folios `SATAG-`, `package.json` name `satag`) |
+| CC-17 | 07/07/26 | Contador / reunion de prototipo | Separar el nombre del usuario en el formulario: apellido paterno, apellido materno y nombres | Ajuste de formulario, modelo de datos, validaciones, busqueda y migracion de datos existentes / <0.125 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado 08/07 (`12_registros.sql`: `usuario_nombres` + apellidos + `usuario_nombre_completo` GENERATED) |
+| CC-18 | 15/07/26 | Administración / contador | Emitir folio de recibo automático en cada cobro e impedir el doble cobro por expediente | Trazabilidad del cobro / +0.5 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado 15/07 (bloque 32: `SATAG-AAAA-######`, único por expediente) |
+| CC-19 | 16/07/26 | Administración / TI | Apartar el TAG de la escuela cuando la familia usa su TAG propio, y poder activarlo después como reposición | Amplía cobro/instalación e implica reposición / +1 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado (bloque 33 el 16/07; cierre "usar el TAG apartado" bloque 40 el 20/07) |
+| CC-20 | 16/07/26 | TI / atención a usuarios | Buzón público de notas sin folio ni placa para quien no recuerda su folio; TI vincula la nota al expediente y corrobora el trámite | Nuevo canal de intake + cola de TI / +1.5 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado (bloques 34-39 desde el 16/07; bloque 41 "sin instalación" el 20/07) |
 
 ### Flujo de control de cambios
 
@@ -96,9 +109,11 @@ Solicitud ─▶ Registro (ID) ─▶ Evaluación de impacto ─▶ Decisión de
 | Entregable | ¿Aceptado? | Observaciones |
 |---|---|---|
 | Formulario web (reglamento + captura + firma) | ☐ Sí ☐ No | |
-| Panel administrativo | ☐ Sí ☐ No | |
+| Panel administrativo (roles finos + MFA) | ☐ Sí ☐ No | |
+| Cobro con folio de recibo + corte de caja | ☐ Sí ☐ No | |
+| Buzón de notas sin folio (SC-003) y apartar/usar TAG (CC-01) | ☐ Sí ☐ No | |
 | Base de datos + RLS + aviso de privacidad | ☐ Sí ☐ No | |
-| Despliegue en producción (subdominio) | ☐ Sí ☐ No | |
+| Despliegue en producción (Vercel desde `main`) | ☐ Sí ☐ No | |
 | Manual / capacitación | ☐ Sí ☐ No | |
 
 ### 2. Comparación final (plan vs. real)

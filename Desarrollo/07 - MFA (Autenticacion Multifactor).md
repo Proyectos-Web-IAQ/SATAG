@@ -2,17 +2,19 @@
 
 > **Desarrollo · Fase 1 (Diseño + Runbook)** · Endurecimiento del acceso del personal interno al
 > panel administrativo. Documento **de decisión y operación**: fija cómo se activa el segundo factor,
-> cómo se **fuerza** y cómo se **resetea** cuando alguien pierde su dispositivo. Aplica a los tres
-> perfiles del panel: **admin, TI y consulta**.
+> cómo se **fuerza** y cómo se **resetea** cuando alguien pierde su dispositivo. Aplica a todos los
+> perfiles del panel: **admin, ti, consulta y super**.
 
 | Proyecto | **SATAG** — Sistema de Adquisición de TAG Vehicular |
 |---|---|
 | Cliente | Instituto Asunción de Querétaro AC (IAQ) — interno |
 | Responsable / Desarrollador | Gerardo Sánchez — Soporte TI Jr. |
-| Fecha | 14-jul-2026 · Versión **v0.1** (borrador de diseño) |
+| Fecha | 14-jul-2026 · actualizado 20-jul-2026 · Versión **v1.0** (implementado en producción) |
 
 **Historial:** v0.1 (decisiones cerradas: TOTP · RLS estricta `aal2` · reset por admin fuera de banda;
-runbook de reset completo).
+runbook de reset completo) → **v1.0 (20-jul-2026): implementado y en producción.** El MFA es
+obligatorio para todo el panel y, desde el 15-jul, los **roles finos también son frontera real**
+(`app_metadata.rol` en la RLS + `panel_exigir_rol` en cada RPC), no solo una preferencia de UI.
 
 ---
 
@@ -22,7 +24,7 @@ runbook de reset completo).
 |---|---|---|
 | Tipo de factor | **TOTP** (app autenticadora, código de 6 dígitos) | Gratis, estándar, sin proveedor SMS ni costos ni dependencia de red celular. |
 | Dureza de la aplicación | **RLS estricta**: las tablas con PII exigen `aal2` | Es la frontera **real**; el bloqueo en la UI es solo experiencia. |
-| Alcance | **Todo usuario `authenticated`** del panel | Los roles del panel se auto-eligen y **no son frontera de seguridad**, pero todo el que entra es admin/TI/consulta: exigir MFA a `authenticated` los cubre a los tres. |
+| Alcance | **Todo usuario `authenticated`** del panel | Todo el que entra al panel maneja PII, así que el segundo factor se exige a cualquier sesión autenticada, sin importar el rol. *(Nota v1.0: cuando se tomó esta decisión el rol aún no era frontera de seguridad; desde el 15-jul **sí lo es** —`app_metadata.rol` validado en la RLS y en cada RPC—. La decisión no cambia: MFA y rol son controles **complementarios**, no sustitutos: el MFA fija quién entra y el rol qué puede hacer.)* |
 | Reset por dispositivo perdido | **Acción fuera de banda** por un admin designado (consola de Supabase) | El sitio es estático y **no puede tener `service_role`**; el reset no puede ser un botón del panel (ver §6). |
 
 ---
@@ -70,17 +72,22 @@ gate previo "sesión pero sin `aal2` → pantalla MFA".
 
 ---
 
-## 5. RLS estricta (`aal2`)
+## 5. RLS estricta (`aal2`) — aplicada
 
-Las políticas hoy dicen `to authenticated using (true)`. La versión con MFA exige `aal2`:
+Las políticas exigen `aal2` desde el 15-jul-2026; ya no queda ninguna con `using (true)`:
 
 ```sql
 using ( (auth.jwt() ->> 'aal') = 'aal2' )
 ```
 
-Tablas a endurecer (PII): `registros` (13), `aceptaciones` y `movimientos` (17), el bucket de firmas
-(20) y las escrituras admin de catálogos/documentos. Los catálogos de **lectura** pueden quedarse sin
-`aal2` (no son PII).
+Tablas endurecidas (PII): `registros` (bloque 13), `aceptaciones` y `movimientos` (17), documentos (09)
+y el bucket de firmas (20). Los bloques **27 y 30** fueron más allá: además de `aal2` exigen **rol del
+panel** (`app_metadata.rol`) y revocan `insert/update/delete` directos, de modo que toda escritura pasa
+por un RPC `SECURITY DEFINER` que revalida el rol. Los catálogos de **lectura** siguen sin `aal2`
+(no son PII).
+
+> **Pendiente conocido:** las *escrituras* de catálogos, documentos y Storage de firmas (bloques 05, 09
+> y 20) todavía aceptan cualquier sesión `authenticated + aal2`, sin exigir rol `admin`.
 
 **Matiz del alta de un usuario nuevo:** aunque las tablas exijan `aal2`, un usuario recién creado igual
 puede entrar en `aal1` e **inscribir su factor**, porque `mfa.enroll` es una llamada a la **API de
@@ -164,9 +171,9 @@ un usuario nuevo.
 
 Un botón "resetear MFA de X" en SATAG solo es seguro con una **Edge Function** de Supabase (servidor,
 guarda ahí el `service_role`) que: (1) verifique que **quien llama es admin real** (con
-`app_metadata.rol`, no el rol auto-seleccionable), y (2) llame a `auth.admin.mfa.deleteFactor(...)`.
-Agrega superficie y depende de endurecer antes el rol admin. El runbook de consola (§6) cubre la
-necesidad real hoy.
+`app_metadata.rol`, que **ya es frontera real** desde el 15-jul), y (2) llame a
+`auth.admin.mfa.deleteFactor(...)`. Agrega superficie de ataque; el runbook de consola (§6) cubre la
+necesidad real hoy y **no hay Edge Function desplegada**.
 
 ---
 
@@ -179,17 +186,22 @@ necesidad real hoy.
   llamar a ningún servicio externo (compatible con export estático / CSP).
 - **Recuperación de contraseña** (`/admin/reset-password`): tras resetear, la sesión es `aal1`; si la persona ya
   tenía factor, se le pedirá el código. Cuidar que esa pantalla no lea PII antes de `aal2`.
-- **Rol ≠ permisos:** MFA endurece *quién entra*, no *qué puede hacer cada rol*. Limitar `consulta` a
-  solo lectura es RLS por `app_metadata.rol` — trabajo **hermano pero separado** de MFA.
+- **Rol ≠ permisos:** MFA endurece *quién entra*, no *qué puede hacer cada rol*. Ese trabajo hermano
+  **ya se hizo** (15-jul): `consulta` quedó limitado a solo lectura por RLS sobre `app_metadata.rol`, y
+  cada RPC revalida el rol con `panel_exigir_rol`.
 
 ---
 
-## 9. Orden de implementación
+## 9. Orden de implementación — ejecutado
 
-1. **(d)** Habilitar TOTP en el Dashboard + prueba de humo de `enroll`/`verify`.
-2. **(a)** Helpers de MFA en `lib/supabase/auth.ts` + gate/pantallas en el panel.
-3. **(b)** RLS estricta `aal2` en las tablas PII (paso **irreversible en experiencia** para los usuarios
-   ya creados; va al final, con todos ya inscritos).
+Los tres pasos se completaron entre el 14 y el 15-jul-2026:
 
-> Referencias: `lib/supabase/auth.ts`, `app/admin/page.tsx`, `supabase/sql/13_rls_registros.sql`,
-> `supabase/sql/17_rls_alta.sql`, `Desarrollo/04 - Seguridad, RLS y Privacidad.md`.
+1. ✅ **(d)** TOTP habilitado en el Dashboard + prueba de humo de `enroll`/`verify`.
+2. ✅ **(a)** Helpers de MFA en `lib/supabase/auth.ts` + gate y pantallas en el panel
+   (`components/admin/GateMfa.tsx`).
+3. ✅ **(b)** RLS estricta `aal2` en las tablas con PII, aplicada con todo el personal ya inscrito.
+
+> Referencias: `lib/supabase/auth.ts`, `components/admin/GateMfa.tsx`, `app/admin/page.tsx`,
+> `supabase/sql/13_rls_registros.sql`, `supabase/sql/17_rls_alta.sql`,
+> `supabase/sql/27_rls_grants_panel.sql`, `supabase/sql/30_roles_finos.sql`,
+> `Desarrollo/04 - Seguridad, RLS y Privacidad.md`.

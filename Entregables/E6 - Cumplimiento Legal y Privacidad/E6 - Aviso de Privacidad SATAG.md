@@ -24,7 +24,7 @@ Para operar SATAG, el IAQ puede recabar:
 - Tipo de usuario: alumno, padre/madre/tutor, docente, administrativo u otro rol autorizado.
 - Datos del vehiculo: placas, marca, modelo, color e indicador de vehiculo sin placas cuando aplique.
 - Datos administrativos del TAG: solicitud, estacionamiento asignado, estado del tramite, No. de dispositivo TAG, cambios, reposiciones, baja y movimientos asociados.
-- Datos de pago administrativo: registro del cobro en efectivo del TAG, monto, fecha y persona que registra el cobro. Por ahora no se emite folio, recibo ni corte especifico; el registro es solo un dato administrativo interno.
+- Datos de pago administrativo: registro del cobro en efectivo del TAG, monto, fecha, persona que registra el cobro y folio de recibo. El sistema genera un folio de recibo automatico por cada pago (formato `SATAG-AAAA-######`) como control interno; no se emite comprobante fiscal.
 - Firma manuscrita digital: imagen, trazos de captura cuando se conserven, nombre del firmante, fecha y hora de aceptacion.
 - Evidencia digital de aceptacion: version del reglamento, version del aviso de privacidad, hash SHA-256, sello de tiempo y bitacora del evento.
 - Datos tecnicos razonables del uso del sistema, como fecha/hora, identificadores de sesion, IP o user-agent cuando sea necesario para seguridad, evidencia o auditoria.

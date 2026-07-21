@@ -11,6 +11,11 @@
 
 **Nota de uso:** Este documento presenta una investigación técnica y normativa para orientar el diseño de SATAG. Las decisiones finales de redacción legal, aviso de privacidad y políticas institucionales deberán validarse con el área legal del Instituto.
 
+**Erratas por evolución del sistema (al 20-jul-2026).** La fecha de corte es 03-jul-2026 y el fundamento normativo sigue vigente; dos hechos operativos cambiaron después de escribirlo:
+
+- **Cobro:** cada pago emite ya un **folio de recibo automático e inmutable** (`SATAG-AAAA-######`), único por expediente. Sigue **sin** emitirse CFDI y el corte de caja está pendiente, así que el tratamiento fiscal/contable continúa por confirmar con Administración.
+- **Hosting:** el front se sirve desde **Vercel**, no desde GoDaddy/Cloudflare. Para el inventario de encargados, el subprocesador del front es Vercel. El análisis de fondo (front estático y navegador hablando directo con Supabase) no cambia.
+
 ## 1. Resumen ejecutivo
 
 - A julio de 2026, el marco principal aplicable es la nueva Ley Federal de Protección de Datos Personales en Posesión de los Particulares publicada en el DOF el 20 de marzo de 2025, vigente desde el 21 de marzo de 2025 y reformada el 14 de noviembre de 2025. La LFPDPPP de 2010 quedó abrogada, por lo que no conviene citar su numeración como vigente. [R2] [R3]

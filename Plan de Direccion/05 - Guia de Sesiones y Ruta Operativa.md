@@ -1,6 +1,6 @@
 # Guia de Sesiones y Ruta Operativa - SATAG
 
-> **Fecha base:** 06/07/2026.
+> **Ultima actualizacion:** 20/07/2026.
 > **Horario real de trabajo:** 09:00 a 14:00.
 > **Uso:** abrir este documento al inicio de cada sesion para saber que revisar, que cerrar y con que continuar.
 
@@ -11,18 +11,17 @@ Al iniciar una sesion de trabajo:
 1. Revisar el estado en `README.md`.
 2. Revisar este documento.
 3. Confirmar la tarea activa del cronograma.
-4. Trabajar solo el siguiente bloqueo real, no saltar directo al formulario si faltan base de datos, privacidad o Supabase seguro.
+4. Trabajar solo el siguiente bloqueo real segun la prioridad de la seccion 2.
 5. Al cerrar, dejar anotado que se termino, que falta y cual es el siguiente paso.
 
 ## 2. Prioridad actual
 
-La prioridad inmediata es cerrar el puente entre:
+El nucleo del sistema ya esta **en produccion**: autoservicio con firma reforzada, panel Admin/TI con roles finos y MFA, cobro con folios de recibo automaticos, buzon de notas SC-003 y apartar/usar TAG (bloques SQL `00`->`41`, deploy en Vercel desde `main`).
 
-- **E6 - Cumplimiento legal y privacidad**
-- **E1 - Modelo de datos + BD**
-- **E7 - Supabase seguro**
+La prioridad inmediata es:
 
-No conviene avanzar fuerte en el formulario hasta que el modelo soporte aviso versionado, firma reforzada, menores, solicitudes de cambio/baja y criterios de conservacion.
+- **Corte de caja / finanzas para Administracion** (siguiente feature, aun no implementada): que Admin vea cuanto vendio, cuanto deberia tener en caja y pueda hacer un corte/reestablecer la caja.
+- **Cierre del proyecto:** pruebas formales de privacidad/RLS, manual + capacitacion y la **aprobacion institucional del aviso de privacidad**.
 
 ## 3. Tareas inmediatas
 
@@ -43,54 +42,38 @@ Pendientes por definir con IAQ:
 - Domicilio legal exacto del IAQ para el aviso.
 - Plazo de conservacion de registros SATAG.
 - Persona que aprueba el aviso antes de publicacion.
-- Confirmacion de que el cobro de $100 no requiere folio, recibo ni corte especifico por ahora.
 
 Decision registrada:
 
-- El cobro por ahora no requiere folio, recibo ni corte especifico.
+- El cobro ya emite un **folio de recibo automatico** (`SATAG-AAAA-######`, bloque 32), inmutable y unico por expediente. Lo unico pendiente en la caja es el **corte de caja / finanzas** (siguiente feature).
 
-### 3.2 E1 - Modelo de datos + BD
+### 3.2 E1 - Modelo de datos + BD  — ✅ en produccion
 
-Estado: primer corte listo, pero debe alinearse con E6.
+Aplicado (bloques `00`->`41`): `aviso_versiones` y referencia de version en `aceptaciones`; hash SHA-256 del paquete firmado + trazos vectoriales; gestionante/tutor para menores; tabla `solicitudes` (tipos `actualizacion`/`baja`) + buzon de notas (`nota`); estado `bloqueado`; `tag_apartado`/`tipo_validado`; catalogo de modelos con seed.
 
-Revisar y ajustar si falta:
+Pendiente:
 
-- Tabla o mecanismo para `aviso_versiones`.
-- Referencia de version de aviso en `aceptaciones`.
-- Hash SHA-256 del paquete firmado.
-- Trazos vectoriales de firma.
-- Datos de gestionante/tutor para menores.
-- Tabla `solicitudes` para cambio/baja/ARCO operativo.
-- Estado de bloqueo/cancelacion, distinto a baja operativa si aplica.
-- Campos de caja/cobro si Administracion los pide despues.
-- `tag_apartado`, `tipo_validado`, catalogo de modelos y vista de incompletos ya documentados como cambios del 03-jul.
+- **Vista de incompletos** (`v_registros_incompletos`, B2): documentada como cambio del 03-jul pero **aun no implementada**.
+- Campos de **caja/corte** (`cortes_caja`, `pagos.corte_id`): entran con la feature de corte de caja (ver 3.5). Los folios de recibo ya existen (bloque 32).
 
-### 3.3 E7 - Supabase seguro
+### 3.3 E7 - Supabase seguro  — ✅ en produccion
 
-Despues de ajustar E1:
+Aplicado y verificado con usuarios reales:
 
-- Aplicar schema en proyecto Supabase.
-- Activar/probar RLS.
-- Crear bucket privado `firmas`.
-- Probar que `anon` no puede leer PII.
-- Configurar Auth y MFA para administradores.
-- Documentar region del proyecto.
-- Archivar DPA/terminos de Supabase.
+- Esquema aplicado por bloques atomicos (ver runbook `supabase/sql/README.md`, con PASO 0 de roles).
+- RLS activa: `anon` no lee PII; el panel exige `aal2` (MFA) + rol.
+- Bucket privado `firmas` (subida anon, sin lectura publica).
+- Auth + MFA obligatorio para el panel.
 
-### 3.4 E2 - Formulario de autoservicio
+Pendiente: documentar region del proyecto y archivar DPA/terminos de Supabase.
 
-Iniciar solo cuando E1/E6/E7 esten suficientemente claros.
+### 3.4 E2 - Formulario de autoservicio  — ✅ en produccion
 
-Orden recomendado:
+Implementado (`app/registro`): aviso integral con casilla no premarcada, captura de usuario/vehiculo con dropdown marca->modelo, validacion de menor/tutor, reglamento versionado, firma simple reforzada, guardado por RPC `crear_registro` y comprobante. La solicitud de cambio/baja y el buzon de notas sin folio viven en `/solicitudes`.
 
-- Aviso simplificado.
-- Captura de usuario/vehiculo.
-- Validacion de menor/tutor.
-- Reglamento versionado.
-- Firma simple reforzada.
-- Guardado por RPC.
-- Comprobante.
-- Solicitud de cambio/baja.
+### 3.5 Corte de caja / finanzas  — ⏳ siguiente feature
+
+Vista para Administracion: cuanto vendio, cuanto deberia haber en caja y corte/reestablecimiento de la caja. Diseno previsto: sellar los pagos por corte (`pagos.corte_id`) contra una tabla `cortes_caja`, con conciliacion de efectivo contado vs esperado. Aun no implementada.
 
 ## 4. Respuestas operativas sobre ARCO
 
@@ -152,14 +135,14 @@ Gerardo/TI puede preparar el borrador, pero no debe publicarlo como definitivo s
 
 | Entregable | Estado actual | Continuacion |
 |---|---|---|
-| E1 Modelo de datos + BD | Primer corte listo | Ajustar por E6 antes de Supabase real |
-| E6 Cumplimiento legal y privacidad | Borrador listo | Revisar, completar pendientes y aprobar |
-| E7 Infraestructura y Supabase seguro | Pendiente | Aplicar schema, RLS, Storage, Auth/MFA |
-| E2 Formulario de autoservicio | Prototipo listo | Conectar a Supabase cuando E1/E7 esten listos |
-| E5 Panel administrativo | Prototipo listo | Conectar busqueda, edicion, ARCO y reportes |
-| E4 Instalacion TI | Prototipo listo | Conectar TAG, estado y solicitudes |
-| E3 Administracion/cobro | Prototipo listo | Conectar asignacion, pago y caja si aplica |
-| E8 Manual/capacitacion | Pendiente | Elaborar despues de pruebas |
+| E1 Modelo de datos + BD | ✅ En produccion (bloques `00`->`41`) | Falta vista de incompletos; los campos de corte de caja entran con E3 |
+| E6 Cumplimiento legal y privacidad | 🟡 Implementado; aprobacion pendiente | Aprobacion institucional del aviso + pendientes ARCO/conservacion |
+| E7 Infraestructura y Supabase seguro | ✅ En produccion | Documentar region + archivar DPA |
+| E2 Formulario de autoservicio | ✅ En produccion | — |
+| E5 Panel administrativo | ✅ En produccion (roles finos + MFA) | Reporte de incompletos pendiente |
+| E4 Instalacion TI | ✅ En produccion | — |
+| E3 Administracion/cobro | ✅ En produccion (cobro + folios) | **Corte de caja / finanzas** (siguiente feature) |
+| E8 Manual/capacitacion | ⚪ Pendiente | Elaborar despues de pruebas |
 
 ## 7. Cierre de sesion
 

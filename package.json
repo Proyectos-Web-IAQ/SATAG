@@ -2,7 +2,7 @@
   "name": "satag",
   "version": "0.1.0",
   "private": true,
-  "description": "SATAG — Sistema de Adquisición de TAG Vehicular (IAQ). Prototipo de frontend con datos mock.",
+  "description": "SATAG — Sistema de Adquisición de TAG Vehicular (IAQ). Autoservicio con firma electrónica y panel Admin/TI sobre Supabase.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

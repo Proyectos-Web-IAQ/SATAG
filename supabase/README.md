@@ -8,38 +8,40 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 
 | Archivo | Que hace |
 |---|---|
-| `schema.sql` | Tablas, constraints, indices, RLS, RPC `crear_registro`, RPC `crear_solicitud` y bucket privado `firmas`. |
-| `seed.sql` | Estacionamientos, catalogos base, modelos base, reglamento placeholder y aviso placeholder. |
-| `sql/` | Version atomica de trabajo para auditar y ejecutar el esquema tabla por tabla. |
+| `sql/` | **Fuente de verdad.** Esquema atomico por bloques numerados `00`→`41`, en el orden de `sql/README.md`. Es lo que esta aplicado en produccion. |
+| `schema.sql` | Respaldo monolitico **historico y atrasado** (corte ~9-jul). Trae las tablas, la RLS ancha y `crear_registro`/`crear_solicitud`, pero **NO** la capa del panel: sin `panel_exigir_rol`, sin `registrar_pago`, sin roles finos/`app_metadata`, sin folios de recibo (bloque 32), sin CC-01 (apartar/usar TAG) ni SC-003 (buzon de notas). No instalar con esto. |
+| `seed.sql` | Semilla del monolitico: estacionamientos, catalogos base, modelos base, reglamento y aviso placeholder. |
 
-> `schema.sql` se conserva como respaldo monolitico. Para auditoria y construccion paso a paso, usar `sql/README.md`.
+> `sql/` es la version viva. `schema.sql`/`seed.sql` se conservan solo como respaldo de referencia; **no reflejan el estado actual** y no deben usarse para instalar.
 
 ## Orden de ejecucion
 
-1. Ejecutar `schema.sql` en Supabase SQL Editor.
-2. Ejecutar `seed.sql`.
+**Instalar/reconstruir la base = aplicar los bloques de `sql/` en orden (`00`→`41`), siguiendo el runbook [`sql/README.md`](sql/README.md).** Incluye el **PASO 0** (asignar `app_metadata.rol` al personal y re-login) antes de los bloques 24-30, y la advertencia de la trampa PostgREST en los bloques que cambian la firma de un RPC.
 
-La seccion Storage de `schema.sql` usa el esquema `storage` propio de Supabase. No correra igual en un Postgres local sin Supabase.
+> **No usar `schema.sql`/`seed.sql` para instalar.** Estan atrasados respecto a los bloques 27-41: quien los ejecute obtiene una base con RLS ancha (`authenticated`) y **sin la capa de RPCs del panel ni los roles finos** — es decir, insegura e incompleta. Se conservan solo como respaldo de la primera version.
+>
+> La seccion Storage usa el esquema `storage` propio de Supabase; no corre igual en un Postgres local sin Supabase.
 
-Si ya se habia ejecutado una version anterior de `schema.sql` en un proyecto vacio de pruebas, conviene reiniciar la base o aplicar una migracion equivalente. `CREATE TABLE IF NOT EXISTS` no agrega columnas nuevas a tablas ya creadas.
-
-## Que garantiza `schema.sql`
+## Que garantiza el esquema aplicado (`sql/`)
 
 - `anon` solo lee catalogos, reglamento vigente y aviso vigente.
 - `anon` no lee `registros`, `aceptaciones`, `pagos`, `movimientos` ni `solicitudes`.
+- El acceso del panel exige `aal2` (MFA) **y** rol del panel (`app_metadata.rol` ∈ admin | ti | consulta | super); toda escritura pasa por un RPC `SECURITY DEFINER` que revalida el rol con `panel_exigir_rol`.
 - El alta publica entra por `crear_registro`, que crea registro + aceptacion + movimiento en una transaccion.
 - La firma guarda version de reglamento, version de aviso, hash SHA-256 generado por la base, paquete canonico firmado, firmante, rol, ruta de firma y trazos opcionales.
 - Alumno menor requiere gestionante con relacion `padre`, `madre` o `tutor`.
-- El pago no requiere folio, recibo ni corte especifico por ahora.
-- Solicitudes de cambio/baja/ARCO/revocacion entran por `crear_solicitud`.
+- Cada pago emite un folio de recibo automatico, inmutable y unico (`SATAG-AAAA-000001`, bloque 32) y admite un solo pago por expediente. Lo unico pendiente en la caja es el **corte de caja/finanzas** (aun no implementado).
+- Las solicitudes publicas son de tipo `actualizacion` | `baja` (por `crear_solicitud`) y las notas del buzon SC-003 (`nota`) entran por `crear_nota_solicitud`, sin folio ni placa. No existen tipos ARCO/revocacion en el esquema.
 - El estado `bloqueado` permite cancelacion/bloqueo previo a supresion.
 - El bucket `firmas` es privado.
 
-## Checklist manual de pruebas
+## Checklist manual de pruebas (flujo de alta publica)
 
 > Ejecuta como rol de servicio en SQL Editor. Para simular publico usa `set role anon;` y regresa con `reset role;`.
+>
+> Este checklist valida el **alta publica** (RPC `crear_registro`, menores, RLS de PII, storage), vigente en el esquema real. Para reconstruir la base usa los bloques de `sql/` (00→41), **no** `schema.sql`. Las pruebas de la capa del panel (roles finos, pagos con folio, buzon de notas, apartar/usar TAG) viven en `sql/seed_tests_dev.sql` (banco de QA) y en la auditoria `sql/AUDITORIA.md`.
 
-- [ ] **1. Aplicar scripts:** `schema.sql` y `seed.sql` corren sin errores.
+- [ ] **1. Aplicar el esquema:** los bloques de `sql/` (00→41) corren en orden sin errores.
 - [ ] **2. Semillas OK:**
   ```sql
   select clave from estacionamientos order by clave;
@@ -156,8 +158,11 @@ Configuracion en el **Dashboard de Supabase** (no vive en el repo):
    - Si el correo redirige a una URL fuera de la allowlist, Supabase cae al Site URL y el reset falla.
 4. **Correo (SMTP)** — el SMTP integrado de Supabase sirve para pruebas pero tiene limite bajo y
    puede caer en spam. Para produccion, configura **Custom SMTP** en Authentication -> Emails.
-5. **MFA (pendiente para produccion)** — E6/CC-12 exige MFA en cuentas administrativas
-   (Authentication -> Multi-Factor). No es bloqueante para el MVP interno, pero queda pendiente.
+5. **MFA (implementado y obligatorio)** — E6/CC-12 exige MFA en cuentas administrativas.
+   Ya esta activo: la RLS del panel exige sesion `aal2` (segundo factor) ademas del rol, el
+   panel enrola/verifica TOTP (`lib/supabase/auth.ts`) y bloquea el acceso hasta pasar el
+   segundo factor (`components/admin/GateMfa.tsx`). Habilita el proveedor TOTP en
+   Authentication -> Multi-Factor.
 
 ### Flujo de recuperacion (como funciona)
 
@@ -200,7 +205,7 @@ en la base de datos. El usuario no puede elegirlo ni cambiarlo desde el panel.
 | Rol | Que ve/hace en el panel |
 |---|---|
 | `admin` | Pestaña **Administración** (registrar pago) + Consulta. |
-| `ti` | Pestaña **TI** (asignar estacionamiento, instalar/reponer TAG, actualizar, dar de baja y atender solicitudes). |
+| `ti` | Pestaña **TI** (asignar estacionamiento, instalar/reponer TAG, apartar y usar el TAG apartado, actualizar, dar de baja, atender solicitudes y el buzon de notas SC-003). |
 | `consulta` | Solo **Consulta** (lectura del padron, sin acciones). |
 | `super` | Las tres pestañas y todos los RPC del panel; solo para soporte/pruebas integrales. |
 
@@ -233,14 +238,17 @@ cerrar sesión y volver a entrar; recargar la página no sustituye ese paso.
    Asigna el rol por SQL, cierra sesión y vuelve a entrar. Verifica que `admin`, `ti` y
    `consulta` solo vean sus pestañas; usa `super` únicamente para recorrer el flujo integral.
 
-## Pendientes antes de produccion
+## Pendientes (el core ya opera en produccion)
 
-- Reemplazar reglamento placeholder por texto oficial.
-- Reemplazar aviso placeholder por texto aprobado.
+Ya cerrado: reglamento oficial IAQ de 22 clausulas publicado (bloque 23), texto integral del aviso publicado (bloque 22), roles finos + RLS `aal2` + MFA obligatorio (bloques 27-30), RLS probada con usuarios reales de Supabase Auth (en produccion).
+
+Abierto:
+
+- Aprobacion formal de Direccion/Legal del aviso de privacidad y su URL definitiva (el texto ya esta publicado como v2 vigente; falta el visto bueno institucional).
 - Endurecer a rol `admin` las escrituras de catálogos, documentos y Storage de firmas
   (SQL 05, 09 y 20 todavía aceptan cualquier sesión `authenticated + aal2`).
-- Agregar rate limiting/CAPTCHA al RPC público `crear_solicitud` antes de exponerlo ampliamente.
+- Agregar rate limiting/CAPTCHA a los RPC públicos `crear_solicitud` y `crear_nota_solicitud` (riesgo aceptado por ahora).
 - Definir responsable ARCO.
 - Definir plazo final de conservacion/bloqueo/supresion.
 - Confirmar DPA/region Supabase.
-- Probar RLS con usuarios reales de Supabase Auth.
+- Corte de caja / finanzas para Administracion (siguiente feature; aun no implementada).

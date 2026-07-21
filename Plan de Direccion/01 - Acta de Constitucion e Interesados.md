@@ -88,14 +88,18 @@ deja **evidencia digital con firma manuscrita y sello de tiempo** de la aceptaci
 
 ### Hitos principales
 
-| Hito | Descripción | Fecha objetivo (tentativa) |
-|---|---|---|
-| H1 | Planeación aprobada (Plan de Dirección) | 01-jul-2026 |
-| H2 | Diseño aprobado (UI + modelo de datos) | 07-jul-2026 |
-| H3 | MVP: formulario + firma + guardado (fase autoservicio) | 14-jul-2026 |
-| H4 | Panel admin + fases de administración (estacionamiento/pago) e instalación (No. de TAG) | 18-jul-2026 |
-| H5 | Pruebas y ajustes | 22-jul-2026 |
-| H6 | Despliegue, entrega y aceptación | 28-jul-2026 (meta inicial 24-jul) |
+| Hito | Descripción | Fecha objetivo (tentativa) | Estado (20-jul-2026) |
+|---|---|---|---|
+| H1 | Planeación aprobada (Plan de Dirección) | 01-jul-2026 | ✅ Cumplido |
+| H2 | Diseño aprobado (UI + modelo de datos) | 07-jul-2026 | ✅ Cumplido |
+| H3 | MVP: formulario + firma + guardado (fase autoservicio) | 14-jul-2026 | ✅ Cumplido |
+| H4 | Panel admin + fase de administración (pago) e instalación con estacionamiento (No. de TAG, a cargo de TI) | 18-jul-2026 | ✅ Cumplido |
+| H5 | Pruebas y ajustes | 22-jul-2026 | 🔄 En curso (banco de QA `seed_tests_dev.sql`) |
+| H6 | Despliegue, entrega y aceptación | 28-jul-2026 (meta inicial 24-jul; ajustada a ~03-ago) | 🔄 Ya desplegado en Vercel desde `main`; faltan entrega, manual y aceptación formal |
+
+> **Alcance añadido después del Acta** (ver bitácora, Doc 4): folio de recibo automático (CC-18),
+> apartar y usar el TAG apartado (CC-19) y buzón de notas sin folio (CC-20). Pendiente activo:
+> **corte de caja / finanzas**.
 
 *(Fechas finas se calculan en el Cronograma — Doc 2.)*
 
@@ -146,6 +150,9 @@ proyecto. Tiene autoridad para:
 - Elegir **tecnología, arquitectura y hosting**. Decisión preliminar: reutilizar la base técnica de
   un sistema interno previo (Next.js estático + Supabase + GoDaddy/Cloudflare + despliegue por
   GitHub Action) para reducir riesgo y tiempo; detalle en el Doc 2.
+  *(Ejecutado 20-jul-2026: se reutilizó el stack, pero el despliegue final es **Vercel desde `main`**
+  —cada push publica en producción—, sin GitHub Action ni FTPS. El principio "push a `main` =
+  producción" se mantiene; cambia el vehículo.)*
 - Definir y gestionar el **cronograma** y sus recursos.
 - Proponer alcance y diseño.
 

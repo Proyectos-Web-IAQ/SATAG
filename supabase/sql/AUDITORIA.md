@@ -136,7 +136,7 @@ El corte actual replica el diseno vigente: `authenticated` puede mantener catalo
 | Version | `version int unique`, positiva. |
 | Vigencia | Solo una fila puede tener `vigente = true`. |
 | RLS esperado | `anon` y `authenticated` leen solo vigente; mantenimiento autenticado por ahora. |
-| Decision abierta | Reemplazar placeholder por las 22 clausulas oficiales aprobadas. |
+| Decision cerrada | El placeholder ya se reemplazo por las **22 clausulas oficiales del IAQ**, publicadas como v2 vigente (bloque 23). El v1 placeholder queda como historico. |
 
 ### aviso_versiones
 
@@ -148,7 +148,7 @@ El corte actual replica el diseno vigente: `authenticated` puede mantener catalo
 | Version | `version int unique`, positiva. |
 | Vigencia | Solo una fila puede tener `vigente = true`. |
 | RLS esperado | `anon` y `authenticated` leen solo vigente; mantenimiento autenticado por ahora. |
-| Decision abierta | Reemplazar placeholder por aviso aprobado, URL definitiva y aprobacion Direccion/Legal. |
+| Decision parcialmente cerrada | El **texto integral** del aviso ya esta publicado como v2 vigente (bloque 22); el placeholder v1 queda historico. **Sigue pendiente** la aprobacion formal de Direccion/Legal y la URL definitiva. |
 
 ## Pruebas SQL minimas documentos
 
@@ -533,4 +533,158 @@ where schemaname = 'storage' and tablename = 'objects'
 order by policyname;
 -- firmas_admin       | ALL    | {authenticated}
 -- firmas_subida_anon | INSERT | {anon}
+```
+
+## Bloque 10: Pagos y folio de recibo (24, 32)
+
+### pagos
+
+| Punto | Revision |
+|---|---|
+| Proposito | Historial del cobro del TAG ($100 en efectivo). Un solo pago por expediente. |
+| PII | Indirecta: `cobrado_por` es el nombre del personal que cobro, no del titular. |
+| Clave principal | `id uuid`. |
+| Relacion | `registro_id -> registros(id) on delete cascade`. |
+| Constraints | `monto > 0`; `metodo in ('efectivo')`; `cobrado_por` y `folio_recibo` no vacios. |
+| Folio | `folio_recibo` NOT NULL y unico. DEFAULT `'SATAG-' || YYYY || lpad(nextval('pagos_folio_recibo_seq'),6,'0')` (bloque 32). Inmutable: no se edita desde la app. |
+| Unicidad | `uq_pagos_folio_recibo` (global) y `uq_pagos_registro` (un pago por expediente). |
+| Secuencia | `pagos_folio_recibo_seq` con `revoke all ... from public, anon, authenticated`: nadie la consume desde el navegador. |
+| RLS | Solo SELECT para el panel (`aal2` + rol admin/ti/consulta/super). Sin insert/update/delete directos. |
+| Escritura | Unicamente `registrar_pago` (SECURITY DEFINER, rol `admin`). |
+| Concurrencia | `select ... for update` sobre el registro serializa dos cobros simultaneos; el segundo recibe "El registro ya tiene el pago X registrado". |
+| Decision cerrada | El pago no se edita ni se borra desde la app: es historial contable. |
+| Decision abierta | Correccion de un pago mal capturado: hoy no existe flujo (habria que definir nota de credito o ajuste). |
+| Pendiente | **Corte de caja**: tabla de cortes + sello del corte en cada pago. No implementado. |
+
+## Bloque 11: Asignacion y solicitudes (25, 26, 27)
+
+### registro_estacionamientos
+
+| Punto | Revision |
+|---|---|
+| Proposito | Puente entre el registro y el acceso asignado (E1/E2). |
+| PII | Indirecta por FK al expediente. |
+| Relaciones | `registro_id -> registros(id)`; `estacionamiento_clave -> estacionamientos(clave)`. |
+| Quien asigna | **TI** (SC-002), no Administracion. |
+| RLS | Solo SELECT para el panel (`aal2` + rol). Escritura por RPC. |
+
+### solicitudes
+
+| Punto | Revision |
+|---|---|
+| Proposito | Solicitudes publicas de `actualizacion`/`baja` y notas del buzon sin folio (`nota`). |
+| PII | Si: `solicitante_nombre`, `alumno_nombre` (puede ser un menor), `vehiculo_desc`, `detalle`. |
+| Tipos | `sol_tipo_valido`: `actualizacion` \| `baja` \| `nota` (el valor `nota` lo agrega el bloque 34). |
+| Tramite pedido | `tramite_solicitado`: `actualizacion` \| `baja`. El bloque 41 elimino `instalacion` porque instalar es solo por el alta. |
+| Cierre | `atendida boolean` + `resolucion in ('ejecutada','descartada')`. **No existe columna `estado`.** |
+| `registro_id` | **Opcional**: una nota nace sin expediente y TI la vincula despues. Un NULL aqui es legitimo, no un error. |
+| Unicidad | Maximo una solicitud pendiente por tipo y expediente. |
+| RLS | Solo SELECT para el panel (`aal2` + rol). Escritura por RPC. |
+| Riesgo aceptado | Intake publico sin sesion ni verificacion de identidad y **sin rate limiting/CAPTCHA**. Un tercero puede capturar datos de otra persona. |
+
+## Bloque 12: Roles finos y RPCs del panel (27, 29, 30, 31)
+
+### panel_exigir_rol
+
+| Punto | Revision |
+|---|---|
+| Proposito | Guardia comun de los RPCs del panel: exige sesion `aal2` **y** rol permitido. |
+| Por que importa | Los RPCs son `SECURITY DEFINER`: corren como owner y **omiten la RLS**. Sin esta guardia, cualquier sesion autenticada podria escribir el expediente. |
+| Comportamiento | `super` pasa cualquier guardia; un `authenticated` sin rol es rechazado. |
+| Riesgo revisado | Todos los RPCs declaran `set search_path = public`, lo que evita el secuestro por `search_path`. |
+
+### Roles finos (30)
+
+| Punto | Revision |
+|---|---|
+| Fuente de verdad | `app_metadata.rol`, que solo fija un admin con `service_role`. `user_metadata` **nunca** se usa en RLS (el usuario puede editarlo). |
+| RLS de lectura | `registros` y `movimientos`: admin/ti/consulta/super con `aal2`. `aceptaciones`: **solo admin/super** (evidencia legal de firma). |
+| Escritura directa | Revocada: `revoke insert, update, delete ... from authenticated`. |
+| Requisito operativo | PASO 0 (asignar rol) **y re-login**: el rol viaja en el JWT; sin volver a entrar, la sesion vieja no lo trae. |
+
+### Inventario de RPCs
+
+| RPC | Rol | Nota de auditoria |
+|---|---|---|
+| `crear_registro` | anon (publico) | Alta atomica: registro + aceptacion + movimiento. |
+| `crear_solicitud` | anon (publico) | Exige folio + placas o No. de TAG; respuesta honesta sin revelar datos. |
+| `crear_nota_solicitud` | anon (publico) | Buzon sin folio; **no busca ni confirma** si la persona existe. |
+| `registrar_pago` | `admin` | Emite folio; bloquea doble cobro. |
+| `asignar_estacionamiento` | `ti` | Asigna E1/E2. |
+| `instalar_tag_con_estacionamiento` | `ti` | Instala + asigna en una transaccion. |
+| `actualizar_registro_con_estacionamiento` | `ti` | Actualiza y cierra la solicitud/nota que coincide. |
+| `dar_baja` | `ti` | Baja + cierre de la solicitud/nota de baja. |
+| `usar_tag_apartado` | `ti` | Reposicion desde el TAG apartado. |
+| `vincular_nota` | `ti` | Vincula la nota y corrobora el tramite. |
+| `descartar_solicitud` | `ti` | Cierra sin ejecutar, con motivo. |
+
+> Los RPC internos `instalar_tag` y `actualizar_registro` quedaron **revocados al cliente** en el bloque 31.
+
+## Bloque 13: CC-01 apartar y usar el TAG apartado (33, 40)
+
+| Punto | Revision |
+|---|---|
+| Columnas | `procedencia_tag` (`escuela`/`propio`), `tag_apartado boolean`, `tag_apartado_no text` con formato `^[0-9]{6,11}$`. |
+| Integridad | CHECK de coherencia entre `tag_apartado` y `tag_apartado_no`, mas indice unico del numero apartado: un mismo TAG no puede quedar reservado dos veces. |
+| Quien edita procedencia | Solo TI, nunca el titular (el alta publica no la fija libremente). |
+| `usar_tag_apartado` | `no_dispositivo <- tag_apartado_no`, `procedencia_tag <- 'escuela'`, consume la reserva (`tag_apartado=false`, numero a NULL) y registra movimiento `reposicion`. |
+| Caso borde cerrado | Cambiar procedencia a `escuela` desde "Actualizar" con un apartado vivo esta **prohibido**: TI debe usar el apartado o quitarlo explicitamente. |
+| PostgREST | El bloque 33 hace drop+recreate de los wrappers (cambio de firma); el 40 crea `usar_tag_apartado` (nuevo, solo `notify`). |
+
+## Bloque 14: SC-003 buzon de notas sin folio (34-39, 41)
+
+| Punto | Revision |
+|---|---|
+| Entrada publica | `crear_nota_solicitud` (anon): registra la nota **sin buscar nada**; no revela si la persona o el expediente existen. |
+| Datos de la nota | `solicitante_nombre`, `solicitante_rol` (`maestro`/`padres`/`alumno`/`admin`), `tramite_solicitado`, `alumno_nombre`, `alumno_grado`, `vehiculo_desc`, `detalle`. Alumno y grado obligatorios solo si el rol es `padres` (bloque 35). |
+| Vinculacion | `vincular_nota` (rol `ti`) empata la nota con el expediente y **corrobora** el tramite: si el pedido no procede, TI aplica otro y la nota se actualiza (bloque 39). |
+| Auto-cierre | Al ejecutar el tramite, se cierra la nota cuyo `tramite_solicitado` **coincide** (bloque 38). Si TI aplica otro tramite, la nota no se cierra sola: se cierra a mano. Evita que un tramite no relacionado borre en silencio otra peticion. |
+| Fix auditado | El bloque 36 corrige `descartar_solicitud`, que fallaba con "Solicitud no encontrada" al cerrar una nota sin vincular: `SELECT ... INTO` no distingue "cero filas" de "una fila con NULL"; ahora usa `FOUND`. |
+| Regla de alcance | El bloque 41 elimina `instalacion` del catalogo: instalar es siempre por el alta, nunca por solicitud. |
+| PII | Datos de terceros (incluido un posible menor) capturados **sin verificar identidad**. Debe estar cubierto por el aviso. |
+| PostgREST | Los bloques 35, 37 y 39 cambian firmas de RPC: hacen `drop function` + `notify pgrst`. Los bloques 36, 38, 40 y 41 solo cambian cuerpos. |
+| Pendiente | Rate limiting/CAPTCHA en la entrada publica (riesgo aceptado por ahora). |
+
+## Pruebas minimas de pagos y buzon
+
+```sql
+-- 1) Folio automatico e inmutable, un pago por expediente.
+select folio_recibo, monto, cobrado_por from pagos order by created_at desc limit 3;
+-- Formato esperado: SATAG-2026-000001
+
+-- Debe FALLAR el segundo cobro del mismo expediente:
+select registrar_pago(p_registro_id => '<uuid>', p_monto => 100, p_cobrado_por => 'Prueba');
+select registrar_pago(p_registro_id => '<uuid>', p_monto => 100, p_cobrado_por => 'Prueba');
+-- Esperado: "El registro ya tiene el pago SATAG-... registrado"
+
+-- 2) La secuencia no es accesible desde el navegador.
+set role anon;      select nextval('pagos_folio_recibo_seq');   -- debe fallar
+set role authenticated; select nextval('pagos_folio_recibo_seq'); -- debe fallar
+reset role;
+
+-- 3) Nota del buzon: se crea sin folio y sin expediente.
+set role anon;
+select crear_nota_solicitud(
+    p_solicitante_nombre => 'Ana Ruiz',
+    p_solicitante_rol    => 'padres',
+    p_tramite_solicitado => 'actualizacion',
+    p_alumno_nombre      => 'Luis Ruiz',
+    p_alumno_grado       => '3A',
+    p_detalle            => 'Cambio de coche'
+);
+reset role;
+select tipo, registro_id, tramite_solicitado, atendida, resolucion
+from solicitudes where tipo = 'nota' order by created_at desc limit 1;
+-- Esperado: tipo=nota, registro_id NULL, atendida=false, resolucion NULL
+
+-- 4) Un tramite invalido debe rechazarse (bloque 41).
+set role anon;
+select crear_nota_solicitud('X','maestro','instalacion',null,null,'prueba');
+reset role;
+-- Esperado: falla por sol_tramite_valido
+
+-- 5) Sin rol o sin aal2, el panel no lee ni escribe.
+set role authenticated;
+select count(*) from pagos;        -- 0 filas o error: la RLS exige aal2 + rol
+reset role;
 ```

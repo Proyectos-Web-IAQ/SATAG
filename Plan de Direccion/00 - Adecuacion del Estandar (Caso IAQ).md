@@ -135,16 +135,20 @@ Tomados del estándar; se confirman o ajustan aquí:
 ## 5. Organización de carpetas (mejor orden)
 
 ```
-Tag Vehicular/
+SATAG/
 ├─ Plan de Direccion/     ← documentos de gestión (este Plan)
 │   ├─ 00 - Adecuacion del Estandar (Caso IAQ).md   ← este archivo
 │   ├─ 01 - Acta de Constitucion e Interesados.md
 │   ├─ 02 - Alcance, WBS y Cronograma.md
 │   ├─ 03 - Costos, Riesgos y RACI.md
-│   └─ 04 - Cierre.md          (al final)
-├─ Insumos/               ← material original (fotos de la hoja, estándar)
+│   ├─ 04 - Bitacora de Cambios y Cierre.md
+│   └─ 05 - Guia de Sesiones y Ruta Operativa.md
+├─ Desarrollo/            ← diseño técnico (datos, dominio, arquitectura, seguridad, flujos, firma, MFA)
+├─ Insumos/               ← material original (fuera del repo por privacidad)
 ├─ Investigacion/         ← investigación a profundidad (research)
-└─ Entregables/           ← la app, mockups, esquema de BD, etc.
+├─ Entregables/           ← entregas formales (E6 cumplimiento legal y privacidad)
+├─ supabase/              ← esquema SQL por bloques atómicos (sql/00→41)
+└─ app/ · components/ · lib/   ← la aplicación (Next.js estático + Supabase)
 ```
 
 *(Nota: las 2 fotos originales se **borraron** por contener datos personales; el `.docx` del estándar
@@ -173,13 +177,19 @@ El orden importa: cada documento alimenta al siguiente
 1. **Frontera de alcance:** digitalizar el **formulario + expediente + panel admin**; **sin**
    hardware (documentado como evolución futura).
 2. **Flujo en varias manos:** (a) **autoservicio** — el usuario captura sus datos y firma;
-   (b) **administración** asigna el **estacionamiento** y cobra el **TAG ($100 MXN, solo efectivo)**;
-   (c) **Depto. de TI** captura el **No. de TAG** y marca "instalado".
+   (b) **administración** cobra el **TAG ($100 MXN, solo efectivo)**;
+   (c) **Depto. de TI** asigna el **estacionamiento**, captura el **No. de TAG** y marca "instalado".
+   *(Ajuste SC-002: la asignación de estacionamiento pasó de Administración a TI.)*
 3. **Equipo / rol:** desarrolla **Gerardo solo** (Soporte TI Jr.); **audita y valida** Miguel Ángel
    González Pacheco (Encargado de Sistemas Computacionales). Área de TI = 4 personas.
 4. **Stack / hosting:** reutilizar la base de **SEVAD** (Next.js estático + Supabase + GoDaddy/
    Cloudflare + GitHub Action). Sin gasto extra (infra ya contratada).
+   *(Actualización 20-jul-2026: se reutilizó el stack, pero **no** el despliegue. Producción corre en
+   **Vercel desde `main`**, sin GitHub Action ni FTPS.)*
 5. **Firma de aceptación:** el IAQ pide **firma manuscrita digital**.
 6. **Pago:** $100 MXN por TAG, **solo efectivo**, presencial; el sistema **registra** el pago (no lo
-   procesa en línea).
+   procesa en línea). *(Desde el 15-jul cada pago emite un folio de recibo automático; el corte de caja
+   sigue pendiente.)*
 7. **Fecha meta:** **24-jul-2026** (validada).
+   *(Actualización: la meta se recalculó a 28-jul y luego a **~03-ago-2026** por el alcance añadido —ver
+   Doc 2 §2.5—. A 20-jul el núcleo ya opera en producción; ver [Doc 5](05%20-%20Guia%20de%20Sesiones%20y%20Ruta%20Operativa.md).)*

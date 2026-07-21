@@ -34,7 +34,7 @@ Los entregables base que alimentan este tablero:
 | 8 | URL del aviso integral | Direccion web donde se publica | Definir ruta fija, p.ej. `/aviso-de-privacidad`, versionada. | | TI | Media | Pendiente |
 | 9 | Supabase DPA y region | Firmar DPA y documentar region | Firmar el DPA desde el dashboard de Supabase, archivar el PDF, elegir y documentar region (us-east-1 o us-west). | | TI | Alta | Pendiente |
 | 10 | Reglamento de estacionamiento | Validar clausulas y limites de responsabilidad | Revision de Legal sobre responsabilidad civil por daños/robo. | | Legal / Direccion | Alta | Pendiente |
-| 11 | Cobro $100 efectivo | Requiere folio/recibo/corte | **Decidido: por ahora NO requiere folio, recibo ni corte especifico.** Solo se registra el pago (monto, fecha, quien registra) como dato administrativo interno. Reevaluar si Administracion lo pide despues. | Sin folio/recibo/corte por ahora | Administracion | Alta | Decidido |
+| 11 | Cobro $100 efectivo | Requiere folio/recibo/corte | **Superado por la implementacion (15-jul-2026):** cada pago emite un **folio de recibo automatico e inmutable** (`SATAG-AAAA-######`, bloque 32), unico por expediente, como control interno; **no** se emite CFDI. El **corte de caja sigue pendiente** (siguiente feature). Falta confirmar con Administracion el tratamiento contable. | Folio de recibo: hecho · Corte de caja: pendiente | Administracion | Alta | Actualizado |
 | 12 | NOM-151 | Contratar constancia de conservacion | Fase 2. Cotizar solo si Direccion quiere mayor fuerza probatoria (~$14-90 MXN por constancia). No es requisito del MVP. | | Direccion | Fase 2 | Pendiente |
 
 > **Nota:** la aprobacion del aviso la revisa Direccion/Legal por separado; por eso no aparece como fila del tablero.

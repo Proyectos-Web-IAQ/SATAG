@@ -1,7 +1,7 @@
 # Seguridad, RLS y Privacidad - SATAG
 
-> **Estado:** primer corte implementable para revision.
-> **Fecha:** 06/07/2026.
+> **Estado:** implementado y en produccion; pendiente la validacion final de Direccion/Legal.
+> **Ultima actualizacion:** 20/07/2026.
 > **Fuente:** Investigacion legal SATAG del 03/07/2026.
 > **Uso:** reglas obligatorias para desarrollo; no sustituye la validacion final de Direccion/Legal del IAQ.
 
@@ -17,20 +17,27 @@ SATAG trata datos personales ordinarios: nombre, tipo de usuario, datos vehicula
 |---|---|---|---|
 | Identificacion | Nombre del usuario, nombre del gestionante/firmante, tipo de usuario | `registros`, `aceptaciones` | Solo personal autorizado. No visible para `anon`. |
 | Vehiculo | Marca, modelo, color, placas, indicador sin placas | `registros` | Placas protegidas por RLS; evitar listados publicos. |
-| Firma | Imagen PNG, trazos vectoriales, firmante, sello de tiempo | Storage privado `firmas`, `aceptaciones` | Nunca URL publica permanente; acceso con URL firmada temporal. |
-| Evidencia | Version de reglamento, version de aviso, hash SHA-256 generado en BD, paquete firmado, bitacora | `aceptaciones`, `movimientos` o tabla equivalente | Inmutable despues de firmar. |
-| Pago | Monto, metodo efectivo, fecha y cobrado por | `pagos` | Dato administrativo; por ahora sin folio, recibo ni corte especifico. |
-| Solicitudes | Cambio, baja, rectificacion, oposicion/revocacion | `solicitudes` o modulo equivalente | Debe conservar estado, fecha, solicitante y resolucion. |
+| Firma | Imagen PNG, trazos vectoriales, firmante, sello de tiempo | Storage privado `firmas`, `aceptaciones` | Nunca URL publica permanente. La lectura de `aceptaciones` esta restringida a `admin`/`super`. Hoy el panel **no** muestra la firma; cuando lo haga debera usar URL firmada temporal. |
+| Evidencia | Version de reglamento, version de aviso, hash SHA-256 generado en BD, paquete firmado, bitacora | `aceptaciones`, `movimientos` | Inmutable despues de firmar. |
+| Pago | Monto, metodo efectivo, fecha, cobrado por y folio de recibo | `pagos` | Dato administrativo. El folio de recibo es **automatico e inmutable**; `cobrado_por` es PII indirecta del personal. El corte de caja aun no existe. |
+| Solicitudes | Solicitudes de `actualizacion`/`baja` identificadas con folio | `solicitudes` | Debe conservar fecha, solicitante, tramite y resolucion (`atendida` + `resolucion`). |
+| Buzon de notas (SC-003) | Nombre y rol del solicitante, tramite pedido, alumno y grado, descripcion del vehiculo | `solicitudes` (tipo `nota`) | **Intake publico sin sesion ni verificacion de identidad:** un tercero puede capturar datos de otra persona, incluido un menor (`alumno_nombre`). Debe estar cubierto por el aviso. Sin rate limiting por ahora (riesgo aceptado). |
 | Observaciones | Comentarios operativos | `registros.observaciones` | Minimizar; evitar datos sensibles; preferir catalogos. |
 
 ## 3. Roles y acceso
 
-| Rol | Uso | Permisos minimos |
+Los roles del panel viven en `app_metadata.rol` y son **frontera de seguridad real**: la RLS los exige junto con `aal2`, y cada RPC los vuelve a validar con `panel_exigir_rol`.
+
+| Rol | Uso | Permisos reales |
 |---|---|---|
-| `anon` / autoservicio | Registro inicial | Leer catalogos y reglamento vigente; crear registro solo por RPC controlada; sin lectura directa de PII. |
-| Administracion | Asignacion, cobro, consulta y ARCO operativo | Leer registros, editar datos autorizados, registrar pagos, exportar expediente, procesar bajas/bloqueos. |
-| TI | Instalacion y soporte del TAG | Leer registros necesarios, capturar No. de TAG, gestionar movimientos tecnicos. |
-| Admin sistema | Configuracion y auditoria | Gestionar catalogos, roles, RLS, Storage, usuarios, respaldos y MFA. |
+| `anon` / autoservicio | Alta, solicitud y buzon | Leer catalogos y reglamento/aviso vigente; crear registro, solicitud y nota solo por RPC controlada; sin lectura directa de PII. |
+| `admin` | Cobro | Leer el padron y **registrar pagos** (`registrar_pago`). Unico rol que cobra. Lee `aceptaciones` (evidencia de firma). |
+| `ti` | Ciclo de vida del TAG | Leer el padron; asignar estacionamiento, instalar, actualizar, **dar de baja**, usar el TAG apartado, vincular notas del buzon y descartar solicitudes. |
+| `consulta` | Solo lectura | Lee padron, pagos, solicitudes y movimientos. No ejecuta ningun RPC de escritura y **no** lee `aceptaciones`. |
+| `super` | Soporte y pruebas integrales | Pasa todas las guardias de `panel_exigir_rol`; uso controlado. |
+| `service_role` (fuera de la app) | Configuracion y auditoria | Asignar roles en `app_metadata`, resetear MFA, gestionar Storage y respaldos. Nunca desde el front. |
+
+> Nota: **dar de baja es de `ti`**, no de Administracion. Administracion solo cobra.
 
 Regla base: ninguna tabla con datos personales (`registros`, `aceptaciones`, `pagos`, `movimientos`, `solicitudes`) debe ser legible por `anon`. Las escrituras publicas del formulario deben pasar por una RPC con validacion y transaccion atomica.
 
@@ -40,6 +47,7 @@ Regla base: ninguna tabla con datos personales (`registros`, `aceptaciones`, `pa
 - Permitir a `anon` solo `select` de catalogos necesarios y del reglamento/aviso vigente.
 - Negar a `anon` lectura directa de registros, firmas, pagos, movimientos y solicitudes.
 - Usar RPC `crear_registro` o equivalente para alta de autoservicio; la RPC debe crear registro, aceptacion, evidencia y movimiento inicial en una sola transaccion.
+- **Rutas publicas de escritura (son tres, todas sin sesion):** `crear_registro` (alta), `crear_solicitud` (exige folio + placas o No. de TAG) y `crear_nota_solicitud` (buzon sin folio). Ninguna revela datos del expediente: responden sin confirmar si una persona existe. Las dos ultimas capturan PII de terceros sin verificar identidad; queda pendiente agregarles rate limiting/CAPTCHA.
 - Mantener separados los permisos de Administracion, TI y Consulta mediante `app_metadata.rol` y guardias dentro de cada RPC.
 - Exigir MFA (`aal2`) a todas las cuentas del panel antes de operar.
 - Usar backups y bitacoras para reconstruir incidentes y generar lista de titulares afectados.
@@ -54,7 +62,7 @@ Regla base: ninguna tabla con datos personales (`registros`, `aceptaciones`, `pa
 - El sistema debe guardar rutas internas, no URLs publicas.
 - La visualizacion de firmas en panel debe usar URLs firmadas temporales.
 - No se deben servir firmas por assets estaticos, CDN publico ni rutas del front.
-- Limitar tamano y tipo de archivo esperado: PNG generado por canvas y JSON de trazos.
+- Limitar tamano y tipo de archivo: el bucket admite solo `image/png` e `image/jpeg`, con maximo 2 MB. Los **trazos vectoriales no van al bucket**: viven en `aceptaciones.firma_trazos` (jsonb) dentro de Postgres.
 - Los trazos vectoriales se usan solo como evidencia de firma, nunca para identificacion biometrica automatizada.
 
 ## 6. Firma simple reforzada

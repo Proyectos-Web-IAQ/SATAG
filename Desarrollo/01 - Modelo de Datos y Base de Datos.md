@@ -1,24 +1,26 @@
 # Modelo de Datos - SATAG
 
 > **Desarrollo - Fase 1 (Diseno)** - WBS 1.2.1 - Entregable **E1**.
-> **Fecha:** 06-jul-2026.
-> **Version:** v0.12 - alineada con E6 legal/privacidad.
-> **SQL canonico:** [`../supabase/schema.sql`](../supabase/schema.sql).
+> **Ultima actualizacion:** 20-jul-2026.
+> **Version:** v0.13 - alineada con el esquema aplicado en produccion.
+> **SQL canonico:** [`../supabase/sql/`](../supabase/sql/README.md) (bloques atomicos `00`->`41`).
+> `../supabase/schema.sql` es un respaldo historico atrasado: **no** contiene la capa del panel
+> (roles finos, RPCs, folios de recibo, CC-01 ni SC-003).
 
-Este documento define el modelo de datos de SATAG para el MVP: expediente del TAG, vehiculo, firma reforzada, aviso/reglamento versionados, pagos administrativos, solicitudes de cambio/baja/ARCO y controles de privacidad.
+Este documento define el modelo de datos de SATAG: expediente del TAG, vehiculo, firma reforzada, aviso/reglamento versionados, pagos administrativos con folio de recibo, solicitudes de actualizacion/baja, buzon de notas sin folio y controles de privacidad.
 
 ## 1. Estado de alineacion E1 + E6
 
-El modelo ya debe soportar lo decidido o requerido por E6:
+El modelo soporta lo decidido o requerido por E6 (todo lo siguiente esta **aplicado en produccion**):
 
 - Aviso de privacidad versionado.
 - Aceptacion ligada a version de aviso y version de reglamento.
 - Firma simple reforzada: imagen, trazos opcionales, firmante, rol, hash SHA-256 generado por la base y sello de tiempo.
 - Menores: usuario menor requiere gestionante padre/madre/tutor.
-- Solicitudes: cambio, baja, ARCO y revocacion.
+- Solicitudes publicas de `actualizacion` y `baja`, mas el buzon de notas sin folio (`nota`, SC-003).
 - Bloqueo de expediente previo a supresion.
-- Pago administrativo de $100 en efectivo, sin folio/recibo/corte especifico por ahora.
-- Supabase/RLS: lectura publica solo de catalogos y documentos vigentes; PII protegida.
+- Pago administrativo de $100 en efectivo **con folio de recibo automatico** (`SATAG-AAAA-######`), unico por expediente. El corte de caja sigue pendiente.
+- Supabase/RLS: lectura publica solo de catalogos y documentos vigentes; PII protegida. El panel exige `aal2` (MFA) + rol fino y toda escritura pasa por RPC `SECURITY DEFINER`.
 
 ## 2. Hallazgos base del Excel
 
@@ -46,8 +48,8 @@ El modelo ya debe soportar lo decidido o requerido por E6:
 | 5 | Menores | `usuario_es_menor = true` exige gestionante padre/madre/tutor. |
 | 6 | Firma | `aceptaciones` guarda reglamento, aviso, firma, trazos, hash generado en BD, paquete firmado y timestamp. |
 | 7 | Aviso | `aviso_versiones` conserva versiones del aviso de privacidad SATAG. |
-| 8 | Pago | `pagos` registra monto/metodo/cobrado_por/fecha; sin folio/recibo/corte por ahora. |
-| 9 | Cambio/baja/ARCO | `solicitudes` cubre cambio, baja, ARCO y revocacion. |
+| 8 | Pago | `pagos` registra monto/metodo/cobrado_por/fecha y `folio_recibo` automatico, inmutable y unico; un solo pago por expediente. El corte de caja queda pendiente. |
+| 9 | Cambio/baja | `solicitudes` cubre `actualizacion`, `baja` y `nota` (buzon SC-003). No existen tipos ARCO ni revocacion en el esquema; ARCO se atiende por procedimiento sobre esos flujos. |
 | 10 | Bloqueo | `registros.estado = bloqueado` conserva evidencia sin uso operativo ordinario. |
 | 11 | NOM-151 | Fuera del MVP; hash interno + versionado + sello de tiempo. |
 
@@ -64,10 +66,10 @@ El modelo ya debe soportar lo decidido o requerido por E6:
 | `reglamento_versiones` | Texto versionado del reglamento | No |
 | `aviso_versiones` | Texto versionado del aviso de privacidad | No |
 | `aceptaciones` | Evidencia de firma y aceptacion | Si |
-| `pagos` | Registro administrativo del cobro | Posible |
-| `movimientos` | Bitacora de alta, baja, cambio, prueba, bloqueo y rectificacion | Posible |
-| `solicitudes` | Cambio, baja, ARCO y revocacion | Si |
-| `error_logs` | Soporte tecnico | Evitar PII |
+| `pagos` | Registro administrativo del cobro, con folio de recibo automatico | Posible |
+| `movimientos` | Bitacora de alta, baja, reposicion, cambio, prueba, bloqueo y rectificacion | Posible |
+| `solicitudes` | Solicitudes de `actualizacion`/`baja` y notas del buzon sin folio (`nota`, SC-003) | Si |
+| `error_logs` | Soporte tecnico - **no implementado** en el esquema aplicado (solo existe en el respaldo `schema.sql`) | Evitar PII |
 
 ## 5. Relaciones principales
 
@@ -119,9 +121,23 @@ erDiagram
         uuid id PK
         uuid registro_id FK
         text tipo
-        text estado
+        text tramite_solicitado
+        boolean atendida
+        text resolucion
+    }
+
+    pagos {
+        uuid id PK
+        uuid registro_id FK
+        numeric monto
+        text metodo
+        text cobrado_por
+        text folio_recibo
+        date fecha
     }
 ```
+
+> En `solicitudes`, `registro_id` es **opcional**: una nota del buzon (SC-003) nace sin expediente y TI la vincula despues.
 
 ## 6. `registros`: expediente central
 
@@ -134,7 +150,7 @@ Campos clave:
 - Clasificacion: `tipo_usuario`, `tipo_validado`, `tipo_validado_por`, `tipo_validado_en`.
 - Vehiculo: `marca`, `modelo`, `color`, `placas`, `sin_placas`.
 - TAG: `no_dispositivo`, `procedencia_tag`, `tag_apartado`, `tag_apartado_no`.
-- Ciclo de vida: `estado`, `motivo_baja`, `fecha_baja`.
+- Ciclo de vida: `estado`, `motivo_baja`, `fecha_baja`, `fecha_adquisicion`, `fecha_instalacion`, `instalado_por`.
 - Privacidad/conservacion: `bloqueado_en`, `bloqueo_motivo`, `suprimir_despues_de`.
 
 Estados vigentes:
@@ -163,38 +179,50 @@ Cada registro nuevo debe tener una aceptacion con:
 
 La firma no depende solo de la imagen; la evidencia es el paquete completo.
 
-## 8. `solicitudes`: cambio, baja y ARCO
+## 8. `solicitudes`: actualizacion, baja y notas del buzon
 
-Tipos:
+Tipos vigentes (`sol_tipo_valido`):
 
-- `cambio`
-- `baja`
-- `arco_acceso`
-- `arco_rectificacion`
-- `arco_cancelacion`
-- `arco_oposicion`
-- `revocacion`
+- `actualizacion` - el titular pide corregir o actualizar datos.
+- `baja` - el titular pide dar de baja el TAG.
+- `nota` - nota del buzon publico sin folio ni placa (SC-003).
 
-Estados:
+**No existe una columna `estado` ni una maquina de cinco estados.** El cierre se modela con dos campos:
 
-- `pendiente`
-- `en_revision`
-- `atendida`
-- `rechazada`
-- `cancelada`
+- `atendida` (boolean): si TI ya la proceso.
+- `resolucion`: `ejecutada` o `descartada`; nula mientras la solicitud siga abierta.
 
-Estas solicitudes se crean por RPC publica controlada (`crear_solicitud`) y solo las lee personal autorizado.
+Reglas:
+
+- Maximo una solicitud pendiente por tipo y expediente.
+- `registro_id` es **opcional**: una nota nace sin expediente y TI la vincula despues.
+- Columnas propias de la nota: `solicitante_nombre`, `solicitante_rol` (`maestro`/`padres`/`alumno`/`admin`), `tramite_solicitado` (`actualizacion` | `baja`), `alumno_nombre`, `alumno_grado`, `vehiculo_desc` y `detalle`. Alumno y grado solo son obligatorios cuando el rol es `padres`.
+- Instalar **no** es un tramite de solicitud: el TAG se instala unicamente por el alta (bloque 41).
+
+Entradas publicas (RPC `SECURITY DEFINER`, sin exponer el expediente):
+
+- `crear_solicitud`: requiere folio + placas (o No. de TAG); responde de forma honesta sin revelar datos.
+- `crear_nota_solicitud`: buzon sin folio ni placa; no hace busqueda ni confirma si la persona existe.
+
+Cierre por TI: `vincular_nota` (empata la nota con el expediente y **corrobora** el tramite pedido, pudiendo cambiarlo), `descartar_solicitud`, y el auto-cierre de la nota cuando se ejecuta el tramite que coincide.
+
+ARCO no tiene tipos propios en el esquema: se atiende por procedimiento apoyandose en estos flujos y en el estado `bloqueado`.
 
 ## 9. Pago administrativo
 
-El pago queda reducido al MVP decidido:
+`pagos` registra:
 
 - `monto`
 - `metodo = efectivo`
 - `cobrado_por`
 - `fecha`
+- `folio_recibo`: **automatico, obligatorio e inmutable**, formato `SATAG-AAAA-000001`, generado por la secuencia `pagos_folio_recibo_seq` dentro de PostgreSQL (bloque 32). La secuencia garantiza unicidad aunque dos personas cobren al mismo tiempo.
 
-No se modela folio, recibo ni corte de caja por ahora. Si Administracion lo pide despues, se agregara como cambio de alcance.
+Reglas:
+
+- **Un solo pago por expediente** (`uq_pagos_registro`): un reintento o un doble clic choca contra el indice en vez de duplicar el cobro, y `registrar_pago` responde con el folio ya emitido.
+- El pago se escribe unicamente por el RPC `registrar_pago` (rol `admin`).
+- El **corte de caja aun no se modela**: sera una tabla de cortes mas el sello del corte en cada pago. Es la siguiente feature.
 
 ## 10. RLS y acceso
 
@@ -202,13 +230,13 @@ Regla base:
 
 - `anon` lee solo catalogos, reglamento vigente y aviso vigente.
 - `anon` no lee PII.
-- `anon` crea registros y solicitudes solo por RPC `SECURITY DEFINER`.
-- `authenticated` representa personal interno por ahora; queda pendiente separar roles finos de Administracion y TI.
+- `anon` crea registros, solicitudes y notas solo por RPC `SECURITY DEFINER`.
+- El personal del panel se distingue por **roles finos** en `app_metadata.rol`: `admin`, `ti`, `consulta` y `super`. La RLS exige sesion **`aal2` (MFA) mas rol**, y toda escritura pasa por un RPC `SECURITY DEFINER` que revalida el rol con `panel_exigir_rol`. Una sesion `authenticated` sin rol no lee nada del expediente.
 
 Tablas con PII protegida:
 
 - `registros`
-- `aceptaciones`
+- `aceptaciones` (lectura solo `admin`/`super`: es evidencia legal de firma)
 - `pagos`
 - `movimientos`
 - `solicitudes`
@@ -233,7 +261,26 @@ Alta publica atomica:
 
 ### `crear_solicitud`
 
-Crea solicitud publica de cambio, baja, ARCO o revocacion sin exponer el expediente completo.
+Crea una solicitud publica de `actualizacion` o `baja` a partir de folio + placas (o No. de TAG), sin exponer el expediente completo.
+
+### `crear_nota_solicitud`
+
+Buzon publico sin folio ni placa (SC-003): registra la nota con el solicitante, su rol y el tramite que pide. No hace busqueda ni confirma si la persona existe.
+
+### RPCs del panel (`SECURITY DEFINER` + guardia `panel_exigir_rol`)
+
+| RPC | Rol | Que hace |
+|---|---|---|
+| `registrar_pago` | `admin` | Cobra el TAG y emite el folio de recibo. |
+| `asignar_estacionamiento` | `ti` | Asigna E1/E2 al registro. |
+| `instalar_tag_con_estacionamiento` | `ti` | Instala el TAG y asigna estacionamiento en una sola transaccion; pasa el registro a `activo`. |
+| `actualizar_registro_con_estacionamiento` | `ti` | Actualiza el expediente y cierra la solicitud/nota cuyo tramite coincide. |
+| `dar_baja` | `ti` | Da de baja el TAG y cierra la solicitud/nota de baja. |
+| `usar_tag_apartado` | `ti` | Activa como reposicion el TAG que la escuela habia apartado (CC-01). |
+| `vincular_nota` | `ti` | Empata una nota del buzon con su expediente y **corrobora** el tramite pedido. |
+| `descartar_solicitud` | `ti` | Cierra una solicitud o nota sin ejecutarla, con motivo. |
+
+Los RPC internos `instalar_tag` y `actualizar_registro` quedaron **revocados al cliente** en el bloque 31: el panel llama unicamente a los wrappers `*_con_estacionamiento`, para que el cambio ocurra en una sola transaccion.
 
 ## 12. Datos personales para aviso
 
@@ -256,23 +303,35 @@ Crea solicitud publica de cambio, baja, ARCO o revocacion sin exponer el expedie
 - `aceptaciones.ip_origen`
 - `aceptaciones.user_agent`
 - `solicitudes.solicitante_nombre`
-- `solicitudes.contacto`
+- `solicitudes.solicitante_rol`
+- `solicitudes.alumno_nombre`
+- `solicitudes.alumno_grado`
+- `solicitudes.vehiculo_desc`
 - `solicitudes.detalle`
 
-## 13. Pendientes antes de Supabase real
+> **Nota de privacidad:** el buzon publico (`crear_nota_solicitud`) admite que un tercero capture datos
+> de otra persona —incluido `alumno_nombre`, que puede ser un menor— **sin verificar identidad**. Es una
+> entrada de PII sin sesion que debe estar cubierta por el aviso y considerarse en el modelo de amenaza.
+> `pagos.cobrado_por` es PII indirecta del personal, no del titular.
 
-- Sustituir reglamento placeholder por texto oficial.
-- Sustituir aviso placeholder por texto aprobado.
+## 13. Pendientes
+
+Ya cerrado: reglamento oficial de 22 clausulas publicado (bloque 23), texto integral del aviso publicado (bloque 22), roles finos de Administracion y TI separados (bloques 27-30) y RLS probada con `anon` y con usuarios reales del panel.
+
+Abierto:
+
+- Aprobacion institucional del aviso de privacidad y su URL definitiva.
 - Confirmar responsable ARCO.
 - Confirmar plazo de conservacion/bloqueo/supresion.
 - Confirmar DPA y region de Supabase.
-- Separar roles de Administracion y TI.
-- Probar RLS con `anon` y usuarios `authenticated`.
+- Modelar el **corte de caja**: tabla de cortes mas el sello del corte en `pagos` (siguiente feature).
+- Vista `v_registros_incompletos` (B2): documentada desde el 03-jul, aun no implementada.
 
 ## 14. Archivos relacionados
 
-- [`../supabase/schema.sql`](../supabase/schema.sql)
-- [`../supabase/seed.sql`](../supabase/seed.sql)
+- [`../supabase/sql/README.md`](../supabase/sql/README.md) - runbook de los bloques aplicados (**fuente de verdad**)
+- [`../supabase/sql/AUDITORIA.md`](../supabase/sql/AUDITORIA.md) - auditoria tabla por tabla
 - [`../supabase/README.md`](../supabase/README.md)
+- [`../supabase/schema.sql`](../supabase/schema.sql) - respaldo historico atrasado; no instalar con el
 - [`04 - Seguridad, RLS y Privacidad.md`](04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md)
 - [`../Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Decisiones Legales Pendientes.md`](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Decisiones%20Legales%20Pendientes.md)

@@ -9,6 +9,21 @@
 - 📄 **De la documentación** de SEVAD (`docs/tecnico/`), fiable pero conviene revisar el doc.
 - ⚠️ **Confirmar en vivo** (valores de infraestructura que dependen del cPanel/Cloudflare de la escuela).
 
+> ### ⚠️ Qué se adoptó y qué no (actualizado 20-jul-2026)
+>
+> SATAG **sí** reutilizó el núcleo técnico de SEVAD: Next.js con `output: export` + `trailingSlash`,
+> cliente Supabase con llave pública protegida por RLS, patrón de RLS público-insert / panel-read y
+> RPC atómico `SECURITY DEFINER`.
+>
+> SATAG **no** adoptó la estrategia de despliegue: **no hay GitHub Action, ni FTPS, ni cPanel, ni
+> `.htaccess`, ni subdominio en GoDaddy/Cloudflare**. El despliegue real es **Vercel desde `main`**
+> (cada push publica en producción). Las secciones **3 y 4** describen el pipeline de SEVAD como
+> **referencia no adoptada**: no son el runbook de SATAG. El estado real está en
+> [`Desarrollo/03 - Arquitectura Técnica`](../Desarrollo/03%20-%20Arquitectura%20Tecnica.md).
+>
+> El export estático sigue siendo portable: si el IAQ decide mover el sitio al subdominio
+> institucional, el procedimiento de la sección 4 vuelve a ser aplicable sin tocar código.
+
 ---
 
 ## 1. Arquitectura end-to-end

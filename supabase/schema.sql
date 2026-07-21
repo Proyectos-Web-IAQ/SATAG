@@ -1,11 +1,24 @@
 -- =====================================================================
+-- !!! ADVERTENCIA: RESPALDO HISTORICO - NO INSTALAR CON ESTE ARCHIVO !!!
+--
+-- Este monolitico quedo ATRASADO (corte ~9-jul-2026). NO contiene la capa
+-- del panel: sin panel_exigir_rol, sin registrar_pago, sin roles finos
+-- (app_metadata.rol), sin folios de recibo (bloque 32), sin CC-01
+-- (apartar/usar TAG) ni SC-003 (buzon de notas).
+--
+-- Quien lo ejecute obtiene una base con RLS ancha (authenticated) y SIN los
+-- RPCs del panel: insegura e incompleta.
+--
+-- FUENTE DE VERDAD: los bloques atomicos supabase/sql/00 -> 41, en el orden
+-- del runbook supabase/sql/README.md (incluye el PASO 0 de roles).
+-- =====================================================================
 -- SATAG - schema.sql (E1 alineado con E6)
 -- Sistema de Adquisicion de TAG Vehicular - IAQ
 -- PostgreSQL / Supabase
 --
 -- Fuente canonica del modelo: Desarrollo/01 - Modelo de Datos y Base de Datos.md
 -- Seguridad/privacidad:       Desarrollo/04 - Seguridad, RLS y Privacidad.md
--- Orden de ejecucion:         supabase/README.md
+-- Orden de ejecucion real:    supabase/sql/README.md (bloques 00 -> 41)
 --
 -- Convenciones: claves uuid, created_at timestamptz, versionado sin borrar,
 -- RLS por rol, alta publica solo por RPC atomico, enums como CHECK.

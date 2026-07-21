@@ -63,6 +63,28 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 33. `32_folios_recibo_automaticos.sql` (genera el recibo en PostgreSQL e impide doble pago por expediente)
 34. `33_apartar_tag.sql` (CC-01: apartar TAG al instalar + procedencia editable por TI; drop+recreate de los wrappers de instalar/actualizar)
 35. `34_buzon_notas_sin_folio.sql` (SC-003: buzon publico de notas sin folio; registro_id opcional, RPC publico sin busqueda y vinculacion de TI)
+36. `35_notas_generalizar_solicitante.sql` (SC-003: la nota admite cualquier solicitante — maestro/padres/alumno/admin; alumno+grado obligatorios solo si el rol es 'padres'. **Cambia la firma de `crear_nota_solicitud`: drop function + notify pgrst**. Backfill: las notas del bloque 34 con `solicitante_rol` NULL rompen la constraint nueva — limpiar o rellenar antes.)
+37. `36_fix_descartar_solicitud_notas.sql` (fix: descartar o cerrar una nota sin vincular fallaba con "Solicitud no encontrada"; usa la variable `FOUND`. Misma firma, sin trampa PostgREST.)
+38. `37_nota_tramite_solicitado.sql` (SC-003: la nota declara el tramite que pide el cliente en columna propia. **Cambia la firma de `crear_nota_solicitud`: drop function + notify pgrst**. Backfill: notas con `tramite_solicitado` NULL rompen la constraint — limpiar o rellenar antes.)
+39. `38_cerrar_nota_al_ejecutar_tramite.sql` (SC-003: al ejecutar el tramite, la nota vinculada cuyo `tramite_solicitado` coincide se cierra sola. Solo cambian los cuerpos de los RPCs, sin trampa PostgREST.)
+40. `39_vincular_nota_corrobora_tramite.sql` (SC-003: al vincular, TI corrobora el tramite; `vincular_nota` gana el parametro `p_tramite`. **Cambia la firma: drop function + notify pgrst**.)
+41. `40_usar_tag_apartado.sql` (CC-01 cierre: usar el TAG apartado como reposicion. `usar_tag_apartado` es nuevo — solo notify, sin drop. Prohibe cambiar procedencia a 'escuela' por "Actualizar" con un apartado vivo.)
+42. `41_solicitudes_sin_instalacion.sql` (el buzon solo admite tramite 'actualizacion' | 'baja': instalar es siempre por el alta, no por solicitud. Firmas intactas, sin trampa PostgREST. **Re-aplicar antes el seed actualizado** — ver nota abajo.)
+
+> **`seed_tests_dev.sql` — banco de pruebas de QA, NO es un bloque de la migracion.**
+> No lleva numero y **no** entra en el flujo normal. Es destructivo (`truncate ... cascade`
+> borra registros, pagos, solicitudes, notas, estacionamientos, movimientos y aceptaciones):
+> jamas ejecutar en produccion con datos reales. Se corre a mano cuando se quiere un padron
+> limpio para probar. Los bloques 35, 37 y 41 agregan constraints que validan las notas ya
+> existentes, asi que si se trabaja con el seed hay que **re-aplicarlo (ya actualizado) antes**
+> de esos tres bloques; de lo contrario, filas de prueba viejas rompen la constraint nueva.
+
+> **Trampa PostgREST (recordatorio).** Los bloques que cambian la *firma* de un RPC ya
+> aplicado (32 `registrar_pago`; 35/37/39 `crear_nota_solicitud`/`vincular_nota`; 33 los
+> wrappers de instalar/actualizar) hacen `drop function` explicito de la firma vieja y
+> `notify pgrst, 'reload schema'` al final. Sin eso PostgREST conserva la sobrecarga anterior
+> y la API queda ambigua o sirviendo la firma equivocada. Los bloques que solo cambian el
+> *cuerpo* (mismo `create or replace`, 36/38/40/41) no lo necesitan.
 
 ## Ciclo de auditoria por tabla
 
@@ -115,4 +137,12 @@ Para cada archivo:
 | `31_rpc_flujos_atomicos.sql` | Listo para aplicar | Instalación y actualización con estacionamiento en una sola transacción; cierra solicitudes atendidas solo con cambio de estacionamiento y revoca los RPC internos al cliente. |
 | `32_folios_recibo_automaticos.sql` | Listo para aplicar | Folio `SATAG-AAAA-000001` generado por secuencia; un solo pago por expediente y nueva firma de `registrar_pago`. |
 | `33_apartar_tag.sql` | Aplicado | CC-01: apartar TAG al instalar (procedencia propio) y procedencia editable por TI (nunca por el titular). CHECK de coherencia + indice unico del numero apartado; drop+recreate de los wrappers instalar/actualizar. |
-| `34_buzon_notas_sin_folio.sql` | Aplicado | SC-003: buzon publico de notas sin folio ni placa. registro_id opcional + columnas de la nota; RPC publico crear_nota_solicitud (sin busqueda, no revela nada) y vincular_nota (rol ti). CC-06 folio+placa intacto. Falta UI (publica + TI). |
+| `34_buzon_notas_sin_folio.sql` | Aplicado | SC-003: buzon publico de notas sin folio ni placa. registro_id opcional + columnas de la nota; RPC publico crear_nota_solicitud (sin busqueda, no revela nada) y vincular_nota (rol ti). CC-06 folio+placa intacto. UI publica (`/solicitudes`) y de TI ya en produccion. |
+| `35_notas_generalizar_solicitante.sql` | Aplicado | SC-003: `solicitante_rol` (maestro/padres/alumno/admin); alumno+grado obligatorios solo si el rol es 'padres'. Nueva firma de crear_nota_solicitud (drop + notify pgrst); backfill de notas del 34. |
+| `36_fix_descartar_solicitud_notas.sql` | Aplicado | Fix: descartar/cerrar una nota sin vincular fallaba con "Solicitud no encontrada" (registro_id NULL legitimo); usa FOUND. Misma firma. |
+| `37_nota_tramite_solicitado.sql` | Aplicado | SC-003: la nota declara el tramite pedido en columna propia. Nueva firma de crear_nota_solicitud (drop + notify pgrst); backfill de notas sin tramite. |
+| `38_cerrar_nota_al_ejecutar_tramite.sql` | Aplicado | SC-003: al ejecutar el tramite, la nota vinculada que coincide se cierra sola; si TI aplica otro tramite, la cierra a mano. Solo cuerpos, sin trampa PostgREST. |
+| `39_vincular_nota_corrobora_tramite.sql` | Aplicado | SC-003: al vincular, TI corrobora el tramite (`vincular_nota` gana p_tramite) y el registro cae en la cola correcta. Nueva firma (drop + notify pgrst). |
+| `40_usar_tag_apartado.sql` | Aplicado | CC-01 cierre: `usar_tag_apartado` (rol ti) activa el TAG reservado como reposicion; prohibe cambiar procedencia a 'escuela' con un apartado vivo. usar_tag_apartado nuevo (solo notify). |
+| `41_solicitudes_sin_instalacion.sql` | Aplicado | El buzon solo admite tramite 'actualizacion' | 'baja' (instalar es por el alta). Re-aplicar el seed actualizado antes. Firmas intactas. |
+| `seed_tests_dev.sql` | Solo QA (destructivo) | Banco de pruebas: `truncate ... cascade` + ~4 casos por situacion del panel. No es migracion, no lleva numero, jamas en produccion. Re-aplicar antes de 35/37/41. |
