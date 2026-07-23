@@ -39,8 +39,41 @@
 -- 0) Limpieza total. truncate ... cascade vacia registros y todas las tablas
 --    que lo referencian (pagos, solicitudes, registro_estacionamientos,
 --    movimientos, aceptaciones). Incluye las notas sin vincular.
+--
+--    Desde el bloque 42, pagos y cortes_caja estan BLINDADOS: hay triggers
+--    que prohiben borrar, truncar o reescribir un cobro ya cortado. Ese
+--    blindaje es justamente lo que impide que este script destruya una base
+--    con cortes de caja reales. Aqui se desactiva de forma EXPLICITA y solo
+--    mientras dura la limpieza, porque este archivo es de desarrollo.
+--
+--    Si esta linea le incomoda, hagale caso: es la senal de que este script
+--    NO debe correrse contra la base donde Administracion ya corto caja.
 -- ---------------------------------------------------------------------
-truncate table registros cascade;
+do $$
+begin
+    if to_regclass('public.cortes_caja') is not null then
+        -- Base con el bloque 42 aplicado: hay que bajar el blindaje.
+        execute 'alter table pagos       disable trigger tg_pagos_no_borrar_sellado';
+        execute 'alter table pagos       disable trigger tg_pagos_no_truncar_sellado';
+        execute 'alter table pagos       disable trigger tg_pagos_congelar_sellado';
+        execute 'alter table cortes_caja disable trigger tg_cortes_inmutables';
+
+        execute 'truncate table registros cascade';
+        execute 'truncate table cortes_caja cascade';
+
+        execute 'alter table pagos       enable trigger tg_pagos_no_borrar_sellado';
+        execute 'alter table pagos       enable trigger tg_pagos_no_truncar_sellado';
+        execute 'alter table pagos       enable trigger tg_pagos_congelar_sellado';
+        execute 'alter table cortes_caja enable trigger tg_cortes_inmutables';
+
+        -- Folios de corte desde 1 otra vez.
+        execute 'select setval(''cortes_caja_folio_seq'', 1, false)';
+    else
+        -- Base anterior al bloque 42.
+        execute 'truncate table registros cascade';
+    end if;
+end;
+$$;
 
 -- Folios de recibo desde 1 otra vez.
 select setval('pagos_folio_recibo_seq', 1, false);

@@ -13,7 +13,7 @@
 
 **Erratas por evolución del sistema (al 20-jul-2026).** La fecha de corte es 03-jul-2026 y el fundamento normativo sigue vigente; dos hechos operativos cambiaron después de escribirlo:
 
-- **Cobro:** cada pago emite ya un **folio de recibo automático e inmutable** (`SATAG-AAAA-######`), único por expediente. Sigue **sin** emitirse CFDI y el corte de caja está pendiente, así que el tratamiento fiscal/contable continúa por confirmar con Administración.
+- **Cobro:** cada pago emite ya un **folio de recibo automático e inmutable** (`SATAG-AAAA-######`), único por expediente, y existe **corte de caja** con conciliación del efectivo (bloque 42). Sigue **sin** emitirse CFDI, así que el tratamiento fiscal/contable continúa por confirmar con Administración.
 - **Hosting:** el front se sirve desde **Vercel**, no desde GoDaddy/Cloudflare. Para el inventario de encargados, el subprocesador del front es Vercel. El análisis de fondo (front estático y navegador hablando directo con Supabase) no cambia.
 
 ## 1. Resumen ejecutivo

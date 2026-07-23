@@ -57,8 +57,7 @@ Reglas:
   responde con el folio ya emitido, en vez de duplicar el cobro.
 - El TAG **propio también se cobra** (rev. 03-jul).
 - Administración **ya no asigna estacionamiento**: eso pasó a TI (SC-002).
-
-Pendiente: **corte de caja / finanzas** (siguiente feature).
+- Cada cobro guarda además la **identidad verificable** de quien cobró (`cobrado_por_uid`/correo del JWT, bloque 42).
 
 ## 4. TI: instalación (`/admin`, rol `ti`)
 
@@ -112,9 +111,25 @@ cola "Instalar TAG" mira registros del flujo de alta, no solicitudes.
 `descartar_solicitud` cierra una solicitud o nota sin ejecutarla, dejando motivo. Funciona también
 sobre notas **sin vincular** (`registro_id` nulo es legítimo).
 
-## 9. Flujos aún no implementados
+## 9. Finanzas: caja y corte (rol admin/super, bloque 42)
 
-- **Corte de caja / finanzas** (B3): siguiente feature. Hoy existe el folio de recibo, no el corte.
+Pestaña **Finanzas** (solo admin/super). Responde "cuánto debería haber en caja" y "cuánto vendí", y
+cierra el corte.
+
+1. **Caja actual** = los cobros aún sin cortar (`pagos.corte_id is null`). La pantalla muestra su total,
+   el desglose por día (para no confundir efectivo ya entregado de días anteriores) y, al expandir, los
+   cobros pendientes.
+2. **Cerrar corte** — Administración cuenta el efectivo físico y lo captura. El RPC `cortar_caja` sella
+   en una transacción todos los cobros de la caja, calcula el total **desde lo sellado**, guarda
+   esperado/contado/diferencia y la identidad de quien corta. La caja vuelve a cero. Si el efectivo no
+   cuadra o el corte abarca varios días, exige observaciones.
+3. **Historial de cortes** — cada corte (inmutable) se expande para ver sus cobros.
+
+Reglas cerradas: no hay fondo de cambio ni forma de deshacer un corte (una corrección se documenta en el
+corte siguiente); un corte con la caja vacía se rechaza; el efectivo contado es obligatorio.
+
+## 10. Flujos aún no implementados
+
 - **Reporte de registros incompletos** (B2): ni la vista `v_registros_incompletos` ni la bandeja del
   panel existen todavía.
 

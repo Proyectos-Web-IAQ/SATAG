@@ -12,12 +12,17 @@
 import { supabaseAuth } from "./auth";
 import type {
   CambiosRegistro,
+  CorteCaja,
+  DiaCaja,
   Estacionamiento,
+  EstadoCaja,
   EstadoRegistro,
   Movimiento,
   Pago,
+  PagoReciente,
   ProcedenciaTag,
   Registro,
+  ResultadoCorte,
   Solicitud,
   TipoMovimiento,
   TipoSolicitud,
@@ -370,6 +375,145 @@ export async function vincularNota(
     p_registro_id: registroId,
     p_tramite: tramite,
     p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
+// ---- Corte de caja / finanzas (bloque 42, rol admin/super) ----
+
+// Numeric de Postgres puede llegar como number (dentro de jsonb) o como string
+// (en un select directo, para no perder precision). Normaliza a number.
+function num(v: unknown): number {
+  return typeof v === "number" ? v : Number(v ?? 0);
+}
+
+interface DiaCajaRow { dia: unknown; cantidad: unknown; subtotal: unknown }
+
+// estado_caja: que hay en la caja ahora (sin cortar) + acumulados de venta.
+// Todo lo temporal lo calcula la BD en hora local (nunca sobre pagos.fecha).
+export async function obtenerEstadoCaja(): Promise<EstadoCaja> {
+  const { data, error } = await supabaseAuth.rpc("estado_caja", {});
+  if (error) throw new Error(traducirError(error.message));
+  const d = (data ?? {}) as Record<string, unknown>;
+  const dias = Array.isArray(d.desglosePorDia) ? (d.desglosePorDia as DiaCajaRow[]) : [];
+  return {
+    totalEnCaja: num(d.totalEnCaja),
+    pagosEnCaja: num(d.pagosEnCaja),
+    diasDeCobro: num(d.diasDeCobro),
+    primerCobro: (d.primerCobro as string | null) ?? null,
+    desglosePorDia: dias.map((x): DiaCaja => ({
+      dia: String(x.dia),
+      cantidad: num(x.cantidad),
+      subtotal: num(x.subtotal),
+    })),
+    ultimoCorte: (d.ultimoCorte as string | null) ?? null,
+    vendidoMes: num(d.vendidoMes),
+    vendidoHistorico: num(d.vendidoHistorico),
+  };
+}
+
+// cortar_caja: cierra el corte y reestablece la caja. La BD valida el rol admin,
+// la diferencia sin explicar y el corte de una caja vacia; los errores llegan en
+// espanol y se muestran tal cual.
+export async function cortarCaja(
+  efectivoContado: number,
+  cortadoPor: string,
+  observaciones: string,
+): Promise<ResultadoCorte> {
+  const { data, error } = await supabaseAuth.rpc("cortar_caja", {
+    p_efectivo_contado: efectivoContado,
+    p_cortado_por: cortadoPor.trim() || null,
+    p_observaciones: observaciones.trim() || null,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    id: String(d.id),
+    folioCorte: String(d.folioCorte),
+    totalEsperado: num(d.totalEsperado),
+    efectivoContado: num(d.efectivoContado),
+    diferencia: num(d.diferencia),
+    pagosCortados: num(d.pagosCortados),
+    diasDeCobro: num(d.diasDeCobro),
+  };
+}
+
+interface CorteRow {
+  id: string;
+  folio_corte: string;
+  cortado_por: string;
+  periodo_desde: string | null;
+  periodo_hasta: string;
+  total_esperado: number | string;
+  cantidad_pagos: number | string;
+  dias_de_cobro: number | string;
+  efectivo_contado: number | string;
+  diferencia: number | string;
+  observaciones: string | null;
+  created_at: string;
+}
+
+// Historial de cortes (mas recientes primero). Lectura directa: la RLS solo la
+// permite a admin/super (bloque 42), asi que ti y consulta reciben 0 filas.
+export async function listCortes(): Promise<CorteCaja[]> {
+  const { data, error } = await supabaseAuth
+    .from("cortes_caja")
+    .select("id, folio_corte, cortado_por, periodo_desde, periodo_hasta, total_esperado, cantidad_pagos, dias_de_cobro, efectivo_contado, diferencia, observaciones, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as CorteRow[]).map((c) => ({
+    id: c.id,
+    folioCorte: c.folio_corte,
+    cortadoPor: c.cortado_por,
+    periodoDesde: c.periodo_desde,
+    periodoHasta: c.periodo_hasta,
+    totalEsperado: num(c.total_esperado),
+    cantidadPagos: num(c.cantidad_pagos),
+    diasDeCobro: num(c.dias_de_cobro),
+    efectivoContado: num(c.efectivo_contado),
+    diferencia: num(c.diferencia),
+    observaciones: c.observaciones,
+    createdAt: c.created_at,
+  }));
+}
+
+interface PagoRecienteRow {
+  folio_recibo: string | null;
+  monto: number | string;
+  created_at: string;
+  cobrado_por: string | null;
+  corte_id: string | null;
+  // Embed to-one via FK: PostgREST lo entrega como objeto; se contempla el array por robustez.
+  registros:
+    | { folio: string; usuario_nombre_completo: string }
+    | { folio: string; usuario_nombre_completo: string }[]
+    | null;
+}
+
+// Cobros (tickets) de UN corte, o de la caja actual cuando se pasa null
+// (corte_id is null). Se carga bajo demanda al expandir cada corte: asi solo se
+// traen los cobros de ese corte y no todo el historial. Tope alto por seguridad.
+// La RLS de pagos deja leer a admin/ti/consulta/super; esta vista solo la usa
+// Finanzas (admin/super).
+export async function listPagosDeCorte(corteId: string | null): Promise<PagoReciente[]> {
+  let q = supabaseAuth
+    .from("pagos")
+    .select("folio_recibo, monto, created_at, cobrado_por, corte_id, registros ( folio, usuario_nombre_completo )")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+  q = corteId === null ? q.is("corte_id", null) : q.eq("corte_id", corteId);
+  const { data, error } = await q;
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as PagoRecienteRow[]).map((p) => {
+    const reg = Array.isArray(p.registros) ? p.registros[0] : p.registros;
+    return {
+      folioRecibo: p.folio_recibo,
+      monto: num(p.monto),
+      fecha: p.created_at,
+      cobradoPor: p.cobrado_por,
+      registroFolio: reg?.folio ?? null,
+      usuarioNombre: reg?.usuario_nombre_completo ?? null,
+      cortado: p.corte_id !== null,
+    };
   });
 }
 

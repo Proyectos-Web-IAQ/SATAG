@@ -688,3 +688,55 @@ set role authenticated;
 select count(*) from pagos;        -- 0 filas o error: la RLS exige aal2 + rol
 reset role;
 ```
+
+## Bloque 15: Corte de caja / finanzas (42)
+
+### cortes_caja
+
+| Punto | Revision |
+|---|---|
+| Proposito | Un renglon por corte cerrado de Administracion. Documento contable **inmutable**. |
+| PII | Indirecta: `cortado_por` (nombre) y `cortado_por_uid`/`cortado_por_email` (identidad verificable del JWT). |
+| Folio | `folio_corte` unico, DEFAULT por secuencia `SATAG-CORTE-AAAA-000001`. El anio se toma en **hora local** (`now() at time zone 'America/Mexico_City'`), no en UTC, para no folear con el anio equivocado en diciembre. |
+| Precision | `numeric(12,2)`: `numeric(8,2)` desbordaria hacia los ~100,000 cobros de $100. |
+| `diferencia` | Columna GENERATED (`efectivo_contado - total_esperado`): el cliente no puede mentir sobre ella. Positivo = sobrante, negativo = faltante. |
+| Constraints | total y contado no negativos; `cantidad_pagos > 0` (no hay cortes vacios); `cortado_por` no vacio; y `corte_diferencia_explicada`: si el efectivo no cuadra, `observaciones` no puede quedar vacia. |
+| RLS | Solo SELECT para **admin/super** con aal2 (como `aceptaciones`); ti y consulta NO ven cortes. Sin grant para anon. |
+| Inmutabilidad | Trigger `tg_cortes_inmutables` (BEFORE UPDATE OR DELETE): ni el SQL Editor como owner puede editar o borrar un corte. |
+
+### pagos.corte_id (sello) y blindaje
+
+| Punto | Revision |
+|---|---|
+| Sello | `pagos.corte_id` NULL = en caja; = X = pertenece al corte X y queda congelado. FK `DEFERRABLE INITIALLY DEFERRED`: permite sellar antes de insertar el corte y validar al confirmar. |
+| Identidad | `registrar_pago` guarda ademas `cobrado_por_uid`/`cobrado_por_email` del JWT (no falseables desde el navegador). |
+| Anti-borrado | `tg_pagos_no_borrar_sellado` neutraliza el `ON DELETE CASCADE` del bloque 24: borrar un expediente cuyo pago ya se corto **falla**. |
+| Anti-truncate | `tg_pagos_no_truncar_sellado`: `truncate` sobre `pagos`/`registros` con cortes existentes falla. Convierte `seed_tests_dev.sql` en un fusible contra correrlo en produccion. |
+| Congelado | `tg_pagos_congelar_sellado`: un pago ya cortado no admite cambios de monto, folio ni corte. |
+
+### RPCs (SECURITY DEFINER + panel_exigir_rol['admin'])
+
+| RPC | Nota de auditoria |
+|---|---|
+| `estado_caja` | Devuelve la caja actual (no cortada) + acumulados (mes, historico) + desglose por dia. Todo lo temporal en hora local, NUNCA sobre `pagos.fecha` (UTC). |
+| `cortar_caja` | Define el conjunto con `UPDATE pagos SET corte_id WHERE corte_id IS NULL RETURNING monto` y totaliza desde lo sellado: el total guardado no puede divergir del dinero sellado. `pg_advisory_xact_lock` serializa dos cortes; si el segundo sella 0 filas, aborta (no deja corte fantasma). Exige explicacion si hay diferencia o el corte abarca varios dias. |
+
+## Pruebas minimas del corte (con sesion admin simulada)
+
+```sql
+-- El SQL Editor no tiene sesion MFA: se simula para probar los RPC del panel.
+begin;
+select set_config('request.jwt.claims',
+  '{"aal":"aal2","app_metadata":{"rol":"admin"},"sub":"00000000-0000-0000-0000-000000000009","email":"prueba@asuncionqro.edu.mx"}', true);
+
+-- Corte real: identidad no nula, folio SATAG-CORTE-AAAA, total = suma de lo sellado.
+select cortar_caja(9999, 'Admin Prueba', 'Prueba');
+select folio_corte, cortado_por_uid is not null as identidad, total_esperado, cantidad_pagos
+  from cortes_caja order by created_at desc limit 1;
+
+-- Debe FALLAR: segundo corte (caja en ceros), diferencia sin observaciones, borrar pago sellado.
+select cortar_caja(9999, 'Admin', 'otra vez');        -- "la caja esta en ceros"
+select cortar_caja(1, 'Admin', null);                 -- "Explique la diferencia"
+delete from pagos where corte_id is not null;         -- "pertenece a un corte cerrado"
+rollback;
+```

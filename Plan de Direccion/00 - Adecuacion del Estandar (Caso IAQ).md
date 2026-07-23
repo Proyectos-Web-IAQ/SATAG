@@ -147,7 +147,7 @@ SATAG/
 ├─ Insumos/               ← material original (fuera del repo por privacidad)
 ├─ Investigacion/         ← investigación a profundidad (research)
 ├─ Entregables/           ← entregas formales (E6 cumplimiento legal y privacidad)
-├─ supabase/              ← esquema SQL por bloques atómicos (sql/00→41)
+├─ supabase/              ← esquema SQL por bloques atómicos (sql/00→42)
 └─ app/ · components/ · lib/   ← la aplicación (Next.js estático + Supabase)
 ```
 

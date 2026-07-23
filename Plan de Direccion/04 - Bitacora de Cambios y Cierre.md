@@ -80,6 +80,7 @@
 | CC-18 | 15/07/26 | Administración / contador | Emitir folio de recibo automático en cada cobro e impedir el doble cobro por expediente | Trazabilidad del cobro / +0.5 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado 15/07 (bloque 32: `SATAG-AAAA-######`, único por expediente) |
 | CC-19 | 16/07/26 | Administración / TI | Apartar el TAG de la escuela cuando la familia usa su TAG propio, y poder activarlo después como reposición | Amplía cobro/instalación e implica reposición / +1 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado (bloque 33 el 16/07; cierre "usar el TAG apartado" bloque 40 el 20/07) |
 | CC-20 | 16/07/26 | TI / atención a usuarios | Buzón público de notas sin folio ni placa para quien no recuerda su folio; TI vincula la nota al expediente y corrobora el trámite | Nuevo canal de intake + cola de TI / +1.5 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado (bloques 34-39 desde el 16/07; bloque 41 "sin instalación" el 20/07) |
+| CC-21 | 22/07/26 | Administración | Corte de caja / finanzas: que Admin vea la caja actual y lo vendido, cierre el corte conciliando el efectivo contado, y quede registrado (inmutable, con identidad de quien corta) | Nueva pestaña Finanzas (admin/super) + tabla de cortes / +1.5 d / $0 | 🟡 Media | Aprobado | M. Á. González | Implementado (bloque 42 + UI; corte libre desde el último, sin deshacer, con blindaje contable) |
 
 ### Flujo de control de cambios
 

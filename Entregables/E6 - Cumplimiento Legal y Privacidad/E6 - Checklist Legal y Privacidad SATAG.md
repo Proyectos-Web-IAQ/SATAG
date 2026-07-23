@@ -96,7 +96,7 @@
 | Senaletica fisica | Aprobar cartel corto y ubicacion | Media-alta |
 | Supabase DPA/region | Firmar/archivar DPA y documentar region | Alta |
 | Reglamento de estacionamiento | Validar clausulas y limites de responsabilidad | Alta |
-| Cobro $100 efectivo | ACTUALIZADO (15-jul): cada pago emite folio de recibo automatico (`SATAG-AAAA-######`), control interno sin CFDI. El corte de caja sigue pendiente | Alta |
+| Cobro $100 efectivo | ACTUALIZADO: folio de recibo automatico por pago (bloque 32, 15-jul) + corte de caja con conciliacion de efectivo (bloque 42, 22-jul). Control interno sin CFDI; falta confirmar el tratamiento fiscal/contable | Alta |
 | NOM-151 | Cotizar si Direccion quiere mayor fuerza probatoria | Fase 2 |
 
 > El detalle y estado de todos estos pendientes se lleva en `E6 - Decisiones Legales Pendientes.md` (tablero unico de decisiones por sesion).

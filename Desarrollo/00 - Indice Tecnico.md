@@ -4,7 +4,7 @@
 > Esta carpeta contiene el diseño técnico que traduce el Plan de Dirección en decisiones implementables.
 
 > **Fuente de verdad del esquema aplicado:** los bloques SQL numerados de
-> [`supabase/sql/`](../supabase/sql/README.md) (`00`→`41`), que es lo que corre en producción. Estos
+> [`supabase/sql/`](../supabase/sql/README.md) (`00`→`42`), que es lo que corre en producción. Estos
 > documentos describen el diseño y su estado; ante cualquier duda sobre una tabla, columna o RPC, manda
 > el SQL aplicado. (`supabase/schema.sql` es un respaldo histórico atrasado.)
 
@@ -20,7 +20,8 @@
 
 **Features recientes y dónde se documentan:** cobro con folio de recibo automático (01 §9, 05 §3),
 apartar y usar el TAG apartado — CC-01 (05 §4-§5), buzón de notas sin folio — SC-003 (05 §7),
-roles finos y MFA (04 §3, 07). Pendiente activo: **corte de caja / finanzas**.
+roles finos y MFA (04 §3, 07), y **corte de caja / finanzas** (01 §9-bis, 05 §9, bloque SQL 42).
+Pendiente activo: reporte de registros incompletos (B2).
 
 ---
 

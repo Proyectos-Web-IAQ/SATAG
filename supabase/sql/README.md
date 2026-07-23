@@ -70,6 +70,7 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 40. `39_vincular_nota_corrobora_tramite.sql` (SC-003: al vincular, TI corrobora el tramite; `vincular_nota` gana el parametro `p_tramite`. **Cambia la firma: drop function + notify pgrst**.)
 41. `40_usar_tag_apartado.sql` (CC-01 cierre: usar el TAG apartado como reposicion. `usar_tag_apartado` es nuevo — solo notify, sin drop. Prohibe cambiar procedencia a 'escuela' por "Actualizar" con un apartado vivo.)
 42. `41_solicitudes_sin_instalacion.sql` (el buzon solo admite tramite 'actualizacion' | 'baja': instalar es siempre por el alta, no por solicitud. Firmas intactas, sin trampa PostgREST. **Re-aplicar antes el seed actualizado** — ver nota abajo.)
+43. `42_corte_caja.sql` (corte de caja de Administracion: tabla `cortes_caja` + `pagos.corte_id`, RPCs `estado_caja`/`cortar_caja` y triggers que hacen inmutable el corte y bloquean borrar/truncar pagos ya sellados. `registrar_pago` conserva su firma; los RPC nuevos solo notify, **sin** trampa PostgREST. Rol admin/super. Ese blindaje obliga a re-seedear con `seed_tests_dev.sql` actualizado — ver nota abajo.)
 
 > **`seed_tests_dev.sql` — banco de pruebas de QA, NO es un bloque de la migracion.**
 > No lleva numero y **no** entra en el flujo normal. Es destructivo (`truncate ... cascade`
@@ -78,6 +79,9 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 > limpio para probar. Los bloques 35, 37 y 41 agregan constraints que validan las notas ya
 > existentes, asi que si se trabaja con el seed hay que **re-aplicarlo (ya actualizado) antes**
 > de esos tres bloques; de lo contrario, filas de prueba viejas rompen la constraint nueva.
+> Desde el bloque 42, `pagos` y `cortes_caja` traen triggers que prohiben borrar/truncar cobros
+> ya sellados por un corte; el seed los desactiva de forma explicita solo durante su limpieza. Ese
+> mismo blindaje hace que el seed **falle si se corre por error contra una base con cortes reales**.
 
 > **Trampa PostgREST (recordatorio).** Los bloques que cambian la *firma* de un RPC ya
 > aplicado (32 `registrar_pago`; 35/37/39 `crear_nota_solicitud`/`vincular_nota`; 33 los
@@ -145,4 +149,5 @@ Para cada archivo:
 | `39_vincular_nota_corrobora_tramite.sql` | Aplicado | SC-003: al vincular, TI corrobora el tramite (`vincular_nota` gana p_tramite) y el registro cae en la cola correcta. Nueva firma (drop + notify pgrst). |
 | `40_usar_tag_apartado.sql` | Aplicado | CC-01 cierre: `usar_tag_apartado` (rol ti) activa el TAG reservado como reposicion; prohibe cambiar procedencia a 'escuela' con un apartado vivo. usar_tag_apartado nuevo (solo notify). |
 | `41_solicitudes_sin_instalacion.sql` | Aplicado | El buzon solo admite tramite 'actualizacion' | 'baja' (instalar es por el alta). Re-aplicar el seed actualizado antes. Firmas intactas. |
+| `42_corte_caja.sql` | Aplicado | Corte de caja (admin/super): `cortes_caja` inmutable + `pagos.corte_id`; RPCs `estado_caja`/`cortar_caja`. Sella con `UPDATE ... RETURNING` (total = suma de lo sellado), advisory lock, folio `SATAG-CORTE-AAAA`. Triggers que bloquean borrar/truncar/editar pagos sellados y editar cortes. RLS solo admin/super. |
 | `seed_tests_dev.sql` | Solo QA (destructivo) | Banco de pruebas: `truncate ... cascade` + ~4 casos por situacion del panel. No es migracion, no lleva numero, jamas en produccion. Re-aplicar antes de 35/37/41. |

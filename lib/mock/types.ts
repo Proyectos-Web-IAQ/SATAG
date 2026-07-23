@@ -151,3 +151,65 @@ export interface CrearRegistroResultado {
   folio: string;
   estado: EstadoRegistro;
 }
+
+// ---- Corte de caja / finanzas (bloque 42) ----
+
+// Subtotal de un dia de cobro (hora local de Querétaro). El RPC ya agrupa por
+// dia local, así que 'dia' llega como 'YYYY-MM-DD' listo para mostrar.
+export interface DiaCaja {
+  dia: string;
+  cantidad: number;
+  subtotal: number;
+}
+
+// Foto de la caja actual: lo que aún no se ha cortado, más los acumulados que
+// responden "cuánto vendí". Lo devuelve el RPC estado_caja.
+export interface EstadoCaja {
+  totalEnCaja: number;
+  pagosEnCaja: number;
+  diasDeCobro: number;       // días de cobro distintos sin cortar (semáforo)
+  primerCobro: string | null;
+  desglosePorDia: DiaCaja[];
+  ultimoCorte: string | null;
+  vendidoMes: number;
+  vendidoHistorico: number;
+}
+
+// Lo que devuelve cortar_caja al cerrar un corte.
+export interface ResultadoCorte {
+  id: string;
+  folioCorte: string;
+  totalEsperado: number;
+  efectivoContado: number;
+  diferencia: number;        // + sobrante, - faltante
+  pagosCortados: number;
+  diasDeCobro: number;
+}
+
+// Un cobro (ticket/recibo) del detalle de un corte o de la caja actual. Se carga
+// bajo demanda al expandir cada corte, para no traer todo el historial de golpe.
+export interface PagoReciente {
+  folioRecibo: string | null;
+  monto: number;
+  fecha: string;            // created_at (ISO) — se muestra en hora local
+  cobradoPor: string | null;
+  registroFolio: string | null;
+  usuarioNombre: string | null;
+  cortado: boolean;         // true = ya pertenece a un corte cerrado
+}
+
+// Un corte de caja cerrado (tabla cortes_caja, inmutable). Documento contable.
+export interface CorteCaja {
+  id: string;
+  folioCorte: string;
+  cortadoPor: string;
+  periodoDesde: string | null;
+  periodoHasta: string;
+  totalEsperado: number;
+  cantidadPagos: number;
+  diasDeCobro: number;
+  efectivoContado: number;
+  diferencia: number;
+  observaciones: string | null;
+  createdAt: string;
+}

@@ -1,11 +1,11 @@
 # Modelo de Datos - SATAG
 
 > **Desarrollo - Fase 1 (Diseno)** - WBS 1.2.1 - Entregable **E1**.
-> **Ultima actualizacion:** 20-jul-2026.
+> **Ultima actualizacion:** 22-jul-2026.
 > **Version:** v0.13 - alineada con el esquema aplicado en produccion.
-> **SQL canonico:** [`../supabase/sql/`](../supabase/sql/README.md) (bloques atomicos `00`->`41`).
+> **SQL canonico:** [`../supabase/sql/`](../supabase/sql/README.md) (bloques atomicos `00`->`42`).
 > `../supabase/schema.sql` es un respaldo historico atrasado: **no** contiene la capa del panel
-> (roles finos, RPCs, folios de recibo, CC-01 ni SC-003).
+> (roles finos, RPCs, folios de recibo, corte de caja, CC-01 ni SC-003).
 
 Este documento define el modelo de datos de SATAG: expediente del TAG, vehiculo, firma reforzada, aviso/reglamento versionados, pagos administrativos con folio de recibo, solicitudes de actualizacion/baja, buzon de notas sin folio y controles de privacidad.
 
@@ -19,7 +19,7 @@ El modelo soporta lo decidido o requerido por E6 (todo lo siguiente esta **aplic
 - Menores: usuario menor requiere gestionante padre/madre/tutor.
 - Solicitudes publicas de `actualizacion` y `baja`, mas el buzon de notas sin folio (`nota`, SC-003).
 - Bloqueo de expediente previo a supresion.
-- Pago administrativo de $100 en efectivo **con folio de recibo automatico** (`SATAG-AAAA-######`), unico por expediente. El corte de caja sigue pendiente.
+- Pago administrativo de $100 en efectivo **con folio de recibo automatico** (`SATAG-AAAA-######`), unico por expediente, y **corte de caja** con conciliacion del efectivo contado (bloque 42).
 - Supabase/RLS: lectura publica solo de catalogos y documentos vigentes; PII protegida. El panel exige `aal2` (MFA) + rol fino y toda escritura pasa por RPC `SECURITY DEFINER`.
 
 ## 2. Hallazgos base del Excel
@@ -48,7 +48,7 @@ El modelo soporta lo decidido o requerido por E6 (todo lo siguiente esta **aplic
 | 5 | Menores | `usuario_es_menor = true` exige gestionante padre/madre/tutor. |
 | 6 | Firma | `aceptaciones` guarda reglamento, aviso, firma, trazos, hash generado en BD, paquete firmado y timestamp. |
 | 7 | Aviso | `aviso_versiones` conserva versiones del aviso de privacidad SATAG. |
-| 8 | Pago | `pagos` registra monto/metodo/cobrado_por/fecha y `folio_recibo` automatico, inmutable y unico; un solo pago por expediente. El corte de caja queda pendiente. |
+| 8 | Pago | `pagos` registra monto/metodo/cobrado_por/fecha y `folio_recibo` automatico, inmutable y unico; un solo pago por expediente. El **corte de caja** lo sella `pagos.corte_id` contra `cortes_caja` (bloque 42). |
 | 9 | Cambio/baja | `solicitudes` cubre `actualizacion`, `baja` y `nota` (buzon SC-003). No existen tipos ARCO ni revocacion en el esquema; ARCO se atiende por procedimiento sobre esos flujos. |
 | 10 | Bloqueo | `registros.estado = bloqueado` conserva evidencia sin uso operativo ordinario. |
 | 11 | NOM-151 | Fuera del MVP; hash interno + versionado + sello de tiempo. |
@@ -66,7 +66,8 @@ El modelo soporta lo decidido o requerido por E6 (todo lo siguiente esta **aplic
 | `reglamento_versiones` | Texto versionado del reglamento | No |
 | `aviso_versiones` | Texto versionado del aviso de privacidad | No |
 | `aceptaciones` | Evidencia de firma y aceptacion | Si |
-| `pagos` | Registro administrativo del cobro, con folio de recibo automatico | Posible |
+| `pagos` | Registro administrativo del cobro, con folio de recibo automatico y sello de corte (`corte_id`) | Posible |
+| `cortes_caja` | Cortes de caja de Administracion (bloque 42); documento contable inmutable | Indirecta (identidad de quien corto) |
 | `movimientos` | Bitacora de alta, baja, reposicion, cambio, prueba, bloqueo y rectificacion | Posible |
 | `solicitudes` | Solicitudes de `actualizacion`/`baja` y notas del buzon sin folio (`nota`, SC-003) | Si |
 | `error_logs` | Soporte tecnico - **no implementado** en el esquema aplicado (solo existe en el respaldo `schema.sql`) | Evitar PII |
@@ -84,6 +85,7 @@ erDiagram
     reglamento_versiones ||--o{ aceptaciones : "reglamento aceptado"
     aviso_versiones ||--o{ aceptaciones : "aviso aceptado"
     cat_marcas ||--o{ cat_modelos : "modelos"
+    cortes_caja ||--o{ pagos : "sella"
 
     registros {
         uuid id PK
@@ -129,11 +131,23 @@ erDiagram
     pagos {
         uuid id PK
         uuid registro_id FK
+        uuid corte_id FK
         numeric monto
         text metodo
         text cobrado_por
         text folio_recibo
         date fecha
+    }
+
+    cortes_caja {
+        uuid id PK
+        text folio_corte
+        text cortado_por
+        uuid cortado_por_uid
+        numeric total_esperado
+        numeric efectivo_contado
+        numeric diferencia
+        text observaciones
     }
 ```
 
@@ -218,11 +232,28 @@ ARCO no tiene tipos propios en el esquema: se atiende por procedimiento apoyando
 - `fecha`
 - `folio_recibo`: **automatico, obligatorio e inmutable**, formato `SATAG-AAAA-000001`, generado por la secuencia `pagos_folio_recibo_seq` dentro de PostgreSQL (bloque 32). La secuencia garantiza unicidad aunque dos personas cobren al mismo tiempo.
 
+- `corte_id`: sello del corte de caja (bloque 42). NULL = el cobro sigue en la caja; con valor = pertenece a un corte cerrado y queda congelado.
+- `cobrado_por_uid` / `cobrado_por_email`: identidad verificable de quien cobro, tomada del JWT (bloque 42).
+
 Reglas:
 
 - **Un solo pago por expediente** (`uq_pagos_registro`): un reintento o un doble clic choca contra el indice en vez de duplicar el cobro, y `registrar_pago` responde con el folio ya emitido.
 - El pago se escribe unicamente por el RPC `registrar_pago` (rol `admin`).
-- El **corte de caja aun no se modela**: sera una tabla de cortes mas el sello del corte en cada pago. Es la siguiente feature.
+- Un pago **ya sellado por un corte no se puede borrar, truncar ni editar** (triggers del bloque 42): eso neutraliza el `on delete cascade` heredado y mantiene cuadrado el corte.
+
+## 9-bis. Corte de caja (`cortes_caja`, bloque 42)
+
+Finanzas de Administracion (rol admin/super). Un renglon por corte cerrado, **inmutable**:
+
+- `folio_corte` automatico (`SATAG-CORTE-AAAA-000001`, anio en hora local).
+- `cortado_por` + `cortado_por_uid`/`cortado_por_email` (identidad verificable del JWT).
+- `total_esperado`, `cantidad_pagos`, `dias_de_cobro`, `desglose_por_dia` (congelados al cortar).
+- `efectivo_contado` y `diferencia` (GENERATED: contado - esperado; el cliente no la manda).
+- `observaciones`, obligatorias si el efectivo no cuadra o el corte abarca varios dias.
+
+La pertenencia se **sella** en `pagos.corte_id`, nunca por fecha. `cortar_caja` define el conjunto con
+`update ... where corte_id is null returning monto` y totaliza desde lo sellado, con advisory lock para
+serializar cortes simultaneos. No hay fondo de cambio ni forma de deshacer un corte.
 
 ## 10. RLS y acceso
 
@@ -279,6 +310,8 @@ Buzon publico sin folio ni placa (SC-003): registra la nota con el solicitante, 
 | `usar_tag_apartado` | `ti` | Activa como reposicion el TAG que la escuela habia apartado (CC-01). |
 | `vincular_nota` | `ti` | Empata una nota del buzon con su expediente y **corrobora** el tramite pedido. |
 | `descartar_solicitud` | `ti` | Cierra una solicitud o nota sin ejecutarla, con motivo. |
+| `estado_caja` | `admin` | Estado de la caja (no cortada) + acumulados de venta + desglose por dia. |
+| `cortar_caja` | `admin` | Cierra el corte, sella los cobros y reestablece la caja (bloque 42). |
 
 Los RPC internos `instalar_tag` y `actualizar_registro` quedaron **revocados al cliente** en el bloque 31: el panel llama unicamente a los wrappers `*_con_estacionamiento`, para que el cambio ocurra en una sola transaccion.
 
@@ -324,7 +357,6 @@ Abierto:
 - Confirmar responsable ARCO.
 - Confirmar plazo de conservacion/bloqueo/supresion.
 - Confirmar DPA y region de Supabase.
-- Modelar el **corte de caja**: tabla de cortes mas el sello del corte en `pagos` (siguiente feature).
 - Vista `v_registros_incompletos` (B2): documentada desde el 03-jul, aun no implementada.
 
 ## 14. Archivos relacionados

@@ -71,17 +71,18 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 | R11 | **Configuración incorrecta de RLS/RPC/Storage** que exponga firmas o placas | Media | Alto | **Alto** | **Mitigar:** pruebas RLS/RPC, bucket privado, URLs firmadas, revisión por rol y MFA admin | Gerardo / Auditor |
 | R12 | **NOM-151 no presupuestada** si se exige mayor fuerza probatoria | Baja | Medio | **Medio** | **Aceptar/Diferir:** no incluir en MVP; cotizar Cincel/ATEB/PSC acreditados como fase 2 | Auditor / Dirección |
 
-> ### Estado de los riesgos a 20-jul-2026
+> ### Estado de los riesgos a 22-jul-2026
 >
-> Verificado contra el sistema en producción (bloques SQL `00`→`41`):
+> Verificado contra el sistema en producción (bloques SQL `00`→`42`):
 >
 > - **Mitigados y verificados:** **R1** (RLS estricta con `aal2` + roles finos, escrituras solo por RPC,
 >   Storage privado, MFA obligatorio), **R2** (firma reforzada: hash SHA-256 generado en la base,
 >   versionado de reglamento/aviso y sello de tiempo), **R9** (aviso específico SATAG publicado como v2
 >   vigente), **R10** (menores exigen gestionante por constraint, no solo por UI) y **R11** (bucket
 >   privado, lectura de la firma restringida a `admin`/`super`).
-> - **Residual:** **R5** — el pago ya se registra con folio de recibo automático, quién cobró y cuándo;
->   para cerrarlo falta el **corte de caja** (siguiente feature).
+> - **Mitigado (nuevo):** **R5** — además del folio, quién cobró y cuándo, ya existe el **corte de caja**
+>   (bloque 42): concilia el efectivo contado contra el esperado, con corte inmutable e identidad
+>   verificable de quien cobra y de quien corta.
 > - **Vigentes:** **R4** (las colas de pendientes existen, pero el *reporte de incompletos* no se
 >   implementó), **R7** (falta verificar y documentar la política de respaldos), **R12** (diferido).
 > - ⚠️ **Matiz de cumplimiento:** R1 y R9 están mitigados en lo **técnico**, pero la **aprobación

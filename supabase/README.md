@@ -8,7 +8,7 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 
 | Archivo | Que hace |
 |---|---|
-| `sql/` | **Fuente de verdad.** Esquema atomico por bloques numerados `00`→`41`, en el orden de `sql/README.md`. Es lo que esta aplicado en produccion. |
+| `sql/` | **Fuente de verdad.** Esquema atomico por bloques numerados `00`→`42`, en el orden de `sql/README.md`. Es lo que esta aplicado en produccion. |
 | `schema.sql` | Respaldo monolitico **historico y atrasado** (corte ~9-jul). Trae las tablas, la RLS ancha y `crear_registro`/`crear_solicitud`, pero **NO** la capa del panel: sin `panel_exigir_rol`, sin `registrar_pago`, sin roles finos/`app_metadata`, sin folios de recibo (bloque 32), sin CC-01 (apartar/usar TAG) ni SC-003 (buzon de notas). No instalar con esto. |
 | `seed.sql` | Semilla del monolitico: estacionamientos, catalogos base, modelos base, reglamento y aviso placeholder. |
 
@@ -16,7 +16,7 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 
 ## Orden de ejecucion
 
-**Instalar/reconstruir la base = aplicar los bloques de `sql/` en orden (`00`→`41`), siguiendo el runbook [`sql/README.md`](sql/README.md).** Incluye el **PASO 0** (asignar `app_metadata.rol` al personal y re-login) antes de los bloques 24-30, y la advertencia de la trampa PostgREST en los bloques que cambian la firma de un RPC.
+**Instalar/reconstruir la base = aplicar los bloques de `sql/` en orden (`00`→`42`), siguiendo el runbook [`sql/README.md`](sql/README.md).** Incluye el **PASO 0** (asignar `app_metadata.rol` al personal y re-login) antes de los bloques 24-30, y la advertencia de la trampa PostgREST en los bloques que cambian la firma de un RPC.
 
 > **No usar `schema.sql`/`seed.sql` para instalar.** Estan atrasados respecto a los bloques 27-41: quien los ejecute obtiene una base con RLS ancha (`authenticated`) y **sin la capa de RPCs del panel ni los roles finos** — es decir, insegura e incompleta. Se conservan solo como respaldo de la primera version.
 >
@@ -30,7 +30,7 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 - El alta publica entra por `crear_registro`, que crea registro + aceptacion + movimiento en una transaccion.
 - La firma guarda version de reglamento, version de aviso, hash SHA-256 generado por la base, paquete canonico firmado, firmante, rol, ruta de firma y trazos opcionales.
 - Alumno menor requiere gestionante con relacion `padre`, `madre` o `tutor`.
-- Cada pago emite un folio de recibo automatico, inmutable y unico (`SATAG-AAAA-000001`, bloque 32) y admite un solo pago por expediente. Lo unico pendiente en la caja es el **corte de caja/finanzas** (aun no implementado).
+- Cada pago emite un folio de recibo automatico, inmutable y unico (`SATAG-AAAA-000001`, bloque 32) y admite un solo pago por expediente. El **corte de caja/finanzas** (bloque 42, admin/super) sella los cobros en `pagos.corte_id` contra `cortes_caja` y concilia el efectivo contado; los cortes son inmutables.
 - Las solicitudes publicas son de tipo `actualizacion` | `baja` (por `crear_solicitud`) y las notas del buzon SC-003 (`nota`) entran por `crear_nota_solicitud`, sin folio ni placa. No existen tipos ARCO/revocacion en el esquema.
 - El estado `bloqueado` permite cancelacion/bloqueo previo a supresion.
 - El bucket `firmas` es privado.
@@ -39,9 +39,9 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 
 > Ejecuta como rol de servicio en SQL Editor. Para simular publico usa `set role anon;` y regresa con `reset role;`.
 >
-> Este checklist valida el **alta publica** (RPC `crear_registro`, menores, RLS de PII, storage), vigente en el esquema real. Para reconstruir la base usa los bloques de `sql/` (00→41), **no** `schema.sql`. Las pruebas de la capa del panel (roles finos, pagos con folio, buzon de notas, apartar/usar TAG) viven en `sql/seed_tests_dev.sql` (banco de QA) y en la auditoria `sql/AUDITORIA.md`.
+> Este checklist valida el **alta publica** (RPC `crear_registro`, menores, RLS de PII, storage), vigente en el esquema real. Para reconstruir la base usa los bloques de `sql/` (00→42), **no** `schema.sql`. Las pruebas de la capa del panel (roles finos, pagos con folio, buzon de notas, apartar/usar TAG) viven en `sql/seed_tests_dev.sql` (banco de QA) y en la auditoria `sql/AUDITORIA.md`.
 
-- [ ] **1. Aplicar el esquema:** los bloques de `sql/` (00→41) corren en orden sin errores.
+- [ ] **1. Aplicar el esquema:** los bloques de `sql/` (00→42) corren en orden sin errores.
 - [ ] **2. Semillas OK:**
   ```sql
   select clave from estacionamientos order by clave;
@@ -251,4 +251,3 @@ Abierto:
 - Definir responsable ARCO.
 - Definir plazo final de conservacion/bloqueo/supresion.
 - Confirmar DPA/region Supabase.
-- Corte de caja / finanzas para Administracion (siguiente feature; aun no implementada).

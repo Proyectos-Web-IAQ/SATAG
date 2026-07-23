@@ -1,10 +1,10 @@
 # Modelo de Dominio POO - SATAG
 
 > **Desarrollo - Fase 1 (Diseno)**.
-> **Ultima actualizacion:** 20-jul-2026.
+> **Ultima actualizacion:** 22-jul-2026.
 > **Version:** v0.7 - alineada con el esquema aplicado en produccion.
 
-Este documento describe las clases de dominio que consumen el modelo relacional de [`01 - Modelo de Datos y Base de Datos.md`](01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md). La persistencia canonica vive en los bloques atomicos [`supabase/sql/`](../supabase/sql/README.md) (`00`->`41`), no en el respaldo `schema.sql`.
+Este documento describe las clases de dominio que consumen el modelo relacional de [`01 - Modelo de Datos y Base de Datos.md`](01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md). La persistencia canonica vive en los bloques atomicos [`supabase/sql/`](../supabase/sql/README.md) (`00`->`42`), no en el respaldo `schema.sql`.
 
 ## 1. Principio de diseno
 
@@ -134,7 +134,7 @@ classDiagram
 |---|---|
 | Menor de edad | `RegistroTag.crear` exige gestionante con relacion `padre`, `madre` o `tutor`. |
 | Firma | `AceptacionDocumento` junta reglamento, aviso y `Firma`; no se valida solo por imagen. |
-| Pago | `Pago` lleva monto, efectivo, fecha, cobrado por y **`folioRecibo` automatico e inmutable**; uno solo por expediente. El corte de caja aun no se modela. |
+| Pago | `Pago` lleva monto, efectivo, fecha, cobrado por y **`folioRecibo` automatico e inmutable**; uno solo por expediente. Al cortarse gana `corteId` y queda congelado (bloque 42). |
 | Tag propio | Se cobra igual que el de escuela y **aparta** el TAG de la escuela para una reposicion futura (`usarTagApartado`). |
 | Bloqueo ARCO | `RegistroTag.bloquear` cambia a estado `bloqueado` y genera movimiento. |
 | Solicitudes | Son `actualizacion`, `baja` o `nota` (buzon sin folio). No existen tipos ARCO ni revocacion en el esquema. |
@@ -181,6 +181,9 @@ classDiagram
 
 ## 7. Diferido
 
-El **folio de recibo ya no esta diferido**: cada `Pago` lo emite automaticamente (bloque 32).
+El **folio de recibo** (bloque 32) y el **corte de caja** (bloque 42) ya no estan diferidos: ambos estan implementados.
 
-`CorteCaja` sigue fuera del modelo actual y es la **siguiente feature**: vista de finanzas para Administracion con corte de caja y conciliacion del efectivo contado contra el esperado.
+`CorteCaja` (tabla `cortes_caja`) es un documento contable inmutable: `Pago` gana `corteId` (sello del
+corte; NULL = en caja) e identidad verificable de quien cobra. `CorteCajaService` expone el estado de
+la caja y `cortar` (concilia el efectivo contado contra el esperado y reestablece la caja). No hay
+fondo de cambio ni forma de deshacer un corte. Solo `POS`/facturacion queda fuera de alcance.

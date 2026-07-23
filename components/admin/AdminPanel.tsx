@@ -7,22 +7,25 @@ import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
 import VistaAdmin from "@/components/admin/VistaAdmin";
 import VistaTi from "@/components/admin/VistaTi";
+import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import { DetalleRegistro, TarjetaRegistro } from "@/components/admin/RegistroCard";
 
-type Vista = "admin" | "ti" | "consulta";
+type Vista = "admin" | "ti" | "finanzas" | "consulta";
 
-// La primera pestaña es la vista inicial de cada rol. Super conserva las tres
-// para poder recorrer todo el flujo con una misma sesión de pruebas.
+// La primera pestaña es la vista inicial de cada rol. Super conserva todas para
+// poder recorrer el flujo con una misma sesión de pruebas. Finanzas es de
+// Administración: solo admin y super la ven, igual que la RLS de cortes_caja.
 const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
-  admin: ["admin", "consulta"],
+  admin: ["admin", "finanzas", "consulta"],
   ti: ["ti"],
   consulta: ["consulta"],
-  super: ["admin", "ti", "consulta"],
+  super: ["admin", "ti", "finanzas", "consulta"],
 };
 
 const ETIQUETA_VISTA: Record<Vista, string> = {
   admin: "Administración",
   ti: "TI",
+  finanzas: "Finanzas",
   consulta: "Consulta",
 };
 
@@ -78,6 +81,7 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
 
         {vista === "admin" && <VistaAdmin nombreSesion={nombreSesion} />}
         {vista === "ti" && <VistaTi nombreSesion={nombreSesion} />}
+        {vista === "finanzas" && <VistaFinanzas nombreSesion={nombreSesion} />}
         {vista === "consulta" && <VistaConsulta />}
       </div>
     </main>
