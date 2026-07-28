@@ -90,7 +90,7 @@ export default function AdminPage() {
     try {
       await enviarCorreoRecuperacion(correo);
       setAviso(
-        "Si el correo pertenece a una cuenta registrada, recibiras un enlace para restablecer tu contrasena. Revisa tu bandeja de entrada y la carpeta de spam.",
+        "Si el correo pertenece a una cuenta registrada, recibira un enlace para restablecer su contrasena. Revise su bandeja de entrada y la carpeta de spam.",
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo enviar el correo.");
@@ -144,8 +144,8 @@ export default function AdminPage() {
           <header className="survey-header">
             <h1>Sin rol asignado</h1>
             <p>
-              Tu cuenta ({email}) aún no tiene un rol del panel. Pídele al
-              administrador del sistema que te lo asigne y vuelve a iniciar
+              Su cuenta ({email}) aún no tiene un perfil del panel. Solicite al
+              administrador del sistema que se lo asigne y vuelva a iniciar
               sesión para que se aplique.
             </p>
           </header>
@@ -175,7 +175,7 @@ export default function AdminPage() {
           <p>
             {modo === "login"
               ? "Acceso para personal de administración y TI del IAQ."
-              : "Te enviaremos un enlace para restablecer tu contraseña."}
+              : "Le enviaremos un enlace para restablecer su contraseña."}
           </p>
         </header>
 
@@ -195,7 +195,7 @@ export default function AdminPage() {
             {error && <p className="submit-error" role="alert">{error}</p>}
             {aviso && <p className="catalog-feedback catalog-feedback--ok">{aviso}</p>}
             <button type="button" className="link-action" style={{ justifySelf: "start" }} onClick={() => cambiarModo("recuperar")}>
-              ¿Olvidaste tu contraseña?
+              ¿Olvidó su contraseña?
             </button>
           </form>
         ) : (

@@ -111,7 +111,7 @@ export default function InvitePage() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="brand-logo" src="/logo-asuncion.jpg" alt="Instituto Asunción de Querétaro" />
         <header className="survey-header">
-          <h1>Activar tu cuenta</h1>
+          <h1>Activar su cuenta</h1>
           <p>Panel administrativo · IAQ</p>
         </header>
 
@@ -141,7 +141,7 @@ export default function InvitePage() {
         {estado === "hecho" && (
           <>
             <p className="catalog-feedback catalog-feedback--ok">
-              Tu cuenta quedó activada. Ya puedes iniciar sesión con tu correo y tu nueva contraseña.
+              Su cuenta quedó activada. Ya puede iniciar sesión con su correo y su nueva contraseña.
             </p>
             <p style={{ marginTop: 16, textAlign: "right" }}>
               <Link href="/admin/" className="primary-action" style={{ display: "inline-block" }}>Ir a iniciar sesión</Link>
@@ -163,8 +163,8 @@ export default function InvitePage() {
         {estado === "sin-token" && (
           <>
             <p className="notice">
-              Esta página se abre desde el enlace de invitación que llega por correo. Si ya activaste tu cuenta,
-              entra directamente desde la pantalla de acceso.
+              Esta página se abre desde el enlace de invitación que llega por correo. Si ya activó su cuenta,
+              entre directamente desde la pantalla de acceso.
             </p>
             <p style={{ marginTop: 16, textAlign: "right" }}>
               <Link href="/admin/" className="link-action">← Ir a iniciar sesión</Link>

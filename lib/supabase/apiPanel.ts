@@ -1,6 +1,5 @@
 // Capa de API real del PANEL (Administracion / TI / Consulta) contra Supabase.
-// Reemplaza a lib/mock/api.ts en AdminPanel y VistaTi manteniendo los mismos
-// shapes (lib/mock/types.ts) para no tocar la logica de las pantallas.
+// Mantiene los shapes de lib/mock/types.ts como contrato con las pantallas.
 //
 // Usa supabaseAuth (sesion persistente): la RLS exige aal2 + app_metadata.rol
 // para LEER (27/30) y toda escritura pasa por RPCs SECURITY DEFINER (29) que

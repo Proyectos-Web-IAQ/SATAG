@@ -50,7 +50,7 @@ function mensajeAuth(mensaje: string): string {
   }
   if (m.includes("invalid totp") || m.includes("mfa_verification_failed") ||
       (m.includes("code") && m.includes("invalid"))) {
-    return "El codigo de verificacion no es valido o ya expiro. Escribe el codigo actual de tu app.";
+    return "El codigo de verificacion no es valido o ya expiro. Escriba el codigo actual de su app.";
   }
   if (m.includes("friendly name") && m.includes("already")) {
     return "Ya existe un factor con ese nombre. Refresca e intenta de nuevo.";

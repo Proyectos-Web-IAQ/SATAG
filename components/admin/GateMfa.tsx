@@ -126,10 +126,10 @@ export default function GateMfa({
         {modo === "alta" ? (
           <>
             <header className="survey-header">
-              <h1>Configura tu segundo factor</h1>
+              <h1>Configure su segundo factor</h1>
               <p>
-                Escanea este código con tu app de autenticación (Google Authenticator, Microsoft
-                Authenticator, etc.) y escribe el código de 6 dígitos para confirmar.
+                Escanee este código con su app de autenticación (Google Authenticator, Microsoft
+                Authenticator, etc.) y escriba el código de 6 dígitos para confirmar.
               </p>
             </header>
 
@@ -139,12 +139,12 @@ export default function GateMfa({
                 <img src={inscripcion.qrSvg} alt="Código QR para configurar el segundo factor"
                   style={{ width: 200, height: 200 }} />
                 <div className="field" style={{ width: "100%" }}>
-                  <span>¿No puedes escanear? Escribe esta clave en tu app</span>
+                  <span>¿No puede escanear? Escriba esta clave en su app</span>
                   <input className="input" readOnly value={inscripcion.secret}
                     onFocus={(e) => e.currentTarget.select()} />
                   <p className="hint" style={{ margin: "4px 0 0" }}>
-                    Guárdala también en tu <strong>gestor de contraseñas</strong>: es tu respaldo si
-                    pierdes el teléfono.
+                    Guárdela también en su <strong>gestor de contraseñas</strong>: es su respaldo si
+                    pierde el teléfono.
                   </p>
                 </div>
               </div>
@@ -153,7 +153,7 @@ export default function GateMfa({
         ) : (
           <header className="survey-header">
             <h1>Verificación en dos pasos</h1>
-            <p>Escribe el código de 6 dígitos que muestra tu app de autenticación.</p>
+            <p>Escriba el código de 6 dígitos que muestra su app de autenticación.</p>
           </header>
         )}
 

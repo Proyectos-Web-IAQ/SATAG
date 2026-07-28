@@ -159,7 +159,7 @@ export default function ResetPage() {
         {estado === "mfa" && (
           <>
             <p className="notice">
-              Tu cuenta tiene verificación en dos pasos. Escribe el código de tu app de autenticación
+              Su cuenta tiene verificación en dos pasos. Escriba el código de su app de autenticación
               para continuar con el cambio de contraseña.
             </p>
             <form onSubmit={verificarMfa} style={{ display: "grid", gap: 16, marginTop: 8 }}>
@@ -197,7 +197,7 @@ export default function ResetPage() {
         {estado === "hecho" && (
           <>
             <p className="catalog-feedback catalog-feedback--ok">
-              Tu contraseña se actualizó correctamente. Ya puedes iniciar sesión con ella.
+              Su contraseña se actualizó correctamente. Ya puede iniciar sesión con ella.
             </p>
             <p style={{ marginTop: 16, textAlign: "right" }}>
               <Link href="/admin/" className="primary-action" style={{ display: "inline-block" }}>Ir a iniciar sesión</Link>
@@ -219,8 +219,8 @@ export default function ResetPage() {
         {estado === "sin-token" && (
           <>
             <p className="notice">
-              Esta página se abre desde el enlace del correo de recuperación. Si llegaste aquí por error,
-              vuelve a la pantalla de acceso y usa <strong>¿Olvidaste tu contraseña?</strong>
+              Esta página se abre desde el enlace del correo de recuperación. Si llegó aquí por error,
+              vuelva a la pantalla de acceso y use <strong>¿Olvidó su contraseña?</strong>
             </p>
             <p style={{ marginTop: 16, textAlign: "right" }}>
               <Link href="/admin/" className="link-action">← Volver a iniciar sesión</Link>
