@@ -8,9 +8,9 @@
 |---|---|
 | Cliente | Instituto Asunción de Querétaro AC (IAQ) — interno |
 | Responsable / Desarrollador | Gerardo Sánchez — Soporte TI Jr. |
-| Fecha | 03-jul-2026 · Versión **v0.3** |
+| Fecha | 28-jul-2026 · Versión **v0.4** |
 
-**Historial de versiones:** v0.1 (01-jul, borrador) · v0.2 (01-jul, cronograma completo + diccionario de la WBS + pruebas ampliadas a 2.5 d + vistas de recursos) · **v0.3** (03-jul, opción A de cumplimiento legal: aviso SATAG, firma reforzada, menores, RLS/RPC/MFA y ARCO básico).
+**Historial de versiones:** v0.1 (01-jul, borrador) · v0.2 (01-jul, cronograma completo + diccionario de la WBS + pruebas ampliadas a 2.5 d + vistas de recursos) · v0.3 (03-jul, opción A de cumplimiento legal: aviso SATAG, firma reforzada, menores, RLS/RPC/MFA y ARCO básico) · **v0.4** (28-jul, conciliación de ejecución: Vercel como hosting interino, Caja/POS ejecutada tras diferirse, totales de §2.5 recalculados y nota de conciliación del cronograma).
 
 ---
 
@@ -42,7 +42,7 @@ El proceso se cubre en **tres momentos / tres actores**:
 | E4 | **Módulo de instalación (TI)** | Asignación de estacionamiento + captura del No. de TAG + cambio de estado + ciclo de vida + apartar y usar el TAG apartado (CC-01) |
 | E5 | **Panel administrativo** | Login con MFA y roles finos, búsqueda/consulta, edición, control de TAGs/estados/pagos, colas de pendientes y **buzón de notas sin folio (SC-003)** |
 | E6 | **Cumplimiento legal y privacidad** | Aviso específico SATAG/anexo, aviso simplificado, ARCO básico, menores y firma reforzada |
-| E7 | **Infraestructura y despliegue** | Proyecto Supabase + despliegue en **Vercel desde `main`** *(el plan original contemplaba subdominio GoDaddy/Cloudflare + GitHub Action; no se adoptó)* |
+| E7 | **Infraestructura y despliegue** | Proyecto Supabase + despliegue automático. **Hoy opera interino en Vercel desde `main`** para acelerar la ejecución; el destino definitivo sigue siendo el **subdominio institucional (GoDaddy) + Cloudflare**, y la migración debe hacerse antes de la salida oficial a producción *(seguimiento: SC-012)* |
 | E8 | **Documentación y manual** | Docs técnicas + manual breve para administrativos/TI |
 
 ### Criterios de aceptación
@@ -58,14 +58,18 @@ El proceso se cubre en **tres momentos / tres actores**:
 - El panel permite **buscar** por nombre/placa/TAG/estacionamiento en **< 5 s** y ver **estado y pago**.
 - El panel/proceso permite atender solicitudes básicas **ARCO/cambio/baja** (acceso, rectificación y
   cancelación/bloqueo operativo cuando aplique).
-- El sitio corre en el **subdominio** con HTTPS y **deploy automático** por push a `main`.
+- El sitio corre en el **subdominio institucional** con HTTPS y **deploy automático** por push a `main`.
+  *(Estado 28-jul: opera interino en `satag.vercel.app` con deploy automático; la migración al subdominio
+  sigue pendiente y es requisito de la salida oficial — SC-012.)*
 - La app **no expone** datos de un usuario a otro (RLS verificada); las escrituras críticas usan RPC
   controladas, las firmas viven en Storage privado y las cuentas administrativas usan MFA.
 
 ### Exclusiones (lo que NO se hará)
 
 - Integración con **hardware** de acceso (lector RFID/TAG, pluma/barrera) — *documentado como
-  evolución futura, no prioritaria* (ver Anexo A, §2.5).
+  evolución futura, no prioritaria* (ver la investigación
+  [`Investigacion/03 - Integracion ZKBioSecurity.md`](../Investigacion/03%20-%20Integracion%20ZKBioSecurity.md);
+  seguimiento como SC-006).
 - **Pago en línea** (el cobro es presencial/efectivo; el sistema solo lo **registra**).
 - **App móvil nativa** (se cubre con web responsiva).
 - **Migración masiva** del histórico en papel.
@@ -73,7 +77,9 @@ El proceso se cubre en **tres momentos / tres actores**:
 ### Restricciones
 
 - **Web estática** (sin servidor propio): front Next.js `output:"export"`, datos en **Supabase**.
-- **Infraestructura fija:** GoDaddy (cPanel/subdominio) + Cloudflare (DNS/proxy) + GitHub Action (FTPS).
+- **Infraestructura objetivo:** GoDaddy (cPanel/subdominio) + Cloudflare (DNS/proxy). *(En ejecución se
+  adoptó **Vercel como interino** —deploy automático desde `main`— para avanzar más rápido; el GitHub
+  Action FTPS del plan original quedó sin uso y la migración al subdominio está pendiente — SC-012.)*
 - **Firma manuscrita digital** obligatoria (definición del IAQ).
 - **Presupuesto:** interno, sin pago extra; gasto out-of-pocket ≈ **$0** (infra ya contratada).
 - **Plazo:** meta **24-jul-2026**; **1 desarrollador** (Gerardo).
@@ -147,8 +153,8 @@ paquetes como actividades.)*
 | 1.2.2 | Diseño UI/UX | Wireframes de formulario, panel y flujo de 3 actores | Mockups / guía visual | Cubre los 3 flujos; aprobado por el auditor |
 | 1.2.3 | Definición legal y privacidad | Aviso específico SATAG/anexo, aviso simplificado, texto de aceptación, firma, menores, ARCO básico y conservación | Investigación legal + textos/criterios aprobables | Aviso y firma definidos; menores/ARCO/conservación contemplados |
 | 1.3.1 | Setup Supabase seguro | Proyecto, aplicación de esquema/RLS/RPC, bucket privado de firmas, roles y MFA admin | Proyecto Supabase operativo y endurecido | Tablas y RLS activas; Storage privado; escrituras críticas por RPC; MFA admin |
-| 1.3.2 | Infra web | Subdominio GoDaddy, registro A en Cloudflare (proxy), cuenta FTP | Subdominio con HTTPS | `https://satag…` responde 200 |
-| 1.3.3 | CI/CD | Repo + GitHub Action (FTPS) + Secrets | Deploy automático | Push a `main` publica el sitio |
+| 1.3.2 | Infra web | Subdominio GoDaddy, registro A en Cloudflare (proxy), cuenta FTP *(pendiente; hoy interino en Vercel — SC-012)* | Subdominio con HTTPS | `https://satag…` responde 200 |
+| 1.3.3 | CI/CD | Repo + deploy automático *(hoy cumplido vía Vercel desde `main`; el GitHub Action FTPS del plan original se retomará —o sustituirá— al migrar al subdominio)* | Deploy automático | Push a `main` publica el sitio |
 | 1.4 | Fase 1 — Autoservicio | Formulario, aviso simplificado, reglamento+versión, firma reforzada, guardado "pendiente", comprobante | Formulario funcional | Usuario captura y firma; registro queda "pendiente"; menores firman por gestionante/tutor |
 | 1.4.5 🆕 | Solicitud de cambio/baja | Formulario público: identifica su registro + tipo (cambio/baja) + detalle; RPC `crear_solicitud` | Solicitud registrada | La solicitud cae en la bandeja de TI (1.6.3) |
 | 1.5 | Fase 2 — Administración | Asignación de estacionamiento + registro de pago ($100 efectivo); **cobra también TAG propio** y **valida el tipo de usuario** | Módulo de administración | Admin asigna estacionamiento, cobra (incl. tag propio) y valida tipo |
@@ -241,13 +247,20 @@ El modelo de dominio orientado a objetos vive separado en
 
 ### Duración y fechas
 
-- **Ruta crítica (CPM, sin límite de recursos):** **13.5 días hábiles** (análisis teórico).
+- **Ruta crítica (CPM, sin límite de recursos):** **13.5 días hábiles** (análisis teórico con la
+  línea base v0.2: Supabase 1 d, Firma 1.5 d, Pruebas 2.5 d — es la que refleja la tabla CPM de arriba).
 - **Cronograma real (1 desarrollador, serializado):** al recaer en un solo recurso, las tareas van en **serie**
-  → **18.5 días hábiles** → **inicio 02-jul → cierre 28-jul-2026** (calculado en ProjectLibre).
+  → **18.5 días hábiles** → **inicio 02-jul → cierre 28-jul-2026** (línea base calculada en ProjectLibre).
 - **Meta vs. real:** la meta tentativa era 24-jul; con las duraciones actuales el cierre realista es
   **28-jul** (~2 días hábiles más). Las estimaciones son **conservadoras** (reuso de SEVAD), así que
   puede adelantarse; el excedente se cubre con contingencia/monitoreo o recortando alcance.
-- *(Pruebas = 2.5 d —privacidad/RLS y firma, RA1/RA2—; Manual + capacitación = 1.5 d.)*
+- 🧮 **Nota de conciliación (28-jul):** la **tabla de actividades** de arriba ya incorpora las
+  ampliaciones posteriores a v0.2 (Supabase 1→**1.5 d**, Firma 1.5→**2 d**, Pruebas 2.5→**3 d**), por
+  eso difiere de la tabla CPM en esas tres filas. Con las duraciones ampliadas: ruta crítica equivalente
+  ≈ **15 d**, suma serializada ≈ **20.5 d** (+1 d por las dos actividades nuevas del Gantt —solicitud
+  cambio/baja y bandeja TI— ≈ **21.5 d**), y con ≈ +2 d del ajuste legal el cierre cae en **~03-ago**,
+  consistente con el objetivo vigente. Las cifras "13.5 d / 18.5 d" se conservan como **línea base**
+  para la comparación plan-vs-real del acta de cierre.
 - **Ajustes de la junta de Dirección (03-jul):** se definen como **subactividades** en **§2.5**
   (≈ +2.4 días-persona de trabajo nuevo; el resto se absorbe en actividades existentes).
 - **Ajuste legal opción A (03-jul):** se incorporan controles mínimos para producción derivados de la
@@ -289,7 +302,7 @@ gantt
     Instalación TI         :crit, a12, after a11, 1d
     Bandeja solicitudes TI :crit, a12b, after a12, 0.5d
     Administración         :crit, a13, after a12b, 1d
-    Caja / POS diferido    :milestone, a13b, after a13, 0d
+    Caja / POS (folios + corte de caja) :crit, a13b, after a13, 1.5d
   section Pruebas y cierre
     Pruebas + privacidad   :crit, a14, after a13b, 3d
     Deploy                 :crit, a15, after a14, 0.5d
@@ -320,8 +333,10 @@ paralelogramos son las fases resumen):
 Detalle fino de los ajustes que pidió Dirección el **03-jul-2026**. Se registran como **subactividades**
 (no como actividades de primer nivel) porque casi todas son **pocas horas** y **se absorben** dentro de
 actividades ya existentes; solo **Caja (MVP)** y **Solicitudes** son trabajo nuevo. Cada punto queda
-trazado en la bitácora como `CC-01…CC-08` (Doc 4). El detalle de negocio y de diseño de cada uno vive
-ya en los documentos de `Desarrollo/` (01 Modelo de Datos, 02 POO, 05 Flujos, 06 Firma).
+trazado en la bitácora (Doc 4): los `B1…B8` de la junta como `CC-01…CC-08` **en el Sheet/xlsx** (no se
+duplican en el markdown), y los ajustes legales como `CC-09…CC-14` en la tabla del Doc 4. El detalle de
+negocio y de diseño de cada uno vive ya en los documentos de `Desarrollo/` (01 Modelo de Datos, 02 POO,
+05 Flujos, 06 Firma).
 
 `A` = absorbida en una actividad existente · `N` = trabajo nuevo. `hₑ` = esfuerzo estimado (horas).
 
@@ -331,7 +346,7 @@ ya en los documentos de `Desarrollo/` (01 Modelo de Datos, 02 POO, 05 Flujos, 06
 | SA-02 | Campo `tipo_validado`(+`_por`,`_en`) | 1 Modelo de datos | B5 | A | 1 |
 | SA-03 | `modelo NOT NULL` + `CHECK` no vacío | 1 Modelo de datos | B4 | A | 0.5 |
 | SA-04 | Tabla `cat_modelos` + seed de marcas/modelos | 1 Modelo de datos | B4 | A | 2 |
-| SA-05 | Caja/POS con corte (`cortes_caja` + `pagos.corte_id`) | Diferido | B3 | N | 0 |
+| SA-05 | Caja/POS con corte (`cortes_caja` + `pagos.corte_id`) | *(nueva)* 1.5.3 — diferida el 03-jul y **ejecutada después** como CC-18/CC-21 de la bitácora (folios bloque 32 + corte bloque 42) | B3 | N | 0* |
 | SA-06 | Tabla `solicitudes` + RPC `crear_solicitud` | 1 Modelo de datos | B6 | N | 2 |
 | SA-07 | Vista `v_registros_incompletos` | 1 Modelo de datos | B2 | A | 1.5 |
 | SA-08 | Dropdown dependiente marca→modelo (+ "Otro") | 7 Formulario | B4 | A | 3 |
@@ -355,8 +370,12 @@ ya en los documentos de `Desarrollo/` (01 Modelo de Datos, 02 POO, 05 Flujos, 06
 | SA-26 | ARCO básico: acceso/rectificación/cancelación-bloqueo/oposición vía panel y flujo de cambio/baja | 11 Panel / 1.4.5 Solicitud cambio/baja | CC-13 | N | 4 |
 | SA-27 | NOM-151: criterio de cotización y diferimiento a fase 2 | 3 Definición legal y privacidad | CC-14 | A | 1 |
 
-**Totales:** ≈ **38.5 h ≈ 4.8 días-persona**. De ese total, lo **nuevo** (SA-05/06/11/14/15/16) suma
-≈ **19 h ≈ 2.4 d**; el resto (**≈ 19.5 h ≈ 2.4 d**) se **absorbe** dentro de las actividades 1, 7, 9, 13 y 11.
+**Totales (conciliados 28-jul):** SA-01…SA-19 suman ≈ **36.5 h ≈ 4.6 días-persona**. De ese total, lo
+**nuevo** (SA-06/11/14/15/16) suma ≈ **17 h ≈ 2.1 d**; el resto (**≈ 19.5 h ≈ 2.4 d**) se **absorbe**
+dentro de las actividades 1, 7, 9, 13 y 11.
+\* SA-05 quedó en **0 h** al diferirse el 03-jul (los totales originales de 38.5 h / 19 h la incluían
+con 2 h); la Caja se ejecutó después **fuera de la línea base** como CC-18/CC-21 (≈ +2 d reales,
+registrados en la bitácora).
 
 **Ajuste legal opción A:** SA-20…SA-27 suman ≈ **19.5 h ≈ 2.4 días-persona**. De ese total, lo nuevo
 neto para cronograma es ≈ **16 h ≈ 2 días-persona** (aviso SATAG y ARCO básico); el resto se absorbe en
@@ -364,8 +383,9 @@ Definición legal, Setup Supabase, Firma y Pruebas. NOM-151 queda diferido como 
 
 ### Efecto en fechas
 
-- **Neto sobre el plan base** (18.5 d / cierre 28-jul): ≈ **+2.4 días-persona** por junta de Dirección
-  + **≈ +2 días-persona** por opción A legal.
+- **Neto sobre el plan base** (18.5 d / cierre 28-jul): ≈ **+2.1 días-persona** por junta de Dirección
+  (sin Caja, diferida en su momento) + **≈ +2 días-persona** por opción A legal. La Caja ejecutada
+  después (CC-18/CC-21) agregó ≈ **+2 d reales** adicionales fuera de línea base.
 - Con el alcance vigente, el cierre objetivo recomendado pasa a **~03-ago-2026**. Es preferible proteger
   **Pruebas** (privacidad/RLS/RPC/firma) antes que forzar el 30-jul.
 - Los artefactos de ProjectLibre (Gantt/AON/tabla) se **regeneran** cuando se confirme la nueva línea base

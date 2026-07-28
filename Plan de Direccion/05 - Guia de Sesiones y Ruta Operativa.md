@@ -1,6 +1,6 @@
 # Guia de Sesiones y Ruta Operativa - SATAG
 
-> **Ultima actualizacion:** 20/07/2026.
+> **Ultima actualizacion:** 28/07/2026 (auditoria de ejecucion contra el codigo real, commit `7b729a3`).
 > **Horario real de trabajo:** 09:00 a 14:00.
 > **Uso:** abrir este documento al inicio de cada sesion para saber que revisar, que cerrar y con que continuar.
 
@@ -22,9 +22,21 @@ El **corte de caja / finanzas** (bloque 42 + pestana Finanzas) ya esta implement
 actual y lo vendido, cierra el corte conciliando el efectivo contado, y cada corte queda inmutable con
 la identidad de quien lo hizo.
 
-La prioridad inmediata es el **cierre del proyecto:** pruebas formales de privacidad/RLS, manual +
-capacitacion y la **aprobacion institucional del aviso de privacidad**. Pendiente menor: el reporte de
-registros incompletos (B2).
+La prioridad inmediata es el **cierre del proyecto**, en este orden:
+
+1. **Pruebas formales** (funcional + privacidad/RLS + firma + ARCO). Es la actividad critica atrasada:
+   existe el banco de datos (`seed_tests_dev.sql`, 14 escenarios) pero **no habia casos de prueba
+   documentados**; el plan y la matriz viven ahora en `Pruebas/` (SC-010).
+2. **Manual + capacitacion** (E8).
+3. **Aprobacion institucional del aviso de privacidad** (E6) — gestionarla en paralelo desde ya, porque
+   no depende del desarrollo y es el mayor riesgo para la fecha de cierre.
+4. **Migracion del hosting** a subdominio institucional + Cloudflare antes de la salida oficial
+   (SC-012): Vercel es **interino**, no definitivo.
+
+Pendientes menores confirmados por la auditoria del 28-jul: reporte de registros incompletos (B2),
+validacion del tipo de usuario al cobrar (B5, columnas creadas pero sin uso), extraccion de la firma a
+`lib/firma/` (B8), pagina publica del aviso (SC-007), firma visible en el panel con URL firmada
+(SC-008) y endurecimiento de los bloques 05/09/20 a rol admin (SC-009).
 
 ## 3. Tareas inmediatas
 
@@ -56,8 +68,10 @@ Aplicado (bloques `00`->`42`): `aviso_versiones` y referencia de version en `ace
 
 Pendiente:
 
-- **Vista de incompletos** (`v_registros_incompletos`, B2): documentada como cambio del 03-jul pero **aun no implementada**.
-- Campos de **caja/corte** (`cortes_caja`, `pagos.corte_id`): entran con la feature de corte de caja (ver 3.5). Los folios de recibo ya existen (bloque 32).
+- **Vista de incompletos** (`v_registros_incompletos`, B2): documentada como cambio del 03-jul pero **aun no implementada** (confirmado el 28-jul: sin coincidencias en SQL ni en el codigo).
+- **Validacion del tipo de usuario al cobrar** (B5): las columnas `tipo_validado` / `_por` / `_en` existen en `12_registros.sql` pero **nada las escribe ni las lee**; `registrar_pago` no las toca.
+
+Ya aplicado (no confundir con pendiente): los campos de **caja/corte** (`cortes_caja`, `pagos.corte_id`) entraron con el bloque 42 (ver 3.5) y los folios de recibo con el bloque 32.
 
 ### 3.3 E7 - Supabase seguro  — ✅ en produccion
 
@@ -141,14 +155,14 @@ Gerardo/TI puede preparar el borrador, pero no debe publicarlo como definitivo s
 
 | Entregable | Estado actual | Continuacion |
 |---|---|---|
-| E1 Modelo de datos + BD | ✅ En produccion (bloques `00`->`42`) | Falta vista de incompletos; los campos de corte de caja entran con E3 |
+| E1 Modelo de datos + BD | ✅ En produccion (bloques `00`->`42`) | Falta la vista de incompletos (B2) y conectar la validacion de tipo al cobrar (B5) |
 | E6 Cumplimiento legal y privacidad | 🟡 Implementado; aprobacion pendiente | Aprobacion institucional del aviso + pendientes ARCO/conservacion |
-| E7 Infraestructura y Supabase seguro | ✅ En produccion | Documentar region + archivar DPA |
+| E7 Infraestructura y Supabase seguro | 🟡 Supabase en produccion; hosting **interino** en Vercel | Migrar al subdominio institucional + Cloudflare (SC-012); endurecer bloques 05/09/20 (SC-009); documentar region + archivar DPA |
 | E2 Formulario de autoservicio | ✅ En produccion | — |
 | E5 Panel administrativo | ✅ En produccion (roles finos + MFA) | Reporte de incompletos pendiente |
 | E4 Instalacion TI | ✅ En produccion | — |
 | E3 Administracion/cobro | ✅ En produccion (cobro + folios + corte de caja) | — |
-| E8 Manual/capacitacion | ⚪ Pendiente | Elaborar despues de pruebas |
+| E8 Manual/capacitacion | 🟡 Borrador completo (28-jul) | Cinco documentos en `Entregables/E8 - Manual y Capacitacion`. Falta impartir la sesion y recabar firmas de asistencia |
 
 ## 7. Cierre de sesion
 

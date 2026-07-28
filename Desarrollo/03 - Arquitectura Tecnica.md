@@ -63,9 +63,10 @@ lib/
    └─ types.ts                 Tipos compartidos del dominio, consumidos por las pantallas
 ```
 
-> `lib/mock/data.ts` y `lib/mock/api.ts` son **vestigios del prototipo inicial**: ya no se importan en
-> ninguna pantalla. La app corre contra Supabase real. Solo `types.ts` sigue en uso, como contrato de
-> tipos entre `lib/supabase/*` y los componentes.
+> `lib/mock/data.ts` y `lib/mock/api.ts` eran **vestigios del prototipo inicial** y se **eliminaron el
+> 28-jul-2026** al confirmarse que ninguna pantalla los importaba. La app corre contra Supabase real.
+> De la carpeta solo queda `types.ts`, en uso como contrato de tipos entre `lib/supabase/*` y los
+> componentes.
 
 ## 4. Variables de entorno
 

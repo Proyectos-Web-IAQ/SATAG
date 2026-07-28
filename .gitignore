@@ -15,6 +15,12 @@ APIkeys.txt
 *.key
 *.pem
 
+# --- Configuracion local de herramientas de escritorio: no se versiona ---
+.claude/
+.agents/
+.cursor/
+.vscode/
+
 # --- Sistema operativo / temporales ---
 Thumbs.db
 desktop.ini

@@ -4,12 +4,12 @@
 -- Este monolitico quedo ATRASADO (corte ~9-jul-2026). NO contiene la capa
 -- del panel: sin panel_exigir_rol, sin registrar_pago, sin roles finos
 -- (app_metadata.rol), sin folios de recibo (bloque 32), sin CC-01
--- (apartar/usar TAG) ni SC-003 (buzon de notas).
+-- (apartar/usar TAG), sin SC-003 (buzon de notas) ni corte de caja (bloque 42).
 --
 -- Quien lo ejecute obtiene una base con RLS ancha (authenticated) y SIN los
 -- RPCs del panel: insegura e incompleta.
 --
--- FUENTE DE VERDAD: los bloques atomicos supabase/sql/00 -> 41, en el orden
+-- FUENTE DE VERDAD: los bloques atomicos supabase/sql/00 -> 42, en el orden
 -- del runbook supabase/sql/README.md (incluye el PASO 0 de roles).
 -- =====================================================================
 -- SATAG - schema.sql (E1 alineado con E6)
