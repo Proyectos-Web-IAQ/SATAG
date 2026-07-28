@@ -158,9 +158,9 @@ Gerardo/TI puede preparar el borrador, pero no debe publicarlo como definitivo s
 
 | Entregable | Estado actual | Continuacion |
 |---|---|---|
-| E1 Modelo de datos + BD | ✅ En produccion (bloques `00`->`42`) | Falta la vista de incompletos (B2) y conectar la validacion de tipo al cobrar (B5) |
+| E1 Modelo de datos + BD | ✅ En produccion (bloques `00`->`44`) | Falta la vista de incompletos (B2) y conectar la validacion de tipo al cobrar (B5) |
 | E6 Cumplimiento legal y privacidad | 🟡 Implementado; aprobacion pendiente | Aprobacion institucional del aviso + pendientes ARCO/conservacion |
-| E7 Infraestructura y Supabase seguro | 🟡 Supabase en produccion; hosting **interino** en Vercel | Migrar al subdominio institucional + Cloudflare (SC-012); endurecer bloques 05/09/20 (SC-009); documentar region + archivar DPA |
+| E7 Infraestructura y Supabase seguro | 🟡 Supabase en produccion y endurecido (bloque 43); hosting **interino** en Vercel | Migrar al subdominio institucional + Cloudflare (SC-012); documentar region + archivar DPA |
 | E2 Formulario de autoservicio | ✅ En produccion | — |
 | E5 Panel administrativo | ✅ En produccion (roles finos + MFA) | Reporte de incompletos pendiente |
 | E4 Instalacion TI | ✅ En produccion | — |
@@ -175,3 +175,30 @@ Antes de terminar cada dia:
 - Anotar decisiones nuevas en este documento o en la bitacora de cambios.
 - Confirmar siguiente tarea concreta.
 - Subir cambios relevantes a GitHub si se necesita revisar fuera del equipo local.
+
+### Bitacora de la sesion del 28-jul-2026
+
+**Que se termino.** Auditoria completa del sistema contra el codigo real y conciliacion de toda la
+documentacion de gestion, que llevaba fechas y estados contradictorios. Se escribio el plan de pruebas
+con 59 casos (WBS 1.8, que no tenia ninguno) y el manual de operacion completo (E8, cinco documentos).
+Se cerraron CC-09 y CC-12 aplicando los bloques 43 y 44. Se corrigio el tuteo que quedaba en varias
+pantallas y se retiro el codigo muerto del prototipo. Todo publicado en GitHub (7 commits).
+
+**Siguiente tarea concreta, en este orden:**
+
+1. **Ejecutar las tandas P y E** de `Pruebas/01 - Matriz de Casos.md` (privacidad y firma). Son las que
+   bloquean el cierre: ningun fallo es admisible. Los casos P-09 y P-10 sirven ademas para comprobar
+   que el bloque 43 quedo bien aplicado.
+2. Verificar en el navegador que el aviso corto aparece en el primer paso del registro (bloque 44).
+3. Impartir la capacitacion siguiendo `Entregables/E8 - Guia de Capacitacion.md` y recabar firmas.
+4. Solicitar la aprobacion institucional del aviso. **Gestionarla desde el primer dia**: no depende del
+   desarrollo y es el mayor riesgo para la fecha de cierre.
+5. Migrar al subdominio institucional + Cloudflare (SC-012).
+
+**Decision registrada.** Vercel es hosting **interino**, no sustituto del subdominio institucional. La
+migracion es requisito de la salida oficial y de la aceptacion.
+
+**Hallazgo abierto por decidir.** La sesion del panel se guarda en el navegador: cerrar la ventana no
+cierra la sesion, asi que en un equipo compartido la siguiente persona entra sin contrasena ni segundo
+factor. Quedo advertido en el manual. Si Administracion opera en un equipo compartido, evaluar un
+cierre de sesion por inactividad.
