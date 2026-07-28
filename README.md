@@ -11,8 +11,8 @@ Alternativa web para reemplazar la hoja física de adquisición de TAG vehicular
 | **Cliente** | Instituto Asunción de Querétaro AC (IAQ) — proyecto interno |
 | **Responsable / Desarrollador** | Gerardo Sánchez — Soporte TI Jr. |
 | **Aprobador / Auditor** | Miguel Ángel González Pacheco — Encargado de Sistemas Computacionales |
-| **Estado** | 🟢 **En producción** — autoservicio, panel Admin/TI con roles finos y MFA, cobro con folios de recibo automáticos, **corte de caja**, apartar/usar TAG y buzón de notas ya operan sobre Supabase real (bloques SQL `00`→`42`) |
-| **Cierre estimado** | ~03-ago-2026 (opción A). El sistema ya opera en producción antes de esa fecha; restan las pruebas finales, el manual y la aprobación institucional del aviso |
+| **Estado** | 🟢 **Operando** — autoservicio, panel Admin/TI con roles finos y MFA, cobro con folios de recibo automáticos, **corte de caja**, apartar/usar TAG y buzón de notas ya funcionan sobre Supabase real (bloques SQL `00`→`42`), publicados de forma **interina en Vercel** |
+| **Cierre estimado** | ~03-ago-2026 (opción A). Restan las pruebas formales, el manual, la aprobación institucional del aviso y la **migración al subdominio institucional + Cloudflare** (requisito de la salida oficial) |
 
 ---
 
@@ -30,8 +30,9 @@ de cada TAG a lo largo de su ciclo de vida, más un **panel administrativo**.
 **Fuera de alcance:** integración con hardware de acceso (lector/pluma), pago en línea, app nativa.
 
 **Arquitectura (reutiliza la base de un sistema interno previo):** front **estático** (Next.js 16 export)
-+ **Supabase** (Postgres con RLS, Auth con MFA, Storage, RPCs `SECURITY DEFINER`) + **Vercel**
-(hosting y despliegue automático: cada push a `main` publica en producción).
++ **Supabase** (Postgres con RLS, Auth con MFA, Storage, RPCs `SECURITY DEFINER`) + **Vercel como
+hosting interino** (despliegue automático: cada push a `main` publica). El destino definitivo es el
+**subdominio institucional + Cloudflare**; la migración es requisito de la salida oficial.
 
 ---
 
@@ -41,7 +42,7 @@ Plan diario de trabajo para el desarrollo serializado con **1 desarrollador**. I
 Cierre estimado: **~03-ago-2026** (incluye las actividades nuevas de la junta 03-jul + controles legales mínimos
 derivados de la investigación legal; sin esos cambios, 28-jul).
 El detalle completo vive en [Alcance, WBS y Cronograma](Plan%20de%20Direccion/02%20-%20Alcance%2C%20WBS%20y%20Cronograma.md);
-los cambios quedan registrados en la **[bitácora de cambios](Plan%20de%20Direccion/04%20-%20Bitacora%20de%20Cambios%20y%20Cierre.md)** (CC-01…CC-14).
+los cambios quedan registrados en la **[bitácora de cambios](Plan%20de%20Direccion/04%20-%20Bitacora%20de%20Cambios%20y%20Cierre.md)** (CC-01…CC-21).
 
 ```mermaid
 gantt
@@ -76,17 +77,19 @@ gantt
     Corte de caja / finanzas :done, a13b, after a13a, 1.5d
 
   section Pruebas y cierre
-    Deploy continuo (Vercel desde main) :done, a15, after a6, 0.5d
+    Deploy continuo (Vercel, interino) :done, a15, after a6, 0.5d
     Pruebas funcionales + privacidad :active, a14, after a13b, 3d
+    Migración a subdominio + Cloudflare :crit, a15b, after a14, 0.5d
     Manual + capacitación  :crit, a16, after a14, 1.5d
     Aceptación y cierre    :crit, a17, after a16, 0.5d
 ```
 
-> **Estado a 22-jul-2026:** el cronograma ya está **en producción** (diseño, infra, Supabase seguro con
-> roles/MFA, autoservicio, panel Admin/TI, cobro con folios, **corte de caja**, buzón SC-003 y
-> apartar/usar TAG). El bloque base de fechas se conserva como línea base de planeación; el avance real
+> **Estado auditado a 28-jul-2026:** el producto ya **opera** (diseño, Supabase seguro con roles/MFA,
+> autoservicio, panel Admin/TI, cobro con folios, **corte de caja**, buzón SC-003 y apartar/usar TAG).
+> El bloque base de fechas se conserva como línea base de planeación; el avance real
 > vive en el checklist de abajo y en la [Guía de Sesiones](Plan%20de%20Direccion/05%20-%20Guia%20de%20Sesiones%20y%20Ruta%20Operativa.md).
-> Queda el cierre: pruebas formales, manual y aprobación institucional del aviso.
+> Queda el cierre: **pruebas formales**, manual, aprobación institucional del aviso y la **migración al
+> subdominio institucional + Cloudflare** (Vercel es interino).
 >
 > **Actividades nuevas (junta 03-jul):** las tres marcadas **(nueva)** —
 > *Solicitud cambio/baja* y *Bandeja solicitudes TI* suman ~1 día sobre el plan base.
@@ -111,8 +114,9 @@ gantt
 
 > 📋 **Bitácora de control de cambios:** [Doc 4](Plan%20de%20Direccion/04%20-%20Bitacora%20de%20Cambios%20y%20Cierre.md) ·
 > **[Sheet en línea](https://docs.google.com/spreadsheets/d/18fdAJkWnAMJOCGTiu-f8GH8XV_JuZzC4/edit)** ·
-> [.xlsx](Plan%20de%20Direccion/bitacora-cambios.xlsx) — cambios de la junta 03-jul: **CC-01…CC-08**;
-> ajustes legales opción A: **CC-09…CC-14**.
+> [.xlsx](Plan%20de%20Direccion/bitacora-cambios.xlsx) — cambios de la junta 03-jul: **CC-01…CC-08**
+> (solo en el Sheet/xlsx); ajustes legales opción A: **CC-09…CC-14**; orden y ejecución: **CC-15…CC-21**
+> (en el Doc 4).
 
 ### Entregables y estado
 
@@ -122,30 +126,31 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 |---|---|---|
 | **Modelo de datos + BD** (E1) | ✅ En producción (bloques SQL `00`→`42`) | [Doc modelo](Desarrollo/01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md) · [runbook `sql/`](supabase/sql/README.md) · [AUDITORIA](supabase/sql/AUDITORIA.md) · [supabase/README](supabase/README.md) |
 | **Modelo de dominio (POO)** | ✅ Listo | [Doc POO](Desarrollo/02%20-%20Modelo%20de%20Dominio%20POO.md) |
-| **UI/UX** (autoservicio + panel Admin/TI) | ✅ En producción sobre Supabase real | **En línea:** [Inicio](https://satag.vercel.app/) · [Registro](https://satag.vercel.app/registro/) · [Buzón](https://satag.vercel.app/solicitudes/) · [Panel Admin/TI](https://satag.vercel.app/admin/) *(credenciales reales de Supabase Auth + MFA)* |
+| **UI/UX** (autoservicio + panel Admin/TI) | ✅ Operando sobre Supabase real | **En línea (hosting interino):** [Inicio](https://satag.vercel.app/) · [Registro](https://satag.vercel.app/registro/) · [Buzón](https://satag.vercel.app/solicitudes/) · [Panel Admin/TI](https://satag.vercel.app/admin/) *(credenciales reales de Supabase Auth + MFA)* |
 | **Investigación legal y matriz de cumplimiento** | ✅ Listo | [Doc investigación legal](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.md) · [PDF](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.pdf) |
 | **Firma electrónica — mecánica y valor legal** | ✅ Implementada (opción B: simple reforzada) | [Doc firma](Desarrollo/06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md) |
-| **Arquitectura técnica** | ✅ En producción (Next 16 + Supabase + Vercel) | [Doc](Desarrollo/03%20-%20Arquitectura%20Tecnica.md) |
-| **Seguridad, RLS y privacidad** | ✅ Implementada (roles finos + RLS `aal2` + MFA); aprobación institucional del aviso pendiente | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAG](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
+| **Arquitectura técnica** | ✅ Operando (Next 16 + Supabase + Vercel interino) | [Doc](Desarrollo/03%20-%20Arquitectura%20Tecnica.md) |
+| **Seguridad, RLS y privacidad** | 🟡 Implementada (roles finos + RLS `aal2` + MFA); pendientes: endurecer bloques 05/09/20 a rol admin, URLs firmadas de la firma y aprobación institucional del aviso | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAG](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
 | **Flujos del sistema** | ✅ En producción | [Doc](Desarrollo/05%20-%20Flujos%20del%20Sistema.md) |
 
 ### Seguimiento del cronograma
 
-> **Est.** = días estimados (tₑ) de la línea base. Las casillas reflejan el estado real a 20-jul-2026.
-> Los ítems **🆕** vienen de la junta de Dirección (03-jul); su desglose por horas (subactividades SA-01…18)
+> **Est.** = días estimados (tₑ) de la línea base. Las casillas reflejan el **estado auditado a
+> 28-jul-2026** (cotejo contra el código real, commit `7b729a3`).
+> Los ítems **🆕** vienen de la junta de Dirección (03-jul); su desglose por horas (subactividades SA-01…27)
 > está en [Plan/02 §2.5](Plan%20de%20Direccion/02%20-%20Alcance%2C%20WBS%20y%20Cronograma.md).
 
 **Diseño**
 - [x] Modelo de datos — *Est. 1 d* ✅
 - [x] Diseño UI/UX — *Est. 1 d* ✅ (prototipo navegable)
 - [x] Definición legal y privacidad — *Est. 1.5 d* · 🟡 borradores y criterios listos, falta aprobación Dirección/Legal
-  - [x] Aviso específico SATAG / anexo al aviso general IAQ (CC-09)
-  - [x] Aviso simplificado para formulario + texto de aceptación (CC-09)
+  - [x] Aviso específico SATAG / anexo al aviso general IAQ (CC-09) — publicado como v2 (bloque 22) y mostrado íntegro en el formulario
+  - [x] Aviso simplificado para formulario + texto de aceptación (CC-09) — implementado el 28-jul: aviso corto en el **primer paso** (art. 16 fr. II) + página pública [`/aviso-de-privacidad`](app/aviso-de-privacidad/page.tsx) enlazada desde la portada y el formulario; el integral se sigue aceptando con firma. *(Requiere aplicar el bloque SQL 44 para publicar el texto corto.)*
   - [x] Tratamiento de menores: firma de padre/madre/tutor (CC-11)
   - [x] Política mínima de conservación y ARCO operativo (CC-13)
 
 **Infraestructura y base**
-- [x] Infraestructura (hosting + despliegue) — *Est. 1 d* ✅ · **Vercel** con despliegue automático desde `main` (el plan original contemplaba subdominio + Cloudflare + GitHub Action; se adoptó Vercel)
+- [ ] Infraestructura (hosting + despliegue) — *Est. 1 d* · 🟡 **interina**: Vercel con despliegue automático desde `main`. Falta migrar al **subdominio institucional + Cloudflare** antes de la salida oficial
 - [x] Setup Supabase seguro (esquema/RLS/RPC/Storage/MFA) — *Est. 1.5 d* ✅ · bloques `00`→`42` aplicados en producción
   - [x] 🆕 `cat_modelos` + seed marcas/modelos · `modelo NOT NULL` (B4)
   - [x] Cobro en efectivo **con folio de recibo automático** (`SATAG-AAAA-######`, bloque 32) y **corte de caja** (`cortes_caja` + `pagos.corte_id`, bloque 42)
@@ -177,22 +182,25 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
   - [x] 🆕 Bandeja de solicitudes (atender cambio/baja → movimiento) — *Est. ~0.5 d* ✅ (B6)
 - [x] Administración (registro de pago) — *Est. 1 d* ✅ · conexión real probada
   - [x] 🆕 Cobrar también TAG propio + apartar TAG (B1) — CC-01 completo (apartar + usar el TAG apartado)
-  - [ ] 🆕 Validar tipo de usuario al cobrar (B5) — campos `tipo_validado*` en el esquema; la validación en el cobro aún no se conecta
+  - [ ] 🆕 Validar tipo de usuario al cobrar (B5) — campos `tipo_validado*` en el esquema; **verificado 28-jul: ningún código los escribe ni los lee**, `registrar_pago` no los toca
 - [x] Caja / POS (B3) — folios de recibo (bloque 32) + **corte de caja / finanzas** ✅ (bloque 42): pestaña Finanzas con caja actual, acumulados de venta, corte inmutable con conciliación de efectivo y cobros por corte
 - [x] 🆕 Buzón de notas sin folio (SC-003) — ✅ (bloques 34-41; público `/solicitudes` + vinculación/corroboración de TI)
 
 **Pruebas y cierre**
-- [ ] Pruebas (funcional + privacidad/RLS + firma + ARCO) — *Est. 3 d* · en curso (banco de QA `seed_tests_dev.sql`)
-- [x] Deploy a producción — *Est. 0.5 d* ✅ · Vercel desde `main` (despliegue continuo)
-- [ ] Manual + capacitación — *Est. 1.5 d*
+- [ ] Pruebas (funcional + privacidad/RLS + firma + ARCO) — *Est. 3 d* · en curso: banco de datos listo (`seed_tests_dev.sql`, 14 escenarios) + **plan y matriz de casos** en [`Pruebas/`](Pruebas/); falta ejecutar y registrar evidencia
+- [ ] Deploy a producción — *Est. 0.5 d* · 🟡 despliegue continuo operando en Vercel (interino); el deploy definitivo en el subdominio institucional sigue pendiente
+- [x] Manual + capacitación — *Est. 1.5 d* · borrador completo en [`Entregables/E8`](Entregables/E8%20-%20Manual%20y%20Capacitacion/E8%20-%20Indice.md): cuatro capítulos (usuario, acceso al panel, Administración, TI) verificados contra el sistema + guía para impartir la sesión. Falta impartirla y recabar la firma de asistencia
 - [ ] Aceptación + acta de cierre — *Est. 0.5 d*
 
-**Avance:** el **sistema está en producción** — autoservicio, panel Admin/TI con roles finos y MFA,
-cobro con folios, **corte de caja**, buzón SC-003 y apartar/usar TAG (bloques SQL `00`→`42`). Quedan las
-pruebas formales de cierre, el manual/capacitación, la aceptación y la aprobación institucional del
-aviso de privacidad; como pendiente menor, el reporte de registros incompletos (B2). El alcance real
-superó la línea base de ~22.5 días-persona por las features añadidas después de la junta (SC-003,
-folios automáticos, apartar/usar TAG, roles finos + MFA y el corte de caja); el cierre objetivo sigue
+**Avance (auditado 28-jul-2026):** el **sistema ya opera** — autoservicio, panel Admin/TI con roles
+finos y MFA, cobro con folios, **corte de caja**, buzón SC-003 y apartar/usar TAG (bloques SQL
+`00`→`42`). Quedan las pruebas formales de cierre, el manual/capacitación, la aceptación, la aprobación
+institucional del aviso y la **migración al subdominio institucional + Cloudflare**. Pendientes menores
+confirmados: reporte de registros incompletos (B2), validación del tipo de usuario al cobrar (B5),
+extracción de la firma a `lib/firma/` (B8), aviso simplificado y su página pública, firma visible en el
+panel con URL firmada, y endurecimiento de los bloques SQL 05/09/20 a rol admin. El alcance real superó
+la línea base de ~22.5 días-persona por las features añadidas después de la junta (SC-003, folios
+automáticos, apartar/usar TAG, roles finos + MFA y el corte de caja); el cierre objetivo sigue
 en **~03-ago-2026**.
 
 ---
