@@ -1,5 +1,5 @@
-// Capa de API real contra Supabase. Reemplaza gradualmente a lib/mock/api.ts.
-// Mantiene el MISMO contrato (shapes) que el mock para no tocar las pantallas.
+// Capa de API real contra Supabase para el alta publica.
+// Los shapes viven en lib/mock/types.ts, contrato compartido con las pantallas.
 import { supabase } from "./client";
 import type {
   ReglamentoVersion,
@@ -79,6 +79,27 @@ export async function getAvisoVigente(): Promise<AvisoVigente> {
     .filter(Boolean);
 
   return { version: data.version as number, urlPublica: data.url_publica as string | null, parrafos };
+}
+
+// Aviso simplificado (CC-09): el texto corto que la ley pide mostrar AL RECABAR
+// los datos, con enlace al integral. Va en consulta aparte y tolera su ausencia
+// a proposito: mientras el bloque 44 no este aplicado, la columna no existe y
+// PostgREST responde error. En ese caso el formulario sigue operando igual que
+// antes (solo con el aviso integral del paso 3), sin romperse.
+export async function getAvisoSimplificado(): Promise<string | null> {
+  try {
+    const { data, error } = await supabase
+      .from("aviso_versiones")
+      .select("contenido_simplificado")
+      .eq("vigente", true)
+      .limit(1)
+      .maybeSingle();
+    if (error || !data) return null;
+    const texto = data.contenido_simplificado as string | null;
+    return texto && texto.trim() ? texto : null;
+  } catch {
+    return null;
+  }
 }
 
 // ---- Alta publica (paso 3+4): sube firma a Storage y llama al RPC crear_registro ----

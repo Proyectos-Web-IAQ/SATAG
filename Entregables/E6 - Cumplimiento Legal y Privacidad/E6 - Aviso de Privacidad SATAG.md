@@ -137,7 +137,7 @@ Texto obligatorio para menores:
 | Domicilio legal exacto del IAQ | Capturado (Cerrada de la Asuncion #16, Col. Loma Dorada, Queretaro, Qro., C.P. 76060); Legal confirma |
 | Correo ARCO | `aviso.privacidad@asuncionqro.edu.mx` |
 | Persona/departamento responsable ARCO | Pendiente |
-| URL final del aviso integral | Pendiente |
+| URL final del aviso integral | Definida: ruta `/aviso-de-privacidad` (pagina publicada el 28-jul); el dominio se fija al migrar al subdominio institucional |
 | Plazo de conservacion de expedientes SATAG | Pendiente |
 | Region Supabase y DPA archivado | Pendiente |
 | Aprobacion de Direccion/Legal | Pendiente |

@@ -424,6 +424,23 @@ a { color: var(--primary-strong); }
 .modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
 .btn-danger { background: var(--rose) !important; }
 
+/* ---------- Aviso simplificado en el primer paso del alta ----------
+   Informativo y compacto: el consentimiento formal se recoge más adelante,
+   con el aviso integral y la firma. */
+.aviso-corto {
+  border: 1px solid var(--line); border-left: 4px solid var(--primary);
+  border-radius: var(--radius); background: var(--field-bg);
+  padding: 12px 14px; margin-bottom: 20px;
+  font-size: 0.82rem; color: var(--muted); line-height: 1.5;
+}
+.aviso-corto .panel-title { font-size: 0.9rem; color: var(--ink); margin-bottom: 6px; }
+.aviso-corto a { color: var(--primary-strong); font-weight: 700; }
+
+/* ---------- Aviso de privacidad como página pública ----------
+   A diferencia de .reglamento (caja con scroll dentro del wizard), aquí el
+   texto se lee completo: es la URL que la BD publica en aviso_versiones. */
+.aviso-publico { font-size: 0.95rem; color: var(--ink); line-height: 1.6; }
+
 /* ---------- Error de campo ---------- */
 .field-error { color: var(--rose); font-size: .8rem; font-weight: 600; margin: 4px 0 0; }
 .input.invalid, .select.invalid { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(235, 0, 40, .14); }

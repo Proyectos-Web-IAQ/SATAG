@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SignaturePad, { type FirmaTrazos } from "@/components/SignaturePad";
 import {
-  getMarcas, getModelos, getColores, getReglamentoVigente, getAvisoVigente, crearRegistro,
+  getMarcas, getModelos, getColores, getReglamentoVigente, getAvisoVigente, getAvisoSimplificado, crearRegistro,
 } from "@/lib/supabase/api";
 import type { AvisoVigente } from "@/lib/supabase/api";
 import type { TipoUsuario, GestionanteRelacion, CrearRegistroResultado, NombrePersona, ProcedenciaTag, ReglamentoVersion } from "@/lib/mock/types";
@@ -29,6 +29,7 @@ export default function RegistroWizard() {
   const [colores, setColores] = useState<string[]>([]);
   const [reglamento, setReglamento] = useState<ReglamentoVersion | null>(null);
   const [aviso, setAviso] = useState<AvisoVigente | null>(null);
+  const [avisoCorto, setAvisoCorto] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CrearRegistroResultado | null>(null);
@@ -71,6 +72,7 @@ export default function RegistroWizard() {
     getColores().then(setColores);
     getReglamentoVigente().then(setReglamento);
     getAvisoVigente().then(setAviso);
+    getAvisoSimplificado().then(setAvisoCorto);
   }, []);
 
   // Modelo depende de la marca. Al cambiar marca, se recargan los modelos y se
@@ -121,32 +123,32 @@ export default function RegistroWizard() {
   function validarPaso(s: number): Record<string, string> {
     const e: Record<string, string> = {};
     if (s === 0) {
-      if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = "Escribe el apellido paterno.";
-      if (!conductorApellidoMaterno.trim()) e.conductorApellidoMaterno = "Escribe el apellido materno.";
-      if (!conductorNombre.trim()) e.conductorNombre = "Escribe el nombre o nombres.";
+      if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = "Escriba el apellido paterno.";
+      if (!conductorApellidoMaterno.trim()) e.conductorApellidoMaterno = "Escriba el apellido materno.";
+      if (!conductorNombre.trim()) e.conductorNombre = "Escriba el nombre o nombres.";
       if (hayGestionante) {
-        if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = "Escribe el apellido paterno.";
-        if (!gestionanteApellidoMaterno.trim()) e.gestionanteApellidoMaterno = "Escribe el apellido materno.";
-        if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escribe el nombre o nombres.";
+        if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = "Escriba el apellido paterno.";
+        if (!gestionanteApellidoMaterno.trim()) e.gestionanteApellidoMaterno = "Escriba el apellido materno.";
+        if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escriba el nombre o nombres.";
         if (!gestionanteRelacion) {
           e.gestionanteRelacion = esMenor
-            ? "Indica si es padre, madre o tutor del menor."
-            : "Indica la relación del gestionante.";
+            ? "Indique si es padre, madre o tutor del menor."
+            : "Indique la relación del gestionante.";
         }
       }
     }
     if (s === 1) {
-      if (!marcaFinal.trim()) e.marca = "Selecciona o escribe la marca.";
-      if (!modeloFinal.trim()) e.modelo = "Selecciona o escribe el modelo.";
-      if (!colorFinal.trim()) e.color = "Selecciona o escribe el color.";
+      if (!marcaFinal.trim()) e.marca = "Seleccione o escriba la marca.";
+      if (!modeloFinal.trim()) e.modelo = "Seleccione o escriba el modelo.";
+      if (!colorFinal.trim()) e.color = "Seleccione o escriba el color.";
       if (!sinPlacas) {
-        if (!placas.trim()) e.placas = "Captura las placas o marca «sin placas».";
+        if (!placas.trim()) e.placas = "Capture las placas o marque «sin placas».";
         else if (!/^[A-Z0-9]{5,8}$/.test(placas.trim())) e.placas = "Formato de placa no válido (5–8 letras o números).";
       }
     }
-    if (s === 2 && !aceptaPrivacidad) e.aceptaPrivacidad = "Debes aceptar el aviso de privacidad para continuar.";
-    if (s === 3 && !acepta) e.acepta = "Debes aceptar el reglamento para continuar.";
-    if (s === 4 && !firma) e.firma = "Firma en el recuadro para continuar.";
+    if (s === 2 && !aceptaPrivacidad) e.aceptaPrivacidad = "Debe aceptar el aviso de privacidad para continuar.";
+    if (s === 3 && !acepta) e.acepta = "Debe aceptar el reglamento para continuar.";
+    if (s === 4 && !firma) e.firma = "Firme en el recuadro para continuar.";
     return e;
   }
 
@@ -219,6 +221,20 @@ export default function RegistroWizard() {
         {step === 0 && (
           <>
             <header className="survey-header"><h1>Datos del solicitante</h1></header>
+            {/* Aviso simplificado (CC-09): la ley pide informar al momento de
+                recabar los datos, no después. El aviso integral se acepta con
+                firma en el paso 3. */}
+            {avisoCorto && (
+              <div className="aviso-corto">
+                <p className="panel-title" style={{ marginTop: 0 }}>Aviso de privacidad</p>
+                {avisoCorto.split(/\r?\n/).map((p) => p.trim()).filter(Boolean).map((p, i) => (
+                  <p key={i} style={{ margin: "0 0 8px" }}>{p}</p>
+                ))}
+                <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
+                  Consultar el aviso de privacidad integral SATAG
+                </a>
+              </div>
+            )}
             <div className="field">
               <span>Nombre(s) del conductor</span>
               <input className={`input ${errores.conductorNombre ? "invalid" : ""}`} value={conductorNombre}
@@ -291,7 +307,7 @@ export default function RegistroWizard() {
                   <span>{esMenor ? "Relación con el menor" : "Relación con el conductor"}</span>
                   <select className={`select ${errores.gestionanteRelacion ? "invalid" : ""}`} value={gestionanteRelacion}
                     onChange={(e) => setGestionanteRelacion(e.target.value as GestionanteRelacion | "")}>
-                    <option value="">Selecciona…</option>
+                    <option value="">Seleccione…</option>
                     {relacionesGestionante.map((r) => (
                       <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
                     ))}
@@ -322,7 +338,7 @@ export default function RegistroWizard() {
               <div className="field">
                 <span>Marca</span>
                 <select className={`select ${errores.marca ? "invalid" : ""}`} value={marca} onChange={(e) => setMarca(e.target.value)}>
-                  <option value="">Selecciona…</option>
+                  <option value="">Seleccione…</option>
                   {marcas.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
                 {marca === "Otro" && (
@@ -334,12 +350,12 @@ export default function RegistroWizard() {
                 <span>Modelo</span>
                 {marca === "Otro" ? (
                   <input className={`input ${errores.modelo ? "invalid" : ""}`} value={modeloOtro}
-                    onChange={(e) => setModeloOtro(e.target.value)} placeholder="Escribe el modelo" />
+                    onChange={(e) => setModeloOtro(e.target.value)} placeholder="Escriba el modelo" />
                 ) : (
                   <>
                     <select className={`select ${errores.modelo ? "invalid" : ""}`} value={modelo}
                       onChange={(e) => setModelo(e.target.value)} disabled={!marca}>
-                      <option value="">{marca ? "Selecciona…" : "Elige la marca primero"}</option>
+                      <option value="">{marca ? "Seleccione…" : "Elija la marca primero"}</option>
                       {modelos.map((m) => <option key={m} value={m}>{m}</option>)}
                     </select>
                     {modelo === "Otro" && (
@@ -354,7 +370,7 @@ export default function RegistroWizard() {
               <div className="field">
                 <span>Color</span>
                 <select className={`select ${errores.color ? "invalid" : ""}`} value={color} onChange={(e) => setColor(e.target.value)}>
-                  <option value="">Selecciona…</option>
+                  <option value="">Seleccione…</option>
                   {colores.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 {color === "Otro" && (
@@ -382,7 +398,7 @@ export default function RegistroWizard() {
                   onClick={() => setProcedenciaTag("propio")}>Ya tengo TAG propio</button>
               </div>
               {procedenciaTag === "propio" && (
-                <p className="hint">El registro y la activación de un TAG propio tienen el mismo costo ($100); llévalo el día de la instalación.</p>
+                <p className="hint">El registro y la activación de un TAG propio tienen el mismo costo ($100); llévelo el día de la instalación.</p>
               )}
             </div>
           </>
@@ -392,7 +408,7 @@ export default function RegistroWizard() {
         {step === 2 && (
           <>
             <header className="survey-header"><h1>Aviso de privacidad</h1></header>
-            <p className="lead">Lee el aviso completo. La casilla se habilita al llegar al final.</p>
+            <p className="lead">Lea el aviso completo. La casilla se habilita al llegar al final.</p>
             <div
               className="reglamento"
               ref={avisoRef}
@@ -402,7 +418,11 @@ export default function RegistroWizard() {
                 <p key={i} style={{ margin: "0 0 10px" }}>{p}</p>
               ))}
             </div>
-            {!avisoLeido && <p className="hint" style={{ marginTop: 8 }}>Desplázate hasta el final para poder aceptar.</p>}
+            {!avisoLeido && <p className="hint" style={{ marginTop: 8 }}>Desplácese hasta el final para poder aceptar.</p>}
+            <p className="hint" style={{ marginTop: 8 }}>
+              También puede consultarlo en{" "}
+              <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">una página aparte</a>.
+            </p>
             <label className="check" style={{ marginTop: 16 }}>
               <input type="checkbox" checked={aceptaPrivacidad} disabled={!avisoLeido}
                 onChange={(e) => setAceptaPrivacidad(e.target.checked)} />
@@ -416,7 +436,7 @@ export default function RegistroWizard() {
         {step === 3 && (
           <>
             <header className="survey-header"><h1>Reglamento de acceso</h1></header>
-            <p className="lead">Lee el reglamento completo. La casilla se habilita al llegar a la cláusula final.</p>
+            <p className="lead">Lea el reglamento completo. La casilla se habilita al llegar a la cláusula final.</p>
             <div
               className="reglamento"
               ref={reglamentoRef}
@@ -454,11 +474,11 @@ export default function RegistroWizard() {
             <img className="brand-sello" src="/sello-asuncion.png" alt="" />
             <span className="badge">Pendiente</span>
             <header className="survey-header" style={{ marginTop: 12 }}><h1>¡Registro recibido!</h1></header>
-            <p className="lead">Tu folio de seguimiento es:</p>
+            <p className="lead">Su folio de seguimiento es:</p>
             <div className="folio">{resultado.folio}</div>
             <p style={{ marginTop: 16, color: "var(--ink)" }}>
-              Preséntate en administración para <strong>asignación de estacionamiento</strong> y el
-              <strong> pago del TAG ($100, efectivo)</strong>. TI instalará y activará tu TAG.
+              Preséntese en administración para <strong>asignación de estacionamiento</strong> y el
+              <strong> pago del TAG ($100, efectivo)</strong>. TI instalará y activará su TAG.
             </p>
             <div className="btn-row no-print" style={{ justifyContent: "center", gap: 12, marginTop: 16 }}>
               <button type="button" className="ghost-action" onClick={() => window.print()}>Imprimir / Descargar</button>
