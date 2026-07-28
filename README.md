@@ -130,7 +130,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 | **Investigación legal y matriz de cumplimiento** | ✅ Listo | [Doc investigación legal](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.md) · [PDF](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.pdf) |
 | **Firma electrónica — mecánica y valor legal** | ✅ Implementada (opción B: simple reforzada) | [Doc firma](Desarrollo/06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md) |
 | **Arquitectura técnica** | ✅ Operando (Next 16 + Supabase + Vercel interino) | [Doc](Desarrollo/03%20-%20Arquitectura%20Tecnica.md) |
-| **Seguridad, RLS y privacidad** | 🟡 Implementada (roles finos + RLS `aal2` + MFA); pendientes: endurecer bloques 05/09/20 a rol admin, URLs firmadas de la firma y aprobación institucional del aviso | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAG](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
+| **Seguridad, RLS y privacidad** | ✅ Implementada (roles finos + RLS `aal2` + MFA + escritura de catálogos/documentos/firmas restringida por rol, bloque 43); pendientes: URLs firmadas cuando el panel muestre la firma y aprobación institucional del aviso | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAG](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
 | **Flujos del sistema** | ✅ En producción | [Doc](Desarrollo/05%20-%20Flujos%20del%20Sistema.md) |
 
 ### Seguimiento del cronograma
@@ -145,7 +145,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 - [x] Diseño UI/UX — *Est. 1 d* ✅ (prototipo navegable)
 - [x] Definición legal y privacidad — *Est. 1.5 d* · 🟡 borradores y criterios listos, falta aprobación Dirección/Legal
   - [x] Aviso específico SATAG / anexo al aviso general IAQ (CC-09) — publicado como v2 (bloque 22) y mostrado íntegro en el formulario
-  - [x] Aviso simplificado para formulario + texto de aceptación (CC-09) — implementado el 28-jul: aviso corto en el **primer paso** (art. 16 fr. II) + página pública [`/aviso-de-privacidad`](app/aviso-de-privacidad/page.tsx) enlazada desde la portada y el formulario; el integral se sigue aceptando con firma. *(Requiere aplicar el bloque SQL 44 para publicar el texto corto.)*
+  - [x] Aviso simplificado para formulario + texto de aceptación (CC-09) — en operación desde el 28-jul (bloque 44 aplicado): aviso corto en el **primer paso** (art. 16 fr. II) + página pública [`/aviso-de-privacidad`](app/aviso-de-privacidad/page.tsx) enlazada desde la portada y el formulario; el integral se sigue aceptando con firma
   - [x] Tratamiento de menores: firma de padre/madre/tutor (CC-11)
   - [x] Política mínima de conservación y ARCO operativo (CC-13)
 

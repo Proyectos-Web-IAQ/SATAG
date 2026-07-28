@@ -22,7 +22,7 @@
 | Entregable | Ubicacion | Estado |
 |---|---|---|
 | Aviso integral SATAG | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Publicado como v2 vigente en la BD (bloque 22); pendiente la aprobacion formal |
-| Aviso simplificado | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Implementado en el primer paso del formulario (28-jul); el texto se publica con el bloque 44, **pendiente de aplicar en la base** |
+| Aviso simplificado | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Publicado y en operacion (28-jul): bloque 44 aplicado; se muestra en el primer paso del formulario, con enlace al integral |
 | Texto de aceptacion y firma | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Implementado en el formulario |
 | Reglas tecnicas de privacidad | `Desarrollo/04 - Seguridad, RLS y Privacidad.md` | Implementado en produccion |
 | Checklist legal/privacidad | Este documento | Listo |
@@ -33,7 +33,7 @@
 
 ### Aviso y consentimiento
 
-- [x] Mostrar aviso simplificado antes de capturar datos. — *Resuelto el 28-jul:* el **primer paso** del formulario muestra el aviso simplificado (art. 16 fr. II) con enlace al integral, y el **aviso integral completo** se sigue leyendo y aceptando en el paso posterior, con avance bloqueado hasta el final. Requiere aplicar el bloque 44 para que el texto se publique; mientras tanto el formulario opera sin el aviso corto, sin error.
+- [x] Mostrar aviso simplificado antes de capturar datos. — *Resuelto el 28-jul (bloque 44 aplicado):* el **primer paso** del formulario muestra el aviso simplificado (art. 16 fr. II) con enlace al integral, y el **aviso integral completo** se sigue leyendo y aceptando en el paso posterior, con avance bloqueado hasta el final.
 - [x] Enlazar aviso integral SATAG. — *Completado el 28-jul:* existe la pagina publica `/aviso-de-privacidad`, que es la ruta que la base ya registraba en `url_publica`; enlazada desde la portada y desde el formulario.
 - [x] Usar casilla no premarcada de aceptacion.
 - [x] Guardar version exacta del aviso aceptado.

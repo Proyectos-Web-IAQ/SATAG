@@ -35,8 +35,11 @@ La prioridad inmediata es el **cierre del proyecto**, en este orden:
 
 Pendientes menores confirmados por la auditoria del 28-jul: reporte de registros incompletos (B2),
 validacion del tipo de usuario al cobrar (B5, columnas creadas pero sin uso), extraccion de la firma a
-`lib/firma/` (B8), pagina publica del aviso (SC-007), firma visible en el panel con URL firmada
-(SC-008) y endurecimiento de los bloques 05/09/20 a rol admin (SC-009).
+`lib/firma/` (B8) y firma visible en el panel con URL firmada (SC-008).
+
+Resueltos el 28-jul: pagina publica del aviso y aviso simplificado (SC-007, bloque 44) y
+endurecimiento por rol de catalogos, documentos y firmas (SC-009, bloque 43). Ambos bloques ya estan
+aplicados en la base.
 
 ## 3. Tareas inmediatas
 
