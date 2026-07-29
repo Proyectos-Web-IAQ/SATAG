@@ -73,7 +73,7 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 
 > ### Estado de los riesgos a 22-jul-2026
 >
-> Verificado contra el sistema en producción (bloques SQL `00`→`42`):
+> Verificado contra el sistema desplegado en el entorno de trabajo (bloques SQL `00`→`42` aplicados en la base de trabajo):
 >
 > - **Mitigados y verificados:** **R1** (RLS estricta con `aal2` + roles finos, escrituras solo por RPC,
 >   Storage privado, MFA obligatorio), **R2** (firma reforzada: hash SHA-256 generado en la base,
@@ -86,8 +86,8 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 > - **Vigentes:** **R4** (las colas de pendientes existen, pero el *reporte de incompletos* no se
 >   implementó), **R7** (falta verificar y documentar la política de respaldos), **R12** (diferido).
 > - ⚠️ **Matiz de cumplimiento:** R1 y R9 están mitigados en lo **técnico**, pero la **aprobación
->   institucional del aviso sigue pendiente** mientras el sistema ya opera en producción con usuarios
->   reales (ver Checklist E6 §6).
+>   institucional del aviso sigue pendiente** y es requisito de la liberación; hoy el sistema está
+>   desplegado en el entorno de trabajo, sin usuarios ni datos reales (ver Checklist E6 §6).
 
 *(R5 hosting/infra "no definido" del Charter quedó **cerrado**: se reutiliza la infraestructura de SEVAD.)*
 

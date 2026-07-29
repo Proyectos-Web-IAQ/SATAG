@@ -8,6 +8,7 @@
 | **Elaboró** | Gerardo Sánchez — Soporte TI Jr. |
 | **Revisa y aprueba** | Miguel Ángel González Pacheco — Encargado de Sistemas Computacionales |
 | **Estado** | Borrador para revisión · pendiente de impartir la capacitación |
+| **Estado del sistema** | Funcionalmente completo y desplegado en el entorno de trabajo, pendiente de liberación: todavía sin usuarios ni datos reales de la comunidad escolar |
 
 ---
 
@@ -34,8 +35,8 @@ personal verá en pantalla.
 - **Para capacitar:** siga la Guía de Capacitación; los capítulos son el material de consulta
   posterior, no la presentación.
 - **Antes de imprimir:** confirme con el Departamento de TI la dirección vigente del sistema. Los
-  documentos no la incluyen a propósito, porque el sitio opera hoy en un hosting temporal y cambiará
-  al migrar al subdominio institucional.
+  documentos no la incluyen a propósito, porque el sitio está hoy publicado en el entorno de trabajo
+  (alojamiento temporal) y cambiará al migrar al subdominio institucional.
 
 ## Advertencias que los cuatro capítulos recalcan
 
@@ -55,4 +56,4 @@ Se repiten aquí porque son las que cuestan dinero o tiempo cuando se pasan por 
 
 | Versión | Fecha | Cambio |
 |---|---|---|
-| v1.0 | 28-jul-2026 | Versión inicial de los cinco documentos, verificada contra el sistema en operación |
+| v1.0 | 28-jul-2026 | Versión inicial de los cinco documentos, verificada contra el sistema desplegado en el entorno de trabajo |

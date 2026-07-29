@@ -184,12 +184,12 @@ El orden importa: cada documento alimenta al siguiente
    González Pacheco (Encargado de Sistemas Computacionales). Área de TI = 4 personas.
 4. **Stack / hosting:** reutilizar la base de **SEVAD** (Next.js estático + Supabase + GoDaddy/
    Cloudflare + GitHub Action). Sin gasto extra (infra ya contratada).
-   *(Actualización 20-jul-2026: se reutilizó el stack, pero **no** el despliegue. Producción corre en
-   **Vercel desde `main`**, sin GitHub Action ni FTPS.)*
+   *(Actualización 20-jul-2026: se reutilizó el stack, pero **no** el despliegue. El entorno de trabajo
+   corre en **Vercel desde `main`**, sin GitHub Action ni FTPS.)*
 5. **Firma de aceptación:** el IAQ pide **firma manuscrita digital**.
 6. **Pago:** $100 MXN por TAG, **solo efectivo**, presencial; el sistema **registra** el pago (no lo
    procesa en línea). *(Desde el 15-jul cada pago emite un folio de recibo automático; el corte de caja
    sigue pendiente.)*
 7. **Fecha meta:** **24-jul-2026** (validada).
    *(Actualización: la meta se recalculó a 28-jul y luego a **~03-ago-2026** por el alcance añadido —ver
-   Doc 2 §2.5—. A 20-jul el núcleo ya opera en producción; ver [Doc 5](05%20-%20Guia%20de%20Sesiones%20y%20Ruta%20Operativa.md).)*
+   Doc 2 §2.5—. A 20-jul el núcleo ya está desplegado en el entorno de trabajo (Vercel); ver [Doc 5](05%20-%20Guia%20de%20Sesiones%20y%20Ruta%20Operativa.md).)*

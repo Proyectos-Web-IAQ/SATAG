@@ -168,10 +168,10 @@ interface FirmaService {
 sistema. La estructura y la frontera se detallan en
 [`03 - Arquitectura Técnica`](03%20-%20Arquitectura%20Tecnica.md).
 
-> **Estado real (20-jul-2026):** el módulo **aún no se ha extraído**. La firma funciona en producción,
-> pero repartida entre `components/SignaturePad.tsx` (captura en canvas → PNG + trazos, sin
-> dependencias) y `lib/supabase/api.ts` (subida al bucket privado y cálculo del hash del PNG). No
-> existe todavía `lib/firma/` ni `packages/firma/`.
+> **Estado real (20-jul-2026):** el módulo **aún no se ha extraído**. La firma funciona en el entorno
+> de trabajo (Vercel), pero repartida entre `components/SignaturePad.tsx` (captura en canvas → PNG +
+> trazos, sin dependencias) y `lib/supabase/api.ts` (subida al bucket privado y cálculo del hash del
+> PNG). No existe todavía `lib/firma/` ni `packages/firma/`.
 
 **Persistencia (SATAG).** `aceptaciones` guarda la firma (`firma_url`, `firma_imagen_sha256`,
 `firma_trazos`, `firmante_nombre`, `sello_tiempo`) + la version del reglamento, la version del aviso,

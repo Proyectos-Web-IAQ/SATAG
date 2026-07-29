@@ -4,6 +4,8 @@
 > **Institución:** Instituto Asunción de Querétaro, A.C.
 > **Módulo:** vista **"TI"** del panel de gestión.
 >
+> **Nota sobre el estado del sistema.** SATAG está funcionalmente completo y desplegado en el entorno de trabajo, pendiente de liberación: todavía no hay usuarios ni datos reales de la comunidad escolar. Los expedientes que se atiendan en esta etapa corresponden a pruebas y capacitación.
+>
 > **Nota sobre la dirección del sistema.** La dirección de internet del panel se encuentra en una etapa temporal y migrará al subdominio institucional. Por esa razón este manual no incluye ninguna dirección escrita: en el texto se le llama siempre "la dirección del sistema". **La dirección vigente se la proporciona el Departamento de TI**; consérvela en los favoritos del equipo o del celular de caseta y actualícela cuando TI avise del cambio.
 
 ---

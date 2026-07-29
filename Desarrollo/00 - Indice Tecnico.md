@@ -4,17 +4,17 @@
 > Esta carpeta contiene el diseño técnico que traduce el Plan de Dirección en decisiones implementables.
 
 > **Fuente de verdad del esquema aplicado:** los bloques SQL numerados de
-> [`supabase/sql/`](../supabase/sql/README.md) (`00`→`42`), que es lo que corre en producción. Estos
+> [`supabase/sql/`](../supabase/sql/README.md) (`00`→`42`), que es lo que está aplicado en la base de trabajo. Estos
 > documentos describen el diseño y su estado; ante cualquier duda sobre una tabla, columna o RPC, manda
 > el SQL aplicado. (`supabase/schema.sql` es un respaldo histórico atrasado.)
 
 | Documento | Fuente de verdad para | Estado |
 |---|---|---|
-| [`01 - Modelo de Datos y Base de Datos.md`](01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md) | Datos, modelo relacional, tablas, reglas de BD, RLS, RPC y Supabase | ✅ En producción |
+| [`01 - Modelo de Datos y Base de Datos.md`](01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md) | Datos, modelo relacional, tablas, reglas de BD, RLS, RPC y Supabase | ✅ Aplicado en la base de trabajo |
 | [`02 - Modelo de Dominio POO.md`](02%20-%20Modelo%20de%20Dominio%20POO.md) | Clases, objetos de dominio, comportamiento y mapeo clase-tabla | ✅ Al día |
-| [`03 - Arquitectura Tecnica.md`](03%20-%20Arquitectura%20Tecnica.md) | Next.js estático, Supabase, hosting, deploy y estructura de código | ✅ En producción (*as-built*) |
+| [`03 - Arquitectura Tecnica.md`](03%20-%20Arquitectura%20Tecnica.md) | Next.js estático, Supabase, hosting, deploy y estructura de código | ✅ Desplegado en el entorno de trabajo (*as-built*) |
 | [`04 - Seguridad, RLS y Privacidad.md`](04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) | Políticas RLS, roles, Storage privado, datos personales y LFPDPPP | ✅ Implementado; falta validación Dirección/Legal |
-| [`05 - Flujos del Sistema.md`](05%20-%20Flujos%20del%20Sistema.md) | Autoservicio, administración, instalación TI, baja, reposición, buzón de notas y tag propio | ✅ En producción (*as-built*) |
+| [`05 - Flujos del Sistema.md`](05%20-%20Flujos%20del%20Sistema.md) | Autoservicio, administración, instalación TI, baja, reposición, buzón de notas y tag propio | ✅ Desplegado en el entorno de trabajo (*as-built*) |
 | [`06 - Firma Electronica (mecanica y valor legal).md`](06%20-%20Firma%20Electronica%20(mecanica%20y%20valor%20legal).md) | Mecánica de la firma simple reforzada, valor legal y módulo reutilizable | ✅ Implementada (el módulo aún no se extrae a su propio paquete) |
 | [`07 - MFA (Autenticacion Multifactor).md`](07%20-%20MFA%20(Autenticacion%20Multifactor).md) | MFA del panel: TOTP, forzado por RLS `aal2` y runbook de reset | ✅ Implementado |
 

@@ -4,6 +4,8 @@
 > **Institución:** Instituto Asunción de Querétaro, A.C.
 > **Para quién es esta guía:** para la persona que imparte la capacitación (responsable de capacitación, jefatura de área o el propio Departamento de TI). No sustituye a los manuales: los usa como material de apoyo.
 >
+> **Nota sobre el estado del sistema.** SATAG está funcionalmente completo y desplegado en el entorno de trabajo, pendiente de liberación: todavía no hay usuarios ni datos reales de la comunidad escolar. Las sesiones que describe esta guía forman parte de esa etapa de pruebas y capacitación, previa a la puesta en marcha.
+>
 > **Nota sobre la dirección del sistema.** La dirección de internet de SATAG se encuentra hoy en una etapa temporal y migrará al subdominio institucional. Por esa razón esta guía no incluye ninguna dirección escrita: en el texto se le llama siempre "la dirección del sistema". **La dirección vigente se la proporciona el Departamento de TI**; solicítela antes de la sesión y verifique que abre correctamente en el equipo donde va a proyectar.
 
 ---

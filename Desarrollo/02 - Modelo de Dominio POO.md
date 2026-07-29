@@ -2,7 +2,7 @@
 
 > **Desarrollo - Fase 1 (Diseno)**.
 > **Ultima actualizacion:** 22-jul-2026.
-> **Version:** v0.7 - alineada con el esquema aplicado en produccion.
+> **Version:** v0.7 - alineada con el esquema aplicado en la base de trabajo.
 
 Este documento describe las clases de dominio que consumen el modelo relacional de [`01 - Modelo de Datos y Base de Datos.md`](01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md). La persistencia canonica vive en los bloques atomicos [`supabase/sql/`](../supabase/sql/README.md) (`00`->`42`), no en el respaldo `schema.sql`.
 

@@ -1,6 +1,6 @@
 # Guia de Sesiones y Ruta Operativa - SATAG
 
-> **Ultima actualizacion:** 28/07/2026 (auditoria de ejecucion contra el codigo real, commit `7b729a3`).
+> **Ultima actualizacion:** 29/07/2026 (cierre del desarrollo: bloques 45-47 y correccion del estado real del sistema).
 > **Horario real de trabajo:** 09:00 a 14:00.
 > **Uso:** abrir este documento al inicio de cada sesion para saber que revisar, que cerrar y con que continuar.
 
@@ -16,9 +16,20 @@ Al iniciar una sesion de trabajo:
 
 ## 2. Prioridad actual
 
-El nucleo del sistema ya esta **en produccion**: autoservicio con firma reforzada, panel Admin/TI con roles finos y MFA, cobro con folios de recibo automaticos, buzon de notas SC-003 y apartar/usar TAG (bloques SQL `00`->`42`, deploy en Vercel desde `main`).
+> **Estado real del sistema.** SATAG esta **en desarrollo, no liberado**. Funcionalmente esta
+> completo y desplegado en el sitio de Vercel, que se usa como **entorno de trabajo y demostracion**:
+> no hay usuarios ni datos reales de la comunidad escolar. La liberacion ocurre despues de las
+> pruebas, de la migracion al subdominio institucional y de la aceptacion. Los documentos que decian
+> "en produccion" se corrigieron el 29-jul: es lo que Direccion va a leer para aceptar el proyecto y
+> lo que el acta de cierre compara contra lo planeado.
 
-El **corte de caja / finanzas** (bloque 42 + pestana Finanzas) ya esta implementado: Admin ve la caja
+**El desarrollo esta terminado y la funcionalidad queda congelada.** Ya funcionan: autoservicio con
+firma reforzada, panel Admin/TI/Finanzas/Consulta con roles finos y MFA, cobro con folios de recibo
+automaticos, corte de caja, buzon de notas SC-003, apartar/usar TAG, reporte de expedientes
+incompletos, validacion del tipo de usuario al cobrar y firma auditable desde el panel
+(bloques SQL `00`->`47`, deploy automatico en Vercel desde `main`).
+
+El **corte de caja / finanzas** (bloque 42 + pestana Finanzas) esta implementado: Admin ve la caja
 actual y lo vendido, cierra el corte conciliando el efectivo contado, y cada corte queda inmutable con
 la identidad de quien lo hizo.
 
@@ -33,13 +44,15 @@ La prioridad inmediata es el **cierre del proyecto**, en este orden:
 4. **Migracion del hosting** a subdominio institucional + Cloudflare antes de la salida oficial
    (SC-012): Vercel es **interino**, no definitivo.
 
-Pendientes menores confirmados por la auditoria del 28-jul: reporte de registros incompletos (B2),
-validacion del tipo de usuario al cobrar (B5, columnas creadas pero sin uso), extraccion de la firma a
-`lib/firma/` (B8) y firma visible en el panel con URL firmada (SC-008).
+Resueltos el 29-jul (cierran E5 y CC-12): reporte de registros incompletos (B2/CC-02, bloque 45),
+validacion del tipo de usuario al cobrar (B5/CC-05, bloque 46) y firma visible en el panel con URL
+firmada temporal (SC-008, bloque 47).
 
 Resueltos el 28-jul: pagina publica del aviso y aviso simplificado (SC-007, bloque 44) y
-endurecimiento por rol de catalogos, documentos y firmas (SC-009, bloque 43). Ambos bloques ya estan
-aplicados en la base.
+endurecimiento por rol de catalogos, documentos y firmas (SC-009, bloque 43).
+
+Unico pendiente menor que queda: extraccion de la firma a `lib/firma/` (B8, va el 31-jul y no bloquea
+nada). El rate limiting de los RPC publicos sigue como riesgo aceptado y documentado (caso `P-11`).
 
 ## 3. Tareas inmediatas
 
@@ -65,33 +78,33 @@ Decision registrada:
 
 - El cobro emite un **folio de recibo automatico** (`SATAG-AAAA-######`, bloque 32) y existe **corte de caja** con conciliacion del efectivo (bloque 42). Falta confirmar el tratamiento fiscal/contable con Administracion.
 
-### 3.2 E1 - Modelo de datos + BD  — ✅ en produccion
+### 3.2 E1 - Modelo de datos + BD  — ✅ completo
 
-Aplicado (bloques `00`->`42`): `aviso_versiones` y referencia de version en `aceptaciones`; hash SHA-256 del paquete firmado + trazos vectoriales; gestionante/tutor para menores; tabla `solicitudes` (tipos `actualizacion`/`baja`) + buzon de notas (`nota`); estado `bloqueado`; `tag_apartado`/`tipo_validado`; catalogo de modelos con seed.
+Aplicado en la base de trabajo (bloques `00`->`47`): `aviso_versiones` y referencia de version en `aceptaciones`; hash SHA-256 del paquete firmado + trazos vectoriales; gestionante/tutor para menores; tabla `solicitudes` (tipos `actualizacion`/`baja`) + buzon de notas (`nota`); estado `bloqueado`; `tag_apartado`/`tipo_validado`; catalogo de modelos con seed.
 
-Pendiente:
+Cerrado el 29-jul:
 
-- **Vista de incompletos** (`v_registros_incompletos`, B2): documentada como cambio del 03-jul pero **aun no implementada** (confirmado el 28-jul: sin coincidencias en SQL ni en el codigo).
-- **Validacion del tipo de usuario al cobrar** (B5): las columnas `tipo_validado` / `_por` / `_en` existen en `12_registros.sql` pero **nada las escribe ni las lee**; `registrar_pago` no las toca.
+- **Vista de incompletos** (`v_registros_incompletos`, B2), bloque 45. Siete motivos en tres grupos: integridad (estados que los RPC no pueden producir), faltante operativo (sin placas con el TAG ya instalado) y atorados a los 7 dias naturales (sin pago desde el alta, pagado sin instalar). Excluye `estado = 'baja'`. `security_invoker = true`: hereda la RLS del panel en vez de abrir una segunda puerta.
+- **Validacion del tipo de usuario al cobrar** (B5), bloque 46. `registrar_pago` gana `p_tipo_usuario` **obligatorio** y sella `tipo_validado` / `_por` / `_en`. Si el tipo confirmado difiere del declarado en el alta, corrige el expediente y deja movimiento `cambio` en la bitacora. Un menor de edad queda fijo en `alumno` (coherencia con CC-11).
 
 Ya aplicado (no confundir con pendiente): los campos de **caja/corte** (`cortes_caja`, `pagos.corte_id`) entraron con el bloque 42 (ver 3.5) y los folios de recibo con el bloque 32.
 
-### 3.3 E7 - Supabase seguro  — ✅ en produccion
+### 3.3 E7 - Supabase seguro  — ✅ implementado
 
-Aplicado y verificado con usuarios reales:
+Aplicado y verificado con cuentas reales de Supabase Auth (personal del instituto):
 
 - Esquema aplicado por bloques atomicos (ver runbook `supabase/sql/README.md`, con PASO 0 de roles).
 - RLS activa: `anon` no lee PII; el panel exige `aal2` (MFA) + rol.
-- Bucket privado `firmas` (subida anon, sin lectura publica).
+- Bucket privado `firmas` (subida anon, sin lectura publica). Desde el bloque 47 el panel puede ver la firma con **URL firmada de 60 segundos**; el bucket sigue privado y `consulta` no accede.
 - Auth + MFA obligatorio para el panel.
 
 Pendiente: documentar region del proyecto y archivar DPA/terminos de Supabase.
 
-### 3.4 E2 - Formulario de autoservicio  — ✅ en produccion
+### 3.4 E2 - Formulario de autoservicio  — ✅ implementado
 
 Implementado (`app/registro`): aviso integral con casilla no premarcada, captura de usuario/vehiculo con dropdown marca->modelo, validacion de menor/tutor, reglamento versionado, firma simple reforzada, guardado por RPC `crear_registro` y comprobante. La solicitud de cambio/baja y el buzon de notas sin folio viven en `/solicitudes`.
 
-### 3.5 Corte de caja / finanzas  — ✅ en produccion
+### 3.5 Corte de caja / finanzas  — ✅ implementado
 
 Pestana **Finanzas** (admin/super, bloque 42). Sella los pagos por corte (`pagos.corte_id`) contra la
 tabla `cortes_caja` inmutable, concilia el efectivo contado vs el esperado y reestablece la caja. El
@@ -158,13 +171,13 @@ Gerardo/TI puede preparar el borrador, pero no debe publicarlo como definitivo s
 
 | Entregable | Estado actual | Continuacion |
 |---|---|---|
-| E1 Modelo de datos + BD | ✅ En produccion (bloques `00`->`44`) | Falta la vista de incompletos (B2) y conectar la validacion de tipo al cobrar (B5) |
+| E1 Modelo de datos + BD | ✅ Completo (bloques `00`->`47` aplicados en la base de trabajo) | — |
 | E6 Cumplimiento legal y privacidad | 🟡 Implementado; aprobacion pendiente | Aprobacion institucional del aviso + pendientes ARCO/conservacion |
-| E7 Infraestructura y Supabase seguro | 🟡 Supabase en produccion y endurecido (bloque 43); hosting **interino** en Vercel | Migrar al subdominio institucional + Cloudflare (SC-012); documentar region + archivar DPA |
-| E2 Formulario de autoservicio | ✅ En produccion | — |
-| E5 Panel administrativo | ✅ En produccion (roles finos + MFA) | Reporte de incompletos pendiente |
-| E4 Instalacion TI | ✅ En produccion | — |
-| E3 Administracion/cobro | ✅ En produccion (cobro + folios + corte de caja) | — |
+| E7 Infraestructura y Supabase seguro | 🟡 Supabase completo y endurecido (bloques 43 y 47); hosting **interino** en Vercel | Migrar al subdominio institucional + Cloudflare (SC-012); documentar region + archivar DPA |
+| E2 Formulario de autoservicio | ✅ Implementado | — |
+| E5 Panel administrativo | ✅ **Completo** (roles finos + MFA + reporte de incompletos, 29-jul) | — |
+| E4 Instalacion TI | ✅ Implementado | — |
+| E3 Administracion/cobro | ✅ Implementado (cobro + folios + corte de caja + validacion de tipo) | — |
 | E8 Manual/capacitacion | 🟡 Borrador completo (28-jul) | Cinco documentos en `Entregables/E8 - Manual y Capacitacion`. Falta impartir la sesion y recabar firmas de asistencia |
 
 ## 7. Cierre de sesion
@@ -175,6 +188,57 @@ Antes de terminar cada dia:
 - Anotar decisiones nuevas en este documento o en la bitacora de cambios.
 - Confirmar siguiente tarea concreta.
 - Subir cambios relevantes a GitHub si se necesita revisar fuera del equipo local.
+
+### Bitacora de la sesion del 29-jul-2026
+
+**Que se termino.** El desarrollo. Se cerraron los tres huecos que quedaban en el panel, con lo que
+**E5 queda completo y CC-12 cerrado**, y se corrigio la documentacion que afirmaba que el sistema
+esta en produccion.
+
+1. **Reporte de expedientes incompletos** (B2/CC-02, bloque 45). Estaba documentado desde el 03-jul y
+   nunca se implemento. Vive en la pestana de **TI** (con contador propio, porque TI resuelve cinco de
+   los siete motivos y no ve la pestana Consulta) y como panel colapsable en **Consulta**.
+2. **Validacion del tipo de usuario al cobrar** (B5/CC-05, bloque 46). Las columnas existian desde el
+   bloque 12 sin que nada las tocara. Ahora cobrar y validar son el mismo acto.
+3. **Firma visible en el panel con URL firmada temporal** (SC-008, bloque 47). Cierra CC-12. La
+   evidencia existia pero era inauditable desde la aplicacion.
+4. **Correccion documental.** 18 documentos afirmaban "en produccion" u "operando". Se sustituyo por
+   la descripcion exacta del estado, sin tocar alcance, fechas ni porcentajes. Los manuales de E8
+   llevan ahora una nota de estado para que el personal no crea que ya se opera con familias reales.
+
+**Decision de criterio (la que definia si el reporte servia o era ruido).** Un expediente incompleto
+NO es "le falta un paso del flujo": eso ya son las colas de Admin y de TI, y repetirlas seria ruido.
+Son tres cosas distintas: faltantes de **integridad** (estados que los RPC no pueden producir; si
+aparecen, algo se escribio por fuera del panel), un faltante **operativo** real (sin placas con el TAG
+ya instalado) y los **atorados**, que solo entran a los 7 dias naturales. Se dejo fuera a proposito el
+motivo "sin firma": seria el mas grave legalmente, pero `seed_tests_dev.sql` inserta el banco de QA
+directo en la tabla, sin `aceptaciones`, y el reporte se encenderia entero.
+
+**Correcciones a la matriz de pruebas.** Los casos `P-09`, `P-10` y `A-07` seguian describiendo el
+sistema **antes** de los bloques 43 y 44, que se aplicaron el 28-jul: manana habrian "fallado" contra
+un resultado esperado obsoleto. Ya dicen lo correcto. La matriz paso de 59 a **74 casos**.
+
+**Siguiente tarea concreta, en este orden:**
+
+1. **Aplicar los bloques 45, 46 y 47** en Supabase, en ese orden. El **46 cambia la firma de
+   `registrar_pago`** (drop + notify pgrst): aplicarlo **junto con el despliegue del panel**, porque
+   en medio un panel viejo no puede cobrar.
+2. **Re-aplicar `seed_tests_dev.sql`** (trae los folios `221-226`, un expediente incompleto por
+   motivo). Es destructivo: solo contra la base de trabajo.
+3. **Ejecutar las tandas P y E** de `Pruebas/01 - Matriz de Casos.md`. Son las que bloquean el cierre:
+   ningun fallo es admisible.
+4. Impartir la capacitacion y recabar firmas de asistencia.
+5. Solicitar la aprobacion institucional del aviso. **Gestionarla desde el primer dia**: es el mayor
+   riesgo para la fecha de cierre.
+6. Migrar al subdominio institucional + Cloudflare (SC-012).
+
+**Discrepancia de fechas por resolver.** El `README.md` y el cronograma dan el cierre en **~03-ago**;
+la ruta de trabajo actual pone la migracion el **05-ago** y la aceptacion el **07-ago**. No se toco
+ninguna de las dos: hay que decidir cual es la buena y alinear el cronograma antes del acta de cierre.
+
+**Pendiente que no bloquea:** extraccion de la firma a `lib/firma/` (B8), programada para el 31-jul.
+Despues de eso empieza la integracion con ZKBioSecurity (SC-006); la investigacion esta en
+`Investigacion/03 - Integracion ZKBioSecurity.md`.
 
 ### Bitacora de la sesion del 28-jul-2026
 

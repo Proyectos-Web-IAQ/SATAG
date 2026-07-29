@@ -2,7 +2,7 @@
 
 > **Desarrollo - Fase 1 (Diseno)** - WBS 1.2.1 - Entregable **E1**.
 > **Ultima actualizacion:** 22-jul-2026.
-> **Version:** v0.13 - alineada con el esquema aplicado en produccion.
+> **Version:** v0.13 - alineada con el esquema aplicado en la base de trabajo.
 > **SQL canonico:** [`../supabase/sql/`](../supabase/sql/README.md) (bloques atomicos `00`->`42`).
 > `../supabase/schema.sql` es un respaldo historico atrasado: **no** contiene la capa del panel
 > (roles finos, RPCs, folios de recibo, corte de caja, CC-01 ni SC-003).
@@ -11,7 +11,7 @@ Este documento define el modelo de datos de SATAG: expediente del TAG, vehiculo,
 
 ## 1. Estado de alineacion E1 + E6
 
-El modelo soporta lo decidido o requerido por E6 (todo lo siguiente esta **aplicado en produccion**):
+El modelo soporta lo decidido o requerido por E6 (todo lo siguiente esta **aplicado en la base de trabajo**):
 
 - Aviso de privacidad versionado.
 - Aceptacion ligada a version de aviso y version de reglamento.

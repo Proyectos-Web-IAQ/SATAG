@@ -8,7 +8,7 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 
 | Archivo | Que hace |
 |---|---|
-| `sql/` | **Fuente de verdad.** Esquema atomico por bloques numerados `00`→`42`, en el orden de `sql/README.md`. Es lo que esta aplicado en produccion. |
+| `sql/` | **Fuente de verdad.** Esquema atomico por bloques numerados `00`→`42`, en el orden de `sql/README.md`. Es lo que esta aplicado en la base de trabajo. |
 | `schema.sql` | Respaldo monolitico **historico y atrasado** (corte ~9-jul). Trae las tablas, la RLS ancha y `crear_registro`/`crear_solicitud`, pero **NO** la capa del panel: sin `panel_exigir_rol`, sin `registrar_pago`, sin roles finos/`app_metadata`, sin folios de recibo (bloque 32), sin CC-01 (apartar/usar TAG) ni SC-003 (buzon de notas). No instalar con esto. |
 | `seed.sql` | Semilla del monolitico: estacionamientos, catalogos base, modelos base, reglamento y aviso placeholder. |
 
@@ -151,7 +151,7 @@ Configuracion en el **Dashboard de Supabase** (no vive en el repo):
 2. **Desactivar el alta publica** — Authentication -> Sign In / Providers -> Email ->
    *Allow new users to sign up* = **OFF** (defensa en profundidad; la app nunca llama a `signUp`).
 3. **Redirect URLs** (para el enlace de recuperacion) — Authentication -> URL Configuration:
-   - **Site URL:** el origen de produccion (ej. `https://satag.vercel.app`).
+   - **Site URL:** el origen del entorno de trabajo (ej. `https://satag.vercel.app`).
    - **Redirect URLs** (allowlist): agrega la ruta de reset en cada entorno, con `/` final:
      - `http://localhost:3000/admin/reset-password/`  (desarrollo)
      - `https://satag.vercel.app/admin/reset-password/`  (o comodin `https://satag.vercel.app/**`)
@@ -180,7 +180,7 @@ active su cuenta. Como el sitio es estatico, se usa el patron `token_hash` + `ve
 
 1. **Site URL** (Authentication -> URL Configuration): el origen del entorno **sin** ruta.
    - Pruebas locales: `http://localhost:3000`
-   - Produccion: `https://satag.vercel.app` (o el dominio final)
+   - Entorno de trabajo: `https://satag.vercel.app` (o el dominio final)
    > La invitacion construye el enlace a partir del Site URL; cambialo segun donde vayas a probar.
 2. **Plantilla del correo** (Authentication -> Emails -> Templates -> **Invite user**): apunta el
    boton a la pagina de invitacion con el `token_hash`:
@@ -238,9 +238,9 @@ cerrar sesión y volver a entrar; recargar la página no sustituye ese paso.
    Asigna el rol por SQL, cierra sesión y vuelve a entrar. Verifica que `admin`, `ti` y
    `consulta` solo vean sus pestañas; usa `super` únicamente para recorrer el flujo integral.
 
-## Pendientes (el core ya opera en produccion)
+## Pendientes (el core ya esta funcionalmente completo)
 
-Ya cerrado: reglamento oficial IAQ de 22 clausulas publicado (bloque 23), texto integral del aviso publicado (bloque 22), roles finos + RLS `aal2` + MFA obligatorio (bloques 27-30), RLS probada con usuarios reales de Supabase Auth (en produccion).
+Ya cerrado: reglamento oficial IAQ de 22 clausulas publicado (bloque 23), texto integral del aviso publicado (bloque 22), roles finos + RLS `aal2` + MFA obligatorio (bloques 27-30), RLS probada con usuarios reales de Supabase Auth (en el entorno de trabajo).
 
 Abierto:
 

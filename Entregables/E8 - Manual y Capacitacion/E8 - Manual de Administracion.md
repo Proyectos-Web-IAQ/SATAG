@@ -4,6 +4,8 @@
 > **Institucion:** Instituto Asuncion de Queretaro, A.C.
 > **Modulo:** pestañas "Administración" y "Finanzas" del panel de gestion.
 >
+> **Nota sobre el estado del sistema.** SATAG está funcionalmente completo y desplegado en el entorno de trabajo, pendiente de liberación: todavía no hay usuarios ni datos reales de la comunidad escolar. Los cobros y los cortes que se registren en esta etapa corresponden a pruebas y capacitación.
+>
 > **Nota sobre la direccion del sistema.** El sistema se encuentra hoy en un alojamiento temporal y migrara al subdominio institucional. Por esa razon este manual no incluye ninguna direccion escrita: **la direccion vigente se la proporciona el Departamento de TI**. Solicitela una sola vez, guardela en los favoritos de su navegador y, cuando ocurra la migracion, TI le indicara la nueva. En este documento se le llama simplemente "la direccion del sistema"; el panel de trabajo se abre agregando `/admin` al final de esa direccion.
 
 ## Identificacion del capitulo
@@ -176,7 +178,7 @@ La pestaña **"Finanzas"** solo esta disponible para el rol Administración (y p
    El criterio son **dias con cobro**, no dias transcurridos: si no hubo cobros el lunes, ese dia no cuenta.
 4. Cuando hay mas de un dia, el subtitulo agrega "· 2 días sin cortar" y aparece una tabla con las columnas "Día de cobro", "Cobros" y "Subtotal", junto al aviso: "Esta caja mezcla cobros de 2 días. Cuente solo el efectivo que aún tiene físicamente y explique en observaciones si ya entregó dinero de días anteriores.".
 5. Lea **"Vendido este mes"**: total cobrado en el mes calendario en curso (hora de Queretaro), este o no cortado.
-6. Lea **"Vendido histórico"**: total cobrado desde el inicio de la operacion.
+6. Lea **"Vendido histórico"**: total cobrado desde el primer cobro registrado en el sistema.
 
 > **Advertencia.** "Vendido este mes" y "Vendido histórico" **no se reinician con el corte**: siguen acumulando. El unico indicador que el corte pone en cero es "En caja ahora".
 

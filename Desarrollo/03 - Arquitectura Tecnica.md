@@ -1,6 +1,6 @@
 # Arquitectura Técnica — SATAG
 
-> **Estado:** implementada y en producción — documento *as-built*.
+> **Estado:** implementada y desplegada en el entorno de trabajo (Vercel), pendiente de liberación — documento *as-built*.
 > **Última actualización:** 20-jul-2026.
 
 Describe cómo está construido SATAG hoy. El diseño reutiliza la base técnica de SEVAD
@@ -14,7 +14,7 @@ diferencia importante: **el despliegue no usa el pipeline FTPS de SEVAD, sino Ve
 | Front | Next.js 16 (App Router) con **exportación estática** (`output: "export"`), React 19, TypeScript 5.8 |
 | Datos y backend | Supabase: PostgreSQL con RLS, Auth con MFA TOTP, Storage y RPCs vía PostgREST |
 | Cliente | `@supabase/supabase-js` 2.110 |
-| Hosting y CI/CD | **Vercel**: cada push a `main` publica en producción |
+| Hosting y CI/CD | **Vercel**: cada push a `main` publica en el entorno de trabajo |
 
 No hay servidor propio ni API intermedia: el sitio es 100 % estático y habla directo con Supabase.
 La lógica sensible vive en la base (RLS + RPCs `SECURITY DEFINER`), no en el cliente.
@@ -84,7 +84,7 @@ requieren —asignar roles, resetear el MFA de alguien— se hacen a mano en el 
 
 ## 5. Despliegue
 
-- **Producción:** Vercel, build automático en cada push a `main` (`main` = producción).
+- **Entorno de trabajo (Vercel):** build automático en cada push a `main` (`main` = publicación automática).
 - El export estático de `out/` es portable: puede bajarse por FTPS a GoDaddy y servirse desde el
   subdominio institucional sin cambiar código. Esa migración **no se ha hecho**.
 - No existe `.github/workflows/` ni pipeline FTPS: el esquema de despliegue de SEVAD
@@ -113,7 +113,7 @@ hash). La frontera propuesta está en
 
 ## 8. Verificación antes de publicar
 
-Como cada push a `main` despliega a producción, nada se sube sin que esto pase en verde:
+Como cada push a `main` despliega al entorno de trabajo, nada se sube sin que esto pase en verde:
 
 ```bash
 npx tsc --noEmit     # tipos

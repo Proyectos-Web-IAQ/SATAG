@@ -17,7 +17,7 @@
 >
 > SATAG **no** adoptó la estrategia de despliegue: **no hay GitHub Action, ni FTPS, ni cPanel, ni
 > `.htaccess`, ni subdominio en GoDaddy/Cloudflare**. El despliegue real es **Vercel desde `main`**
-> (cada push publica en producción). Las secciones **3 y 4** describen el pipeline de SEVAD como
+> (cada push publica en el entorno de trabajo). Las secciones **3 y 4** describen el pipeline de SEVAD como
 > **referencia no adoptada**: no son el runbook de SATAG. El estado real está en
 > [`Desarrollo/03 - Arquitectura Técnica`](../Desarrollo/03%20-%20Arquitectura%20Tecnica.md).
 >
@@ -152,7 +152,7 @@ El **patrón** de SEVAD se reutiliza; el **esquema NO** (SEVAD son encuestas an�
 
 ## 7. Flujo de Git y secretos 📄
 
-- Ramas: `main` = producción (deploy automático). Trabajo en `feature/*` → PR → merge a `main`.
+- Ramas: `main` = entorno de trabajo (deploy automático). Trabajo en `feature/*` → PR → merge a `main`.
 - Commits **pequeños y descriptivos** (en español). *(Recordatorio del proyecto: sin rastro de IA.)*
 - `.gitignore`: `node_modules/`, `.next/`, `out/`, `.env*`, `*.tsbuildinfo`, PDFs/QR generados.
 - **Secretos:** `.env.local` (local, no se versiona) + **GitHub Secrets** (CI). Nunca en el repo.

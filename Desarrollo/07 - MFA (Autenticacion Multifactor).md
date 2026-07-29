@@ -9,12 +9,13 @@
 |---|---|
 | Cliente | Instituto Asunción de Querétaro AC (IAQ) — interno |
 | Responsable / Desarrollador | Gerardo Sánchez — Soporte TI Jr. |
-| Fecha | 14-jul-2026 · actualizado 20-jul-2026 · Versión **v1.0** (implementado en producción) |
+| Fecha | 14-jul-2026 · actualizado 20-jul-2026 · Versión **v1.0** (implementado) |
 
 **Historial:** v0.1 (decisiones cerradas: TOTP · RLS estricta `aal2` · reset por admin fuera de banda;
-runbook de reset completo) → **v1.0 (20-jul-2026): implementado y en producción.** El MFA es
-obligatorio para todo el panel y, desde el 15-jul, los **roles finos también son frontera real**
-(`app_metadata.rol` en la RLS + `panel_exigir_rol` en cada RPC), no solo una preferencia de UI.
+runbook de reset completo) → **v1.0 (20-jul-2026): implementado y desplegado en el entorno de
+trabajo (Vercel).** El MFA es obligatorio para todo el panel y, desde el 15-jul, los **roles finos
+también son frontera real** (`app_metadata.rol` en la RLS + `panel_exigir_rol` en cada RPC), no solo
+una preferencia de UI.
 
 ---
 

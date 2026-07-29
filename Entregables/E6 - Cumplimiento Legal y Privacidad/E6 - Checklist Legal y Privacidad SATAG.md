@@ -2,7 +2,7 @@
 
 > **Fecha:** 06/07/2026 · **actualizado:** 20/07/2026.
 > **Tarea:** WBS 1.2.3 - Definicion legal y privacidad.
-> **Estado:** controles tecnicos implementados y en produccion; **aprobacion institucional del aviso aun pendiente**.
+> **Estado:** controles tecnicos implementados y desplegados en el entorno de trabajo; **aprobacion institucional del aviso aun pendiente**.
 
 ## 1. Objetivos del dia
 
@@ -22,9 +22,9 @@
 | Entregable | Ubicacion | Estado |
 |---|---|---|
 | Aviso integral SATAG | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Publicado como v2 vigente en la BD (bloque 22); pendiente la aprobacion formal |
-| Aviso simplificado | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Publicado y en operacion (28-jul): bloque 44 aplicado; se muestra en el primer paso del formulario, con enlace al integral |
+| Aviso simplificado | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Publicado e implementado (28-jul): bloque 44 aplicado en la base de trabajo; se muestra en el primer paso del formulario, con enlace al integral |
 | Texto de aceptacion y firma | `Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Aviso de Privacidad SATAG.md` | Implementado en el formulario |
-| Reglas tecnicas de privacidad | `Desarrollo/04 - Seguridad, RLS y Privacidad.md` | Implementado en produccion |
+| Reglas tecnicas de privacidad | `Desarrollo/04 - Seguridad, RLS y Privacidad.md` | Implementado y desplegado en el entorno de trabajo |
 | Checklist legal/privacidad | Este documento | Listo |
 
 ## 3. Checklist para desarrollo
@@ -115,14 +115,15 @@
 
 La tarea **Definicion legal y privacidad** queda en estado:
 
-> **Controles tecnicos implementados y en produccion; aprobacion institucional pendiente.**
+> **Controles tecnicos implementados y desplegados en el entorno de trabajo; aprobacion institucional pendiente.**
 
-⚠️ **Riesgo abierto (20-jul-2026):** SATAG **ya opera en produccion con usuarios reales**, mientras la
-aprobacion formal del aviso por Direccion/Legal sigue pendiente, junto con el responsable ARCO, el
-plazo de conservacion y el DPA/region de Supabase. Los controles tecnicos exigidos (RLS, MFA, firma
+⚠️ **Riesgo abierto (20-jul-2026):** SATAG **esta funcionalmente completo y desplegado en el
+entorno de trabajo (Vercel), sin usuarios ni datos reales**, mientras la aprobacion formal del aviso
+por Direccion/Legal sigue pendiente, junto con el responsable ARCO, el plazo de conservacion y el
+DPA/region de Supabase. Los controles tecnicos exigidos (RLS, MFA, firma
 reforzada, bucket privado, tratamiento de menores) **ya estan implementados**; lo que falta es la
 **validacion institucional**. Conviene cerrarla cuanto antes o dejar constancia expresa de la decision
-de operar mientras tanto.
+de liberar el sistema mientras siga pendiente.
 
 ## 7. Proximo paso recomendado
 

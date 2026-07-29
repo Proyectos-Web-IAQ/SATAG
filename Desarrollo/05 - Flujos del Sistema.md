@@ -1,6 +1,6 @@
 # Flujos del Sistema — SATAG
 
-> **Estado:** implementados y en producción — documento *as-built*.
+> **Estado:** implementados y desplegados en el entorno de trabajo (Vercel) — documento *as-built*.
 > **Última actualización:** 20-jul-2026.
 
 Recorridos funcionales por actor. Cada escritura ocurre dentro de un RPC `SECURITY DEFINER` que

@@ -1,6 +1,6 @@
 # Seguridad, RLS y Privacidad - SATAG
 
-> **Estado:** implementado y en produccion; pendiente la validacion final de Direccion/Legal.
+> **Estado:** implementado y desplegado en el entorno de trabajo (Vercel); pendiente de liberacion y de la validacion final de Direccion/Legal.
 > **Ultima actualizacion:** 20/07/2026.
 > **Fuente:** Investigacion legal SATAG del 03/07/2026.
 > **Uso:** reglas obligatorias para desarrollo; no sustituye la validacion final de Direccion/Legal del IAQ.

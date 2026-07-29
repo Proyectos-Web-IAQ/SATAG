@@ -42,7 +42,7 @@ El proceso se cubre en **tres momentos / tres actores**:
 | E4 | **Módulo de instalación (TI)** | Asignación de estacionamiento + captura del No. de TAG + cambio de estado + ciclo de vida + apartar y usar el TAG apartado (CC-01) |
 | E5 | **Panel administrativo** | Login con MFA y roles finos, búsqueda/consulta, edición, control de TAGs/estados/pagos, colas de pendientes y **buzón de notas sin folio (SC-003)** |
 | E6 | **Cumplimiento legal y privacidad** | Aviso específico SATAG/anexo, aviso simplificado, ARCO básico, menores y firma reforzada |
-| E7 | **Infraestructura y despliegue** | Proyecto Supabase + despliegue automático. **Hoy opera interino en Vercel desde `main`** para acelerar la ejecución; el destino definitivo sigue siendo el **subdominio institucional (GoDaddy) + Cloudflare**, y la migración debe hacerse antes de la salida oficial a producción *(seguimiento: SC-012)* |
+| E7 | **Infraestructura y despliegue** | Proyecto Supabase + despliegue automático. **Hoy está desplegado en el entorno de trabajo (Vercel) desde `main`** para acelerar la ejecución; el destino definitivo sigue siendo el **subdominio institucional (GoDaddy) + Cloudflare**, y la migración debe hacerse antes de la salida oficial a producción *(seguimiento: SC-012)* |
 | E8 | **Documentación y manual** | Docs técnicas + manual breve para administrativos/TI |
 
 ### Criterios de aceptación
@@ -59,7 +59,7 @@ El proceso se cubre en **tres momentos / tres actores**:
 - El panel/proceso permite atender solicitudes básicas **ARCO/cambio/baja** (acceso, rectificación y
   cancelación/bloqueo operativo cuando aplique).
 - El sitio corre en el **subdominio institucional** con HTTPS y **deploy automático** por push a `main`.
-  *(Estado 28-jul: opera interino en `satag.vercel.app` con deploy automático; la migración al subdominio
+  *(Estado 28-jul: publicado en el entorno de trabajo, en `satag.vercel.app`, con deploy automático; la migración al subdominio
   sigue pendiente y es requisito de la salida oficial — SC-012.)*
 - La app **no expone** datos de un usuario a otro (RLS verificada); las escrituras críticas usan RPC
   controladas, las firmas viven en Storage privado y las cuentas administrativas usan MFA.
