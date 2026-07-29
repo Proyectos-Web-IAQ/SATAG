@@ -16,11 +16,15 @@ import type {
   Estacionamiento,
   EstadoCaja,
   EstadoRegistro,
+  EvidenciaFirma,
+  FirmanteRol,
   Movimiento,
+  MotivoIncompleto,
   Pago,
   PagoReciente,
   ProcedenciaTag,
   Registro,
+  RegistroIncompleto,
   ResultadoCorte,
   Solicitud,
   TipoMovimiento,
@@ -32,6 +36,11 @@ import type {
 export interface AccionResultado {
   id: string;
   folioRecibo?: string;
+  // CC-05: lo devuelve registrar_pago para poder avisar en pantalla cuando el
+  // tipo declarado en el alta no era el correcto y quedó corregido.
+  tipoUsuario?: TipoUsuario;
+  tipoCorregido?: boolean;
+  tipoAnterior?: TipoUsuario | null;
 }
 
 // Errores de red/sesion en espanol. Los errores de negocio de los RPCs
@@ -96,6 +105,10 @@ interface RegistroRow {
   usuario_nombre_completo: string;
   gestionante_nombre_completo: string | null;
   tipo_usuario: string;
+  tipo_validado: boolean;
+  tipo_validado_por: string | null;
+  tipo_validado_en: string | null;
+  usuario_es_menor: boolean;
   marca: string;
   modelo: string;
   color: string;
@@ -121,6 +134,7 @@ interface RegistroRow {
 
 const SELECT_REGISTRO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
+  tipo_validado, tipo_validado_por, tipo_validado_en, usuario_es_menor,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
   tag_apartado, tag_apartado_no, estado,
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por,
@@ -197,6 +211,10 @@ function mapRegistro(r: RegistroRow): Registro {
     usuarioNombre: r.usuario_nombre_completo,
     gestionanteNombre: r.gestionante_nombre_completo,
     tipoUsuario: r.tipo_usuario as TipoUsuario,
+    tipoValidado: r.tipo_validado,
+    tipoValidadoPor: r.tipo_validado_por,
+    tipoValidadoEn: r.tipo_validado_en,
+    usuarioEsMenor: r.usuario_es_menor,
     marca: r.marca,
     modelo: r.modelo,
     color: r.color,
@@ -270,16 +288,164 @@ export async function getEstacionamientos(): Promise<Estacionamiento[]> {
   }));
 }
 
+// ---- Reporte de expedientes incompletos (CC-02, bloque 45) ----
+
+interface IncompletoRow {
+  id: string;
+  folio: string;
+  usuario_nombre_completo: string;
+  gestionante_nombre_completo: string | null;
+  tipo_usuario: string;
+  marca: string;
+  modelo: string;
+  color: string;
+  placas: string | null;
+  sin_placas: boolean;
+  no_dispositivo: string | null;
+  procedencia_tag: string;
+  estado: string;
+  folio_recibo: string | null;
+  created_at: string;
+  dias_desde_alta: number | string;
+  dias_desde_pago: number | string | null;
+  motivos: string[];
+  total_motivos: number | string;
+}
+
+const SELECT_INCOMPLETO = `
+  id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
+  marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
+  estado, folio_recibo, created_at, dias_desde_alta, dias_desde_pago, motivos
+`;
+
+// Expedientes a los que les falta algo para operar, con el motivo. La vista
+// `v_registros_incompletos` (security_invoker) hereda la RLS del panel: los
+// cuatro roles ven lo mismo y un usuario sin rol recibe cero filas.
+//
+// Orden: primero los que acumulan más faltantes y, a igualdad, los más viejos.
+// Es el orden en que conviene atacarlos, no el orden de captura.
+export async function listRegistrosIncompletos(): Promise<RegistroIncompleto[]> {
+  const { data, error } = await supabaseAuth
+    .from("v_registros_incompletos")
+    .select(SELECT_INCOMPLETO)
+    .order("total_motivos", { ascending: false })
+    .order("dias_desde_alta", { ascending: false });
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as IncompletoRow[]).map((r) => ({
+    id: r.id,
+    folio: r.folio,
+    usuarioNombre: r.usuario_nombre_completo,
+    gestionanteNombre: r.gestionante_nombre_completo,
+    tipoUsuario: r.tipo_usuario as TipoUsuario,
+    marca: r.marca,
+    modelo: r.modelo,
+    color: r.color,
+    placas: r.placas,
+    sinPlacas: r.sin_placas,
+    noDispositivo: r.no_dispositivo,
+    procedenciaTag: r.procedencia_tag as ProcedenciaTag,
+    estado: r.estado as EstadoRegistro,
+    folioRecibo: r.folio_recibo,
+    createdAt: r.created_at,
+    diasDesdeAlta: num(r.dias_desde_alta),
+    diasDesdePago: r.dias_desde_pago === null ? null : num(r.dias_desde_pago),
+    motivos: (r.motivos ?? []) as MotivoIncompleto[],
+  }));
+}
+
+// ---- Evidencia de firma (SC-008, bloque 47) ----
+
+const BUCKET_FIRMAS = "firmas";
+// Duración de la URL firmada. Corta a propósito: la imagen se pinta de
+// inmediato y el enlace deja de servir enseguida si alguien lo copia.
+export const FIRMA_URL_SEGUNDOS = 60;
+
+// aceptaciones.firma_url guarda la ruta CON el bucket adelante
+// ('firmas/<uuid>.png', ver lib/supabase/api.ts). El SDK de Storage ya recibe
+// el bucket por su cuenta y espera la ruta SIN ese prefijo: pasársela completa
+// hace que busque 'firmas/firmas/<uuid>.png' y responda "no encontrado".
+function rutaEnBucket(firmaUrl: string): string {
+  const ruta = firmaUrl.trim().replace(/^\/+/, "");
+  return ruta.startsWith(`${BUCKET_FIRMAS}/`) ? ruta.slice(BUCKET_FIRMAS.length + 1) : ruta;
+}
+
+interface EvidenciaRow {
+  registro_id: string;
+  firma_url: string;
+  firma_imagen_sha256: string | null;
+  firmante_nombre: string;
+  firmante_rol: string;
+  hash_algoritmo: string;
+  hash_documento: string;
+  sello_tiempo: string;
+  reglamento_version: number | string | null;
+  aviso_version: number | string | null;
+  tiene_trazos: boolean;
+}
+
+// Evidencia de aceptación de un expediente + URL firmada temporal del PNG.
+// Devuelve null cuando no hay nada que mostrar: rol `consulta` (la RLS del
+// bloque 47 le niega la tabla) o expediente sin aceptación (los del banco de
+// QA, que se insertan directo).
+//
+// Si la metadata se lee pero la URL no se puede emitir, la evidencia se
+// devuelve igual con firmaUrl en null y el motivo en firmaError: el hash y las
+// versiones conservan su valor probatorio aunque la imagen no cargue.
+export async function obtenerEvidenciaFirma(registroId: string): Promise<EvidenciaFirma | null> {
+  const { data, error } = await supabaseAuth
+    .from("v_evidencia_firma")
+    .select("registro_id, firma_url, firma_imagen_sha256, firmante_nombre, firmante_rol, hash_algoritmo, hash_documento, sello_tiempo, reglamento_version, aviso_version, tiene_trazos")
+    .eq("registro_id", registroId)
+    .maybeSingle();
+  if (error) throw new Error(traducirError(error.message));
+  if (!data) return null;
+
+  const row = data as unknown as EvidenciaRow;
+  let firmaUrl: string | null = null;
+  let firmaError: string | null = null;
+  try {
+    const firmada = await supabaseAuth.storage
+      .from(BUCKET_FIRMAS)
+      .createSignedUrl(rutaEnBucket(row.firma_url), FIRMA_URL_SEGUNDOS);
+    if (firmada.error) firmaError = traducirError(firmada.error.message);
+    else firmaUrl = firmada.data.signedUrl;
+  } catch (e) {
+    firmaError = traducirError(e instanceof Error ? e.message : "No se pudo abrir la imagen de la firma.");
+  }
+
+  return {
+    registroId: row.registro_id,
+    firmaUrl,
+    firmaError,
+    expiraEnSegundos: FIRMA_URL_SEGUNDOS,
+    firmanteNombre: row.firmante_nombre,
+    firmanteRol: row.firmante_rol as FirmanteRol,
+    reglamentoVersion: row.reglamento_version === null ? null : num(row.reglamento_version),
+    avisoVersion: row.aviso_version === null ? null : num(row.aviso_version),
+    selloTiempo: row.sello_tiempo,
+    hashAlgoritmo: row.hash_algoritmo,
+    hashDocumento: row.hash_documento,
+    firmaImagenSha256: row.firma_imagen_sha256,
+    tieneTrazos: row.tiene_trazos,
+  };
+}
+
 // ---- Acciones (RPCs transaccionales de los bloques 29 y 31) ----
 
+// CC-05: cobrar y validar el tipo de usuario son el mismo acto. El tipo es
+// obligatorio (el RPC del bloque 46 rechaza el cobro sin él): es el único
+// momento del flujo en que alguien del instituto tiene al titular enfrente.
+// Si el tipo confirmado difiere del declarado en el alta, el RPC corrige el
+// expediente y deja movimiento en la bitácora.
 export async function registrarPago(
   id: string,
-  data: { monto: number; cobradoPor: string },
+  data: { monto: number; cobradoPor: string; tipoUsuario: TipoUsuario },
 ): Promise<AccionResultado> {
   return rpc("registrar_pago", {
     p_registro_id: id,
     p_monto: data.monto,
     p_cobrado_por: data.cobradoPor.trim() || null,
+    p_tipo_usuario: data.tipoUsuario,
   });
 }
 

@@ -12,6 +12,19 @@ export const ROL_LABEL: Record<TipoUsuario, string> = {
   alumno: "alumno",
 };
 
+// Las mismas categorias que ROL_LABEL, pero como etiqueta de opcion: se usan
+// en los botones con que Administracion CONFIRMA el tipo al cobrar (CC-05),
+// donde una etiqueta en minusculas a media frase no funciona.
+export const TIPO_USUARIO_LABEL: Record<TipoUsuario, string> = {
+  padres: "Padre / madre / tutor",
+  maestro: "Maestro",
+  alumno: "Alumno",
+  admin: "Administrativo",
+};
+
+// Orden en que se ofrecen: primero el caso mas frecuente.
+export const TIPOS_USUARIO: TipoUsuario[] = ["padres", "maestro", "alumno", "admin"];
+
 // Tramite que pide el cliente en una nota (SC-003), en texto legible.
 export const TRAMITE_LABEL: Record<TramiteSolicitado, string> = {
   actualizacion: "Actualizar datos",
@@ -53,6 +66,20 @@ export function textoSolicitud(s: Solicitud): string {
     return `${quien}${pide} (${s.fecha}): ${s.detalle}`;
   }
   return `Solicita ${s.tipo === "actualizacion" ? "actualización" : "baja"} (${s.fecha}): ${s.detalle}`;
+}
+
+// Fecha legible en hora de Querétaro. Postgres entrega timestamptz en UTC:
+// recortar el ISO haría que un sello de las 19:00 se viera con la fecha del día
+// siguiente (mismo motivo que fechaLocal en lib/supabase/apiPanel.ts).
+const FORMATO_FECHA = new Intl.DateTimeFormat("es-MX", {
+  timeZone: "America/Mexico_City",
+  dateStyle: "medium",
+});
+
+function fechaLegible(iso: string | null): string {
+  if (!iso) return "—";
+  const fecha = new Date(iso);
+  return Number.isNaN(fecha.getTime()) ? iso : FORMATO_FECHA.format(fecha);
 }
 
 // Scroll suave salvo que el sistema pida movimiento reducido.
@@ -129,6 +156,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
     <>
       <div className="detail-grid" style={{ marginBottom: 12 }}>
         <div><div className="k">Gestionante (paga y firma)</div><div className="v">{r.gestionanteNombre ?? "El mismo conductor"}</div></div>
+        <div><div className="k">Tipo de usuario</div><div className="v"><TipoUsuarioValidado r={r} /></div></div>
         <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>
         {r.tagApartado && <div><div className="k">TAG apartado</div><div className="v">{r.tagApartadoNo}</div></div>}
         <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
@@ -139,6 +167,34 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
       {onDescartar && pendientes.map((s) => (
         <SolicitudPendiente key={s.id} s={s} busy={busy} onDescartar={onDescartar} />
       ))}
+    </>
+  );
+}
+
+// CC-05: el tipo de usuario lo DECLARA el titular en un formulario publico, sin
+// que nadie lo verifique. Administracion lo confirma al cobrar, con la persona
+// enfrente (bloque 46). Mostrar si esta validado o no es lo que hace util al
+// dato: "padres sin validar" es lo que dijo el titular; "padres validado por
+// Ana Perez" es lo que alguien del instituto comprobo.
+function TipoUsuarioValidado({ r }: { r: Registro }) {
+  return (
+    <>
+      {ROL_LABEL[r.tipoUsuario] ?? r.tipoUsuario}{" "}
+      {r.tipoValidado ? (
+        <span className="tipo-sello tipo-sello--ok"
+          title={`Validado por ${r.tipoValidadoPor ?? "Administración"} el ${fechaLegible(r.tipoValidadoEn)}`}>
+          validado
+        </span>
+      ) : (
+        <span className="tipo-sello tipo-sello--pendiente" title="Nadie lo ha confirmado todavía: es lo que declaró el titular en el alta. Se valida al cobrar.">
+          sin validar
+        </span>
+      )}
+      {r.tipoValidado && (
+        <span className="tipo-sello__detalle">
+          {r.tipoValidadoPor ?? "Administración"} · {fechaLegible(r.tipoValidadoEn)}
+        </span>
+      )}
     </>
   );
 }

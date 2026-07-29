@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { EstadoRegistro, Registro } from "@/lib/mock/types";
-import { listRegistros, nombreDesdeEmail } from "@/lib/supabase/apiPanel";
+import type { EstadoRegistro, Registro, RegistroIncompleto } from "@/lib/mock/types";
+import { listRegistros, listRegistrosIncompletos, nombreDesdeEmail } from "@/lib/supabase/apiPanel";
 import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
 import VistaAdmin from "@/components/admin/VistaAdmin";
 import VistaTi from "@/components/admin/VistaTi";
 import VistaFinanzas from "@/components/admin/VistaFinanzas";
+import ListaIncompletos from "@/components/admin/Incompletos";
 import { DetalleRegistro, TarjetaRegistro } from "@/components/admin/RegistroCard";
 
 type Vista = "admin" | "ti" | "finanzas" | "consulta";
@@ -116,6 +117,11 @@ function IconoFiltro() {
 // entre sí y con el buscador de texto.
 function VistaConsulta() {
   const [registros, setRegistros] = useState<Registro[]>([]);
+  // CC-02: el reporte de incompletos vive aquí porque Consulta es la vista de
+  // investigación del padrón. TI lo tiene también en su propia pantalla: es
+  // quien resuelve cinco de los siete motivos y no ve esta pestaña.
+  const [incompletos, setIncompletos] = useState<RegistroIncompleto[]>([]);
+  const [verIncompletos, setVerIncompletos] = useState(false);
   const [query, setQuery] = useState("");
   const [selId, setSelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -133,8 +139,12 @@ function VistaConsulta() {
   async function refresh() {
     setLoading(true);
     try {
-      const list = await listRegistros();
+      const [list, incompletosList] = await Promise.all([
+        listRegistros(),
+        listRegistrosIncompletos(),
+      ]);
       setRegistros(list);
+      setIncompletos(incompletosList);
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los registros.");
@@ -200,13 +210,41 @@ function VistaConsulta() {
 
   return (
     <>
-      <div className="metric-cards">
+      <div className="metric-cards metric-cards--4">
         <div className={`metric-card metric-card--${metrics.pendientes === 0 ? "ok" : metrics.pendientes <= 4 ? "warn" : "alert"}`}>
           <span className="metric-label">Pendientes</span>
           <span className="metric-value">{metrics.pendientes}</span>
         </div>
         <div className="metric-card"><span className="metric-label">Registros</span><span className="metric-value">{metrics.total}</span></div>
         <div className="metric-card"><span className="metric-label">Activos</span><span className="metric-value">{metrics.activos}</span></div>
+        <div className={`metric-card metric-card--${incompletos.length === 0 ? "ok" : incompletos.length <= 4 ? "warn" : "alert"}`}>
+          <span className="metric-label">Incompletos</span>
+          <span className="metric-value">{incompletos.length}</span>
+        </div>
+      </div>
+
+      {/* CC-02: arranca colapsado. El reporte se consulta cuando se busca, no
+          es lo primero que hay que leer al abrir Consulta. */}
+      <div className="panel">
+        <div className="filtros-toolbar" style={{ justifyContent: "space-between" }}>
+          <p className="panel-title" style={{ margin: 0 }}>Expedientes incompletos ({incompletos.length})</p>
+          <button type="button" className="filtros-toggle" aria-expanded={verIncompletos}
+            onClick={() => setVerIncompletos((v) => !v)}>
+            {verIncompletos ? "Ocultar" : "Ver el reporte"}
+            <span aria-hidden="true">{verIncompletos ? "▴" : "▾"}</span>
+          </button>
+        </div>
+        {verIncompletos && (
+          <>
+            <p className="ti-hint">
+              Expedientes a los que les falta algo para operar, con el motivo y quién lo resuelve.
+              Es un reporte de sólo lectura: la corrección se hace desde Administración o TI,
+              según corresponda.
+            </p>
+            <ListaIncompletos items={incompletos}
+              vacio="No hay expedientes incompletos. El padrón está completo." />
+          </>
+        )}
       </div>
 
       <div className="panel">

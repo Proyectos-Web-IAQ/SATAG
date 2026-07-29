@@ -1,10 +1,11 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CambiosRegistro, ProcedenciaTag, Registro, Solicitud, TramiteSolicitado } from "@/lib/mock/types";
+import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TramiteSolicitado } from "@/lib/mock/types";
 import { getMarcas, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
   listNotasSinExpediente,
+  listRegistrosIncompletos,
   getEstacionamientos,
   instalarTagConEstacionamiento,
   actualizarRegistroConEstacionamiento,
@@ -16,9 +17,11 @@ import {
 } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
+import ListaIncompletos from "@/components/admin/Incompletos";
 import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
 
-type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas";
+type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos";
 type Accion = "instalar" | "actualizar" | "baja";
 
 type ConfirmCfg = {
@@ -86,6 +89,10 @@ const grupoTi = (r: Registro): number => {
 export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [notas, setNotas] = useState<Solicitud[]>([]);
+  // CC-02: expedientes a los que les falta algo para operar. No es una cola de
+  // trabajo del día como las otras tres: es lo que se quedó a medias y nadie
+  // volvió a mirar. El criterio vive en la vista SQL (bloque 45).
+  const [incompletos, setIncompletos] = useState<RegistroIncompleto[]>([]);
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
@@ -112,9 +119,14 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const [list, notasList] = await Promise.all([listRegistros(), listNotasSinExpediente()]);
+      const [list, notasList, incompletosList] = await Promise.all([
+        listRegistros(),
+        listNotasSinExpediente(),
+        listRegistrosIncompletos(),
+      ]);
       setRegistros(list);
       setNotas(notasList);
+      setIncompletos(incompletosList);
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los registros.");
@@ -350,6 +362,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
               <span><span className="ti-action__title">Notas sin expediente</span><span className="ti-action__sub">Buzón sin folio: vincular o descartar</span></span>
               <span className={`ti-action__count ti-action__count--${sem(notas.length)}`}>{notas.length}</span>
             </button>
+            <button type="button" className="ti-action" onClick={() => irA("incompletos")}>
+              <span><span className="ti-action__title">Expedientes incompletos</span><span className="ti-action__sub">Les falta algo para operar</span></span>
+              <span className={`ti-action__count ti-action__count--${sem(incompletos.length)}`}>{incompletos.length}</span>
+            </button>
           </div>
 
           <div className="panel">
@@ -381,6 +397,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                       {accionPadron && formPara(accionPadron, r)}
                     </>
                   )}
+                  {/* SC-008: cotejo presencial de la firma. Va al final del
+                      expediente y sólo se carga si TI la pide. */}
+                  <EvidenciaFirmaPanel registroId={r.id} />
                 </TarjetaRegistro>
               ))}
               {padron.length === 0 && (
@@ -393,7 +412,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         <>
           <div className="ti-topbar">
             <button type="button" className="ti-back" onClick={() => irA("inicio")}>← Inicio</button>
-            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : "Dar de baja"}</h2>
+            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : modo === "incompletos" ? "Expedientes incompletos" : "Dar de baja"}</h2>
           </div>
           {banners}
 
@@ -408,6 +427,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                         <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                           <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                           {formPara("instalar", r)}
+                          <EvidenciaFirmaPanel registroId={r.id} />
                         </TarjetaRegistro>
                       ))}
                     </div>
@@ -422,6 +442,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                           <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                             <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                             <p className="ti-hint">Falta registrar el pago en Administración; el TAG se instala después del pago.</p>
+                            <EvidenciaFirmaPanel registroId={r.id} />
                           </TarjetaRegistro>
                         ))}
                       </div>
@@ -442,6 +463,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                         espera={fechaEsperaTramite(r, modo === "actualizar" ? "actualizacion" : "baja")}>
                         <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                         {formPara(modo, r)}
+                        <EvidenciaFirmaPanel registroId={r.id} />
                       </TarjetaRegistro>
                     ))}
                   </div>
@@ -458,11 +480,24 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                     <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
                       <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                       {formPara(modo, r)}
+                      <EvidenciaFirmaPanel registroId={r.id} />
                     </TarjetaRegistro>
                   ))}
                   {resultadosAccion.length === 0 && <p className="ti-hint">Sin resultados para «{query}».</p>}
                 </div>
               )}
+            </>
+          )}
+
+          {modo === "incompletos" && (
+            <>
+              <p className="ti-hint" style={{ marginBottom: 12 }}>
+                Expedientes a los que les falta algo para operar, con el motivo. Es un reporte de
+                sólo lectura: cada faltante se corrige donde vive su acción —«Actualizar datos» para
+                placas, vehículo y estacionamiento; Administración para lo del cobro—.
+              </p>
+              <ListaIncompletos items={incompletos}
+                vacio="No hay expedientes incompletos. El padrón está completo." />
             </>
           )}
 

@@ -86,6 +86,15 @@ export interface Registro {
   gestionanteNombre: string | null;
   gestionanteNombrePartes?: NombrePersona | null;
   tipoUsuario: TipoUsuario;
+  // CC-05: el tipo lo declara el titular en el alta (formulario público, sin
+  // verificar). Administración lo confirma al cobrar, con la persona enfrente,
+  // y ahí queda sellado quién lo validó y cuándo (bloque 46).
+  tipoValidado: boolean;
+  tipoValidadoPor: string | null;
+  tipoValidadoEn: string | null;
+  // Menor de edad (CC-11): firma su gestionante y el tipo queda fijo en
+  // 'alumno'. Administración no puede cambiárselo al validar.
+  usuarioEsMenor: boolean;
   // Vehículo (aplanado)
   marca: string;
   modelo: string;
@@ -196,6 +205,76 @@ export interface PagoReciente {
   registroFolio: string | null;
   usuarioNombre: string | null;
   cortado: boolean;         // true = ya pertenece a un corte cerrado
+}
+
+// ---- Reporte de expedientes incompletos (CC-02, bloque 45) ----
+
+// Motivo por el que a un expediente le falta algo para operar. Los códigos los
+// emite la vista `v_registros_incompletos`; el criterio completo (y qué queda
+// fuera a propósito) está documentado en el encabezado del bloque 45.
+//
+// Integridad — los RPC no pueden producirlos; si aparecen, algo se escribió
+// por fuera del panel:
+//   tag_sin_pago, activo_sin_tag, tag_sin_estacionamiento, vehiculo_incompleto
+// Faltante operativo real:
+//   sin_placas
+// Atorados — solo a partir de los 7 días naturales:
+//   sin_pago, sin_instalar
+export type MotivoIncompleto =
+  | "tag_sin_pago"
+  | "activo_sin_tag"
+  | "tag_sin_estacionamiento"
+  | "vehiculo_incompleto"
+  | "sin_placas"
+  | "sin_pago"
+  | "sin_instalar";
+
+// Una fila del reporte: un expediente con todos sus faltantes juntos. No es un
+// Registro completo — la vista no trae pagos, solicitudes ni bitácora.
+export interface RegistroIncompleto {
+  id: string;
+  folio: string;
+  usuarioNombre: string;
+  gestionanteNombre: string | null;
+  tipoUsuario: TipoUsuario;
+  marca: string;
+  modelo: string;
+  color: string;
+  placas: string | null;
+  sinPlacas: boolean;
+  noDispositivo: string | null;
+  procedenciaTag: ProcedenciaTag;
+  estado: EstadoRegistro;
+  folioRecibo: string | null;
+  createdAt: string;
+  diasDesdeAlta: number;
+  // null cuando el expediente todavía no tiene pago.
+  diasDesdePago: number | null;
+  motivos: MotivoIncompleto[];
+}
+
+// ---- Evidencia de firma en el panel (SC-008, bloque 47) ----
+
+// Lo que da valor probatorio a la aceptación, más la URL firmada temporal del
+// PNG. La URL caduca: se pide bajo demanda y no se guarda en ningún lado.
+// Solo la ven admin, TI y super; `consulta` recibe null (la RLS le niega la
+// tabla y el bucket).
+export interface EvidenciaFirma {
+  registroId: string;
+  firmaUrl: string | null;      // URL firmada; null si no se pudo emitir
+  // Por qué no se pudo emitir (permiso, archivo ausente, red). Se muestra tal
+  // cual: el hash y las versiones siguen sirviendo aunque la imagen no cargue.
+  firmaError: string | null;
+  expiraEnSegundos: number;
+  firmanteNombre: string;
+  firmanteRol: FirmanteRol;
+  reglamentoVersion: number | null;
+  avisoVersion: number | null;
+  selloTiempo: string;
+  hashAlgoritmo: string;
+  hashDocumento: string;
+  firmaImagenSha256: string | null;
+  tieneTrazos: boolean;
 }
 
 // Un corte de caja cerrado (tabla cortes_caja, inmutable). Documento contable.

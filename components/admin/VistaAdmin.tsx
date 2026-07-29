@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Registro } from "@/lib/mock/types";
+import type { Registro, TipoUsuario } from "@/lib/mock/types";
 import {
   listRegistros,
   registrarPago,
@@ -9,13 +9,21 @@ import {
 } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import { DetalleRegistro, TarjetaRegistro, scrollAlAviso } from "@/components/admin/RegistroCard";
+import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
+import {
+  DetalleRegistro, TarjetaRegistro, scrollAlAviso,
+  TIPOS_USUARIO, TIPO_USUARIO_LABEL,
+} from "@/components/admin/RegistroCard";
 
 type Modo = "inicio" | "pago";
 
 type PagoCapturado = {
   monto: number;
   cobradoPor: string;
+  // CC-05: el tipo que Administración CONFIRMA con la persona enfrente. Puede
+  // no ser el que el titular declaró en el alta; si difiere, el RPC corrige el
+  // expediente y lo anota en la bitácora.
+  tipoUsuario: TipoUsuario;
 };
 
 type ConfirmCfg = {
@@ -121,12 +129,22 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
   }
 
   function confirmarPago(r: Registro, pago: PagoCapturado) {
+    // El cambio de tipo se dice ANTES de cobrar: el pago no se puede deshacer y
+    // la corrección queda en la bitácora del expediente.
+    const corrige = pago.tipoUsuario !== r.tipoUsuario;
     setConfirm({
       title: "Registrar pago",
-      message: `Se registrará un pago en efectivo de ${dinero.format(pago.monto)} para ${r.folio}, ${r.usuarioNombre} (${r.placas ?? "sin placas"}). El sistema generará el folio del recibo. Cobrado por ${pago.cobradoPor}. ¿Continuar?`,
+      message: `Se registrará un pago en efectivo de ${dinero.format(pago.monto)} para ${r.folio}, ${r.usuarioNombre} (${r.placas ?? "sin placas"}). El sistema generará el folio del recibo. Cobrado por ${pago.cobradoPor}.`
+        + (corrige
+          ? ` El tipo de usuario quedará corregido de ${TIPO_USUARIO_LABEL[r.tipoUsuario]} a ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}, y el cambio se anotará en la bitácora.`
+          : ` Queda validado como ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`)
+        + " ¿Continuar?",
       confirmLabel: "Registrar pago",
       action: () => registrarPago(r.id, pago),
-      ok: (resultado) => `Pago de ${dinero.format(pago.monto)} registrado · recibo ${resultado.folioRecibo ?? "generado"} (${r.folio}).`,
+      ok: (resultado) => `Pago de ${dinero.format(pago.monto)} registrado · recibo ${resultado.folioRecibo ?? "generado"} (${r.folio}).`
+        + (resultado.tipoCorregido && resultado.tipoAnterior
+          ? ` Tipo de usuario corregido: ${TIPO_USUARIO_LABEL[resultado.tipoAnterior]} → ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`
+          : ` Tipo de usuario validado: ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`),
     });
   }
 
@@ -187,6 +205,9 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
                   ) : (
                     <EstadoPago r={r} />
                   )}
+                  {/* SC-008: la evidencia va al final y bajo demanda. Aquí sirve
+                      para cotejar quién firmó al confirmar el tipo de usuario. */}
+                  <EvidenciaFirmaPanel registroId={r.id} />
                 </TarjetaRegistro>
               ))}
               {padron.length === 0 && (
@@ -212,6 +233,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
                   <DetalleRegistro r={r} />
                   <FormPago r={r} busy={busy} cobradoPor={cobradoPor} onCobradoPor={setCobradoPor}
                     onSubmit={(pago) => confirmarPago(r, pago)} />
+                  <EvidenciaFirmaPanel registroId={r.id} />
                 </TarjetaRegistro>
               ))}
             </div>
@@ -250,9 +272,18 @@ function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
   onSubmit: (pago: PagoCapturado) => void;
 }) {
   const [monto, setMonto] = useState("100");
+  // CC-05: arranca en lo que el titular declaró en el alta. Casi siempre es
+  // correcto; lo que importa es que alguien lo confirme mirándolo.
+  const [tipo, setTipo] = useState<TipoUsuario>(r.tipoUsuario);
   const montoNumero = Number(monto.replace(",", "."));
   const montoValido = Number.isFinite(montoNumero) && montoNumero > 0;
   const nombreValido = cobradoPor.trim().length > 0;
+  // Un menor de edad se registra como alumno y firma su gestionante (CC-11).
+  // Cambiarle el tipo aquí dejaría el expediente contradiciendo su evidencia de
+  // firma, así que el RPC lo rechaza; la pantalla ni siquiera lo ofrece.
+  const tipoFijo = r.usuarioEsMenor;
+  const tipoEfectivo: TipoUsuario = tipoFijo ? "alumno" : tipo;
+  const corrige = tipoEfectivo !== r.tipoUsuario;
 
   return (
     <div className="ti-form admin-payment-form">
@@ -261,17 +292,38 @@ function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
         <span>Monto en efectivo</span>
         <input className={`input ${monto !== "" && !montoValido ? "invalid" : ""}`} inputMode="decimal"
           value={monto} onChange={(e) => setMonto(e.target.value)} aria-label={`Monto para ${r.folio}`} />
-        {monto !== "" && !montoValido && <p className="field-error">Captura un monto mayor a cero.</p>}
+        {monto !== "" && !montoValido && <p className="field-error">Capture un monto mayor a cero.</p>}
+      </div>
+      <div className="field">
+        <span>Confirme el tipo de usuario</span>
+        <p className="ti-hint" style={{ margin: "0 0 6px" }}>
+          {tipoFijo
+            ? "El titular es menor de edad: su tipo queda fijo en alumno y firma su padre, madre o tutor."
+            : <>En el alta se declaró como <strong>{TIPO_USUARIO_LABEL[r.tipoUsuario]}</strong>. Confírmelo con la persona presente; si no corresponde, elija el correcto.</>}
+        </p>
+        <div className="chip-row">
+          {TIPOS_USUARIO.map((t) => (
+            <button key={t} type="button" disabled={tipoFijo && t !== "alumno"}
+              className={`select-chip ${tipoEfectivo === t ? "on" : ""}`}
+              onClick={() => setTipo(t)}>{TIPO_USUARIO_LABEL[t]}</button>
+          ))}
+        </div>
+        {corrige && (
+          <p className="ti-hint" style={{ marginTop: 6 }}>
+            Se corregirá de {TIPO_USUARIO_LABEL[r.tipoUsuario]} a {TIPO_USUARIO_LABEL[tipoEfectivo]}; el
+            cambio queda en la bitácora del expediente.
+          </p>
+        )}
       </div>
       <p className="notice admin-auto-receipt"><strong>Folio de recibo:</strong> se generará automáticamente al confirmar.</p>
       <div className="field">
         <span>Cobrado por</span>
         <input className={`input ${!nombreValido ? "invalid" : ""}`} value={cobradoPor}
           onChange={(e) => onCobradoPor(e.target.value)} placeholder="Nombre del cajero" />
-        {!nombreValido && <p className="field-error">Indica quién recibió el pago.</p>}
+        {!nombreValido && <p className="field-error">Indique quién recibió el pago.</p>}
       </div>
       <button type="button" className="primary-action" disabled={busy || !montoValido || !nombreValido}
-        onClick={() => onSubmit({ monto: montoNumero, cobradoPor: cobradoPor.trim() })}>
+        onClick={() => onSubmit({ monto: montoNumero, cobradoPor: cobradoPor.trim(), tipoUsuario: tipoEfectivo })}>
         {montoValido ? `Registrar pago de ${dinero.format(montoNumero)}` : "Registrar pago"}
       </button>
     </div>

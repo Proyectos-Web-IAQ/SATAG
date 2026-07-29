@@ -441,6 +441,60 @@ a { color: var(--primary-strong); }
    texto se lee completo: es la URL que la BD publica en aviso_versiones. */
 .aviso-publico { font-size: 0.95rem; color: var(--ink); line-height: 1.6; }
 
+/* ---------- Reporte de expedientes incompletos (CC-02) ----------
+   Tarjeta de sólo lectura: reusa la anatomía de .ti-card pero sin cabecera
+   plegable, porque aquí no hay nada que abrir ni ninguna acción que ejecutar.
+   El padding replica el de .ti-card__head para que ambas listas se vean igual. */
+.incompleto { padding: 14px; }
+.incompleto__motivos { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+/* Tono del motivo: rojo = el expediente está roto (un estado que los RPC no
+   pueden producir); ámbar = falta información o alguien debe dar seguimiento.
+   Mismo semáforo que .espera-badge, para no enseñar dos códigos de color. */
+.motivo-chip {
+  border-radius: 999px; font-size: 0.74rem; font-weight: 800;
+  padding: 3px 10px; white-space: nowrap;
+}
+.motivo-chip--alert { background: #fdecec; color: #b3271e; }
+.motivo-chip--warn { background: #fdf0e1; color: #9a5a1a; }
+
+/* Consulta suma la tarjeta de incompletos a las tres que ya tenía. La regla va
+   dentro del media query porque esta hoja declara el apilado de .metric-cards
+   en celular ANTES de este bloque: sin el min-width, al ser posterior en el
+   archivo ganaría y dejaría cuatro columnas apretadas en un teléfono. */
+@media (min-width: 621px) {
+  .metric-cards--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ---------- Sello de validación del tipo de usuario (CC-05) ----------
+   El tipo lo declara el titular en un formulario público; Administración lo
+   confirma al cobrar. Distinguir "declarado" de "validado" es lo que hace útil
+   al dato, así que el estado va pegado al valor, no en otra columna. */
+.tipo-sello {
+  border-radius: 999px; font-size: 0.7rem; font-weight: 800;
+  padding: 2px 8px; white-space: nowrap;
+}
+.tipo-sello--ok { background: #eaf6ee; color: #1f6b3a; }
+.tipo-sello--pendiente { background: #eef1f4; color: var(--muted); }
+.tipo-sello__detalle {
+  color: var(--muted); display: block; font-size: 0.75rem;
+  font-weight: 600; margin-top: 2px;
+}
+
+/* ---------- Evidencia de firma en el panel (SC-008) ----------
+   Bloque aparte dentro del expediente: es evidencia legal, no un dato
+   operativo más. El borde punteado lo separa sin competir con .ti-form. */
+.evidencia { border-top: 1px dashed var(--line); margin-top: 12px; padding-top: 12px; }
+.evidencia__img {
+  background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  display: block; margin-top: 10px; max-width: 100%;
+}
+/* El hash va en monoespaciada y se puede cortar: 64 caracteres desbordan la
+   tarjeta en celular. El valor completo vive en el title. */
+.evidencia__hash {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem; overflow-wrap: anywhere;
+}
+
 /* ---------- Error de campo ---------- */
 .field-error { color: var(--rose); font-size: .8rem; font-weight: 600; margin: 4px 0 0; }
 .input.invalid, .select.invalid { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(235, 0, 40, .14); }
