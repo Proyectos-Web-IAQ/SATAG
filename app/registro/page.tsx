@@ -63,6 +63,7 @@ export default function RegistroWizard() {
   const [reglamentoLeido, setReglamentoLeido] = useState(false);
   const [firma, setFirma] = useState("");
   const [trazos, setTrazos] = useState<FirmaTrazos | null>(null);
+  const [avisoCortoAbierto, setAvisoCortoAbierto] = useState(false);
 
   const avisoRef = useRef<HTMLDivElement>(null);
   const reglamentoRef = useRef<HTMLDivElement>(null);
@@ -95,6 +96,15 @@ export default function RegistroWizard() {
     const el = reglamentoRef.current;
     if (step === 3 && el && el.scrollHeight <= el.clientHeight + 8) setReglamentoLeido(true);
   }, [step, reglamento]);
+
+  // El aviso simplificado viene como un solo texto con saltos de línea. El
+  // primer párrafo es el que la ley exige a la vista al recabar los datos
+  // (responsable + finalidades); el resto se despliega bajo demanda para no
+  // empujar el formulario media pantalla hacia abajo.
+  const avisoCortoParrafos = (avisoCorto ?? "")
+    .split(/\r?\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
 
   const marcaFinal = marca === "Otro" ? marcaOtro : marca;
   const modeloFinal = modelo === "Otro" ? modeloOtro : modelo;
@@ -223,16 +233,32 @@ export default function RegistroWizard() {
             <header className="survey-header"><h1>Datos del solicitante</h1></header>
             {/* Aviso simplificado (CC-09): la ley pide informar al momento de
                 recabar los datos, no después. El aviso integral se acepta con
-                firma en el paso 3. */}
-            {avisoCorto && (
+                firma en el paso 2.
+
+                Va plegado salvo el primer párrafo. El art. 16 fr. II pide que
+                aquí consten el responsable, las finalidades y el mecanismo para
+                conocer el integral: lo primero y lo segundo están en ese
+                párrafo, y el mecanismo es el enlace, que NUNCA se pliega. Lo
+                que se oculta es el detalle de los datos recabados y el canal
+                ARCO, que además viven completos en el aviso integral. */}
+            {avisoCortoParrafos.length > 0 && (
               <div className="aviso-corto">
                 <p className="panel-title" style={{ marginTop: 0 }}>Aviso de privacidad</p>
-                {avisoCorto.split(/\r?\n/).map((p) => p.trim()).filter(Boolean).map((p, i) => (
+                <p style={{ margin: "0 0 8px" }}>{avisoCortoParrafos[0]}</p>
+                {avisoCortoAbierto && avisoCortoParrafos.slice(1).map((p, i) => (
                   <p key={i} style={{ margin: "0 0 8px" }}>{p}</p>
                 ))}
-                <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
-                  Consultar el aviso de privacidad integral SATAG
-                </a>
+                <div className="aviso-corto__acciones">
+                  {avisoCortoParrafos.length > 1 && (
+                    <button type="button" className="link-action" aria-expanded={avisoCortoAbierto}
+                      onClick={() => setAvisoCortoAbierto((v) => !v)}>
+                      {avisoCortoAbierto ? "Ocultar el aviso" : "Leer el aviso completo"}
+                    </button>
+                  )}
+                  <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
+                    Consultar el aviso de privacidad integral SATAG
+                  </a>
+                </div>
               </div>
             )}
             <div className="field">
@@ -419,10 +445,11 @@ export default function RegistroWizard() {
               ))}
             </div>
             {!avisoLeido && <p className="hint" style={{ marginTop: 8 }}>Desplácese hasta el final para poder aceptar.</p>}
-            <p className="hint" style={{ marginTop: 8 }}>
-              También puede consultarlo en{" "}
-              <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">una página aparte</a>.
-            </p>
+            {/* Aquí NO va el enlace a la página pública del aviso: el texto
+                íntegro está en esta misma pantalla, y ofrecer otra pestaña
+                justo cuando hay que desplazarse hasta el final para habilitar
+                la casilla solo saca a la persona del flujo. El enlace vive en
+                el paso 0 y en la portada, que es donde sí hace falta. */}
             <label className="check" style={{ marginTop: 16 }}>
               <input type="checkbox" checked={aceptaPrivacidad} disabled={!avisoLeido}
                 onChange={(e) => setAceptaPrivacidad(e.target.checked)} />

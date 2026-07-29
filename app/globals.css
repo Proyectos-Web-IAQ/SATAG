@@ -435,6 +435,13 @@ a { color: var(--primary-strong); }
 }
 .aviso-corto .panel-title { font-size: 0.9rem; color: var(--ink); margin-bottom: 6px; }
 .aviso-corto a { color: var(--primary-strong); font-weight: 700; }
+/* El aviso corto va plegado salvo su primer párrafo, para que el formulario
+   empiece a la vista. El botón de desplegar y el enlace al integral comparten
+   renglón y se apilan solos en pantalla angosta. */
+.aviso-corto__acciones {
+  align-items: center; display: flex; flex-wrap: wrap;
+  gap: 6px 16px; margin-top: 4px;
+}
 
 /* ---------- Aviso de privacidad como página pública ----------
    A diferencia de .reglamento (caja con scroll dentro del wizard), aquí el
