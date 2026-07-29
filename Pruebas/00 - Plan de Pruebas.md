@@ -113,15 +113,23 @@ Se requiere una cuenta por rol, todas con **MFA (TOTP) inscrito**, porque el pan
 
 ## 4. Riesgos conocidos que las pruebas deben confirmar
 
-La auditoría del 28-jul dejó cuatro puntos abiertos que **no son hallazgos de estas pruebas sino
-entradas** para ellas — se verifican para dejar constancia de su estado real:
+La auditoría del 28-jul dejó cuatro puntos abiertos. **Tres se cerraron antes de empezar las
+pruebas**, así que los casos correspondientes ya no documentan un hallazgo: ahora **comprueban
+que la corrección quedó bien aplicada**.
 
-1. **Bloques 05, 09 y 20**: aceptan cualquier sesión `authenticated + aal2` para escribir catálogos,
-   documentos y Storage; falta restringir a rol `admin` (SC-009). Casos `P-08`…`P-10`.
+1. **Bloques 05, 09 y 20** aceptaban cualquier sesión `authenticated + aal2` para escribir
+   catálogos, documentos y Storage. **Cerrado el 28-jul** con el bloque 43 (SC-009): la escritura
+   exige rol `admin`/`super`. Casos `P-08`…`P-10` verifican el reparto por rol.
 2. **Sin rate limiting ni CAPTCHA** en los RPC públicos `crear_solicitud` y `crear_nota_solicitud` —
-   riesgo aceptado. Caso `P-11` documenta el comportamiento actual.
-3. **Aviso simplificado y página pública** del aviso no existen (SC-007). Caso `A-07`.
-4. **Validación del tipo de usuario al cobrar (B5)** no está conectada. Caso `F-09`.
+   **sigue abierto, riesgo aceptado**. Caso `P-11` documenta el comportamiento actual.
+3. **Aviso simplificado y página pública** del aviso. **Cerrado el 28-jul** con el bloque 44 y la
+   página `/aviso-de-privacidad` (SC-007). Caso `A-07`.
+4. **Validación del tipo de usuario al cobrar (B5)**. **Cerrada el 29-jul** con el bloque 46: el
+   cobro exige confirmar el tipo y sella quién lo validó. Casos `F-29`…`F-33`.
+
+Del último día de desarrollo (29-jul) entran además dos entregas que se prueban por primera vez y
+no traen historia previa: el **reporte de expedientes incompletos** (B2/CC-02, casos `F-34`…`F-38`)
+y la **firma visible en el panel con URL firmada** (SC-008, casos `E-07`…`E-09` y `P-13`).
 
 ---
 

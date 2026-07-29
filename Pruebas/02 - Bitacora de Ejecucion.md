@@ -35,10 +35,12 @@
 | P-06 | | | |
 | P-07 | | | |
 | P-08 | | | |
-| P-09 | | | *(se espera hallazgo → SC-009)* |
-| P-10 | | | |
+| P-09 | | | *(comprueba el bloque 43, aplicado 28-jul)* |
+| P-10 | | | *(comprueba el bloque 43, aplicado 28-jul)* |
 | P-11 | | | *(riesgo aceptado: sin rate limiting)* |
 | P-12 | | | |
+| P-13 | | | *(bloque 47)* |
+| P-14 | | | *(vistas `security_invoker`, bloques 45 y 47)* |
 
 ## Tanda E · Evidencia de firma
 
@@ -50,6 +52,9 @@
 | E-04 | | | |
 | E-05 | | | |
 | E-06 | | | |
+| E-07 | | | *(SC-008, bloque 47)* |
+| E-08 | | | |
+| E-09 | | | |
 
 ## Tanda F · Funcional
 
@@ -63,7 +68,7 @@
 | F-06 | | | |
 | F-07 | | | |
 | F-08 | | | |
-| F-09 | | | *(B5 sin conectar: documentar estado)* |
+| F-09 | | | *(B5 ya conectado: ver F-29…F-33)* |
 | F-10 | | | |
 | F-11 | | | |
 | F-12 | | | |
@@ -83,6 +88,16 @@
 | F-26 | | | |
 | F-27 | | | |
 | F-28 | | | |
+| F-29 | | | *(CC-05, bloque 46)* |
+| F-30 | | | |
+| F-31 | | | *(desde el SQL Editor)* |
+| F-32 | | | |
+| F-33 | | | |
+| F-34 | | | *(CC-02, bloque 45 · folios `…221`…`…226`)* |
+| F-35 | | | |
+| F-36 | | | |
+| F-37 | | | |
+| F-38 | | | |
 
 ## Tanda A · ARCO y ciclo de vida
 
