@@ -33,6 +33,14 @@
 --   201-206  Registros "gemelos" de las 6 notas sin vincular (para vincular)
 --   211-214  Activo con TAG propio + TAG apartado + solicitud de reinstalacion
 --            (CC-01) -> TI "Actualizar datos", boton "Usar el TAG apartado"
+--   221-226  EXPEDIENTES INCOMPLETOS (CC-02) -> reporte de incompletos, un
+--            folio por motivo de v_registros_incompletos (bloque 45):
+--              221 sin_pago (alta de hace 12 dias, nadie cobro)
+--              222 sin_instalar (pago de hace 10 dias, TI no instalo)
+--              223 tag_sin_estacionamiento (TAG activo sin acceso asignado)
+--              224 vehiculo_incompleto (marca en blanco)
+--              225 activo_sin_tag (activo sin numero de dispositivo)
+--              226 tag_sin_pago + sin_placas (dos motivos a la vez)
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -190,6 +198,58 @@ insert into registro_estacionamientos (registro_id, estacionamiento_clave)
 select id, 'E2'
   from registros
  where estado = 'activo' and right(folio, 1) in ('1','3');
+
+-- ---------------------------------------------------------------------
+-- 3b) EXPEDIENTES INCOMPLETOS (CC-02, bloque 45): un folio por motivo.
+--
+--     Va DESPUES de los pasos 2 y 3 a proposito: esos dos reparten pago y
+--     estacionamiento a TODOS los activos, y aqui hace falta justo lo
+--     contrario (que a cada uno le falte una cosa concreta). El pago y el
+--     estacionamiento de estos seis se controlan a mano mas abajo.
+--
+--     221 y 222 llevan created_at atrasado: los motivos 'sin_pago' y
+--     'sin_instalar' solo se encienden a los 7 dias naturales, asi que con la
+--     fecha de hoy no se podrian probar.
+-- ---------------------------------------------------------------------
+insert into registros
+    (folio, usuario_nombres, usuario_apellido_paterno, usuario_apellido_materno,
+     tipo_usuario, marca, modelo, color, placas, sin_placas,
+     no_dispositivo, procedencia_tag, estado,
+     fecha_adquisicion, fecha_instalacion, instalado_por, created_at)
+values
+-- 221  Alta de hace 12 dias que nadie cobro          -> sin_pago
+('SATAG-000221','Valeria','Zamora','Lira','padres','Toyota','Corolla','Blanco','ABC1321',false,
+ null,'escuela','pendiente',null,null,null, now() - interval '12 days'),
+-- 222  Pagado hace 10 dias y TI nunca instalo        -> sin_instalar
+('SATAG-000222','Wenceslao','Aguilar',null,'maestro','Nissan','Versa','Gris','ABC1322',false,
+ null,'escuela','pendiente',current_date - 10,null,null, now() - interval '14 days'),
+-- 223  TAG activo sin ningun estacionamiento         -> tag_sin_estacionamiento
+('SATAG-000223','Ximena','Beltran','Solis','padres','Honda','Civic','Negro','ABC1323',false,
+ '7000223','escuela','activo',current_date - 20,current_date - 18,'TI Prueba', now()),
+-- 224  Marca en blanco (no hay CHECK que lo impida)  -> vehiculo_incompleto
+('SATAG-000224','Yolanda','Cervantes','Rios','admin','','Sedan','Azul','ABC1324',false,
+ '7000224','escuela','activo',current_date - 19,current_date - 17,'TI Prueba', now()),
+-- 225  Activo sin numero de dispositivo              -> activo_sin_tag
+('SATAG-000225','Zacarias','Delgado','Nava','maestro','Mazda','3','Rojo','ABC1325',false,
+ null,'escuela','activo',current_date - 18,current_date - 16,'TI Prueba', now()),
+-- 226  TAG instalado sin pago, y ademas sin placas   -> tag_sin_pago + sin_placas
+('SATAG-000226','Abril','Esquivel','Toro','padres','Kia','Rio','Plata',null,true,
+ '7000226','escuela','activo',null,current_date - 15,'TI Prueba', now());
+
+-- Pago de 222 (atrasado 10 dias), 223, 224 y 225. El 221 y el 226 se quedan
+-- SIN pago: son justo lo que deben detectar 'sin_pago' y 'tag_sin_pago'.
+insert into pagos (registro_id, monto, fecha, created_at)
+select id, 100, current_date - 10, now() - interval '10 days'
+  from registros where folio = 'SATAG-000222';
+insert into pagos (registro_id, monto)
+select id, 100
+  from registros where folio in ('SATAG-000223','SATAG-000224','SATAG-000225');
+
+-- Estacionamiento de 224, 225 y 226. El 223 se queda SIN asignar: es lo que
+-- debe detectar 'tag_sin_estacionamiento'.
+insert into registro_estacionamientos (registro_id, estacionamiento_clave)
+select id, 'E1'
+  from registros where folio in ('SATAG-000224','SATAG-000225','SATAG-000226');
 
 -- ---------------------------------------------------------------------
 -- 4) Solicitudes de folio (CC-06): actualizacion (141-144) y baja (151-154).
