@@ -1,19 +1,37 @@
 # Integración SATAG ↔ ZKBioSecurity — Investigación
 
-> **Estado:** investigación / propuesta técnica. Versión del sistema del colegio **confirmada 2026-07-08**
-> (ver §1); pendientes menores en §9.
+> **Estado:** investigación cerrada · **bloqueada por licencia**, a la espera de una decisión de Dirección.
 > **Objetivo:** eliminar la doble captura del No. de TAG. Que el registro capturado una sola vez en
 > SATAG se propague automáticamente al sistema de control de acceso/estacionamiento del colegio
 > (**ZKBioSecurity**, de ZKTeco), sin reescribir nada a mano.
-> **Fecha:** 2026-07-08.
+> **Fecha:** 2026-07-08 · **Actualizado 2026-07-29** con la verificación en el sistema del colegio (§1.2).
+
+> ## ⛔ Conclusión ejecutiva (2026-07-29)
+>
+> **La API de ZKBioSecurity NO está activada en el sistema del colegio.** Se verificó directamente en el
+> software y quedó confirmado por tres vías independientes (§1.2). La API no es una función que venga
+> incluida: es una **licencia que se compra por separado**, número de parte **`ZKBS-API-S1`**.
+>
+> **Consecuencia:** la integración **no es un problema de programación, sino de compra**. Todo el diseño
+> técnico de este documento sigue siendo válido y ejecutable, pero no puede iniciarse hasta que la
+> licencia se autorice y se active.
+>
+> **Lo que procede:** cotizar la licencia con el distribuidor (**SMARTHAUS**, que aparece como empresa
+> autorizada en el propio software) y llevar la decisión a Dirección junto con el cierre del proyecto.
+> Si no se autoriza, queda el **plan B de exportación/importación por archivo** (§7), que es soportado
+> por el fabricante pero manual.
+>
+> **Esto no afecta el cierre de SATAG:** la integración con hardware de acceso está **fuera del alcance
+> del MVP** (`Plan de Direccion/02`, §2.1 Exclusiones).
 
 ---
 
 ## 1. Resumen ejecutivo
 
-- **¿Se puede?** Sí. ZKBioSecurity trae una **API REST de terceros ("3rd Party API")** diseñada
-  exactamente para que sistemas externos como SATAG lean y escriban personas, tarjetas, placas y
-  **autorizaciones de estacionamiento**.
+- **¿Se puede?** Técnicamente sí. ZKBioSecurity trae una **API REST de terceros ("3rd Party API")**
+  diseñada exactamente para que sistemas externos como SATAG lean y escriban personas y tarjetas.
+  **Pero en el sistema del colegio esa API no está licenciada** (§1.2), así que hoy la respuesta
+  práctica es *no, hasta que se compre la licencia*.
 - **El obstáculo real** no es la API, es la **topología de red**: SATAG vive en la **nube (Supabase)** y
   ZKBioSecurity es un servidor **local (LAN del colegio)** que no debe exponerse a internet. Por eso la
   integración no es "nube llama a nube", sino que requiere un **conector que corra dentro de la red del
@@ -54,9 +72,53 @@ De la pantalla "Acerca de" del ZKBioSecurity del colegio:
 un **nivel de acceso** que abre la pluma. El conector debe crear/actualizar **persona → tarjeta → nivel de
 acceso**. La **placa se queda solo en SATAG** (el módulo LPR está apagado; ZKBio no la usa).
 
-> **Único dato que falta en la captura:** el "Acerca de" no muestra una línea de licencia de **API**. En la
-> V5000 3.x el API de terceros se habilita en **Sistema → Gestión de Autoridad → Autorización de API**. Hay
-> que entrar al software y confirmar que ese menú existe/está disponible (ver §9).
+> **Dato que faltaba en esa captura:** el "Acerca de" no mostraba una línea de licencia de **API**. Se
+> verificó el **2026-07-29** y el resultado está en §1.2: **la API no está activada**.
+
+---
+
+### 1.2 Verificación de la licencia de API (2026-07-29) — RESULTADO: NO ACTIVADA
+
+Se entró al software del colegio (`http://192.168.1.7:8088`, usuario `admin`) para resolver el
+bloqueante principal. **Confirmado por tres vías independientes:**
+
+**1. La tabla de licencias lo dice de forma explícita.**
+En *Acerca de → Detalles*, el renglón **API** aparece con estado **"No Activado"** y una **✗ roja** en la
+columna Disponibles/Total. El manual (§12.2.4) confirma que ahí es exactamente donde se refleja: *"La API
+se muestra en los detalles de la licencia"*.
+
+**2. El menú de Autorización de API no existe.**
+Según el manual, la ruta es *Sistema → Privilegios → **Autorización API***, y el menú aparece entre
+"Grupos de Privilegios" y "Registro de Clientes". En el sistema del colegio, *Privilegios* contiene
+únicamente **Usuarios, Privilegios, Grupos de Privilegios y Registro de Clientes**: falta justo ese
+elemento, en la posición donde debería estar. El manual es categórico:
+
+> *"el menú de autorización API se muestra en la administración del sistema sólo cuando la API está
+> activada"* — Manual de usuario ZKBioSecurity, §12.2.4.
+
+**3. "Registro de Clientes" no es la vía alterna.**
+Se revisó por descarte. Su campo *Tipo de Cliente* solo ofrece periféricos: Cliente App, OCR (Personal /
+Visitantes / Hotel), Lector ID (Personal / Visitantes / Hotel) e Impresión de Credenciales. **No existe
+un tipo "API" ni "Tercero".** Esa pantalla sirve para dar de alta accesorios, no para habilitar la API.
+
+#### La licencia se vende por separado
+
+| Dato | Valor |
+|---|---|
+| Número de parte | **`ZKBS-API-S1`** — "Licencia de integración API para ZKBioSecurity" |
+| Variantes vistas en el mercado | `ZKBSAPI` (mismo producto), `ZKBS-API-P1` (conexión a software del propio ZKTeco) |
+| Qué habilita | *"una interfaz web de API dentro del software"* |
+| Distribuidor del colegio | **SMARTHAUS** (aparece como "Empresa autorizada" en el propio software) |
+| Distribuidores que la listan | SYSCOM, TVC, Relematic, PC Redcom, Store Smarthouse |
+| Costo | **Por cotizar** |
+
+#### Nota sobre el alcance de la licencia actual
+
+En *Acerca de → Detalles* **todos** los módulos opcionales aparecen como "No Activado" (Acceso Avanzado,
+Directorio Activo, LED, ARTECO, C2P, APP, Personal, Departamentos, Área, Tablero de Personal). La lectura
+más probable es que el colegio adquirió ZKBioSecurity en su configuración base —con la puerta de Control
+de Acceso que sí opera— y ningún módulo adicional. **Conviene pedir al distribuidor que confirme por
+escrito el alcance vigente de la licencia**, para saber con qué se cuenta antes de proponer nada.
 
 ---
 
@@ -109,6 +171,52 @@ formato de un **número de tarjeta Wiegand** estándar en ZKBioSecurity. Encajan
 > **"ZKBioSecurity V5000 3.0.0 — 3rd Party API User Manual V1.4"** (ver §11), **no** el de ZKBio
 > CVSecurity 6.x (que cambia el login/token y algunas rutas). Al mapear los endpoints exactos, usar ese
 > manual. Los strings precisos de cada ruta se toman de ahí; el patrón de arriba es el flujo general.
+
+### 3.3 Detalles confirmados en el manual (§12.2.4) — aplicables cuando se active la licencia
+
+**Dirección base de la API.** El explorador del manual muestra `http://127.0.0.1:8088/api/api-docs` con
+`BASE URL: /api`. Es decir, **la API vive en el mismo puerto que la interfaz web**, no en uno aparte.
+Para el servidor del colegio la base sería:
+
+```
+http://192.168.1.7:8088/api/
+Explorador de endpoints:  http://192.168.1.7:8088/api/api-docs
+```
+
+*(El manual también muestra un ejemplo con puerto `6066`; corresponde a otra instalación, no es un
+puerto especial de la API.)*
+
+**Alta del cliente de API.** Una vez activada la licencia: *Sistema → Privilegios → Autorización API →
+Nuevo*, y se capturan **ID de Cliente** y **Clave de Cliente**. El manual advierte que **sin ese par la
+API no responde con normalidad**. Desde esa misma pantalla, el botón **"Examinar API"** abre el
+explorador de endpoints.
+
+> 💡 **Ese explorador vale más que cualquier PDF:** lista los endpoints reales de *esa* instalación y
+> versión. Cuando la licencia se active, mapear los endpoints desde ahí y no desde el manual.
+
+**Módulos que expone la API en esta versión:**
+`AccLevel` · `AdMedia` · `AttAreaPerson` · `Card` · `Department` · `Device` · `Door` · `Person` ·
+`Reader` · `Third` · `Transaction`
+
+Dos consecuencias para el diseño:
+
+- **No hay módulo de estacionamiento/parking en la lista.** Ni siquiera con la licencia activa existiría
+  esa vía en esta versión. Confirma —por segunda razón, independiente de que el módulo LPR esté apagado—
+  que el camino correcto es **`Person` → `Card` → `AccLevel`**.
+- **`Transaction` existe**, así que la lectura de entradas/salidas hacia SATAG es posible a futuro. No es
+  del alcance actual, pero la puerta queda abierta.
+
+**⚠️ El `access_token` viaja en la URL, no en un encabezado.** Ejemplo del manual:
+
+```
+http://127.0.0.1:8088/api/accLevel/getById/632107210199985?access_token=<token>
+```
+
+Esto tiene una implicación de seguridad que el conector debe considerar: **los tokens en la URL quedan
+registrados** en bitácoras del servidor, historiales de navegador y cualquier proxy intermedio. Es un
+argumento adicional para que el conector opere **solo dentro de la red local**, para que el servidor de
+ZKBio **nunca se exponga a internet**, y para rotar la clave de cliente si se sospecha filtración. Nótese
+además que la comunicación con el servidor es **HTTP sin TLS** (el navegador marca "No seguro").
 
 ---
 
@@ -219,31 +327,83 @@ existe en el esquema) o en el rastro de sync, y no bloquear el flujo de SATAG si
 
 ## 9. Qué falta confirmar (bloqueantes, antes de codificar)
 
-1. ✅ **Versión — RESUELTO:** ZKBioSecurity V5000 **3.1.5.0_R**. **Pendiente:** entrar al software y
-   confirmar que existe el menú **Sistema → Gestión de Autoridad → Autorización de API** (el "Acerca de" no
-   muestra una línea de licencia de API). Si no aparece, hay que habilitar/licenciar la API con el
-   distribuidor, o ir al plan B (CSV, §7).
-2. ✅ **Cómo entran los tags — ACLARADO:** con Estacionamiento/LPR apagado, los TAG operan como **tarjeta
-   en Control de Acceso**. Queda por confirmar el **tipo de lectora** (UHF de largo alcance vs. proximidad),
-   pero eso solo afecta el hardware, **no el modelo de datos**: en ambos casos `no_dispositivo` es el número
-   de tarjeta.
-3. **Host del conector:** ¿hay una PC/servidor en la red del colegio que alcance al servidor de ZKBio y
-   además salga a internet (Supabase)? Ahí corre el conector.
+1. ✅ **Versión — RESUELTO (08-jul):** ZKBioSecurity V5000 **3.1.5.0_R**.
+2. ⛔ **Licencia de API — RESUELTO (29-jul): NO ESTÁ ACTIVADA.** Verificado en el software por tres vías
+   (§1.2). **Este es el bloqueante que detiene todo.** Requiere comprar la licencia `ZKBS-API-S1` o ir al
+   plan B (§7). **Es una decisión de Dirección, no técnica.**
+3. ✅ **Cómo entran los tags — ACLARADO (08-jul):** con Estacionamiento/LPR apagado, los TAG operan como
+   **tarjeta en Control de Acceso**. Reforzado el 29-jul: la API de esta versión **tampoco expone módulo de
+   parking** (§3.3). Queda por confirmar el **tipo de lectora** (UHF de largo alcance vs. proximidad), pero
+   eso solo afecta el hardware, **no el modelo de datos**: en ambos casos `no_dispositivo` es el número de
+   tarjeta.
+4. **Host del conector — PENDIENTE:** ¿hay una PC/servidor en la red del colegio que alcance al servidor de
+   ZKBio (`192.168.1.7:8088`) y además salga a internet (Supabase)? Ahí corre el conector. *Pista del
+   29-jul: la bitácora de operaciones del sistema registra accesos desde `127.0.0.1`, o sea que alguien
+   trabaja directamente sobre la máquina servidor; si esa máquina tiene salida a internet, es la candidata
+   natural.*
+5. **Sincronización de bajas — PENDIENTE de definir:** qué debe ocurrir en ZKBio cuando un TAG se da de
+   baja o se bloquea en SATAG (desactivar tarjeta, retirar nivel de acceso, o ambas).
 
 ---
 
 ## 10. Siguientes pasos
 
-1. **[TI colegio]** Confirmar los 3 puntos del §9 (versión, licencia, tipo de tag, host).
-2. **[TI colegio]** Activar licencia de API (si aplica) y crear el cliente de API (Client ID/Secret).
-3. **[Desarrollo]** Descargar el manual de la API de la **versión correcta** y mapear los endpoints exactos
-   (token, personnel, card, parking).
+> **Actualización 29-jul:** los pasos 1 y 3 ya se hicieron. El proyecto queda **detenido en el paso 2**,
+> que no depende del desarrollo sino de una autorización de compra.
+
+### Bloque administrativo (lo que sigue ahora)
+
+1. ✅ **[TI colegio]** Confirmar versión y licencia — **hecho el 29-jul** (§1.2).
+2. ⏳ **[TI colegio → Dirección]** **Cotizar la licencia `ZKBS-API-S1` con SMARTHAUS.** Solicitar por
+   escrito: costo, tiempo de entrega, confirmación de que es la parte correcta para la versión 3.1.5.0_R,
+   si la activación requiere intervención del distribuidor en el servidor, y **el alcance vigente de la
+   licencia actual del colegio** (§1.2).
+3. ⏳ **[Dirección]** Decidir entre **comprar la licencia** (integración automática) o **plan B por archivo**
+   (§7, soportado pero manual). Conviene plantearlo junto con el acta de cierre de SATAG.
+4. ⏳ **[TI colegio]** Identificar el host del conector (§9, punto 4).
+
+### Bloque técnico (solo si se autoriza la licencia)
+
+5. **[TI colegio]** Activar la licencia y crear el cliente de API: *Sistema → Privilegios → Autorización
+   API → Nuevo* (ID de Cliente + Clave de Cliente, §3.3).
+6. **[Desarrollo]** Mapear los endpoints exactos desde el **explorador integrado**
+   (`http://192.168.1.7:8088/api/api-docs`), que refleja la instalación real, en lugar del PDF genérico.
 4. **[Desarrollo]** Definir el cambio de esquema para el rastro de sincronización (tabla
    `sincronizaciones_zk` o columna en `registros`).
 5. **[Desarrollo]** Construir el conector (Node/TS): auth → mapeo → push, con reintentos y logging.
 6. **[Desarrollo]** Probar en modo **botón manual** con 2–3 registros reales; validar que abre la pluma.
 7. **[Desarrollo]** Migración inicial (los ya registrados) — vía conector por lotes o CSV.
 8. **[Desarrollo]** Automatizar por cambio de estado y monitorear.
+
+---
+
+## 10.1 Anexo — Solicitud de cotización al distribuidor
+
+Borrador listo para enviar a **SMARTHAUS**. Lleva los datos que el distribuidor necesita para cotizar sin
+tener que preguntar de vuelta.
+
+> **Asunto:** Cotización licencia ZKBS-API-S1 — ZKBioSecurity V5000, licencia 19307
+>
+> Buen día. Del Instituto Asunción de Querétaro. Requerimos habilitar la **API de terceros** de nuestro
+> ZKBioSecurity para integrarlo con un sistema interno de control de acceso vehicular.
+>
+> Datos de la instalación:
+>
+> - Producto: ZKBioSecurity V5000, versión **3.1.5.0_R**
+> - Licencia ID: **19307**
+> - Módulos activos: Control de Acceso (1 de 5 puertas). Estacionamiento/LPR no activado.
+>
+> Ya verificamos en *Acerca de → Detalles* que la línea **API** aparece como "No Activado", y que en
+> *Sistema → Privilegios* no existe la opción de Autorización de API. Entendemos que corresponde a la
+> licencia **ZKBS-API-S1**. Les agradecería:
+>
+> 1. Cotización de esa licencia y tiempo de entrega.
+> 2. Confirmar que es la parte correcta para nuestra versión 3.1.5.0_R.
+> 3. El manual de la API que aplica a nuestra versión.
+> 4. Si el proceso de activación requiere que ustedes intervengan en el servidor.
+> 5. Confirmación por escrito del **alcance vigente** de nuestra licencia actual (qué módulos cubre).
+>
+> Quedo atento. Gracias.
 
 ---
 
@@ -258,6 +418,11 @@ existe en el esquema) o en el rastro de sync, y no bloquear el flujo de SATAG si
 
 **Guías en español**
 - [Tecnosinergia — "¿Cómo usar las APIs de ZKBio CVSecurity correctamente?"](https://tecnosinergia.zendesk.com/hc/es/articles/46093344529051--C%C3%B3mo-usar-las-APIS-de-ZKBio-CVSecurity-Correctamente)
+- Manual de usuario ZKBioSecurity en español, **§12.2.4 "Autorización de la API"** — es la fuente de los
+  datos de §3.3 y de la regla de que el menú solo aparece con la licencia activa.
+
+**Licencia de API (consultado 2026-07-29)**
+- [ZKBSAPI — TVC](https://tvc.mx/products/27206/) · [ZKBS-API-S1 — SYSCOM](https://www.syscom.mx/producto/ZKBS-API-S1-ZKTECO-168421.html) · [ZKBS-API-S1 — Store Smarthouse](https://store-smarthouse.com/products/zkbs-api-s1) · [ZKBS-API-S1 — Relematic](https://www.relematic.mx/producto/zkbs-api-s1-zkteco-705517.html)
 
 **Seguridad (referencia)**
 - [CVE-2024-35430 — investigación pública sobre ZKBio CVSecurity](https://github.com/mrojz/ZKT-Bio-CVSecurity/blob/main/CVE-2024-35430.md)
