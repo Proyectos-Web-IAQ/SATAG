@@ -56,7 +56,8 @@
 - [x] Calcular hash SHA-256 del paquete firmado. — lo genera la base, no el cliente.
 - [x] Registrar bitacora de aceptacion.
 - [x] Guardar firma en bucket privado, no publico.
-- [ ] Visualizar firma solo con URL firmada temporal. — *No aplica todavia:* el panel **no muestra** la firma. Debera cumplirse cuando se implemente esa vista.
+- [x] Visualizar firma solo con URL firmada temporal. — **Cumplido 29-jul-2026** (bloque 47). El panel muestra la firma bajo demanda con una URL firmada de 60 segundos que emite Supabase para la sesion; el bucket sigue privado y no se publica ningun archivo. Junto a la imagen se muestran las versiones de reglamento y aviso aceptadas, el sello de tiempo y el hash, tomados de `v_evidencia_firma`, que deja fuera `hash_payload`, los trazos, la IP y el user-agent.
+- [x] Definir que roles ven la evidencia. — **Decidido 29-jul-2026** (bloque 48): la leen los cuatro roles del panel (`admin`, `ti`, `consulta`, `super`); escribir o borrar del bucket sigue siendo exclusivo de `admin`/`super`, y `anon` conserva solo la subida del alta. El bloque 30 la habia acotado a `admin`/`super` por tratarse de PII sensible; se amplio por decision de la Direccion de TI para que Consulta, que es la pantalla de investigacion, no tuviera un hueco en la auditoria. **Costo asumido:** la RLS es por fila, no por columna, asi que quien lee `aceptaciones` alcanza tambien `hash_payload`, `firma_trazos`, `ip_origen` y `user_agent` si consulta la tabla directo. Detalle en `Desarrollo/04 - Seguridad, RLS y Privacidad.md`.
 
 ### Supabase/RLS
 

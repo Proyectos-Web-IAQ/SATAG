@@ -81,6 +81,16 @@
 > las pruebas, la migración al subdominio institucional y la aceptación. La corrección es **de
 > redacción, no de alcance**: no se movió ningún porcentaje, fecha ni estado del cronograma.
 >
+> 📌 **Decisión de privacidad tomada el 29-jul (bloque 48).** La evidencia de firma se abrió al rol
+> `consulta`. El bloque 30 la había restringido a `admin`/`super` por tratarse de PII sensible; la
+> Dirección de TI resolvió ampliarla porque Consulta es la pantalla donde se investiga un expediente
+> y sin la evidencia la auditoría quedaba con un hueco. Es coherente con la definición original del
+> rol —"su separación es que no escribe, no que vea menos"— y `consulta` **no ganó ni un permiso de
+> escritura**. Queda registrado el costo asumido: la RLS de PostgreSQL es por fila, no por columna,
+> así que un rol con lectura de `aceptaciones` alcanza también `hash_payload`, los trazos, la IP y el
+> user-agent si consulta la tabla directamente. Detalle técnico y alternativa descartada en el
+> encabezado del bloque 48; efectos en `Desarrollo/04` y en el checklist E6.
+>
 > ⚠️ **Pendiente de decisión para el acta de cierre.** El cronograma da el cierre en **~03-ago**,
 > mientras que la ruta de trabajo vigente pone la migración el **05-ago** y la aceptación el
 > **07-ago**. Las dos fechas siguen como estaban; hay que resolver cuál es la buena y alinear la

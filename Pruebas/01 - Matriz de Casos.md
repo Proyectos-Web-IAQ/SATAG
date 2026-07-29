@@ -1,11 +1,17 @@
 # Matriz de Casos de Prueba — SATAG
 
-> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.1 · 29-jul-2026 · **74 casos**.
+> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.2 · 29-jul-2026 · **76 casos**.
 > **v1.1 (29-jul):** entran los casos del último día de desarrollo — validación del tipo de
 > usuario al cobrar (F-29…F-33), reporte de expedientes incompletos (F-34…F-38), firma visible
 > en el panel (E-07…E-09) y la RLS de las vistas nuevas (P-13, P-14). Se corrigió además el
 > resultado esperado de **P-09**, **P-10** y **A-07**: describían el sistema antes de aplicar
 > los bloques 43 y 44, que ya están en la base desde el 28-jul.
+>
+> **v1.2 (29-jul):** el bloque 48 abrió la evidencia de firma al rol `consulta`. Se reescribieron
+> **P-13** y **P-10**, que afirmaban lo contrario, y entra **E-10** para verificar que los cuatro
+> roles ven lo mismo y para dejar constancia del riesgo aceptado: la RLS es por fila, no por
+> columna. También se retiró el enlace redundante al aviso en el paso 2 del formulario y el aviso
+> corto del paso 0 quedó plegable, lo que toca **F-01**, **F-02** y **F-03** y entra como **F-39**.
 > Cada caso es ejecutable por un tercero. El resultado se anota en la
 > [bitácora de ejecución](02%20-%20Bitacora%20de%20Ejecucion.md), no en este archivo.
 
@@ -26,6 +32,7 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | **F-06** | Validación de placas y campos | — | Enviar con placa inválida o campos vacíos | Se bloquea el envío con mensaje claro por campo; nada se guarda |
 | **F-07** | Procedencia del TAG | — | Elegir TAG de la escuela y, en otro registro, TAG propio | Ambos quedan registrados con su procedencia; **los dos se cobran** (CC-01) |
 | **F-08** | Redacción "de usted" | — | Recorrer las seis pantallas del wizard | Ningún texto tutea al usuario (CC-07) |
+| **F-39** | El aviso corto cumple sin desplegarse | Sesión anónima | Abrir el paso 1 (Datos) **sin** pulsar «Leer el aviso completo» | Se ven, de entrada, **el responsable, las finalidades y el enlace al aviso integral** — el mínimo del art. 16 fr. II. El resto del texto se despliega con el botón, y el enlace **nunca** se pliega. En el paso del aviso integral **ya no** hay enlace a la página pública: el texto está ahí mismo |
 
 ## F · Funcional — Flujo 2: Administración (`/admin/`, pestaña Administración y Finanzas)
 
@@ -92,10 +99,10 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | **P-07** | Rol `admin` no instala | Con rol `admin`, invocar `instalar_tag` | Rechazada |
 | **P-08** | Sin escritura directa | Con cualquier rol del panel, intentar `update registros …` e `insert into pagos …` directos | Ambos rechazados: toda escritura pasa por RPC (bloque 30) |
 | **P-09** | Catálogos y documentos por rol | Con rol `consulta` o `ti`, intentar escribir en `cat_marcas` y `aviso_versiones` | **Rechazado.** El bloque 43 (aplicado el 28-jul, cierra SC-009) exige rol `admin`/`super` además de `aal2`. La lectura pública de catálogos y del documento vigente **no** cambia: compruebe que el formulario anónimo sigue cargando |
-| **P-10** | Bucket de firmas | Solicitar el PNG por URL directa sin sesión; después intentar escribir en el bucket con rol `ti` y con rol `consulta` | La URL directa **no** es accesible: el bucket es privado. `ti` **lee** pero no escribe; `consulta` no accede de ninguna forma; `anon` conserva sólo el insert del alta (bloque 43) |
+| **P-10** | Bucket de firmas | Solicitar el PNG por URL directa sin sesión; después intentar **escribir** en el bucket con rol `ti` y con rol `consulta` | La URL directa **no** es accesible: el bucket es privado. `ti` y `consulta` **leen** pero ninguno escribe (bloques 43 y 48); gestionar objetos sigue siendo de `admin`/`super`; `anon` conserva sólo el insert del alta |
 | **P-11** | RPC públicos sin límite | Enviar 20 notas seguidas al buzón desde la misma IP | **Estado actual esperado: las acepta todas** (sin rate limiting ni CAPTCHA). Riesgo aceptado; se documenta |
 | **P-12** | El buzón no filtra datos | Consultar por un folio ajeno en `/solicitudes/` | Confirma que la solicitud se recibió, pero **nunca muestra datos del expediente** |
-| **P-13** | `consulta` no ve la firma por ninguna vía | Con rol `consulta`: `select` sobre `aceptaciones` y sobre `v_evidencia_firma`, y pedir una URL firmada del bucket | Las tres fallan o devuelven **0 filas** (bloques 43 y 47). El panel tampoco le ofrece el botón: la evidencia sólo se monta en Administración y TI |
+| **P-13** | `consulta` lee la evidencia pero no la gestiona | Con rol `consulta`: abrir un expediente y pulsar «Ver la firma»; después intentar **subir** y **borrar** un objeto del bucket `firmas`, e invocar `registrar_pago`, `instalar_tag` y `dar_baja` | Ve la firma y su evidencia igual que Administración y TI (bloque 48). Las cinco escrituras fallan: sólo ganó lectura. Es la comprobación de que la separación del rol sigue siendo "no escribe", no "ve menos" |
 | **P-14** | Las vistas nuevas heredan la RLS | Con una cuenta **sin** `app_metadata.rol`, y con otra sin completar el MFA: `select` sobre `v_registros_incompletos` y `v_evidencia_firma` | **0 filas** en ambos casos. Las dos vistas son `security_invoker`: corren con los permisos de quien consulta, no con los del dueño |
 
 ---
@@ -113,6 +120,7 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | **E-07** | La firma se ve desde el panel (SC-008) | Con rol `admin` o `ti`, abrir un expediente dado de alta por el formulario y pulsar «Ver la firma» | Se muestra la imagen de la firma, el nombre y rol de quien firmó, la **versión del reglamento y del aviso** aceptados, el **sello de tiempo** y el **hash** del paquete firmado |
 | **E-08** | La URL de la firma caduca | Copiar el enlace de la imagen y volver a abrirlo pasado el minuto; abrirlo también en una ventana sin sesión | Deja de servir en ambos casos: es una URL firmada de vida corta, no un archivo público. «Volver a abrirla» emite una nueva |
 | **E-09** | La evidencia no arrastra PII de más | Revisar la respuesta de red al pedir la evidencia | Viajan sólo los campos probatorios. **No** viajan `hash_payload` (que trae el snapshot completo del titular), los trazos, la IP ni el user-agent: la vista `v_evidencia_firma` los deja fuera |
+| **E-10** | Los cuatro roles ven la misma evidencia | Abrir el mismo expediente con `admin`, `ti`, `consulta` y `super` | Los cuatro ven la firma y los mismos datos probatorios (bloque 48). **Riesgo documentado que se confirma aquí:** con cualquiera de los cuatro, un `select * from aceptaciones` directo sí alcanza `hash_payload`, trazos, IP y user-agent — la RLS es por fila, no por columna. Anotarlo como observación, no como fallo |
 
 ---
 
@@ -148,8 +156,8 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | Criterio de aceptación (Doc 2 §2.1) | Casos que lo cubren |
 |---|---|
 | Campos cubiertos, validados y guardados | F-01, F-05, F-06, F-21 |
-| Firma conservada como evidencia | E-01…E-05, **E-07…E-09** |
-| Aviso simplificado antes de capturar | A-07 |
+| Firma conservada como evidencia | E-01…E-05, **E-07…E-10** |
+| Aviso simplificado antes de capturar | A-07, **F-39** |
 | Menores firman por tutor | F-04, E-06, **F-32** |
 | Administración asigna y cobra | F-09…F-13, **F-29…F-33** |
 | TI captura TAG y cambia estado | F-19…F-21, F-25 |

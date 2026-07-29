@@ -9,6 +9,7 @@ import VistaAdmin from "@/components/admin/VistaAdmin";
 import VistaTi from "@/components/admin/VistaTi";
 import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import ListaIncompletos from "@/components/admin/Incompletos";
+import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import { DetalleRegistro, TarjetaRegistro } from "@/components/admin/RegistroCard";
 
 type Vista = "admin" | "ti" | "finanzas" | "consulta";
@@ -328,6 +329,11 @@ function VistaConsulta() {
             <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
               <DetalleRegistro r={r} />
               <BitacoraConsulta r={r} />
+              {/* Consulta es donde se investiga un expediente, así que la
+                  evidencia va después de la bitácora: primero qué le pasó al
+                  TAG, luego la prueba de lo que la persona aceptó. El bloque 48
+                  le abrió la lectura de la firma a este rol. */}
+              <EvidenciaFirmaPanel registroId={r.id} />
             </TarjetaRegistro>
           ))}
           {filtrados.length === 0 && (

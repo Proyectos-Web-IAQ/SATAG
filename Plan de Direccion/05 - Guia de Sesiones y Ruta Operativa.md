@@ -206,6 +206,27 @@ esta en produccion.
    la descripcion exacta del estado, sin tocar alcance, fechas ni porcentajes. Los manuales de E8
    llevan ahora una nota de estado para que el personal no crea que ya se opera con familias reales.
 
+**Ajustes de la misma tarde, ya con las pantallas a la vista:**
+
+- **Bloque 48 — la evidencia de firma se abre al rol `consulta`.** El bloque 30 la habia acotado a
+  admin/super por ser PII sensible, y el 47 la amplio a `ti`. Decision de la Direccion de TI:
+  Consulta es la pantalla donde se investiga un expediente, y sin la evidencia la auditoria quedaba
+  con un hueco. Es coherente con lo que el bloque 27 ya decia al definir el rol ("la separacion real
+  de `consulta` no es que vea menos, es que no escribe"). Consulta gano **solo lectura**: no escribe
+  en el bucket ni pasa la guardia de ningun RPC. **Costo asumido, no descuido:** la RLS de PostgreSQL
+  es por fila, no por columna, asi que quien lee `aceptaciones` alcanza tambien `hash_payload`,
+  trazos, IP y user-agent al consultar la tabla directo. Quedo registrado en el encabezado del
+  bloque, en `Desarrollo/04` y en el checklist E6.
+- **Avisos de privacidad redundantes en el formulario.** Aparecia tres veces: portada, aviso corto
+  del paso 1 y aviso integral del paso 3. Solo una era redundante de verdad — el enlace a la pagina
+  publica **dentro** del paso del integral, con el texto completo en la misma pantalla, que solo
+  invitaba a abrir otra pestana justo cuando hay que desplazarse hasta el final para habilitar la
+  casilla. Se retiro. Las otras dos se quedan porque cumplen cosas distintas: el corto es el art. 16
+  fr. II (informar **al recabar** los datos) y el integral es el que se acepta con firma y produce la
+  evidencia. Lo que si se arreglo fue la sensacion de muro de texto: el aviso corto ahora va plegado
+  salvo su primer parrafo, y el enlace al integral **nunca** se pliega, porque es parte del minimo
+  legal.
+
 **Decision de criterio (la que definia si el reporte servia o era ruido).** Un expediente incompleto
 NO es "le falta un paso del flujo": eso ya son las colas de Admin y de TI, y repetirlas seria ruido.
 Son tres cosas distintas: faltantes de **integridad** (estados que los RPC no pueden producir; si
@@ -216,17 +237,18 @@ directo en la tabla, sin `aceptaciones`, y el reporte se encenderia entero.
 
 **Correcciones a la matriz de pruebas.** Los casos `P-09`, `P-10` y `A-07` seguian describiendo el
 sistema **antes** de los bloques 43 y 44, que se aplicaron el 28-jul: manana habrian "fallado" contra
-un resultado esperado obsoleto. Ya dicen lo correcto. La matriz paso de 59 a **74 casos**.
+un resultado esperado obsoleto. Ya dicen lo correcto. Ademas, `P-13` y `P-10` se reescribieron por el
+bloque 48, que invirtio lo que afirmaban. La matriz paso de 59 a **76 casos**.
 
 **Siguiente tarea concreta, en este orden:**
 
-1. **Aplicar los bloques 45, 46 y 47** en Supabase, en ese orden. El **46 cambia la firma de
-   `registrar_pago`** (drop + notify pgrst): aplicarlo **junto con el despliegue del panel**, porque
-   en medio un panel viejo no puede cobrar.
+1. **Aplicar el bloque 48** en Supabase (los bloques 45, 46 y 47 ya se corrieron esta tarde). Son
+   solo politicas RLS: no cambia esquema ni firmas, asi que no hay ventana de corte.
 2. **Re-aplicar `seed_tests_dev.sql`** (trae los folios `221-226`, un expediente incompleto por
    motivo). Es destructivo: solo contra la base de trabajo.
 3. **Ejecutar las tandas P y E** de `Pruebas/01 - Matriz de Casos.md`. Son las que bloquean el cierre:
-   ningun fallo es admisible.
+   ningun fallo es admisible. Empezar por `P-13` y `E-10`, que son los que verifican el bloque 48, y
+   por `F-39`, que verifica que el aviso corto sigue cumpliendo el minimo legal sin desplegarse.
 4. Impartir la capacitacion y recabar firmas de asistencia.
 5. Solicitar la aprobacion institucional del aviso. **Gestionarla desde el primer dia**: es el mayor
    riesgo para la fecha de cierre.

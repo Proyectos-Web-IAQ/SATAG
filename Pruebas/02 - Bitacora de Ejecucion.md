@@ -39,7 +39,7 @@
 | P-10 | | | *(comprueba el bloque 43, aplicado 28-jul)* |
 | P-11 | | | *(riesgo aceptado: sin rate limiting)* |
 | P-12 | | | |
-| P-13 | | | *(bloque 47)* |
+| P-13 | | | *(bloque 48: `consulta` lee la firma pero no escribe nada)* |
 | P-14 | | | *(vistas `security_invoker`, bloques 45 y 47)* |
 
 ## Tanda E · Evidencia de firma
@@ -55,6 +55,7 @@
 | E-07 | | | *(SC-008, bloque 47)* |
 | E-08 | | | |
 | E-09 | | | |
+| E-10 | | | *(bloque 48; anotar el riesgo aceptado, no como fallo)* |
 
 ## Tanda F · Funcional
 
@@ -98,6 +99,7 @@
 | F-36 | | | |
 | F-37 | | | |
 | F-38 | | | |
+| F-39 | | | *(aviso corto plegable: verificar SIN desplegarlo)* |
 
 ## Tanda A · ARCO y ciclo de vida
 

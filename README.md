@@ -11,7 +11,7 @@ Alternativa web para reemplazar la hoja física de adquisición de TAG vehicular
 | **Cliente** | Instituto Asunción de Querétaro AC (IAQ) — proyecto interno |
 | **Responsable / Desarrollador** | Gerardo Sánchez — Soporte TI Jr. |
 | **Aprobador / Auditor** | Miguel Ángel González Pacheco — Encargado de Sistemas Computacionales |
-| **Estado** | 🟡 **En desarrollo — funcionalmente completo, pendiente de liberación.** Autoservicio, panel Admin/TI/Finanzas/Consulta con roles finos y MFA, cobro con folios de recibo automáticos, **corte de caja**, apartar/usar TAG y buzón de notas funcionan sobre Supabase (bloques SQL `00`→`47` aplicados en la base de trabajo). El sitio de Vercel es el **entorno de trabajo y demostración**: no hay usuarios ni datos reales de la comunidad escolar. La liberación ocurre después de las pruebas, la migración al subdominio institucional y la aceptación |
+| **Estado** | 🟡 **En desarrollo — funcionalmente completo, pendiente de liberación.** Autoservicio, panel Admin/TI/Finanzas/Consulta con roles finos y MFA, cobro con folios de recibo automáticos, **corte de caja**, apartar/usar TAG y buzón de notas funcionan sobre Supabase (bloques SQL `00`→`48` aplicados en la base de trabajo). El sitio de Vercel es el **entorno de trabajo y demostración**: no hay usuarios ni datos reales de la comunidad escolar. La liberación ocurre después de las pruebas, la migración al subdominio institucional y la aceptación |
 | **Cierre estimado** | ~03-ago-2026 (opción A). Restan las pruebas formales, el manual, la aprobación institucional del aviso y la **migración al subdominio institucional + Cloudflare** (requisito de la salida oficial) |
 
 ---
@@ -127,13 +127,13 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 
 | Entregable | Estado | Revisar |
 |---|---|---|
-| **Modelo de datos + BD** (E1) | ✅ Completo (bloques SQL `00`→`47` aplicados en la base de trabajo) | [Doc modelo](Desarrollo/01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md) · [runbook `sql/`](supabase/sql/README.md) · [AUDITORIA](supabase/sql/AUDITORIA.md) · [supabase/README](supabase/README.md) |
+| **Modelo de datos + BD** (E1) | ✅ Completo (bloques SQL `00`→`48` aplicados en la base de trabajo) | [Doc modelo](Desarrollo/01%20-%20Modelo%20de%20Datos%20y%20Base%20de%20Datos.md) · [runbook `sql/`](supabase/sql/README.md) · [AUDITORIA](supabase/sql/AUDITORIA.md) · [supabase/README](supabase/README.md) |
 | **Modelo de dominio (POO)** | ✅ Listo | [Doc POO](Desarrollo/02%20-%20Modelo%20de%20Dominio%20POO.md) |
 | **UI/UX** (autoservicio + panel Admin/TI) | ✅ Completa, funcionando sobre Supabase | **En línea (entorno de trabajo):** [Inicio](https://satag.vercel.app/) · [Registro](https://satag.vercel.app/registro/) · [Buzón](https://satag.vercel.app/solicitudes/) · [Panel Admin/TI](https://satag.vercel.app/admin/) *(credenciales de Supabase Auth + MFA; sin datos reales de la comunidad)* |
 | **Investigación legal y matriz de cumplimiento** | ✅ Listo | [Doc investigación legal](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.md) · [PDF](Investigacion/02%20-%20Investigacion%20Legal%20SATAG.pdf) |
 | **Firma electrónica — mecánica y valor legal** | ✅ Implementada (opción B: simple reforzada) | [Doc firma](Desarrollo/06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md) |
 | **Arquitectura técnica** | ✅ Implementada (Next 16 + Supabase + Vercel como entorno de trabajo) | [Doc](Desarrollo/03%20-%20Arquitectura%20Tecnica.md) |
-| **Seguridad, RLS y privacidad** | ✅ Implementada (roles finos + RLS `aal2` + MFA + escritura de catálogos/documentos/firmas restringida por rol, bloque 43 + firma auditable con URL firmada temporal, bloque 47); pendiente: aprobación institucional del aviso | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAG](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
+| **Seguridad, RLS y privacidad** | ✅ Implementada (roles finos + RLS `aal2` + MFA + escritura de catálogos/documentos/firmas restringida por rol, bloque 43 + firma auditable con URL firmada temporal para los cuatro roles del panel, bloques 47 y 48); pendiente: aprobación institucional del aviso | [Doc](Desarrollo/04%20-%20Seguridad%2C%20RLS%20y%20Privacidad.md) · [Aviso SATAG](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Aviso%20de%20Privacidad%20SATAG.md) · [Checklist](Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
 | **Flujos del sistema** | ✅ Implementados | [Doc](Desarrollo/05%20-%20Flujos%20del%20Sistema.md) |
 
 ### Seguimiento del cronograma
@@ -154,14 +154,14 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 
 **Infraestructura y base**
 - [ ] Infraestructura (hosting + despliegue) — *Est. 1 d* · 🟡 **interina**: Vercel con despliegue automático desde `main`. Falta migrar al **subdominio institucional + Cloudflare** antes de la salida oficial
-- [x] Setup Supabase seguro (esquema/RLS/RPC/Storage/MFA) — *Est. 1.5 d* ✅ · bloques `00`→`47` aplicados en la base de trabajo
+- [x] Setup Supabase seguro (esquema/RLS/RPC/Storage/MFA) — *Est. 1.5 d* ✅ · bloques `00`→`48` aplicados en la base de trabajo
   - [x] 🆕 `cat_modelos` + seed marcas/modelos · `modelo NOT NULL` (B4)
   - [x] Cobro en efectivo **con folio de recibo automático** (`SATAG-AAAA-######`, bloque 32) y **corte de caja** (`cortes_caja` + `pagos.corte_id`, bloque 42)
   - [x] 🆕 `solicitudes` + RPC `crear_solicitud` (B6)
   - [x] 🆕 Campos `tag_apartado` (B1) y `tipo_validado` (B5) en el esquema
   - [x] 🆕 Vista `v_registros_incompletos` (B2) — bloque 45 (29-jul): siete motivos con responsable; `security_invoker`, hereda la RLS del panel
   - [x] RLS por rol + RPC controlada para escrituras críticas (CC-12)
-  - [x] Bucket privado para firmas (CC-12) · **URLs firmadas temporales** desde el panel (bloque 47, 29-jul): lectura de `aceptaciones` para admin/TI/super, vista `v_evidencia_firma` sin `hash_payload` ni trazos
+  - [x] Bucket privado para firmas (CC-12) · **URLs firmadas temporales** desde el panel (bloques 47 y 48, 29-jul): la evidencia la leen los cuatro roles —`consulta` incluido, con sólo lectura— y la vista `v_evidencia_firma` deja fuera `hash_payload`, trazos, IP y user-agent. Escribir en el bucket sigue siendo de admin/super
   - [x] MFA obligatorio para cuentas administrativas (CC-12)
 - [x] Auth del panel + reset de contraseña — *Est. 0.5 d* ✅ · login real con Supabase Auth (correo/contraseña), sesión persistente, recuperación por correo (`/admin/reset-password`) e invitación (`/admin/invite`) — ver [supabase/README](supabase/README.md#auth-del-panel-administrativo)
 
@@ -191,7 +191,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 - [x] 🆕 Buzón de notas sin folio (SC-003) — ✅ (bloques 34-41; público `/solicitudes` + vinculación/corroboración de TI)
 
 **Pruebas y cierre**
-- [ ] Pruebas (funcional + privacidad/RLS + firma + ARCO) — *Est. 3 d* · **inician el 30-jul**: banco de datos listo (`seed_tests_dev.sql`, 14 escenarios + 6 expedientes incompletos) y **plan y matriz de 74 casos** en [`Pruebas/`](Pruebas/); falta ejecutar y registrar evidencia
+- [ ] Pruebas (funcional + privacidad/RLS + firma + ARCO) — *Est. 3 d* · **inician el 30-jul**: banco de datos listo (`seed_tests_dev.sql`, 14 escenarios + 6 expedientes incompletos) y **plan y matriz de 76 casos** en [`Pruebas/`](Pruebas/); falta ejecutar y registrar evidencia
 - [ ] Deploy a producción — *Est. 0.5 d* · 🟡 despliegue continuo en Vercel como **entorno de trabajo**; el deploy definitivo en el subdominio institucional sigue pendiente y es requisito de la liberación
 - [x] Manual + capacitación — *Est. 1.5 d* · borrador completo en [`Entregables/E8`](Entregables/E8%20-%20Manual%20y%20Capacitacion/E8%20-%20Indice.md): cuatro capítulos (usuario, acceso al panel, Administración, TI) verificados contra el sistema + guía para impartir la sesión. Falta impartirla y recabar la firma de asistencia
 - [ ] Aceptación + acta de cierre — *Est. 0.5 d*
@@ -199,7 +199,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 **Avance (29-jul-2026):** el **desarrollo está terminado** y la funcionalidad queda congelada aquí —
 autoservicio, panel Admin/TI/Finanzas/Consulta con roles finos y MFA, cobro con folios, **corte de
 caja**, buzón SC-003, apartar/usar TAG, reporte de expedientes incompletos, validación del tipo de
-usuario al cobrar y firma auditable desde el panel (bloques SQL `00`→`47`). Todo corre en el **entorno
+usuario al cobrar y firma auditable desde el panel (bloques SQL `00`→`48`). Todo corre en el **entorno
 de trabajo**, sin usuarios ni datos reales: la liberación es posterior a las pruebas, a la migración
 al subdominio institucional y a la aceptación. Queda por hacer: las pruebas formales, impartir el
 manual/capacitación, la aprobación institucional del aviso, la **migración al subdominio institucional +
@@ -237,7 +237,7 @@ SATAG/
 ├─ Plan de Direccion/       Documentos de gestión (PMBOK) · img/ (diagramas)
 ├─ Investigacion/           Investigación de soporte (técnica, legal)
 ├─ Desarrollo/              Diseño técnico: datos/BD, dominio POO, arquitectura, seguridad, flujos, firma, MFA
-├─ supabase/                Esquema SQL: bloques atómicos sql/00→47 (fuente de verdad); schema.sql/seed.sql como respaldo histórico
+├─ supabase/                Esquema SQL: bloques atómicos sql/00→48 (fuente de verdad); schema.sql/seed.sql como respaldo histórico
 ├─ app/ · components/ · lib/  App web (Next.js): autoservicio, buzón, panel Admin/TI; cliente Supabase en lib/supabase
 ├─ public/                  Imágenes institucionales (logo, escudo, monograma)
 └─ Entregables/             Producto final, manuales exportados y entregas formales

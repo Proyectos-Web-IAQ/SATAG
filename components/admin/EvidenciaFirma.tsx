@@ -12,12 +12,11 @@ import { obtenerEvidenciaFirma } from "@/lib/supabase/apiPanel";
 // intención explícita de quien la consulta.
 //
 // El bucket `firmas` es privado y sigue siéndolo: la imagen se abre con una URL
-// firmada de vida corta que emite Supabase para esta sesión (bloque 43 permite
-// la lectura a admin, TI y super; a `consulta` se la niega). Nada se publica.
+// firmada de vida corta que emite Supabase para esta sesión. Nada se publica.
 //
-// Se muestra sólo desde Administración y TI. Consulta no la monta: la RLS ya le
-// devolvería cero filas (bloque 47), pero no tiene caso ofrecerle un botón que
-// nunca va a funcionar.
+// Lo ven los cuatro roles del panel: admin, ti, consulta y super (bloque 48).
+// `consulta` gana sólo lectura — sigue sin poder escribir ni borrar objetos del
+// bucket, y sin pasar la guardia de ningún RPC.
 
 const ROL_FIRMANTE: Record<FirmanteRol, string> = {
   usuario: "el propio titular",
