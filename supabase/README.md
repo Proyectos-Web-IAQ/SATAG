@@ -8,7 +8,7 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 
 | Archivo | Que hace |
 |---|---|
-| `sql/` | **Fuente de verdad.** Esquema atomico por bloques numerados `00`→`42`, en el orden de `sql/README.md`. Es lo que esta aplicado en la base de trabajo. |
+| `sql/` | **Fuente de verdad.** Esquema atomico por bloques numerados `00`→`48`, en el orden de `sql/README.md`. Es lo que esta aplicado en la base de trabajo. |
 | `schema.sql` | Respaldo monolitico **historico y atrasado** (corte ~9-jul). Trae las tablas, la RLS ancha y `crear_registro`/`crear_solicitud`, pero **NO** la capa del panel: sin `panel_exigir_rol`, sin `registrar_pago`, sin roles finos/`app_metadata`, sin folios de recibo (bloque 32), sin CC-01 (apartar/usar TAG) ni SC-003 (buzon de notas). No instalar con esto. |
 | `seed.sql` | Semilla del monolitico: estacionamientos, catalogos base, modelos base, reglamento y aviso placeholder. |
 
@@ -16,7 +16,7 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
 
 ## Orden de ejecucion
 
-**Instalar/reconstruir la base = aplicar los bloques de `sql/` en orden (`00`→`42`), siguiendo el runbook [`sql/README.md`](sql/README.md).** Incluye el **PASO 0** (asignar `app_metadata.rol` al personal y re-login) antes de los bloques 24-30, y la advertencia de la trampa PostgREST en los bloques que cambian la firma de un RPC.
+**Instalar/reconstruir la base = aplicar los bloques de `sql/` en orden (`00`→`48`), siguiendo el runbook [`sql/README.md`](sql/README.md).** Incluye el **PASO 0** (asignar `app_metadata.rol` al personal y re-login) antes de los bloques 24-30, y la advertencia de la trampa PostgREST en los bloques que cambian la firma de un RPC.
 
 > **No usar `schema.sql`/`seed.sql` para instalar.** Estan atrasados respecto a los bloques 27-41: quien los ejecute obtiene una base con RLS ancha (`authenticated`) y **sin la capa de RPCs del panel ni los roles finos** — es decir, insegura e incompleta. Se conservan solo como respaldo de la primera version.
 >

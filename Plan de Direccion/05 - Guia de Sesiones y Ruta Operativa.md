@@ -1,6 +1,6 @@
 # Guia de Sesiones y Ruta Operativa - SATAG
 
-> **Ultima actualizacion:** 29/07/2026 (cierre del desarrollo: bloques 45-47 y correccion del estado real del sistema).
+> **Ultima actualizacion:** 29/07/2026 (cierre del desarrollo: bloques 45-48, aviso sin redundancias y correccion del estado real del sistema).
 > **Horario real de trabajo:** 09:00 a 14:00.
 > **Uso:** abrir este documento al inicio de cada sesion para saber que revisar, que cerrar y con que continuar.
 
@@ -27,7 +27,7 @@ Al iniciar una sesion de trabajo:
 firma reforzada, panel Admin/TI/Finanzas/Consulta con roles finos y MFA, cobro con folios de recibo
 automaticos, corte de caja, buzon de notas SC-003, apartar/usar TAG, reporte de expedientes
 incompletos, validacion del tipo de usuario al cobrar y firma auditable desde el panel
-(bloques SQL `00`->`47`, deploy automatico en Vercel desde `main`).
+(bloques SQL `00`->`48`, deploy automatico en Vercel desde `main`).
 
 El **corte de caja / finanzas** (bloque 42 + pestana Finanzas) esta implementado: Admin ve la caja
 actual y lo vendido, cierra el corte conciliando el efectivo contado, y cada corte queda inmutable con
@@ -80,7 +80,7 @@ Decision registrada:
 
 ### 3.2 E1 - Modelo de datos + BD  — ✅ completo
 
-Aplicado en la base de trabajo (bloques `00`->`47`): `aviso_versiones` y referencia de version en `aceptaciones`; hash SHA-256 del paquete firmado + trazos vectoriales; gestionante/tutor para menores; tabla `solicitudes` (tipos `actualizacion`/`baja`) + buzon de notas (`nota`); estado `bloqueado`; `tag_apartado`/`tipo_validado`; catalogo de modelos con seed.
+Aplicado en la base de trabajo (bloques `00`->`48`): `aviso_versiones` y referencia de version en `aceptaciones`; hash SHA-256 del paquete firmado + trazos vectoriales; gestionante/tutor para menores; tabla `solicitudes` (tipos `actualizacion`/`baja`) + buzon de notas (`nota`); estado `bloqueado`; `tag_apartado`/`tipo_validado`; catalogo de modelos con seed.
 
 Cerrado el 29-jul:
 
@@ -95,7 +95,7 @@ Aplicado y verificado con cuentas reales de Supabase Auth (personal del institut
 
 - Esquema aplicado por bloques atomicos (ver runbook `supabase/sql/README.md`, con PASO 0 de roles).
 - RLS activa: `anon` no lee PII; el panel exige `aal2` (MFA) + rol.
-- Bucket privado `firmas` (subida anon, sin lectura publica). Desde el bloque 47 el panel puede ver la firma con **URL firmada de 60 segundos**; el bucket sigue privado y `consulta` no accede.
+- Bucket privado `firmas` (subida anon, sin lectura publica). Desde el bloque 47 el panel puede ver la firma con **URL firmada de 60 segundos**; el bucket sigue privado. El bloque 48 abrio esa lectura tambien al rol `consulta`, que sigue sin poder escribir ni borrar objetos.
 - Auth + MFA obligatorio para el panel.
 
 Pendiente: documentar region del proyecto y archivar DPA/terminos de Supabase.
@@ -171,7 +171,7 @@ Gerardo/TI puede preparar el borrador, pero no debe publicarlo como definitivo s
 
 | Entregable | Estado actual | Continuacion |
 |---|---|---|
-| E1 Modelo de datos + BD | ✅ Completo (bloques `00`->`47` aplicados en la base de trabajo) | — |
+| E1 Modelo de datos + BD | ✅ Completo (bloques `00`->`48` aplicados en la base de trabajo) | — |
 | E6 Cumplimiento legal y privacidad | 🟡 Implementado; aprobacion pendiente | Aprobacion institucional del aviso + pendientes ARCO/conservacion |
 | E7 Infraestructura y Supabase seguro | 🟡 Supabase completo y endurecido (bloques 43 y 47); hosting **interino** en Vercel | Migrar al subdominio institucional + Cloudflare (SC-012); documentar region + archivar DPA |
 | E2 Formulario de autoservicio | ✅ Implementado | — |
@@ -238,7 +238,7 @@ directo en la tabla, sin `aceptaciones`, y el reporte se encenderia entero.
 **Correcciones a la matriz de pruebas.** Los casos `P-09`, `P-10` y `A-07` seguian describiendo el
 sistema **antes** de los bloques 43 y 44, que se aplicaron el 28-jul: manana habrian "fallado" contra
 un resultado esperado obsoleto. Ya dicen lo correcto. Ademas, `P-13` y `P-10` se reescribieron por el
-bloque 48, que invirtio lo que afirmaban. La matriz paso de 59 a **76 casos**.
+bloque 48, que invirtio lo que afirmaban. La matriz paso de 59 a **77 casos**.
 
 **Siguiente tarea concreta, en este orden:**
 

@@ -73,7 +73,7 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 
 > ### Estado de los riesgos a 22-jul-2026
 >
-> Verificado contra el sistema desplegado en el entorno de trabajo (bloques SQL `00`→`42` aplicados en la base de trabajo):
+> Verificado contra el sistema desplegado en el entorno de trabajo (bloques SQL `00`→`48` aplicados en la base de trabajo):
 >
 > - **Mitigados y verificados:** **R1** (RLS estricta con `aal2` + roles finos, escrituras solo por RPC,
 >   Storage privado, MFA obligatorio), **R2** (firma reforzada: hash SHA-256 generado en la base,

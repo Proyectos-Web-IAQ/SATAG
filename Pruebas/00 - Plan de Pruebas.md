@@ -6,7 +6,7 @@
 | | |
 |---|---|
 | **Producto bajo prueba** | SATAG — Sistema de Adquisición de TAG Vehicular (IAQ) |
-| **Versión auditada** | commit `7b729a3` · bloques SQL `00`→`42` |
+| **Versión auditada** | commit `c27aeff` · bloques SQL `00`→`48` |
 | **Entorno** | Proyecto Supabase de **desarrollo/QA** + build local o preview de Vercel |
 | **Documentos relacionados** | [Matriz de casos](01%20-%20Matriz%20de%20Casos.md) · [Bitácora de ejecución](02%20-%20Bitacora%20de%20Ejecucion.md) · [Checklist legal E6](../Entregables/E6%20-%20Cumplimiento%20Legal%20y%20Privacidad/E6%20-%20Checklist%20Legal%20y%20Privacidad%20SATAG.md) |
 
@@ -129,7 +129,7 @@ que la corrección quedó bien aplicada**.
 
 Del último día de desarrollo (29-jul) entran además dos entregas que se prueban por primera vez y
 no traen historia previa: el **reporte de expedientes incompletos** (B2/CC-02, casos `F-34`…`F-38`)
-y la **firma visible en el panel con URL firmada** (SC-008, casos `E-07`…`E-09` y `P-13`).
+y la **firma visible en el panel con URL firmada** (SC-008, casos `E-07`…`E-11` y `P-13`).
 
 ---
 

@@ -4,7 +4,7 @@
 > Esta carpeta contiene el diseño técnico que traduce el Plan de Dirección en decisiones implementables.
 
 > **Fuente de verdad del esquema aplicado:** los bloques SQL numerados de
-> [`supabase/sql/`](../supabase/sql/README.md) (`00`→`42`), que es lo que está aplicado en la base de trabajo. Estos
+> [`supabase/sql/`](../supabase/sql/README.md) (`00`→`48`), que es lo que está aplicado en la base de trabajo. Estos
 > documentos describen el diseño y su estado; ante cualquier duda sobre una tabla, columna o RPC, manda
 > el SQL aplicado. (`supabase/schema.sql` es un respaldo histórico atrasado.)
 
