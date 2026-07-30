@@ -70,8 +70,9 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 | R10 | **Tratamiento de menores sin firma de tutor** | Media | Alto | **Alto** | **Evitar/Mitigar:** cuando el usuario sea menor, exigir firma del padre/madre/tutor como gestionante | Gerardo / Administración |
 | R11 | **Configuración incorrecta de RLS/RPC/Storage** que exponga firmas o placas | Media | Alto | **Alto** | **Mitigar:** pruebas RLS/RPC, bucket privado, URLs firmadas, revisión por rol y MFA admin | Gerardo / Auditor |
 | R12 | **NOM-151 no presupuestada** si se exige mayor fuerza probatoria | Baja | Medio | **Medio** | **Aceptar/Diferir:** no incluir en MVP; cotizar Cincel/ATEB/PSC acreditados como fase 2 | Auditor / Dirección |
+| R13 | **Expectativa de Contabilidad por encima del alcance acordado** (instancia concreta de R3). En la reunión inicial, Contabilidad pidió conectar SATAG con ZKBioSecurity para dejar de recapturar el TAG. El alcance de SATAG —confirmado por el Encargado de Sistemas— es **sustituir la hoja física y la hoja de cálculo**, y eso **ya está cumplido**; la integración con hardware está excluida en §2.1 | Alta *(la expectativa existe)* | Bajo | **Bajo** | **Aceptar y documentar:** no entra al MVP ni bloquea el cierre. La investigación se hizo y se cerró (`Investigacion/03`): la API **no está activada** y se compra aparte (`ZKBS-API-S1`). Lo que procede es cotizar con **SMARTHAUS**; **la decisión de adquirirla o no es de Contabilidad**, no de TI. Si no se autoriza, queda el **plan B de exportación/importación por archivo**, soportado por el fabricante pero manual | Gerardo *(investigación, hecha)* / **Contabilidad** *(decisión)* |
 
-> ### Estado de los riesgos a 22-jul-2026
+> ### Estado de los riesgos a 30-jul-2026
 >
 > Verificado contra el sistema desplegado en el entorno de trabajo (bloques SQL `00`→`48` aplicados en la base de trabajo):
 >
@@ -79,12 +80,19 @@ nivel del Charter (RA1–RA7), ampliados. Estrategias: **Evitar, Mitigar, Transf
 >   Storage privado, MFA obligatorio), **R2** (firma reforzada: hash SHA-256 generado en la base,
 >   versionado de reglamento/aviso y sello de tiempo), **R9** (aviso específico SATAG publicado como v2
 >   vigente), **R10** (menores exigen gestionante por constraint, no solo por UI) y **R11** (bucket
->   privado, lectura de la firma restringida a `admin`/`super`).
+>   privado y firma visible **solo** con URL firmada temporal de 60 s).
+> - **Mitigado (30-jul):** **R4** — el **reporte de expedientes incompletos** ya existe (bloque 45):
+>   lista lo que le falta a cada expediente con su motivo y quién lo resuelve.
 > - **Mitigado (nuevo):** **R5** — además del folio, quién cobró y cuándo, ya existe el **corte de caja**
 >   (bloque 42): concilia el efectivo contado contra el esperado, con corte inmutable e identidad
 >   verificable de quien cobra y de quien corta.
-> - **Vigentes:** **R4** (las colas de pendientes existen, pero el *reporte de incompletos* no se
->   implementó), **R7** (falta verificar y documentar la política de respaldos), **R12** (diferido).
+> - **Vigentes:** **R7** (falta verificar y documentar la política de respaldos), **R12** (diferido)
+>   y **R13** (nuevo: la integración que pidió Contabilidad queda fuera del alcance; investigación
+>   entregada y decisión en manos de Contabilidad).
+> - ⚠️ **Matiz sobre R11 (30-jul).** La lectura de la firma **se amplió** a los cuatro roles del panel
+>   (bloque 48), no solo a `admin`/`super`. La decisión está justificada y registrada, pero trae un
+>   costo asumido: la RLS de PostgreSQL es por fila, no por columna, así que quien lee `aceptaciones`
+>   alcanza también el snapshot del titular, los trazos y la IP si consulta la tabla directamente.
 > - ⚠️ **Matiz de cumplimiento:** R1 y R9 están mitigados en lo **técnico**, pero la **aprobación
 >   institucional del aviso sigue pendiente** y es requisito de la liberación; hoy el sistema está
 >   desplegado en el entorno de trabajo, sin usuarios ni datos reales (ver Checklist E6 §6).

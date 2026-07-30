@@ -91,6 +91,30 @@
 > user-agent si consulta la tabla directamente. Detalle técnico y alternativa descartada en el
 > encabezado del bloque 48; efectos en `Desarrollo/04` y en el checklist E6.
 >
+> 📌 **Petición de Contabilidad fuera del alcance: integración con ZKBioSecurity (30-jul).** En la
+> reunión inicial —cuando SATAG era todavía una idea y un pretotipo— Contabilidad pidió conectarlo con
+> el sistema de control de acceso que ya opera el colegio, para dejar de recapturar el No. de TAG. El
+> proceso de entonces era **hoja física → hoja de cálculo → ZKBioSecurity**; SATAG **ya eliminó los dos
+> primeros pasos**, que es exactamente el alcance acordado (§2.1: la integración con hardware está
+> **excluida**, y el Encargado de Sistemas lo confirma).
+>
+> Se investigó a fondo lo que faltaba y la investigación está **cerrada**
+> ([`Investigacion/03`](../Investigacion/03%20-%20Integracion%20ZKBioSecurity.md)): técnicamente es
+> viable con la **API de terceros** de ZKBioSecurity, pero esa API **no está activada** en el sistema
+> del colegio — se verificó el 29-jul por tres vías independientes — y **se compra por separado**
+> (número de parte `ZKBS-API-S1`, distribuidor **SMARTHAUS**). Es decir: **no es un problema de
+> programación, es una compra.**
+>
+> **Qué se entrega y qué no.** TI entrega la investigación, el diseño del conector y el plan B
+> (exportación/importación por archivo, soportado por el fabricante pero manual). **La decisión de
+> cotizar y adquirir la licencia es de Contabilidad**, no de TI, y es posterior al cierre de SATAG.
+> Queda registrado como **R13** en la matriz de riesgos, y como `SC-006` en el sistema de seguimiento.
+>
+> ⚠️ **Divergencia de expectativas que conviene no dejar tácita.** El Encargado de Sistemas entiende el
+> objetivo de SATAG como sustituir la hoja física y la hoja de cálculo — cumplido —, mientras que
+> Contabilidad esperaba además la conexión con ZKBioSecurity. Ambas lecturas están ahora por escrito,
+> con lo entregado y lo que falta, para que el acta de cierre no las tenga que resolver en el momento.
+>
 > ⚠️ **Pendiente de decisión para el acta de cierre.** El cronograma da el cierre en **~03-ago**,
 > mientras que la ruta de trabajo vigente pone la migración el **05-ago** y la aceptación el
 > **07-ago**. Las dos fechas siguen como estaban; hay que resolver cuál es la buena y alinear la

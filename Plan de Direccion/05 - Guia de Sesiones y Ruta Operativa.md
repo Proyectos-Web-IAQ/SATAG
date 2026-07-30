@@ -298,8 +298,11 @@ la ruta de trabajo actual pone la migracion el **05-ago** y la aceptacion el **0
 ninguna de las dos: hay que decidir cual es la buena y alinear el cronograma antes del acta de cierre.
 
 **Pendiente que no bloquea:** extraccion de la firma a `lib/firma/` (B8), programada para el 31-jul.
-Despues de eso empieza la integracion con ZKBioSecurity (SC-006); la investigacion esta en
-`Investigacion/03 - Integracion ZKBioSecurity.md`.
+**La integracion con ZKBioSecurity (SC-006) NO se puede empezar a programar.** La investigacion esta
+cerrada (`Investigacion/03`) y su conclusion es que **la API no esta activada**: se compra aparte
+(`ZKBS-API-S1`, distribuidor SMARTHAUS). No es trabajo de codigo, es una compra, y **la decision es de
+Contabilidad**. Lo que TI podia entregar —investigacion, diseno del conector y plan B por archivo— ya
+esta entregado. Ver R13 en `Plan de Direccion/03`.
 
 ### Bitacora de la sesion del 28-jul-2026
 
