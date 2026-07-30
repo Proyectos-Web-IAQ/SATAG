@@ -242,13 +242,18 @@ bloque 48, que invirtio lo que afirmaban. La matriz paso de 59 a **76 casos**.
 
 **Siguiente tarea concreta, en este orden:**
 
-1. **Aplicar el bloque 48** en Supabase (los bloques 45, 46 y 47 ya se corrieron esta tarde). Son
-   solo politicas RLS: no cambia esquema ni firmas, asi que no hay ventana de corte.
-2. **Re-aplicar `seed_tests_dev.sql`** (trae los folios `221-226`, un expediente incompleto por
-   motivo). Es destructivo: solo contra la base de trabajo.
-3. **Ejecutar las tandas P y E** de `Pruebas/01 - Matriz de Casos.md`. Son las que bloquean el cierre:
-   ningun fallo es admisible. Empezar por `P-13` y `E-10`, que son los que verifican el bloque 48, y
-   por `F-39`, que verifica que el aviso corto sigue cumpliendo el minimo legal sin desplegarse.
+La base quedo lista el mismo 29-jul: bloques `00`->`48` aplicados, banco de pruebas re-sembrado con
+la evidencia de firma, y `qa-firma-demo.png` cargado en el bucket. **No queda ningun paso de
+preparacion pendiente.**
+
+1. **Ejecutar las tandas P y E** de `Pruebas/01 - Matriz de Casos.md`. Son las que bloquean el cierre:
+   ningun fallo es admisible. Empezar por `P-13` y `E-10`, que verifican el bloque 48; por `F-39`,
+   que comprueba que el aviso corto sigue cumpliendo el minimo legal sin desplegarse; y por `E-11`,
+   que cubre la evidencia sembrada.
+2. **Dar de alta un registro real por `/registro/`**, firmando. El banco de QA se inserta directo en
+   la tabla, asi que su firma es sembrada: `E-07` y `E-08` (PNG real y su SHA-256) y `E-06` (menor que
+   firma su tutor) **solo se pueden probar con un alta de verdad**.
+3. Anotar cada resultado en `Pruebas/02 - Bitacora de Ejecucion.md` conforme se ejecuta, no al final.
 4. Impartir la capacitacion y recabar firmas de asistencia.
 5. Solicitar la aprobacion institucional del aviso. **Gestionarla desde el primer dia**: es el mayor
    riesgo para la fecha de cierre.
