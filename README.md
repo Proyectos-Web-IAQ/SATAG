@@ -191,7 +191,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
 - [x] 🆕 Buzón de notas sin folio (SC-003) — ✅ (bloques 34-41; público `/solicitudes` + vinculación/corroboración de TI)
 
 **Pruebas y cierre**
-- [ ] Pruebas (funcional + privacidad/RLS + firma + ARCO) — *Est. 3 d* · **inician el 30-jul**: banco de datos listo (`seed_tests_dev.sql`, 14 escenarios + 6 expedientes incompletos) y **plan y matriz de 76 casos** en [`Pruebas/`](Pruebas/); falta ejecutar y registrar evidencia
+- [ ] Pruebas (funcional + privacidad/RLS + firma + ARCO) — *Est. 3 d* · **inician el 30-jul**: banco de datos listo (`seed_tests_dev.sql`, 14 escenarios + 6 expedientes incompletos) y **plan y matriz de 77 casos** en [`Pruebas/`](Pruebas/); falta ejecutar y registrar evidencia
 - [ ] Deploy a producción — *Est. 0.5 d* · 🟡 despliegue continuo en Vercel como **entorno de trabajo**; el deploy definitivo en el subdominio institucional sigue pendiente y es requisito de la liberación
 - [x] Manual + capacitación — *Est. 1.5 d* · borrador completo en [`Entregables/E8`](Entregables/E8%20-%20Manual%20y%20Capacitacion/E8%20-%20Indice.md): cuatro capítulos (usuario, acceso al panel, Administración, TI) verificados contra el sistema + guía para impartir la sesión. Falta impartirla y recabar la firma de asistencia
 - [ ] Aceptación + acta de cierre — *Est. 0.5 d*

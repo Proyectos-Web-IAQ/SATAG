@@ -56,6 +56,7 @@
 | E-08 | | | |
 | E-09 | | | |
 | E-10 | | | *(bloque 48; anotar el riesgo aceptado, no como fallo)* |
+| E-11 | | | *(evidencia sembrada; la imagen exige subir qa-firma-demo.png a mano)* |
 
 ## Tanda F · Funcional
 

@@ -41,6 +41,12 @@
 --              224 vehiculo_incompleto (marca en blanco)
 --              225 activo_sin_tag (activo sin numero de dispositivo)
 --              226 tag_sin_pago + sin_placas (dos motivos a la vez)
+--
+-- EVIDENCIA DE FIRMA: todos los folios llevan su renglon en `aceptaciones`
+-- (menos el 225, dejado vacio a proposito). Se siembran los DATOS probatorios,
+-- no la imagen: SQL no puede escribir bytes en Storage. Para que ademas se vea
+-- el PNG hay que subir a mano, una sola vez, `qa-firma-demo.png` al bucket
+-- `firmas`. Ver el paso 3c, que lo explica completo.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -252,6 +258,141 @@ select id, 'E1'
   from registros where folio in ('SATAG-000224','SATAG-000225','SATAG-000226');
 
 -- ---------------------------------------------------------------------
+-- 3c) EVIDENCIA DE FIRMA (SC-008, bloques 47 y 48).
+--
+--     Sin esto, TODO el banco sale con "Este expediente no tiene evidencia de
+--     firma registrada": el seed inserta los registros directo en la tabla y
+--     nunca pasa por crear_registro, que es quien escribe `aceptaciones`.
+--
+--     !!! LIMITE QUE HAY QUE CONOCER !!!
+--     Esto siembra la evidencia, NO la imagen. El bucket `firmas` es un almacen
+--     de archivos: `storage.objects` guarda metadatos, pero los bytes del PNG
+--     viven fuera de la base y SQL no puede ponerlos ahi. Insertar filas a mano
+--     en storage.objects solo crearia objetos fantasma que el panel firmaria y
+--     que despues no descargarian: no se hace.
+--
+--     Resultado tal cual: el panel muestra firmante, versiones aceptadas, sello
+--     de tiempo y hash, y en el lugar de la imagen avisa que no la pudo abrir.
+--     Es suficiente para E-09 (que no viaje PII de mas) y para P-13 / E-10
+--     (quien ve la evidencia).
+--
+--     PARA QUE ADEMAS SE VEA LA IMAGEN — un paso manual, UNA sola vez:
+--       Supabase -> Storage -> bucket `firmas` -> Upload file
+--       Subir un PNG llamado exactamente  qa-firma-demo.png
+--       Que se lea "FIRMA DE PRUEBA" en el propio trazo: es un sistema de
+--       evidencia, y un garabato realista sembrado a mano no debe poder
+--       confundirse nunca con la firma de una persona.
+--     No hay que repetirlo al re-correr el seed: esto vacia tablas, no Storage.
+--
+--     PARA PROBAR EL CAMINO REAL (E-07 y E-08) hace falta un alta por
+--     /registro/ firmando de verdad: es la unica via que sube un PNG real y
+--     calcula su SHA-256. Por eso aqui firma_imagen_sha256 queda en NULL en vez
+--     de inventarse un hash que no corresponderia a ningun archivo.
+--
+--     El hash del paquete SI es real: se calcula igual que en crear_registro
+--     (bloque 19), asi que E-02 se puede recalcular contra estos datos.
+--
+--     SATAG-000225 se queda A PROPOSITO sin aceptacion, para poder ver el
+--     estado vacio del panel.
+-- ---------------------------------------------------------------------
+do $$
+declare
+    v_ruta      constant text := 'firmas/qa-firma-demo.png';
+    v_reg_id    uuid;  v_reg_ver int;  v_reg_txt text;
+    v_avi_id    uuid;  v_avi_ver int;  v_avi_txt text;
+    v_sello     timestamptz;
+    v_payload   jsonb;
+    v_trazos    jsonb;
+    r           record;
+begin
+    select id, version, contenido into v_reg_id, v_reg_ver, v_reg_txt
+      from reglamento_versiones where vigente limit 1;
+    select id, version, contenido into v_avi_id, v_avi_ver, v_avi_txt
+      from aviso_versiones where vigente limit 1;
+
+    if v_reg_id is null or v_avi_id is null then
+        raise exception 'No hay reglamento o aviso vigente: aplique los bloques 22 y 23 antes de sembrar la evidencia';
+    end if;
+
+    for r in
+        select id, folio, usuario_nombre_completo, tipo_usuario,
+               marca, modelo, color, placas, sin_placas, procedencia_tag, created_at
+          from registros
+         where folio <> 'SATAG-000225'
+         order by folio
+    loop
+        -- Se firma unos minutos despues del alta, como en el flujo real.
+        v_sello := r.created_at + interval '3 minutes';
+
+        -- Trazos solo en algunos folios, para que `tiene_trazos` se pueda ver
+        -- en sus dos estados desde el panel.
+        v_trazos := case when right(r.folio, 1) in ('1', '3') then
+            jsonb_build_object(
+                'version', 1, 'width', 480, 'height', 180,
+                'capturadoEn', to_char(v_sello at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+                'strokes', jsonb_build_array(jsonb_build_array(
+                    jsonb_build_object('x',  42, 'y', 118, 't',   0, 'p', 0.45),
+                    jsonb_build_object('x',  96, 'y',  62, 't', 130, 'p', 0.62),
+                    jsonb_build_object('x', 155, 'y', 124, 't', 260, 'p', 0.58),
+                    jsonb_build_object('x', 214, 'y',  58, 't', 390, 'p', 0.66),
+                    jsonb_build_object('x', 288, 'y', 112, 't', 540, 'p', 0.41)
+                ))
+            )
+        end;
+
+        -- Mismo paquete canonico que arma crear_registro (bloque 19), para que
+        -- el hash sea verificable con el mismo procedimiento.
+        v_payload := jsonb_build_object(
+            'schema', 'satag.acceptance.v1',
+            'sello_tiempo', v_sello,
+            'reglamento', jsonb_build_object(
+                'id', v_reg_id, 'version', v_reg_ver,
+                'contenido_sha256', encode(extensions.digest(v_reg_txt, 'sha256'), 'hex')),
+            'aviso_privacidad', jsonb_build_object(
+                'id', v_avi_id, 'version', v_avi_ver,
+                'contenido_sha256', encode(extensions.digest(v_avi_txt, 'sha256'), 'hex')),
+            'registro', jsonb_build_object(
+                'id', r.id, 'folio', r.folio,
+                'usuario_nombre_completo', r.usuario_nombre_completo,
+                'tipo_usuario', r.tipo_usuario,
+                'marca', r.marca, 'modelo', r.modelo, 'color', r.color,
+                'placas', r.placas, 'sin_placas', r.sin_placas,
+                'procedencia_tag', r.procedencia_tag),
+            'firmante', jsonb_build_object(
+                'nombre', r.usuario_nombre_completo, 'rol', 'usuario'),
+            'aceptacion', jsonb_build_object(
+                'acepto_reglamento', true, 'acepto_privacidad', true,
+                'origen', 'seed_tests_dev'),
+            -- El NULL va casteado: jsonb_build_object revienta con un NULL sin
+            -- tipo ("could not determine polymorphic type").
+            'firma', jsonb_build_object(
+                'ruta_storage', v_ruta, 'imagen_sha256', null::text, 'trazos', v_trazos)
+        );
+
+        insert into aceptaciones (
+            registro_id, reglamento_version_id, aviso_version_id,
+            firma_url, firma_imagen_sha256, firma_trazos,
+            firmante_nombre, firmante_rol,
+            acepto_reglamento, acepto_privacidad, metadata,
+            hash_algoritmo, hash_documento, hash_payload, sello_tiempo
+        ) values (
+            r.id, v_reg_id, v_avi_id,
+            v_ruta,
+            null,                       -- ver el encabezado: no hay PNG real que hashear
+            v_trazos,
+            r.usuario_nombre_completo, 'usuario',
+            true, true,
+            jsonb_build_object('origen', 'seed_tests_dev', 'app', 'satag-web'),
+            'sha256',
+            encode(extensions.digest(convert_to(v_payload::text, 'UTF8'), 'sha256'), 'hex'),
+            v_payload,
+            v_sello
+        );
+    end loop;
+end;
+$$;
+
+-- ---------------------------------------------------------------------
 -- 4) Solicitudes de folio (CC-06): actualizacion (141-144) y baja (151-154).
 -- ---------------------------------------------------------------------
 insert into solicitudes (registro_id, tipo, detalle, origen)
@@ -324,3 +465,20 @@ select setval('registros_folio_seq', 300, true);
 -- Resumen rapido tras aplicar (opcional):
 --   select estado, count(*) from registros group by estado;
 --   select tramite_solicitado, count(*) from solicitudes where tipo='nota' group by tramite_solicitado;
+--
+--   -- Expedientes incompletos, por motivo (bloque 45):
+--   select m as motivo, count(*)
+--     from v_registros_incompletos, unnest(motivos) as m
+--    group by m order by 2 desc;
+--
+--   -- Evidencia sembrada: debe haber una aceptacion por registro menos el 225.
+--   select (select count(*) from registros)    as registros,
+--          (select count(*) from aceptaciones) as aceptaciones;
+--
+--   -- El hash guardado se recalcula desde el paquete (caso E-02):
+--   select folio,
+--          hash_documento = encode(
+--              extensions.digest(convert_to(hash_payload::text, 'UTF8'), 'sha256'), 'hex')
+--            as hash_verifica
+--     from aceptaciones a join registros r on r.id = a.registro_id
+--    order by folio limit 5;

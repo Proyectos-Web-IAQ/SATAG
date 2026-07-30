@@ -1,6 +1,9 @@
 # Matriz de Casos de Prueba — SATAG
 
-> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.2 · 29-jul-2026 · **76 casos**.
+> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.3 · 29-jul-2026 · **77 casos**.
+> Cada caso es ejecutable por un tercero. El resultado se anota en la
+> [bitácora de ejecución](02%20-%20Bitacora%20de%20Ejecucion.md), no en este archivo.
+>
 > **v1.1 (29-jul):** entran los casos del último día de desarrollo — validación del tipo de
 > usuario al cobrar (F-29…F-33), reporte de expedientes incompletos (F-34…F-38), firma visible
 > en el panel (E-07…E-09) y la RLS de las vistas nuevas (P-13, P-14). Se corrigió además el
@@ -12,8 +15,12 @@
 > roles ven lo mismo y para dejar constancia del riesgo aceptado: la RLS es por fila, no por
 > columna. También se retiró el enlace redundante al aviso en el paso 2 del formulario y el aviso
 > corto del paso 0 quedó plegable, lo que toca **F-01**, **F-02** y **F-03** y entra como **F-39**.
-> Cada caso es ejecutable por un tercero. El resultado se anota en la
-> [bitácora de ejecución](02%20-%20Bitacora%20de%20Ejecucion.md), no en este archivo.
+>
+> **v1.3 (29-jul):** el banco de QA ahora siembra la evidencia de firma, que antes no tenía. Entra
+> **E-11**. Ojo con su matiz: el seed puede sembrar los datos probatorios pero **no la imagen** —
+> SQL no escribe bytes en Storage—, así que ver "no se pudo abrir la imagen" en los folios sembrados
+> **no es un fallo** salvo que se haya subido `qa-firma-demo.png` al bucket. El camino real lo
+> ejercita un alta por `/registro/`.
 
 **Cómo leer:** `Pre` = precondición · `Pasos` = qué hacer · `Esperado` = qué debe ocurrir para aprobar.
 Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
@@ -112,6 +119,7 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | ID | Caso | Cómo se prueba | Esperado |
 |---|---|---|---|
 | **E-01** | La firma se conserva | Tras un alta, consultar `aceptaciones` de ese registro | Existe exactamente **una** aceptación, con ruta al PNG en el bucket privado |
+| **E-11** | La evidencia del banco de QA | Banco aplicado | Abrir cualquier folio sembrado y pulsar «Ver la firma»; después abrir el `…225` | Los folios sembrados muestran firmante, versiones, sello y hash. La **imagen** sólo aparece si se subió a mano `qa-firma-demo.png` al bucket; sin ese paso avisa que no la pudo abrir y **no es fallo** (el seed no escribe en Storage). El `…225` muestra el estado vacío: "no tiene evidencia de firma registrada" |
 | **E-02** | Hash verificable | Descargar el PNG con URL firmada y recalcular su SHA-256 | Coincide con el hash almacenado |
 | **E-03** | Versiones correctas | Revisar la aceptación | Apunta a la versión **vigente** del reglamento (v2, 22 cláusulas) y del aviso (v2) al momento de firmar |
 | **E-04** | Sello de tiempo | Revisar la aceptación | Conserva la fecha/hora del consentimiento |
@@ -156,7 +164,7 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | Criterio de aceptación (Doc 2 §2.1) | Casos que lo cubren |
 |---|---|
 | Campos cubiertos, validados y guardados | F-01, F-05, F-06, F-21 |
-| Firma conservada como evidencia | E-01…E-05, **E-07…E-10** |
+| Firma conservada como evidencia | E-01…E-05, **E-07…E-11** |
 | Aviso simplificado antes de capturar | A-07, **F-39** |
 | Menores firman por tutor | F-04, E-06, **F-32** |
 | Administración asigna y cobra | F-09…F-13, **F-29…F-33** |
