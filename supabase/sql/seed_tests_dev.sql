@@ -45,8 +45,8 @@
 -- EVIDENCIA DE FIRMA: todos los folios llevan su renglon en `aceptaciones`
 -- (menos el 225, dejado vacio a proposito). Se siembran los DATOS probatorios,
 -- no la imagen: SQL no puede escribir bytes en Storage. Para que ademas se vea
--- el PNG hay que subir a mano, una sola vez, `qa-firma-demo.png` al bucket
--- `firmas`. Ver el paso 3c, que lo explica completo.
+-- el PNG hay que subir a mano, una sola vez, `supabase/qa-firma-demo.png` (esta
+-- en el repo) al bucket `firmas`. Ver el paso 3c, que lo explica completo.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -278,10 +278,11 @@ select id, 'E1'
 --
 --     PARA QUE ADEMAS SE VEA LA IMAGEN — un paso manual, UNA sola vez:
 --       Supabase -> Storage -> bucket `firmas` -> Upload file
---       Subir un PNG llamado exactamente  qa-firma-demo.png
---       Que se lea "FIRMA DE PRUEBA" en el propio trazo: es un sistema de
---       evidencia, y un garabato realista sembrado a mano no debe poder
---       confundirse nunca con la firma de una persona.
+--       Subir  supabase/qa-firma-demo.png  (esta en el repo, junto a este
+--       archivo) SIN cambiarle el nombre: la ruta sembrada aqui lo espera tal
+--       cual. Lleva "FIRMA DE PRUEBA" impreso sobre el trazo a proposito: esto
+--       es un sistema de evidencia, y un garabato realista sembrado a mano no
+--       debe poder confundirse nunca con la firma de una persona.
 --     No hay que repetirlo al re-correr el seed: esto vacia tablas, no Storage.
 --
 --     PARA PROBAR EL CAMINO REAL (E-07 y E-08) hace falta un alta por

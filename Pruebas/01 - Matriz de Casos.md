@@ -119,7 +119,7 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | ID | Caso | Cómo se prueba | Esperado |
 |---|---|---|---|
 | **E-01** | La firma se conserva | Tras un alta, consultar `aceptaciones` de ese registro | Existe exactamente **una** aceptación, con ruta al PNG en el bucket privado |
-| **E-11** | La evidencia del banco de QA | Banco aplicado | Abrir cualquier folio sembrado y pulsar «Ver la firma»; después abrir el `…225` | Los folios sembrados muestran firmante, versiones, sello y hash. La **imagen** sólo aparece si se subió a mano `qa-firma-demo.png` al bucket; sin ese paso avisa que no la pudo abrir y **no es fallo** (el seed no escribe en Storage). El `…225` muestra el estado vacío: "no tiene evidencia de firma registrada" |
+| **E-11** | La evidencia del banco de QA | Banco aplicado | Abrir cualquier folio sembrado y pulsar «Ver la firma»; después abrir el `…225` | Los folios sembrados muestran firmante, versiones, sello y hash. La **imagen** sólo aparece si se subió a mano `supabase/qa-firma-demo.png` al bucket; sin ese paso avisa que no la pudo abrir y **no es fallo** (el seed no escribe en Storage). El `…225` muestra el estado vacío: "no tiene evidencia de firma registrada" |
 | **E-02** | Hash verificable | Descargar el PNG con URL firmada y recalcular su SHA-256 | Coincide con el hash almacenado |
 | **E-03** | Versiones correctas | Revisar la aceptación | Apunta a la versión **vigente** del reglamento (v2, 22 cláusulas) y del aviso (v2) al momento de firmar |
 | **E-04** | Sello de tiempo | Revisar la aceptación | Conserva la fecha/hora del consentimiento |
