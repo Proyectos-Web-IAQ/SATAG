@@ -1,6 +1,7 @@
 # Guia de Sesiones y Ruta Operativa - SATAG
 
-> **Ultima actualizacion:** 29/07/2026 (cierre del desarrollo: bloques 45-48, aviso sin redundancias y correccion del estado real del sistema).
+> **Ultima actualizacion:** 30/07/2026 (preparacion del banco de pruebas).
+> Cierre del desarrollo: 29/07/2026 (bloques 45-48, aviso sin redundancias y correccion del estado real del sistema).
 > **Horario real de trabajo:** 09:00 a 14:00.
 > **Uso:** abrir este documento al inicio de cada sesion para saber que revisar, que cerrar y con que continuar.
 
@@ -227,6 +228,39 @@ esta en produccion.
   salvo su primer parrafo, y el enlace al integral **nunca** se pliega, porque es parte del minimo
   legal.
 
+### Bitacora de la sesion del 30-jul-2026
+
+**Que se hizo.** Preparacion del banco de pruebas y sincronizacion de los sistemas de registro.
+Se aplico el bloque 48, se re-sembro `seed_tests_dev.sql` — que ahora incluye la evidencia de firma
+del paso 3c — y se cargo `qa-firma-demo.png` en el bucket. Se alinearon cinco documentos que
+citaban el estado anterior y, sobre todo, la **guia y la bitacora que todavia afirmaban que
+`consulta` no accede a la firma**: el bloque 48 invirtio justo eso y son los documentos que
+Direccion lee para aceptar el proyecto.
+
+**Reprogramacion del cierre.** Se resolvio la discrepancia que venia anotada: el cronograma daba
+el cierre en ~03-ago mientras la ruta operativa ponia migracion el 05-ago y aceptacion el 07-ago.
+**Queda el 07-ago**, y asi se carga en Cronoma.
+
+**Sincronizacion con Cronoma.** Los tres scripts viven en el repo de Cronoma, en
+`supabase/manual/`, y siguen el patron del 28-jul (respaldo confirmado aparte, mutacion que aborta
+si el estado no coincide, rollback propio):
+
+- `2026-07-30_satag_cierre_desarrollo_lectura.sql` — solo lee; correr PRIMERO.
+- `2026-07-30_satag_cierre_desarrollo.sql` — avance de las 17 actividades, reprogramacion,
+  SC-016 (evidencia de firma abierta a `consulta`) y SC-017 (avisos redundantes), mas el riesgo
+  nuevo de que la RLS es por fila y no por columna.
+- `2026-07-30_satag_cierre_desarrollo_rollback.sql`.
+
+**Fechas, para que el acta cuadre.** El cierre del desarrollo fue el **29-jul**; lo del **30-jul**
+es la preparacion del banco. Se fecho cada cosa por lo que muestra el historial del repositorio,
+no por la sesion en que se hablo de ello.
+
+**Dato incomodo que conviene no maquillar.** Hoy es 30-jul y **la ejecucion de las pruebas no ha
+empezado**. La actividad estaba planeada del 17 al 22-jul: es la critica atrasada, y asi se carga
+en Cronoma (40 %, en curso, reprogramada al 03-ago).
+
+**Siguiente tarea concreta:** ejecutar las tandas P y E. No queda ningun paso de preparacion.
+
 **Decision de criterio (la que definia si el reporte servia o era ruido).** Un expediente incompleto
 NO es "le falta un paso del flujo": eso ya son las colas de Admin y de TI, y repetirlas seria ruido.
 Son tres cosas distintas: faltantes de **integridad** (estados que los RPC no pueden producir; si
@@ -242,9 +276,9 @@ bloque 48, que invirtio lo que afirmaban. La matriz paso de 59 a **77 casos**.
 
 **Siguiente tarea concreta, en este orden:**
 
-La base quedo lista el mismo 29-jul: bloques `00`->`48` aplicados, banco de pruebas re-sembrado con
-la evidencia de firma, y `qa-firma-demo.png` cargado en el bucket. **No queda ningun paso de
-preparacion pendiente.**
+La base quedo lista la manana del 30-jul: bloque 48 aplicado (los 45-47 se corrieron el 29), banco de
+pruebas re-sembrado con la evidencia de firma, y `qa-firma-demo.png` cargado en el bucket. **No queda
+ningun paso de preparacion pendiente.**
 
 1. **Ejecutar las tandas P y E** de `Pruebas/01 - Matriz de Casos.md`. Son las que bloquean el cierre:
    ningun fallo es admisible. Empezar por `P-13` y `E-10`, que verifican el bloque 48; por `F-39`,

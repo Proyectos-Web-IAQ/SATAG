@@ -1,6 +1,6 @@
 # Matriz de Casos de Prueba — SATAG
 
-> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.3 · 29-jul-2026 · **77 casos**.
+> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.3 · 30-jul-2026 · **77 casos**.
 > Cada caso es ejecutable por un tercero. El resultado se anota en la
 > [bitácora de ejecución](02%20-%20Bitacora%20de%20Ejecucion.md), no en este archivo.
 >
@@ -16,7 +16,7 @@
 > columna. También se retiró el enlace redundante al aviso en el paso 2 del formulario y el aviso
 > corto del paso 0 quedó plegable, lo que toca **F-01**, **F-02** y **F-03** y entra como **F-39**.
 >
-> **v1.3 (29-jul):** el banco de QA ahora siembra la evidencia de firma, que antes no tenía. Entra
+> **v1.3 (30-jul):** el banco de QA ahora siembra la evidencia de firma, que antes no tenía. Entra
 > **E-11**. Ojo con su matiz: el seed puede sembrar los datos probatorios pero **no la imagen** —
 > SQL no escribe bytes en Storage—, así que ver "no se pudo abrir la imagen" en los folios sembrados
 > **no es un fallo** salvo que se haya subido `qa-firma-demo.png` al bucket. El camino real lo
