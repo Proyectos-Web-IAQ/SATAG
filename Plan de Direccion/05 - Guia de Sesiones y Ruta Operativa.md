@@ -259,6 +259,26 @@ no por la sesion en que se hablo de ello.
 empezado**. La actividad estaba planeada del 17 al 22-jul: es la critica atrasada, y asi se carga
 en Cronoma (40 %, en curso, reprogramada al 03-ago).
 
+**Cronoma quedo sincronizado.** Se cargo el avance de las 17 actividades del cronograma, se cerraron
+CC-02, CC-05 y CC-12 en el paquete de cambios, se dieron de alta SC-016 y SC-017 y el riesgo de la RLS
+por fila, y se dejaron 6 revisiones pendientes para el auditor. Verificado con la consulta de control:
+3 actividades CC abiertas, cierre en 07-ago, 0 revisiones desincronizadas.
+
+**Hallazgo del proceso, para no repetirlo.** La carga aborto tres veces antes de entrar, y las tres
+por suposiciones equivocadas sobre Cronoma: los nombres de actividad llevan acentos y se empatan por
+texto exacto; el proyecto no tiene 17 actividades sino ~38, porque cada cambio de control es una
+actividad del paquete WBS `CC`; y una revision PENDIENTE con el porcentaje viejo puede deshacer una
+carga en silencio al aprobarse, porque el trigger copia `pct_reportado` dentro de la actividad. Las
+guardas de los scripts detuvieron las tres antes de tocar datos.
+
+**ZKBioSecurity (SC-006) quedo donde debia.** La investigacion estaba muy bien escrita pero su
+conclusion no habia salido del propio documento. Ahora esta como **R13** en la matriz de riesgos, en
+la bitacora de cambios y en esta guia. El encuadre correcto: Contabilidad pidio la conexion en la
+reunion inicial, el alcance de SATAG —sustituir la hoja fisica y la hoja de calculo— **ya esta
+cumplido**, la API no esta activada y se compra aparte (`ZKBS-API-S1`, SMARTHAUS), y **la decision de
+adquirirla es de Contabilidad, no de TI**. Queda anotada tambien la divergencia entre lo que espera
+Contabilidad y lo que el Encargado de Sistemas entiende por alcance.
+
 **Siguiente tarea concreta:** ejecutar las tandas P y E. No queda ningun paso de preparacion.
 
 **Decision de criterio (la que definia si el reporte servia o era ruido).** Un expediente incompleto
