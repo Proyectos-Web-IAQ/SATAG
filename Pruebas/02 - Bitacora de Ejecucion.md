@@ -44,18 +44,18 @@ que se conserva aparte como evidencia del defecto.
 
 | Caso | Fecha | Resultado | Evidencia / observación |
 |---|---|---|---|
-| P-01 | | | |
-| P-02 | | | |
+| P-01 | 03-ago-2026 | ✅ | `select * from registros` con la clave anónima devuelve `HTTP 200` y **0 filas**. La RLS no filtra ni un registro: no hay PII al alcance de una sesión anónima. |
+| P-02 | 03-ago-2026 | ✅ | Igual sobre las cuatro tablas sensibles: `aceptaciones`, `pagos`, `movimientos` y `solicitudes` devuelven `HTTP 200` y **0 filas** cada una. Ninguna expone lectura a `anon`. |
 | P-03 | | | |
 | P-04 | | | |
 | P-05 | | | |
 | P-06 | | | |
 | P-07 | | | |
 | P-08 | | | |
-| P-09 | | | *(comprueba el bloque 43, aplicado 28-jul)* |
-| P-10 | | | *(comprueba el bloque 43, aplicado 28-jul)* |
-| P-11 | | | *(riesgo aceptado: sin rate limiting)* |
-| P-12 | | | |
+| P-09 | | | *(comprueba el bloque 43, aplicado 28-jul)* **Contraprueba hecha el 03-ago:** la lectura pública **no** se rompió — `cat_marcas`, `cat_colores`, `reglamento_versiones` y `aviso_versiones` siguen devolviendo filas a la clave anónima, así que el formulario público carga. Falta la mitad de escritura, que exige los roles del panel. |
+| P-10 | | | *(comprueba el bloque 43, aplicado 28-jul)* **Primera mitad cerrada el 03-ago:** el PNG de `SATAG-000303` no es accesible por URL pública directa (`HTTP 400`) ni descargándolo con la clave anónima (`HTTP 400`). El bucket es privado de verdad. Falta la mitad de escritura por rol. |
+| P-11 | | | *(riesgo aceptado: sin rate limiting)* **No ejecutado todavía a propósito:** es el único caso de la tanda que escribe, y deja 20 notas en la cola del buzón que estorban a F-27 y F-28. Se corre cuando toque limpiarlas en el mismo momento. |
+| P-12 | 03-ago-2026 | ✅ | Con folio real (`SATAG-000101`) y placas equivocadas, el buzón responde `HTTP 400` con un único mensaje —«Los datos no coinciden con ningún registro vigente»— y **no** revela nombre, vehículo, placas, estado ni tipo de usuario. Comprobado además que un folio **inexistente** da exactamente el mismo mensaje: el buzón no permite distinguir «el folio existe pero la placa está mal» de «el folio no existe», que es lo que impediría usarlo para tantear folios ajenos. |
 | P-13 | | | *(bloque 48: `consulta` lee la firma pero no escribe nada)* |
 | P-14 | | | *(vistas `security_invoker`, bloques 45 y 47)* |
 
