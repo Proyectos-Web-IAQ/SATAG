@@ -324,6 +324,104 @@ cerrada (`Investigacion/03`) y su conclusion es que **la API no esta activada**:
 Contabilidad**. Lo que TI podia entregar —investigacion, diseno del conector y plan B por archivo— ya
 esta entregado. Ver R13 en `Plan de Direccion/03`.
 
+### Bitacora de la sesion del 03-ago-2026
+
+**Que se hizo.** Se automatizo la ejecucion del flujo publico y se cerro casi entera la parte de las
+pruebas que bloquea el cierre. **La tanda E quedo completa (11 de 11) y la tanda P en 13 de 14.**
+
+**Version bajo prueba: sigue el commit `dc37b54`.** No se toco una sola linea de codigo; comprobado
+con `git diff dc37b54..HEAD` sobre `app/`, `components/`, `lib/` y `supabase/`, que sale vacio.
+
+**Expediente de referencia: `SATAG-000303`.** Alta limpia por `/registro/`, de menor de edad con
+gestionante y TAG propio. Es el primer expediente con firma **capturada** y no sembrada, y por eso
+es el que habilito E-06, E-07 y E-08. El aviso y el reglamento cargaron con texto real y version v2
+antes de aceptar, asi que **no** reproduce D-01: ese sigue siendo el `302`. Queda anotado en
+`Pruebas/02` que la firma la trazo un arnes automatizado —eventos de puntero reales, pero **no** la
+firma de una persona fisica— para que nadie la presente como consentimiento de nadie.
+
+**Arnes de capturas.** Se monto un recorrido automatizado (Playwright sobre Chromium) **instalado
+fuera del repositorio**, que opera `https://satag.vercel.app` como lo haria una persona. Genera 73
+capturas en escritorio (1280) y celular (390), ejecuta comprobaciones y **reproduce fallos
+inyectados** bloqueando o alterando respuestas de red. Por omision **no** envia el alta, para poder
+reejecutarlo sin sembrar registros. Vive en el scratchpad de la sesion; la salida se copio a
+`Documents/Proyectos WEB/SATAG - Evidencia de pruebas/2026-08-03/`, con galeria `index.html` y un
+**PDF de revision** de una pantalla por pagina que incluye el checklist de los 77 casos calculado
+**leyendo la bitacora**, para que no pueda quedar desfasado.
+
+**Casos cerrados hoy.** Tanda E: **E-01 a E-11 completa**, con E-08 y E-10 aprobados con
+observacion. Tanda P: P-01, P-02, P-05, P-06, P-07, P-08, P-09, P-12 y P-14 aprobados; P-10 y P-13
+aprobados con observacion; P-03 y P-04 con la mitad de datos aprobada y pendiente la de pantalla.
+Tanda F: F-02 y F-06 cerrados, F-04 y F-07 a falta de la comprobacion en base.
+
+**La cadena probatoria de la firma quedo verificada de punta a punta:** el hash del paquete se
+recalcula en la base y cuadra, y el PNG descargado por URL firmada (15 113 bytes) recalcula
+exactamente el `firma_imagen_sha256` almacenado. La URL caduca de verdad: `HTTP 200` recien emitida,
+`HTTP 400` pasados 70 segundos.
+
+**Defectos nuevos: D-06 a D-14.** Los dos que mas pesan:
+
+- **D-06 (mayor).** La firma sobrevive a «Atras». Al volver al paso 5 el lienzo aparece **vacio**
+  pero «Enviar registro» sigue activo y sube la firma anterior. Reproducido en las dos resoluciones;
+  la captura del lienzo posterior al regreso es **byte a byte identica** a la del lienzo nunca usado.
+- **D-13 (mayor).** El aviso de privacidad publicado **no lleva un solo acento**: cero caracteres
+  acentuados en `22_publicar_aviso_v2.sql` y en `44_aviso_simplificado.sql`. El reglamento si los
+  lleva, asi que dos pasos seguidos del formulario estan escritos con criterios distintos. Es el
+  documento legal que acepta el titular y que Legal va a aprobar. Corregirlo obliga a tocar
+  `aviso_versiones.contenido`, que **fuerza a resembrar el banco de QA**: debe viajar en la misma v3
+  que apruebe Legal, junto con el plazo de conservacion.
+
+Los demas: D-08 (en Finanzas, un detalle de corte que no carga se pinta como corte sin movimientos),
+D-09 (si el catalogo de estacionamientos falla, TI ve dos claves inventadas), D-10 (el panel puede
+quedarse en «Verificando sesion...» para siempre), D-11 (la pagina publica del aviso se pinta vacia
+y sigue afirmando que esta vigente; **reproducido**), D-07 (tuteo que viaja desde la base), D-12
+(seis textos sin acentos en el acceso al panel) y D-14 (en celular el consentimiento se otorga por
+una ventana de 220 px, que ademas es lo que hace explotable a D-01).
+
+**Dos trampas de metodo que hay que conocer para reejecutar la tanda P:**
+
+1. Un `UPDATE` filtrado por RLS **no da error**: termina en silencio afectando cero filas. Sin
+   contarlas con `get diagnostics` se lee igual que una escritura consentida.
+2. `insert into pagos` falla primero por la secuencia del folio, que se evalua **antes** que la RLS.
+   Hay que repetirlo con folio explicito para que la comprobacion llegue a la barrera real.
+
+**Hallazgo de arquitectura que conviene que sepa el Encargado de Sistemas:** `registros` y `pagos`
+no estan protegidos igual. A `registros` lo defienden **dos** barreras —privilegio revocado por el
+bloque 30 (`UPDATE = false`) y RLS—; a `pagos` **solo** la RLS, porque el privilegio de `INSERT`
+sigue concedido y lo que detiene la escritura es que la tabla tiene RLS activa sin ninguna politica
+de insert. Hoy ambas rechazan, pero si alguien anadiera una politica de insert a `pagos` pensando en
+otra cosa, la escritura directa quedaria abierta.
+
+**Correcciones pendientes en la matriz, detectadas al ejecutar:** el esperado de **E-08** esta mal
+escrito (dice que la URL firmada deja de servir «en una ventana sin sesion», y no es asi ni debe
+serlo: autoriza por el token, no por la sesion), y **F-08** acota el trato de usted a «las seis
+pantallas del wizard», con lo que la portada, el buzon, la pagina del aviso y los mensajes de la
+base quedan fuera del unico caso que prueba CC-07.
+
+**Plazo de conservacion: enviado.** Se redacto
+`Entregables/E6 - Cumplimiento Legal y Privacidad/E6 - Nota de Decision - Plazo de Conservacion.md`,
+con hoja de firma, y la fila 4 del tablero paso a **En revision**. **Se corrigio la recomendacion
+anterior:** proponia 6 años para lo operativo y 10 para la firma, y esa combinacion no es viable sin
+construir una rutina de disociacion, porque la evidencia esta atada al expediente con borrado en
+cascada. La nota recomienda **6 años para todo**, con 10 para todo como alternativa si Direccion
+quiere maxima fuerza probatoria.
+
+**No se toco Cronoma:** no estaba disponible en la sesion (faltan las credenciales en
+`~/.cronoma.env`). La actividad de pruebas sigue marcada al 40 % y ya no lo esta: al cerrar P y E
+habra que subirla.
+
+**Siguiente tarea concreta, en este orden:**
+
+1. **P-03 y P-04, la mitad de pantalla.** Entrar al panel abandonando en el reto TOTP, y entrar con
+   la cuenta sin rol. Es lo unico que le falta a la tanda P y no se puede simular.
+2. **P-11 y su limpieza en el mismo momento** (`delete from solicitudes where solicitante_nombre
+   like 'Prueba P-11 %'`): es el unico caso que escribe y sus 20 notas estorban a F-27 y F-28.
+3. **Corregir la matriz** en E-08 y F-08 antes de seguir ejecutando, para no acumular casos
+   aprobados contra un esperado que se sabe erroneo.
+
+Despues: el resto de la tanda F, la tanda A, la tanda U con personal real, y los cinco lotes de
+correcciones en el orden acordado **C -> A -> B -> D (bloque 49) -> E**. El lote B invalida las 39
+capturas de celular, pero el arnes las regenera con un comando.
+
 ### Bitacora de la sesion del 31-jul-2026
 
 **Que se hizo.** Arranco la **ejecucion** de las pruebas (WBS 1.8), que estaba atrasada: al 30-jul no
