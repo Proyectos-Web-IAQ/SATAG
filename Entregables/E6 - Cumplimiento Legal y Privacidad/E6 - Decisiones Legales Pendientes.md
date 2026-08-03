@@ -3,7 +3,7 @@
 > **Proyecto:** SATAG - Sistema de Adquisicion de TAG Vehicular.
 > **Institucion:** Instituto Asuncion de Queretaro, A.C. (IAQ).
 > **Tarea WBS:** 1.2.3 - Definicion legal y privacidad.
-> **Ultima actualizacion:** 06/07/2026.
+> **Ultima actualizacion:** 01/08/2026.
 > **Estado global:** borradores listos; faltan decisiones institucionales para poder publicar el aviso.
 
 ## Como usar este documento en cada sesion
@@ -29,7 +29,7 @@ Los entregables base que alimentan este tablero:
 | 1 | Responsable ARCO | Persona con nombre o departamento | Designar al **departamento** (Administracion) como responsable formal, y nombrar internamente a un titular concreto que opere. Da continuidad si alguien se va. | | Direccion / Administracion | Alta | Pendiente |
 | 2 | Reparto TI vs Administracion | Si TI y Administracion pueden ejecutar ARCO, quien es el duenno del proceso | **Administracion** es duenna del proceso (recibe, verifica identidad, responde en plazo). **TI** es ejecutor tecnico (exporta, borra del bucket, bloquea registros) a peticion de Administracion. | | Direccion | Alta | Pendiente |
 | 3 | Correo ARCO | Correo personal o de departamento | Usar un **buzon institucional de rol** (no personal). Detras, una persona lo monitorea. | `aviso.privacidad@asuncionqro.edu.mx` | Administracion / TI | Alta | Decidido |
-| 4 | Plazo de conservacion SATAG | Cuanto se guardan los expedientes del TAG | Vigencia del TAG + periodo tras la baja. Sugerido: **6 años** (alineado a los 72 meses de referencia de la ley) para datos operativos; hasta **10 años** para la evidencia de firma si Direccion quiere maxima fuerza probatoria. Luego bloqueo y supresion. | | Direccion / Legal | Alta | Pendiente |
+| 4 | Plazo de conservacion SATAG | Cuanto se guardan los expedientes del TAG | **Un plazo unico de 6 años desde la baja, para todo el expediente incluida la evidencia de firma.** Se corrigio la recomendacion anterior, que proponia 6 años para lo operativo y 10 para la firma: esa combinacion no es viable sin construir una rutina de disociacion, porque la evidencia esta atada al expediente con borrado en cascada. Las dos opciones limpias son 6 para todo (recomendada) o 10 para todo. Detalle y hoja de firma en [Nota de Decision - Plazo de Conservacion](E6%20-%20Nota%20de%20Decision%20-%20Plazo%20de%20Conservacion.md). | | Direccion / Legal | Alta | **En revision** (nota enviada 01-ago-2026) |
 | 7 | Domicilio legal en aviso | Texto exacto del domicilio del IAQ | Copiar el domicilio exacto del aviso general vigente del IAQ. | Cerrada de la Asuncion #16, Col. Loma Dorada, Queretaro, Qro., C.P. 76060 (Legal confirma que coincide con acta/aviso general) | Administracion / Legal | Alta | Decidido |
 | 8 | URL del aviso integral | Direccion web donde se publica | Definir ruta fija, p.ej. `/aviso-de-privacidad`, versionada. | Resuelto 28-jul: la pagina `/aviso-de-privacidad` existe, lee la version vigente de la base y muestra su numero de version. El dominio cambiara al migrar al subdominio institucional; la ruta no. | TI | Media | Resuelto |
 | 9 | Supabase DPA y region | Firmar DPA y documentar region | Firmar el DPA desde el dashboard de Supabase, archivar el PDF, elegir y documentar region (us-east-1 o us-west). | | TI | Alta | Pendiente |
@@ -42,7 +42,7 @@ Los entregables base que alimentan este tablero:
 ## 3. Notas de respaldo (por que se recomienda cada cosa)
 
 - **ARCO (filas 1-3).** El art. 29 de la LFPDPPP 2025 obliga a designar "una persona o departamento" de datos personales. Ambas opciones son validas; por continuidad conviene el departamento como responsable formal con un titular operativo y un buzon de rol. ARCO = derechos de Acceso, Rectificacion, Cancelacion y Oposicion del titular; el sistema SATAG es la herramienta para ejecutarlos, pero la solicitud la recibe, evalua y responde el responsable en los plazos de 20 dias habiles + 15 para ejecutar (art. 31).
-- **Conservacion (fila 4).** No hay plazo legal fijo para particulares. La ley usa 72 meses como referencia de incumplimiento contractual (art. 10) y la evidencia de firma gana fuerza probatoria si se conserva por analogia al art. 49 del Codigo de Comercio (10 años). Al vencer: bloqueo previo y luego supresion.
+- **Conservacion (fila 4).** No hay plazo legal fijo para particulares. La ley usa 72 meses como referencia de incumplimiento contractual (art. 10) y la evidencia de firma gana fuerza probatoria si se conserva por analogia al art. 49 del Codigo de Comercio (10 años). Al vencer: bloqueo previo y luego supresion. **Revisado el 01-ago-2026:** la analogia con el Codigo de Comercio es debil aqui, porque el IAQ no celebra un acto mercantil con el reglamento de estacionamiento (`Investigacion/02:150`), y buena parte de los conductores son alumnos menores, a quienes la ley pide expresamente no conservar «por si acaso». Por eso la recomendacion baja a un plazo unico de 6 años. Ver la nota de decision enlazada en la fila.
 
 ## 4. Definicion de "Decidido"
 
