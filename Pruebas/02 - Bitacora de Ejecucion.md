@@ -23,6 +23,23 @@
 | `npx tsc --noEmit` en verde | 31-jul-2026 | ✅ | Sin errores de tipos. |
 | `npm run build` en verde | 31-jul-2026 | ✅ | Compila en 1.6 s; las 10 rutas se generan como estáticas (`output: "export"`). |
 
+### Expediente de referencia del 01-ago — `SATAG-000303`
+
+Alta **limpia** por `/registro/`, de **menor de edad con gestionante** y **TAG propio**. Es el primer
+expediente del sistema con firma **capturada**, no sembrada, y por eso es el que habilita **E-06,
+E-07 y E-08**, que no se pueden probar con los 55 folios del banco de QA.
+
+Se comprobó durante el recorrido que el aviso y el reglamento cargaron con texto real y versión
+`v2` antes de aceptar, así que **no** reproduce D-01. El expediente de D-01 sigue siendo el `302`,
+que se conserva aparte como evidencia del defecto.
+
+> **Procedencia de la firma, para el acta.** El recorrido se ejecutó con un arnés automatizado
+> (Playwright sobre Chromium) que opera la interfaz publicada como lo haría una persona: los trazos
+> son eventos de puntero reales, con sus coordenadas y tiempos. **No es la firma de una persona
+> física**, y no debe presentarse como tal. Sirve para probar el mecanismo —que la evidencia se
+> conserva, se ve en el panel y su URL caduca—, no para acreditar el consentimiento de nadie. Los
+> casos de usabilidad (tanda U) siguen exigiendo personal real.
+
 ## Tanda P · Privacidad, RLS, RPC y Storage
 
 | Caso | Fecha | Resultado | Evidencia / observación |
