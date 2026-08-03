@@ -2,7 +2,7 @@
 
 > **Para:** Dirección del IAQ · Asesoría Legal
 > **De:** Soporte TI — Gerardo Sánchez
-> **Fecha:** 01-ago-2026
+> **Fecha:** 03-ago-2026
 > **Decide:** Dirección / Legal · **Prepara:** TI · **Opera:** Administración
 > **Corresponde a:** fila 4 del tablero de [Decisiones Legales Pendientes](E6%20-%20Decisiones%20Legales%20Pendientes.md)
 
