@@ -324,6 +324,119 @@ cerrada (`Investigacion/03`) y su conclusion es que **la API no esta activada**:
 Contabilidad**. Lo que TI podia entregar —investigacion, diseno del conector y plan B por archivo— ya
 esta entregado. Ver R13 en `Plan de Direccion/03`.
 
+### Bitacora de la sesion del 31-jul-2026
+
+**Que se hizo.** Arranco la **ejecucion** de las pruebas (WBS 1.8), que estaba atrasada: al 30-jul no
+se habia corrido un solo caso. Se recorrio el flujo publico pantalla por pantalla, tomando capturas
+que sirven a la vez de evidencia de la bitacora, de material para ilustrar E8 —los cinco manuales
+estan escritos y **sin una sola imagen**— y de revision de experiencia de uso. Los resultados se
+anotaron **conforme se ejecutaba** en `Pruebas/02 - Bitacora de Ejecucion.md`.
+
+**Version bajo prueba: commit `dc37b54`**, arbol limpio. `npx tsc --noEmit` y `npm run build` en
+verde; las 10 rutas se generan estaticas.
+
+**Casos cerrados:** F-03, F-05, F-39 y A-08. **Parciales** (falta la otra mitad): F-02 —el aviso si,
+el reglamento no—, F-04, F-06, F-07 y A-07.
+
+**Hallazgo critico: la puerta del consentimiento se abre sola (D-01).** Es el defecto mas grave
+encontrado hasta hoy y no estaba en ningun documento.
+
+Los cinco cargadores del formulario no tienen `.catch` (`registro/page.tsx:71-77`). Si el aviso no
+carga, el recuadro pinta un solo parrafo, "Cargando...", que **cabe** en los `max-height: 220px` de
+`.reglamento`; entonces se cumple `scrollHeight <= clientHeight + 8` y el efecto de la linea 93
+ejecuta `setAvisoLeido(true)`. La casilla se habilita y la persona acepta un aviso que nunca vio. El
+efecto solo pone la bandera en `true`, **nunca en `false`**, asi que no hace falta que la red se
+caiga: basta con que el texto tarde y la persona vaya de prisa. Aplica igual al reglamento (linea 97).
+
+Se reprodujo bloqueando `aviso_versiones` y `reglamento_versiones` desde el panel *Request
+conditions* del navegador, y se completo un alta en ese estado: **folio `SATAG-000302`**.
+
+**El agravante lo pone el RPC.** Cuando el cliente no manda las versiones —que es justo lo que pasa
+cuando los documentos no cargan— `crear_registro` **las resuelve el mismo del lado del servidor**
+(`19_rpc_crear_registro.sql:81-89` y `:100-108`), escribe `acepto_privacidad` en duro como `true`
+(`:256`) y calcula el hash sobre el texto completo de la v2 (`:220-226`). El resultado en
+`aceptaciones` afirma que la persona leyo y acepto reglamento v2 y aviso v2, con hash valido y sello
+de tiempo real. **El hash prueba que el documento no fue alterado, no que la persona lo haya visto.**
+E-02 y E-03 aprobarian ese registro.
+
+Si queda rastro, pero nadie lo mira: `metadata->'consentimiento'` conserva `avisoVersion: null` y
+`reglamentoVersion: null`, en contradiccion con las claves foraneas que apuntan a la v2. Sirve como
+control de auditoria **siempre que se filtre por `jsonb_exists(metadata,'consentimiento')`**: los 55
+folios del banco de QA se insertan directo en la tabla y no traen esa clave
+(`seed_tests_dev.sql:386`), asi que sin el filtro salen como falsos positivos. Verificado:
+**el unico expediente afectado es el `302`**, que se conserva como evidencia del defecto y **no**
+cuenta como caso de prueba.
+
+El arreglo tiene tres partes y la tercera no se habia visto: condicionar las dos puertas a que el
+documento exista; poner `.catch` con mensaje visible; y **que `crear_registro` rechace el alta si las
+versiones llegan nulas** en vez de rellenarlas. Lo tercero es un bloque 49 sobre un RPC vivo —va junto
+con el despliegue— y arrastra que `getAvisoVigente`/`getReglamentoVigente` devuelvan el `id` y que
+`api.ts` lo mande.
+
+**Otros defectos abiertos:** D-04 (el aviso simplificado del paso 1 desaparece entero y en silencio si
+no carga: es el minimo del art. 16 fr. II cayendose sin aviso), D-05 (la portada dice "Sistemas lo
+instala" y el comprobante "TI instalara": dos nombres para la misma area en el mismo tramite), D-02
+(el tipo de usuario se queda en Alumno al **des**marcar la casilla de menor) y D-03 (**cuatro** textos
+tutean, no tres: los tres "Especifica..." mas "Desplazate hasta la clausula 22", cuyo gemelo del paso
+anterior si dice "Desplacese").
+
+**Revision de pulido con seis lentes.** Se corrio un barrido sobre lo recorrido —redaccion,
+accesibilidad, visual y movil, cumplimiento legal, fugas de estado y documentacion contra realidad—
+con un pase de refutacion detras. **60 hallazgos vivos, 20 refutados**, organizados en 51 cambios y
+cinco lotes por naturaleza del cambio: A texto, B estilos, C logica, D textos legales y base, E
+documentacion. El detalle vive en el archivo de trabajo de la sesion.
+
+Tres hallazgos legales que no teniamos:
+
+1. **Al aviso simplificado y al integral les faltan las opciones de limitacion de uso o divulgacion**
+   (art. 15 fr. IV), y al simplificado tambien el domicilio del responsable. Lo exige la propia
+   investigacion del proyecto (`Investigacion/02:230`, `:240`, `:244`), que se entrega a Direccion
+   junto con el texto: hoy F-39 pasa en verde sobre un aviso que el propio expediente considera
+   incompleto.
+2. **El aviso promete supresion "al vencer el plazo aprobado" y no hay plazo aprobado ni proceso que
+   la ejecute.** Ademas el texto derivo al publicarse: el fuente decia "deberan suprimirse"
+   (obligacion interna) y quedo "se suprimiran" (compromiso ante el titular). **Es el punto con espera
+   externa: hay que decidirlo antes de que Legal firme.**
+3. **El reglamento anuncia videovigilancia 24 horas y ninguno de los dos avisos la menciona.** La
+   solucion propuesta es remision, no ampliacion: declararlo tratamiento conexo del IAQ informado
+   aparte, sin meter "imagen" como dato tratado de SATAG.
+
+Y una mina puesta justo en el siguiente movimiento previsto: el bloque 44 escribe el texto corto con
+`update ... where vigente = true`, asi que **al publicar la v3 que apruebe Legal, el aviso
+simplificado desapareceria de la pantalla sin dar error**. En el bloque 49 va un
+`check (not vigente or contenido_simplificado is not null)` para que falle ruidosamente en el SQL
+Editor y no en silencio en el celular.
+
+**Trampa operativa registrada:** tocar `aviso_versiones.contenido` **obliga a resembrar el banco de
+QA**, porque `seed_tests_dev.sql:352` mete el sha256 del texto dentro de `hash_payload` y las 55
+aceptaciones sembradas quedarian con un hash que ya no corresponde. Tocar solo
+`contenido_simplificado` no lo obliga.
+
+**Decisiones de la sesion:**
+
+- Que el tipo de usuario quede fijo en Alumno **mientras** la casilla de menor esta marcada es diseno
+  deliberado y se queda asi. Lo que se corrige es el residuo al desmarcarla.
+- Los arreglos de pulido se aplican **en un solo lote al terminar las tandas P y E**, para no mover el
+  commit bajo prueba a media ejecucion y dejar la bitacora mintiendo sobre que version se probo.
+- Orden acordado de los lotes: decidir el plazo de conservacion hoy (espera externa) -> C -> A -> B ->
+  D (bloque 49) -> E al final, con el diff de los demas delante, porque E8 y la matriz transcriben
+  entre comillas 18 de las cadenas que los otros lotes modifican.
+- El lote B recupera ~60 px de ancho en celular, asi que **invalida todas las capturas tomadas hoy**:
+  si se van a ilustrar los manuales, hay que aplicarlo antes de capturar en serio.
+
+**Siguiente tarea concreta:** el **alta real limpia** por `/registro/`, sin bloqueo. Es precondicion
+de E-06, E-07 y E-08, que no se pueden probar con los folios sembrados porque su firma esta sembrada,
+no capturada.
+
+**Lo que falta despues, en orden:** las tres capturas pendientes (la lista de relacion con el menor
+abierta para F-04, el paso 2 vacio para F-06 y el chip de TAG propio para F-07); los pasos 4 a 6 del
+formulario; `/aviso-de-privacidad/` y el buzon; las seis pantallas del panel; la tanda P completa por
+consola y SQL Editor; la aplicacion de los cinco lotes; y CC-08, la extraccion de la firma a
+`lib/firma/`, que sigue sin bloquear nada y por eso sigue al final.
+
+**No se toco Cronoma.** La actividad de pruebas sigue al 40 %, que corresponde solo a la preparacion;
+se actualiza cuando cierren las tandas P y E, que son las que bloquean el cierre.
+
 ### Bitacora de la sesion del 28-jul-2026
 
 **Que se termino.** Auditoria completa del sistema contra el codigo real y conciliacion de toda la
