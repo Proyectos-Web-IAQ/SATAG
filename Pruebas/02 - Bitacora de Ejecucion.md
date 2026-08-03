@@ -63,14 +63,14 @@ que se conserva aparte como evidencia del defecto.
 
 | Caso | Fecha | Resultado | Evidencia / observación |
 |---|---|---|---|
-| E-01 | | | |
-| E-02 | | | |
-| E-03 | | | |
-| E-04 | | | |
-| E-05 | | | |
-| E-06 | | | |
-| E-07 | | | *(SC-008, bloque 47)* |
-| E-08 | | | |
+| E-01 | | | *(pendiente: exige contar las aceptaciones de `SATAG-000303` en SQL)* |
+| E-02 | | | *(pendiente: recalcular el SHA-256 del PNG. El panel ya muestra `7ce99a7013e3…ea87ff88` como hash de la imagen)* |
+| E-03 | 01-ago-2026 | ✅ | Sobre `SATAG-000303`. El panel muestra «Reglamento aceptado: **Versión 2**» y «Aviso de privacidad aceptado: **Versión 2**», que son las vigentes. Coincide con lo que se vio al firmar: 22 cláusulas y etiqueta «(v2)». |
+| E-04 | 01-ago-2026 | ✅ | Sello de tiempo conservado y legible en el panel: «3 de agosto de 2026 a las 12:35:39 p.m.», hora real del envío. |
+| E-05 | 01-ago-2026 | ✅ | El panel declara «Trazos vectoriales: **Conservados junto con la imagen**», además del PNG. La reproducción punto a punto de `{x,y,t,p}` se comprueba en SQL junto con E-01. |
+| E-06 | 01-ago-2026 | ✅ | Sobre el alta de menor. El panel muestra «Firmó: **María Fernanda Solís Cárdenas (la madre)**» — el gestionante, no el menor— y en el expediente «Gestionante (paga y firma)» con el mismo nombre. La segunda mitad (que la restricción `reg_menor_requiere_gestionante` impida guardar un menor sin gestionante) se comprueba en SQL. |
+| E-07 | 01-ago-2026 | ✅ | *(SC-008, bloque 47)* Con rol `super`, sobre `SATAG-000303`: se muestran **las seis cosas** que pide el caso — la imagen de la firma, quién firmó y en qué calidad, la versión del reglamento, la del aviso, el sello de tiempo y el hash. De hecho muestra dos hashes: el del paquete firmado (`7716ea349d57…5d8599c7`) y el de la imagen (`7ce99a7013e3…ea87ff88`). Es el primer expediente donde la imagen **sí** aparece: los 55 del banco de QA no la tienen porque el seed no escribe en Storage (E-11). |
+| E-08 | 01-ago-2026 | ⚠️ | **Aprobado con observación sobre la redacción del caso.** La URL firmada caduca: recién emitida devuelve `HTTP 200` y **pasados 70 segundos devuelve `HTTP 400`**. «Volver a abrirla» emite una URL distinta, que sirve. El panel lo dice en pantalla: «El enlace de la imagen caduca a los 60 segundos». **Pero la otra mitad del esperado está mal escrita:** el caso pide abrir el enlace «en una ventana sin sesión» y dice que «deja de servir en ambos casos». No es así, y no debe serlo: una URL firmada **autoriza por el token, no por la sesión**, así que dentro del minuto abre correctamente sin sesión —se comprobó, `HTTP 200` desde un contexto limpio—. Lo que protege la imagen es la caducidad de 60 segundos, no la sesión. Quien ejecute el caso tal como está escrito hoy lo reprobará por un motivo equivocado. **Corregir el esperado de E-08 en la matriz.** |
 | E-09 | | | |
 | E-10 | | | *(bloque 48; anotar el riesgo aceptado, no como fallo)* |
 | E-11 | | | *(evidencia sembrada; la imagen exige subir qa-firma-demo.png a mano)* |
