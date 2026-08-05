@@ -68,12 +68,19 @@ export default function RegistroWizard() {
   const avisoRef = useRef<HTMLDivElement>(null);
   const reglamentoRef = useRef<HTMLDivElement>(null);
 
+  const avisoValido = Boolean(aviso?.parrafos && aviso.parrafos.length > 0);
+  const reglamentoValido = Boolean(reglamento?.clausulas && reglamento.clausulas.length > 0);
+
+  // Cada carga lleva su .catch: sin el, un fallo de red deja una promesa
+  // rechazada sin atender y el estado en null "por accidente". Dejarlo
+  // explicito es lo que permite distinguir "no cargo" de "cargo vacio", que es
+  // de lo que depende que las puertas del consentimiento no se abran solas.
   useEffect(() => {
-    getMarcas().then(setMarcas);
-    getColores().then(setColores);
-    getReglamentoVigente().then(setReglamento);
-    getAvisoVigente().then(setAviso);
-    getAvisoSimplificado().then(setAvisoCorto);
+    getMarcas().then(setMarcas).catch(() => setMarcas([]));
+    getColores().then(setColores).catch(() => setColores([]));
+    getReglamentoVigente().then(setReglamento).catch(() => setReglamento(null));
+    getAvisoVigente().then(setAviso).catch(() => setAviso(null));
+    getAvisoSimplificado().then(setAvisoCorto).catch(() => setAvisoCorto(null));
   }, []);
 
   // Modelo depende de la marca. Al cambiar marca, se recargan los modelos y se
@@ -87,15 +94,16 @@ export default function RegistroWizard() {
     getModelos(marca).then(setModelos).catch(() => setModelos([]));
   }, [marca]);
 
-  // Si el aviso/reglamento caben sin scroll, se consideran "leidos" al entrar.
+  // Si el aviso/reglamento caben sin scroll, se consideran "leidos" al entrar (solo si el contenido cargo correctamente).
   useEffect(() => {
     const el = avisoRef.current;
-    if (step === 2 && el && el.scrollHeight <= el.clientHeight + 8) setAvisoLeido(true);
-  }, [step, aviso]);
+    if (step === 2 && avisoValido && el && el.scrollHeight <= el.clientHeight + 8) setAvisoLeido(true);
+  }, [step, aviso, avisoValido]);
+
   useEffect(() => {
     const el = reglamentoRef.current;
-    if (step === 3 && el && el.scrollHeight <= el.clientHeight + 8) setReglamentoLeido(true);
-  }, [step, reglamento]);
+    if (step === 3 && reglamentoValido && el && el.scrollHeight <= el.clientHeight + 8) setReglamentoLeido(true);
+  }, [step, reglamento, reglamentoValido]);
 
   // El aviso simplificado viene como un solo texto con saltos de línea. El
   // primer párrafo es el que la ley exige a la vista al recabar los datos
@@ -156,8 +164,14 @@ export default function RegistroWizard() {
         else if (!/^[A-Z0-9]{5,8}$/.test(placas.trim())) e.placas = "Formato de placa no válido (5–8 letras o números).";
       }
     }
-    if (s === 2 && !aceptaPrivacidad) e.aceptaPrivacidad = "Debe aceptar el aviso de privacidad para continuar.";
-    if (s === 3 && !acepta) e.acepta = "Debe aceptar el reglamento para continuar.";
+    if (s === 2) {
+      if (!avisoValido) e.aceptaPrivacidad = "No se puede continuar porque el aviso de privacidad no se ha cargado correctamente.";
+      else if (!aceptaPrivacidad) e.aceptaPrivacidad = "Debe aceptar el aviso de privacidad para continuar.";
+    }
+    if (s === 3) {
+      if (!reglamentoValido) e.acepta = "No se puede continuar porque el reglamento no se ha cargado correctamente.";
+      else if (!acepta) e.acepta = "Debe aceptar el reglamento para continuar.";
+    }
     if (s === 4 && !firma) e.firma = "Firme en el recuadro para continuar.";
     return e;
   }
@@ -438,20 +452,26 @@ export default function RegistroWizard() {
             <div
               className="reglamento"
               ref={avisoRef}
-              onScroll={(e) => { if (alFinal(e.currentTarget)) setAvisoLeido(true); }}
+              onScroll={(e) => { if (avisoValido && alFinal(e.currentTarget)) setAvisoLeido(true); }}
             >
-              {(aviso?.parrafos ?? ["Cargando…"]).map((p, i) => (
-                <p key={i} style={{ margin: "0 0 10px" }}>{p}</p>
-              ))}
+              {avisoValido ? (
+                aviso!.parrafos.map((p, i) => (
+                  <p key={i} style={{ margin: "0 0 10px" }}>{p}</p>
+                ))
+              ) : (
+                <p className="field-error" style={{ margin: 0 }}>
+                  No se pudo cargar el aviso de privacidad. Verifique su conexión o recargue la página.
+                </p>
+              )}
             </div>
-            {!avisoLeido && <p className="hint" style={{ marginTop: 8 }}>Desplácese hasta el final para poder aceptar.</p>}
+            {!avisoLeido && avisoValido && <p className="hint" style={{ marginTop: 8 }}>Desplácese hasta el final para poder aceptar.</p>}
             {/* Aquí NO va el enlace a la página pública del aviso: el texto
                 íntegro está en esta misma pantalla, y ofrecer otra pestaña
                 justo cuando hay que desplazarse hasta el final para habilitar
                 la casilla solo saca a la persona del flujo. El enlace vive en
                 el paso 0 y en la portada, que es donde sí hace falta. */}
             <label className="check" style={{ marginTop: 16 }}>
-              <input type="checkbox" checked={aceptaPrivacidad} disabled={!avisoLeido}
+              <input type="checkbox" checked={aceptaPrivacidad} disabled={!avisoLeido || !avisoValido}
                 onChange={(e) => setAceptaPrivacidad(e.target.checked)} />
               <span>He leído el aviso de privacidad de SATAG y acepto el tratamiento de mis datos personales para las finalidades indicadas.</span>
             </label>
@@ -467,13 +487,19 @@ export default function RegistroWizard() {
             <div
               className="reglamento"
               ref={reglamentoRef}
-              onScroll={(e) => { if (alFinal(e.currentTarget)) setReglamentoLeido(true); }}
+              onScroll={(e) => { if (reglamentoValido && alFinal(e.currentTarget)) setReglamentoLeido(true); }}
             >
-              <ol>{(reglamento?.clausulas ?? ["Cargando…"]).map((c, i) => <li key={i}>{c}</li>)}</ol>
+              {reglamentoValido ? (
+                <ol>{reglamento!.clausulas.map((c, i) => <li key={i}>{c}</li>)}</ol>
+              ) : (
+                <p className="field-error" style={{ margin: 0 }}>
+                  No se pudo cargar el reglamento de acceso. Verifique su conexión o recargue la página.
+                </p>
+              )}
             </div>
-            {!reglamentoLeido && <p className="hint" style={{ marginTop: 8 }}>Desplázate hasta la cláusula 22 para poder aceptar.</p>}
+            {!reglamentoLeido && reglamentoValido && <p className="hint" style={{ marginTop: 8 }}>Desplázate hasta la cláusula 22 para poder aceptar.</p>}
             <label className="check" style={{ marginTop: 16 }}>
-              <input type="checkbox" checked={acepta} disabled={!reglamentoLeido}
+              <input type="checkbox" checked={acepta} disabled={!reglamentoLeido || !reglamentoValido}
                 onChange={(e) => setAcepta(e.target.checked)} />
               <span>He leído y acepto el reglamento de acceso vehicular (v{reglamento?.version ?? "—"}).</span>
             </label>
