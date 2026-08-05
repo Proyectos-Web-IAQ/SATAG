@@ -67,6 +67,10 @@ export default function RegistroWizard() {
 
   const avisoRef = useRef<HTMLDivElement>(null);
   const reglamentoRef = useRef<HTMLDivElement>(null);
+  // Tipo de usuario que habia antes de marcar "menor de edad", para devolverlo
+  // si la casilla se desmarca (D-02). Forzar "alumno" MIENTRAS esta marcada es
+  // deliberado; que se quede pegado despues, no.
+  const tipoAntesDeMenor = useRef<TipoUsuario | null>(null);
 
   const avisoValido = Boolean(aviso?.parrafos && aviso.parrafos.length > 0);
   const reglamentoValido = Boolean(reglamento?.clausulas && reglamento.clausulas.length > 0);
@@ -302,11 +306,19 @@ export default function RegistroWizard() {
             <label className="check" style={{ marginBottom: 12 }}>
               <input type="checkbox" checked={esMenor}
                 onChange={(e) => {
-                  setEsMenor(e.target.checked);
+                  const marcado = e.target.checked;
+                  setEsMenor(marcado);
                   // El menor no puede firmar: si la relación previa era "otro", se limpia.
-                  if (e.target.checked && gestionanteRelacion === "otro") setGestionanteRelacion("");
-                  // Un conductor menor es, por definición, alumno.
-                  if (e.target.checked) setTipoUsuario("alumno");
+                  if (marcado && gestionanteRelacion === "otro") setGestionanteRelacion("");
+                  if (marcado) {
+                    // Un conductor menor es, por definición, alumno. Se recuerda el
+                    // tipo anterior para no perderlo si la casilla se desmarca.
+                    tipoAntesDeMenor.current = tipoUsuario;
+                    setTipoUsuario("alumno");
+                  } else if (tipoAntesDeMenor.current !== null) {
+                    setTipoUsuario(tipoAntesDeMenor.current);
+                    tipoAntesDeMenor.current = null;
+                  }
                 }} />
               <span>El conductor es <strong>menor de edad</strong>.</span>
             </label>
