@@ -96,7 +96,8 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
-  const [estacionamientos, setEstacionamientos] = useState<string[]>([]);
+  // null = el catálogo no cargó (distinto de [] = cargó vacío). Ver D-09.
+  const [estacionamientos, setEstacionamientos] = useState<string[] | null>([]);
 
   const [modo, setModo] = useState<Modo>("inicio");
   const [query, setQuery] = useState("");
@@ -140,9 +141,12 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     // registro ya trae; la BD valida las claves reales al asignar.
     getMarcas().then(setMarcas).catch(() => {});
     getColores().then(setColores).catch(() => {});
+    // Estacionamientos NO lleva respaldo inventado (D-09): null significa "no
+    // cargó" y los formularios lo dicen tal cual. Unas claves de relleno
+    // parecerían el catálogo real y llevarían a asignar un acceso inválido.
     getEstacionamientos()
       .then((es) => setEstacionamientos(es.map((e) => e.clave)))
-      .catch(() => setEstacionamientos(["E1", "E2"]));
+      .catch(() => setEstacionamientos(null));
   }, []);
 
   // Alineado con el RPC instalar_tag: solo registros PENDIENTES sin TAG y con
@@ -539,7 +543,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
 
 // ---- Formularios de acción ----
 function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmit }: {
-  r: Registro; estacionamientos: string[]; busy: boolean; tiNombre: string;
+  r: Registro; estacionamientos: string[] | null; busy: boolean; tiNombre: string;
   onTiNombre: (v: string) => void;
   onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string) => void;
 }) {
@@ -560,12 +564,22 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
     <div className="ti-form">
       <div className="field">
         <span>Estacionamiento (acceso del TAG)</span>
-        <div className="chip-row">
-          {estacionamientos.map((c) => (
-            <button key={c} type="button" className={`select-chip ${claves.includes(c) ? "on" : ""}`} onClick={() => toggle(c)}>{c}</button>
-          ))}
-        </div>
-        {claves.length === 0 && <p className="field-error">Elija al menos un estacionamiento.</p>}
+        {estacionamientos === null ? (
+          // D-09: si el catálogo no cargó, se dice tal cual. Nada de claves de
+          // respaldo: parecerían el catálogo real y el acceso asignado sería inválido.
+          <p className="field-error" role="alert">
+            No se pudo cargar el catálogo de estacionamientos. Recargue la página para poder asignar el acceso.
+          </p>
+        ) : (
+          <>
+            <div className="chip-row">
+              {estacionamientos.map((c) => (
+                <button key={c} type="button" className={`select-chip ${claves.includes(c) ? "on" : ""}`} onClick={() => toggle(c)}>{c}</button>
+              ))}
+            </div>
+            {claves.length === 0 && <p className="field-error">Elija al menos un estacionamiento.</p>}
+          </>
+        )}
       </div>
       <div className="field">
         <span>No. de TAG (6–11 dígitos){propio ? " — el propio de la familia" : ""}</span>
@@ -598,7 +612,7 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
 }
 
 function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, onTiNombre, onUsarApartado, onSubmit }: {
-  r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[]; busy: boolean;
+  r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[] | null; busy: boolean;
   tiNombre: string; onTiNombre: (v: string) => void;
   onUsarApartado: () => void;
   onSubmit: (cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) => void;
@@ -702,11 +716,20 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
       </div>
       <div className="field">
         <span>Estacionamiento (acceso del TAG)</span>
-        <div className="chip-row">
-          {estacionamientos.map((c) => (
-            <button key={c} type="button" className={`select-chip ${claves.includes(c) ? "on" : ""}`} onClick={() => toggleEst(c)}>{c}</button>
-          ))}
-        </div>
+        {estacionamientos === null ? (
+          // D-09: sin catálogo no se puede MODIFICAR la asignación; la actual
+          // (que viene del registro, no del catálogo) se conserva tal cual.
+          <p className="field-error" role="alert">
+            No se pudo cargar el catálogo de estacionamientos. Se conserva la asignación actual
+            ({r.estacionamientos.join(" + ") || "sin asignar"}); recargue la página para poder cambiarla.
+          </p>
+        ) : (
+          <div className="chip-row">
+            {estacionamientos.map((c) => (
+              <button key={c} type="button" className={`select-chip ${claves.includes(c) ? "on" : ""}`} onClick={() => toggleEst(c)}>{c}</button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action"
