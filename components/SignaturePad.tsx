@@ -13,12 +13,17 @@ export interface FirmaTrazos {
 
 // Firma manuscrita digital sobre <canvas>. Sin dependencias externas.
 // onChange emite el PNG (dataURL); onTrazos emite el vector del trazo.
+// trazosIniciales repinta una firma ya capturada: el componente se desmonta al
+// salir del paso de firma y al volver nace en blanco, mientras el padre sigue
+// guardando el PNG y el vector de la pasada anterior. Solo se lee al montar.
 export default function SignaturePad({
   onChange,
   onTrazos,
+  trazosIniciales,
 }: {
   onChange: (dataUrl: string) => void;
   onTrazos?: (trazos: FirmaTrazos | null) => void;
+  trazosIniciales?: FirmaTrazos | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -27,6 +32,13 @@ export default function SignaturePad({
   const current = useRef<FirmaTrazos["strokes"][number] | null>(null);
   const t0 = useRef<number | null>(null);
 
+  // Al montar se dimensiona el lienzo, y asignar width/height lo deja en blanco.
+  // Si volvemos al paso de firma con una firma ya capturada hay que repintarla
+  // desde el vector: de lo contrario la persona ve el recuadro vacio mientras el
+  // padre conserva el PNG anterior, y acabaria enviando una firma que la
+  // pantalla ya no muestra. Aqui no se emite nada hacia el padre: el PNG y los
+  // trazos que ya tiene siguen siendo los buenos, y reemitirlos falsearia
+  // capturadoEn y abriria un ciclo de render.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -35,13 +47,45 @@ export default function SignaturePad({
     canvas.width = rect.width * ratio;
     canvas.height = rect.height * ratio;
     const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.scale(ratio, ratio);
-      ctx.lineWidth = 2.2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "#12305c";
+    if (!ctx) return;
+    ctx.scale(ratio, ratio);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#12305c";
+
+    const previa = trazosIniciales;
+    if (!previa || previa.strokes.length === 0) return;
+    // El recuadro mide 100% de ancho: si cambio entre una pasada y otra, los
+    // puntos se reescalan al tamano actual para que lo repintado y lo que
+    // emitira emitirTrazos hablen del mismo sistema de coordenadas.
+    const escalaX = previa.width > 0 ? rect.width / previa.width : 1;
+    const escalaY = previa.height > 0 ? rect.height / previa.height : 1;
+    strokes.current = previa.strokes.map((trazo) =>
+      trazo.map((pt) => ({
+        x: Math.round(pt.x * escalaX * 10) / 10,
+        y: Math.round(pt.y * escalaY * 10) / 10,
+        t: pt.t,
+        p: pt.p,
+      })),
+    );
+    for (const trazo of strokes.current) {
+      if (!trazo.length) continue;
+      ctx.beginPath();
+      ctx.moveTo(trazo[0].x, trazo[0].y);
+      for (const pt of trazo.slice(1)) ctx.lineTo(pt.x, pt.y);
+      // Un toque suelto deja un unico punto: se cierra sobre si mismo para que
+      // el lineCap redondo lo pinte igual que al capturarlo.
+      if (trazo.length === 1) ctx.lineTo(trazo[0].x, trazo[0].y);
+      ctx.stroke();
     }
+    // Los tiempos continuan la linea de la pasada anterior: si la persona agrega
+    // un trazo mas, su t sigue al ultimo punto en vez de reiniciar en 0.
+    const ultimoT = Math.max(...strokes.current.map((trazo) => trazo[trazo.length - 1]?.t ?? 0));
+    t0.current = performance.now() - ultimoT;
+    // Solo al montar. Los trazos que llegan despues son el eco de lo que se
+    // acaba de dibujar aqui: repintar entonces borraria el lienzo a media firma.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function pos(e: React.PointerEvent) {

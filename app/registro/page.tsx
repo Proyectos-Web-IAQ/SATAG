@@ -526,7 +526,7 @@ export default function RegistroWizard() {
             <p className="lead">
               Firmará <strong>{hayGestionante ? gestionanteNombreCompleto || "el gestionante" : conductorNombreCompleto || "el conductor"}</strong>.
             </p>
-            <SignaturePad onChange={setFirma} onTrazos={setTrazos} />
+            <SignaturePad onChange={setFirma} onTrazos={setTrazos} trazosIniciales={trazos} />
             <p className="hint" style={{ marginTop: 8 }}>Puedes firmar con el dedo (táctil) o con el mouse.</p>
             {errores.firma && <p className="field-error">{errores.firma}</p>}
           </>
