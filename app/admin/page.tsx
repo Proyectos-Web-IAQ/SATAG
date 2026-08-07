@@ -16,6 +16,17 @@ import {
 
 type Modo = "login" | "recuperar";
 
+// Tope de tiempo para restaurar la sesion al entrar. getSession() y nivelMfa()
+// salen a la red a refrescar el token y no traen temporizador propio: con la red
+// caida el arranque puede tardar decenas de segundos sin rechazar nunca. Pasado
+// el tope se muestra el formulario de acceso; si la sesion llega despues,
+// onAuthStateChange la aplica igual.
+const TOPE_SESION_MS = 10000;
+
+// Mismo texto para los dos finales malos del arranque (fallo y tope): la persona
+// no puede distinguirlos y en ambos el camino es el mismo, volver a entrar.
+const AVISO_SESION = "No se pudo restaurar su sesión anterior. Revise su conexión e inicie sesión de nuevo.";
+
 export default function AdminPage() {
   const [verificando, setVerificando] = useState(true); // restaurando sesion previa
   const [email, setEmail] = useState<string | null>(null); // sesion activa
@@ -45,20 +56,54 @@ export default function AdminPage() {
   // token, verificacion de MFA, o cierre desde otra pestana).
   useEffect(() => {
     let activo = true;
-    supabaseAuth.auth.getSession().then(async ({ data }) => {
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
+
+    // Lee la sesion guardada y el AAL. Puede tardar: las dos llamadas salen a la
+    // red a refrescar el token si ya vencio.
+    async function restaurar() {
+      const { data, error: err } = await supabaseAuth.auth.getSession();
       if (!activo) return;
       setEmail(data.session?.user.email ?? null);
       setRol(rolDeUsuario(data.session?.user));
+      // Sin sesion Y con error: el token guardado ya no sirve o la red no
+      // respondio. Se dice por que, en vez de soltar el formulario mudo.
+      if (!data.session && err) setError(AVISO_SESION);
       await refrescarMfa(!!data.session?.user);
-      if (activo) setVerificando(false);
+    }
+
+    const tope = new Promise<never>((_, rechazar) => {
+      temporizador = setTimeout(() => rechazar(new Error("tope de sesion")), TOPE_SESION_MS);
     });
+
+    // El arranque SIEMPRE tiene que salir del estado de verificacion. Si la
+    // promesa se rompe (almacenamiento local inaccesible) o se pasa del tope, se
+    // cae al formulario de acceso con el motivo a la vista: antes no habia
+    // .catch y la pantalla se quedaba en el Loader para siempre. El tope cubre
+    // tambien a refrescarMfa(), que se traga sus errores pero puede colgarse.
+    Promise.race([restaurar(), tope])
+      .catch(() => {
+        if (!activo) return;
+        setEmail(null);
+        setRol(null);
+        setMfaOk(false);
+        setError(AVISO_SESION);
+      })
+      .finally(() => {
+        clearTimeout(temporizador);
+        if (activo) setVerificando(false);
+      });
     const { data: sub } = supabaseAuth.auth.onAuthStateChange((_evento, session) => {
       setEmail(session?.user.email ?? null);
       setRol(rolDeUsuario(session?.user));
-      void refrescarMfa(!!session?.user);
+      // nivelMfa() es otra llamada de auth y este callback corre mientras
+      // supabase-js esta coordinando el acceso a la sesion: encadenarla aqui es
+      // justo el patron que la libreria desaconseja. Se difiere un tick para
+      // que corra ya fuera del callback.
+      setTimeout(() => { if (activo) void refrescarMfa(!!session?.user); }, 0);
     });
     return () => {
       activo = false;
+      clearTimeout(temporizador);
       sub.subscription.unsubscribe();
     };
   }, []);
