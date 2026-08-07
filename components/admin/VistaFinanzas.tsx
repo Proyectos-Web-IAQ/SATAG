@@ -36,9 +36,26 @@ const semDias = (n: number) => (n <= 1 ? "ok" : n === 2 ? "warn" : "alert");
 // Clave especial para el detalle de cobros de la caja actual (aún sin cortar).
 const CLAVE_CAJA = "caja";
 
-// Sub-tabla de cobros de una fila expandida (un corte, o la caja actual).
-function DetalleCobros({ cargando, lista }: { cargando: boolean; lista: PagoReciente[] }) {
+// Sub-tabla de cobros de una fila expandida (un corte, o la caja actual). Los
+// tres estados van separados a propósito: en la pantalla del dinero, una lectura
+// que se cayó no puede verse igual que un periodo sin cobros, porque quien
+// concilia daría por bueno un corte vacío y firmaría un faltante inexistente.
+function DetalleCobros({ cargando, error, lista, onReintentar }: {
+  cargando: boolean;
+  error: string | null;
+  lista: PagoReciente[];
+  onReintentar: () => void;
+}) {
   if (cargando) return <p className="ti-hint" style={{ margin: 0 }}>Cargando cobros…</p>;
+  if (error) {
+    return (
+      <p className="submit-error" role="alert" style={{ margin: 0 }}>
+        No se pudieron cargar los cobros. {error} Esto no quiere decir que el periodo esté
+        vacío: el detalle se desconoce. No concilie con esta pantalla hasta que la lista cargue.{" "}
+        <button type="button" className="link-action" onClick={onReintentar}>Reintentar</button>
+      </p>
+    );
+  }
   if (lista.length === 0) return <p className="ti-hint" style={{ margin: 0 }}>Sin cobros en este periodo.</p>;
   return (
     <div className="table-wrap">
@@ -95,6 +112,9 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
   const [expandido, setExpandido] = useState<string | null>(null);
   const [pagosPorCorte, setPagosPorCorte] = useState<Record<string, PagoReciente[]>>({});
   const [cargandoDet, setCargandoDet] = useState<string | null>(null);
+  // Fallo de lectura por fila. Vive aparte de pagosPorCorte a propósito: mientras
+  // está puesto no hay lista que mostrar, ni siquiera una vacía.
+  const [errorDet, setErrorDet] = useState<Record<string, string | null>>({});
 
   // Candado síncrono: el estado visual tarda un render en deshabilitar el botón;
   // cerrar la caja dos veces por un doble toque es justo lo que esto evita.
@@ -110,6 +130,7 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
       // El corte cambió la pertenencia de los cobros: se limpia el detalle
       // cacheado para que vuelva a cargarse con los datos frescos.
       setPagosPorCorte({});
+      setErrorDet({});
       setExpandido(null);
       setLoadError(null);
     } catch (err) {
@@ -121,23 +142,36 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
 
   useEffect(() => { refresh(); }, []);
 
-  // Abre o cierra el detalle de una fila (un corte, o la caja actual). Carga sus
-  // cobros la primera vez que se expande.
-  async function toggleDetalle(clave: string, corteId: string | null) {
-    if (expandido === clave) { setExpandido(null); return; }
-    setExpandido(clave);
-    if (pagosPorCorte[clave]) return;
+  // Lee los cobros de una fila. Se usa al expandirla la primera vez y al
+  // reintentar después de un fallo de lectura.
+  async function cargarDetalle(clave: string, corteId: string | null) {
     setCargandoDet(clave);
+    setErrorDet((prev) => ({ ...prev, [clave]: null }));
     try {
       const ps = await listPagosDeCorte(corteId);
       setPagosPorCorte((prev) => ({ ...prev, [clave]: ps }));
-    } catch {
-      // Degradación suave: si la lectura falla, se muestra vacío y se puede
-      // reintentar cerrando y volviendo a abrir la fila.
-      setPagosPorCorte((prev) => ({ ...prev, [clave]: [] }));
+    } catch (err) {
+      // NO se guarda una lista vacía: sería idéntica a un periodo sin cobros y
+      // esta es la pantalla del dinero. Se marca el fallo por fila y, como en
+      // pagosPorCorte no queda nada, reabrir la fila también vuelve a leer.
+      setErrorDet((prev) => ({
+        ...prev,
+        [clave]: err instanceof Error ? err.message : "No se pudo leer el detalle de cobros.",
+      }));
     } finally {
-      setCargandoDet(null);
+      // Solo se apaga el indicador si sigue siendo esta fila: si el usuario ya
+      // abrió otra, apagarlo aquí la pintaría como vacía mientras aún carga.
+      setCargandoDet((actual) => (actual === clave ? null : actual));
     }
+  }
+
+  // Abre o cierra el detalle de una fila (un corte, o la caja actual). Carga sus
+  // cobros la primera vez que se expande.
+  function toggleDetalle(clave: string, corteId: string | null) {
+    if (expandido === clave) { setExpandido(null); return; }
+    setExpandido(clave);
+    if (pagosPorCorte[clave]) return;
+    cargarDetalle(clave, corteId);
   }
 
   async function run(fn: () => Promise<ResultadoCorte>, ok: (r: ResultadoCorte) => string) {
@@ -272,7 +306,8 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
             </p>
             {expandido === CLAVE_CAJA && (
               <div style={{ marginBottom: 14 }}>
-                <DetalleCobros cargando={cargandoDet === CLAVE_CAJA} lista={pagosPorCorte[CLAVE_CAJA] ?? []} />
+                <DetalleCobros cargando={cargandoDet === CLAVE_CAJA} error={errorDet[CLAVE_CAJA] ?? null}
+                  lista={pagosPorCorte[CLAVE_CAJA] ?? []} onReintentar={() => cargarDetalle(CLAVE_CAJA, null)} />
               </div>
             )}
 
@@ -358,7 +393,8 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
                     {expandido === c.id && (
                       <tr>
                         <td colSpan={8} style={{ background: "#f7f9fc" }}>
-                          <DetalleCobros cargando={cargandoDet === c.id} lista={pagosPorCorte[c.id] ?? []} />
+                          <DetalleCobros cargando={cargandoDet === c.id} error={errorDet[c.id] ?? null}
+                            lista={pagosPorCorte[c.id] ?? []} onReintentar={() => cargarDetalle(c.id, c.id)} />
                         </td>
                       </tr>
                     )}
