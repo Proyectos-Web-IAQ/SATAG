@@ -196,6 +196,16 @@ export default function RegistroWizard() {
   async function enviarValidado() {
     const e = validarPaso(4);
     if (Object.keys(e).length) { setMostrarErrores(true); return; }
+    // Ultimo cerrojo de D-01: el alta no sale con avisoVersion o
+    // reglamentoVersion en null. La navegacion ya lo impide paso a paso, pero
+    // el envio es el unico punto donde la firma se vuelve evidencia, asi que
+    // se vuelve a comprobar aqui y se devuelve a la persona al paso que fallo.
+    if (!avisoValido || !reglamentoValido) {
+      setError("No se puede enviar el registro porque el aviso de privacidad o el reglamento no se cargaron. Recargue la página e inténtelo de nuevo.");
+      setMostrarErrores(true);
+      setStep(avisoValido ? 3 : 2);
+      return;
+    }
     setEnviando(true);
     setError(null);
     try {
