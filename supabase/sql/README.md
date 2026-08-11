@@ -89,6 +89,17 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 > ya sellados por un corte; el seed los desactiva de forma explicita solo durante su limpieza. Ese
 > mismo blindaje hace que el seed **falle si se corre por error contra una base con cortes reales**.
 
+> **`limpiar_datos_prueba.sql` — deja el padron VACIO. Tampoco es un bloque de la migracion.**
+> Es el inverso del seed: aquel llena la base de datos ficticios, este los borra todos y no pone
+> nada en su lugar. Se usa antes de una prueba de campo con datos reales, para que no se mezclen
+> con los del banco de QA. Corre por pasos: **1** inventario (solo lee), **2** rescate de la
+> evidencia que no es del seed —hay altas hechas a mano que documentan defectos, como el folio
+> `SATAG-000302` de D-01—, **3** el borrado, **4** las imagenes de firma en Storage (a mano, el
+> truncate no las toca) y **5** verificacion. El paso 3 esta **blindado**: aborta si antes no se
+> ejecuta `set satag.confirmo_borrado = 'SI, BORRAR TODO';` en la misma sesion, para que un
+> "Run all" distraido no vacie el padron. No toca catalogos, documentos legales ni cuentas del
+> personal, y reinicia los folios para que la primera alta real sea `SATAG-000001`.
+
 > **Trampa PostgREST (recordatorio).** Los bloques que cambian la *firma* de un RPC ya
 > aplicado (32 `registrar_pago`; 35/37/39 `crear_nota_solicitud`/`vincular_nota`; 33 los
 > wrappers de instalar/actualizar) hacen `drop function` explicito de la firma vieja y
