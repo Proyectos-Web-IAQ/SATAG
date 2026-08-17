@@ -9,7 +9,7 @@ const raleway = Raleway({ subsets: ["latin"], display: "swap", variable: "--font
 export const metadata: Metadata = {
   title: "SATAG — Adquisición de TAG Vehicular · IAQ",
   description:
-    "Sistema de Adquisición de TAG Vehicular del Instituto Asunción de Querétaro. Prototipo de diseño.",
+    "Sistema de Adquisición de TAG Vehicular del Instituto Asunción de Querétaro. Registro en línea, firma del consentimiento y seguimiento del trámite.",
 };
 
 export const viewport: Viewport = { colorScheme: "only light" };

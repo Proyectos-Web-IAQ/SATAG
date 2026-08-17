@@ -138,6 +138,46 @@ Paquete SQL del **Entregable E1 (Modelo de datos + BD)**, alineado con E6 legal/
   ```
 - [ ] **8. Storage:** existe bucket privado `firmas`; `anon` puede subir, no leer.
 
+## Ajustes del proyecto en el panel de Supabase (no viven en SQL)
+
+Hay configuracion que no esta en ningun bloque y que se pierde si nadie la anota. Vive en
+**Project Settings -> API** del proyecto.
+
+### `Max rows` = **5000** (subido de 1000 el 17-ago-2026)
+
+Es el tope de filas que PostgREST devuelve en cualquier consulta. **No da error al
+alcanzarlo: corta la respuesta en silencio.**
+
+Por que se subio: `listRegistros` (`lib/supabase/apiPanel.ts`) trae el **padron completo**
+con cuatro relaciones incrustadas y filtra en memoria, con el comentario "el padron es
+chico" como justificacion. El volumen documentado del proyecto es **~1 660 expedientes y
+~300 al ano** (`Desarrollo/06`). Con el valor por omision de 1000, a partir del expediente
+1 001 el panel habria mostrado una lista incompleta **sin un solo error**, y la busqueda
+—que filtra sobre lo recibido— habria dicho "no encontrado" de familias que si existen.
+Todo lo probado hasta hoy corrio sobre los 55 folios del banco de QA, asi que el fallo no
+se habria visto hasta tener padron real.
+
+Por que 5000 y no mas: da holgura para mas de diez anos de operacion y **conserva el freno**
+ante una consulta mal escrita o malintencionada. Subirlo mucho mas seria quitar el freno en
+vez de ajustarlo.
+
+**Esto NO cierra el asunto.** El tope evita el truncado silencioso, no la lentitud: el panel
+seguira pidiendo los ~1 660 expedientes de un jalon. Paginar y mover la busqueda al servidor
+sigue pendiente, y el criterio de aceptacion "encuentra cualquier registro en segundos"
+nunca se ha medido por encima de 55 filas.
+
+Y hay un segundo tope que este ajuste **no** toca: `listPagosDeCorte` lleva un
+`.limit(1000)` escrito en el codigo (`apiPanel.ts`), en la pantalla de conciliacion de
+efectivo. Un corte con mas de mil cobros mostraria la lista truncada sin avisar.
+
+### `Automatically expose new tables`: encendido, **pendiente de decidir**
+
+El propio Supabase recomienda apagarlo. Con el encendido, cada tabla nueva queda expuesta a
+la API publica por omision. Hoy hay 11 de 15 tablas y 17 de 20 funciones expuestas, o sea
+que alguien ya acoto a mano; dejarlo encendido deshara ese trabajo en cuanto un bloque nuevo
+cree objetos. Apagarlo **no** cierra lo ya expuesto: solo cambia el comportamiento de lo que
+venga. Revisar que quedaria fuera antes de tocarlo.
+
 ## Auth del panel administrativo
 
 El panel (`/admin`) usa **Supabase Auth** (correo + contrasena). Al iniciar sesion el
