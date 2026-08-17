@@ -56,15 +56,27 @@ export default function SignaturePad({
 
     const previa = trazosIniciales;
     if (!previa || previa.strokes.length === 0) return;
-    // El recuadro mide 100% de ancho: si cambio entre una pasada y otra, los
-    // puntos se reescalan al tamano actual para que lo repintado y lo que
-    // emitira emitirTrazos hablen del mismo sistema de coordenadas.
-    const escalaX = previa.width > 0 ? rect.width / previa.width : 1;
-    const escalaY = previa.height > 0 ? rect.height / previa.height : 1;
+    // El recuadro mide 100% de ancho y 200px de ALTO FIJO (globals.css:159-162).
+    // Esa asimetria es la trampa: al cambiar el ancho de la ventana, la escala
+    // horizontal se mueve y la vertical se queda en 1. Escalando cada eje por su
+    // cuenta, girar el telefono de vertical a horizontal estiraba la firma mas
+    // del doble a lo ancho sin tocar el alto; y si la persona anadia un trazo
+    // mas, emitirTrazos reemitia esa version deformada y SUSTITUIA la evidencia
+    // fiel por una que ya no tiene la forma que dibujo. Se usa UNA sola escala
+    // uniforme: la firma conserva su proporcion y, cuando sobra ancho, se queda
+    // a la izquierda en vez de estirarse.
+    //
+    // El guardia mira tambien rect: comprobar solo previa.width dejaba pasar el
+    // lienzo aun sin medir (rect en cero), y multiplicar por cero colapsaba
+    // todos los puntos al origen, destruyendo el vector. Con el rect degenerado
+    // se conserva la escala 1 y los trazos quedan intactos.
+    const escalaX = rect.width > 0 && previa.width > 0 ? rect.width / previa.width : 1;
+    const escalaY = rect.height > 0 && previa.height > 0 ? rect.height / previa.height : 1;
+    const escala = Math.min(escalaX, escalaY);
     strokes.current = previa.strokes.map((trazo) =>
       trazo.map((pt) => ({
-        x: Math.round(pt.x * escalaX * 10) / 10,
-        y: Math.round(pt.y * escalaY * 10) / 10,
+        x: Math.round(pt.x * escala * 10) / 10,
+        y: Math.round(pt.y * escala * 10) / 10,
         t: pt.t,
         p: pt.p,
       })),
