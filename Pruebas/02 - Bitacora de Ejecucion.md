@@ -24,6 +24,26 @@
 > ahora llega deshabilitada, lo que **tumbaba la corrida entera**. También se le quitó la fecha
 > fija de destino, que hacía que cada regeneración escribiera sobre la carpeta del 03-ago.
 
+> **Reejecución del 17-ago-2026 sobre `4680a05` (lote F ya publicado).** Se desplegó el lote F
+> —los siete grupos de la revisión adversaria— y se volvió a correr el recorrido **público** en
+> escritorio y celular, más el recorrido del **panel** con sesión MFA. Resultado: **E-07 y E-08
+> reverificados** (la firma muestra sus seis elementos; la URL firmada caduca a los 70 s y
+> «Volver a abrirla» emite una nueva), **D-01 y D-06 siguen cerrados**, y F-02, F-03, F-04, F-06
+> y F-07 salen igual que el 03-ago. D-04 y D-11 siguen vivos, como se espera. Evidencia:
+> `SATAG - Evidencia de pruebas/2026-08-17/`.
+>
+> **Hallazgo de método de esa pasada.** El cliente de Supabase **reintenta con espera creciente**
+> ante un fallo de red: cuatro intentos, a los 0.4 s, 1.4 s, 3.4 s y 7.4 s, y no declara el fallo
+> hasta unos 8 s. El arnés miraba a los 1.5 s, o sea **dentro de la ventana de reintentos**, y
+> anotaba el estado de carga como si fuera el de fallo. Quien leyera esa evidencia habría
+> concluido que el formulario se queda en «Cargando…» para siempre. Se corrigió esperando al
+> mensaje real. De paso confirma que el parche G1 es correcto: mientras el cliente sigue
+> reintentando, decir «Cargando» es la verdad.
+>
+> **Lo que esa pasada NO cubre y sigue pendiente:** los 27 casos del guion del panel
+> (`arnes/guion-tanda-panel.md`), la tanda A completa, la tanda U, P-11, las mitades de pantalla
+> de P-03 y P-04, y las mitades de borrado por API de Storage de P-10 y P-13.
+
 **Resultado:** ✅ Aprobado · ❌ Fallido · ⚠️ Aprobado con observación · ⏭️ No ejecutado
 
 ---
