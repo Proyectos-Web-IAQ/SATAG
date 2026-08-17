@@ -230,6 +230,12 @@ a { color: var(--primary-strong); }
 .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .select-chip { border: 1px solid var(--line); border-radius: var(--radius); background: var(--field-bg); padding: 8px 14px; cursor: pointer; font-weight: 700; color: var(--ink); }
 .select-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+/* D-15: un chip deshabilitado se veia identico a uno pulsable. En el cobro de
+   un menor, los tipos bloqueados parecian botones vivos que "no respondian" y
+   la restriccion se leia como averia. El estado disabled ya existia en el JSX
+   (VistaAdmin, FormPago); lo que faltaba era que se VIERA. */
+.select-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.select-chip:disabled.on { opacity: 1; }
 .catalog-feedback { border-radius: var(--radius); font-size: 0.9rem; font-weight: 600; margin: 0 0 14px; padding: 10px 14px; }
 .catalog-feedback--ok { background: #eaf6ee; border: 1px solid #b7e0c4; color: #1f6b3a; }
 
