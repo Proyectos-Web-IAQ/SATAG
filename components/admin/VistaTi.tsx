@@ -96,8 +96,16 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
-  // null = el catálogo no cargó (distinto de [] = cargó vacío). Ver D-09.
-  const [estacionamientos, setEstacionamientos] = useState<string[] | null>([]);
+  // Tres estados, y los tres se ven distintos en los formularios:
+  //   undefined = todavía está cargando
+  //   null      = no cargó (ver D-09)
+  //   []        = cargó y no hay ninguno
+  // Arrancaba en [], así que "cargando" era indistinguible de "no hay ninguno":
+  // quien abría el formulario antes de que resolviera veía una fila de chips
+  // vacía y "Elija al menos un estacionamiento", sin nada que elegir ni pista de
+  // que faltaba esperar. El arranque en [] es anterior a D-09; aquel parche solo
+  // quitó el respaldo inventado.
+  const [estacionamientos, setEstacionamientos] = useState<string[] | null | undefined>(undefined);
 
   const [modo, setModo] = useState<Modo>("inicio");
   const [query, setQuery] = useState("");
@@ -543,7 +551,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
 
 // ---- Formularios de acción ----
 function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmit }: {
-  r: Registro; estacionamientos: string[] | null; busy: boolean; tiNombre: string;
+  r: Registro; estacionamientos: string[] | null | undefined; busy: boolean; tiNombre: string;
   onTiNombre: (v: string) => void;
   onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string) => void;
 }) {
@@ -564,12 +572,27 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
     <div className="ti-form">
       <div className="field">
         <span>Estacionamiento (acceso del TAG)</span>
-        {estacionamientos === null ? (
+        {estacionamientos === undefined ? (
+          <p className="ti-hint">Cargando el catálogo de estacionamientos…</p>
+        ) : estacionamientos === null ? (
           // D-09: si el catálogo no cargó, se dice tal cual. Nada de claves de
           // respaldo: parecerían el catálogo real y el acceso asignado sería inválido.
-          <p className="field-error" role="alert">
-            No se pudo cargar el catálogo de estacionamientos. Recargue la página para poder asignar el acceso.
-          </p>
+          // El mensaje además tiene que decir la verdad sobre lo que va a pasar al
+          // pulsar el botón. Las claves que trae el expediente vienen de la base,
+          // no del catálogo, así que instalar con ellas es correcto y bloquear el
+          // envío sería peor: dejaría a TI sin poder instalar un acceso que ya
+          // estaba bien asignado. Lo que no se puede es ASIGNAR uno distinto.
+          claves.length > 0 ? (
+            <p className="field-error" role="alert">
+              No se pudo cargar el catálogo de estacionamientos. Se instalará con la asignación que
+              ya tiene el expediente ({claves.join(" + ")}); recargue la página si necesita cambiarla.
+            </p>
+          ) : (
+            <p className="field-error" role="alert">
+              No se pudo cargar el catálogo de estacionamientos y este expediente no tiene ninguno
+              asignado. Recargue la página para poder asignar el acceso.
+            </p>
+          )
         ) : (
           <>
             <div className="chip-row">
@@ -612,7 +635,7 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
 }
 
 function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, onTiNombre, onUsarApartado, onSubmit }: {
-  r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[] | null; busy: boolean;
+  r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[] | null | undefined; busy: boolean;
   tiNombre: string; onTiNombre: (v: string) => void;
   onUsarApartado: () => void;
   onSubmit: (cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) => void;
@@ -716,7 +739,13 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
       </div>
       <div className="field">
         <span>Estacionamiento (acceso del TAG)</span>
-        {estacionamientos === null ? (
+        {estacionamientos === undefined ? (
+          // Todavía cargando: la asignación actual sigue intacta mientras tanto.
+          <p className="ti-hint">
+            Cargando el catálogo de estacionamientos… Asignación actual:{" "}
+            {r.estacionamientos.join(" + ") || "sin asignar"}.
+          </p>
+        ) : estacionamientos === null ? (
           // D-09: sin catálogo no se puede MODIFICAR la asignación; la actual
           // (que viene del registro, no del catálogo) se conserva tal cual.
           <p className="field-error" role="alert">
