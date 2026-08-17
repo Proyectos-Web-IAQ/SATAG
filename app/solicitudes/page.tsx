@@ -136,7 +136,7 @@ export default function SolicitudesPage() {
           </header>
           <div className="notice">
             <strong>¿Qué sigue?</strong> Ningún cambio se aplica en línea: pase con el personal de
-            Sistemas (TI) del IAQ para completar el trámite en persona{enviada === "folio" ? ". Lleve su comprobante." : "."}
+            Sistemas del IAQ para completar el trámite en persona{enviada === "folio" ? ". Lleve su comprobante." : "."}
           </div>
           <p style={{ marginTop: 16, textAlign: "right" }}>
             <Link href="/" className="link-action">← Volver al inicio</Link>

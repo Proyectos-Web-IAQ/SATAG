@@ -254,7 +254,7 @@ export default function AdminPage() {
           <h1>Panel administrativo</h1>
           <p>
             {modo === "login"
-              ? "Acceso para personal de administración y TI del IAQ."
+              ? "Acceso para personal de Administración y Sistemas del IAQ."
               : "Le enviaremos un enlace para restablecer su contraseña."}
           </p>
         </header>

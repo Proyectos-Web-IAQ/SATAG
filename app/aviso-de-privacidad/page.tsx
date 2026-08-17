@@ -35,7 +35,7 @@ export default function AvisoDePrivacidad() {
 
         {!aviso && !error && <Loader />}
 
-        {aviso && (
+        {aviso && aviso.parrafos.length > 0 && (
           <>
             <article className="aviso-publico">
               {aviso.parrafos.map((p, i) => (

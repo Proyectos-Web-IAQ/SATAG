@@ -414,7 +414,7 @@ export default function RegistroWizard() {
                   {marcas.map((m) => <option key={m} value={m}>{m}</option>)}
                 </select>
                 {marca === "Otro" && (
-                  <input className="input" value={marcaOtro} onChange={(e) => setMarcaOtro(e.target.value)} placeholder="Especifica la marca" />
+                  <input className="input" value={marcaOtro} onChange={(e) => setMarcaOtro(e.target.value)} placeholder="Especifique la marca" />
                 )}
                 {errores.marca && <p className="field-error">{errores.marca}</p>}
               </div>
@@ -431,7 +431,7 @@ export default function RegistroWizard() {
                       {modelos.map((m) => <option key={m} value={m}>{m}</option>)}
                     </select>
                     {modelo === "Otro" && (
-                      <input className="input" value={modeloOtro} onChange={(e) => setModeloOtro(e.target.value)} placeholder="Especifica el modelo" />
+                      <input className="input" value={modeloOtro} onChange={(e) => setModeloOtro(e.target.value)} placeholder="Especifique el modelo" />
                     )}
                   </>
                 )}
@@ -446,7 +446,7 @@ export default function RegistroWizard() {
                   {colores.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 {color === "Otro" && (
-                  <input className="input" value={colorOtro} onChange={(e) => setColorOtro(e.target.value)} placeholder="Especifica el color" />
+                  <input className="input" value={colorOtro} onChange={(e) => setColorOtro(e.target.value)} placeholder="Especifique el color" />
                 )}
                 {errores.color && <p className="field-error">{errores.color}</p>}
               </div>
@@ -535,7 +535,7 @@ export default function RegistroWizard() {
                 </p>
               )}
             </div>
-            {!reglamentoLeido && reglamentoValido && <p className="hint" style={{ marginTop: 8 }}>Desplázate hasta la cláusula 22 para poder aceptar.</p>}
+            {!reglamentoLeido && reglamentoValido && <p className="hint" style={{ marginTop: 8 }}>Desplácese hasta la cláusula 22 para poder aceptar.</p>}
             <label className="check" style={{ marginTop: 16 }}>
               <input type="checkbox" checked={acepta} disabled={!reglamentoLeido || !reglamentoValido}
                 onChange={(e) => setAcepta(e.target.checked)} />
@@ -553,7 +553,7 @@ export default function RegistroWizard() {
               Firmará <strong>{hayGestionante ? gestionanteNombreCompleto || "el gestionante" : conductorNombreCompleto || "el conductor"}</strong>.
             </p>
             <SignaturePad onChange={setFirma} onTrazos={setTrazos} trazosIniciales={trazos} />
-            <p className="hint" style={{ marginTop: 8 }}>Puedes firmar con el dedo (táctil) o con el mouse.</p>
+            <p className="hint" style={{ marginTop: 8 }}>Puede firmar con el dedo (táctil) o con el mouse.</p>
             {errores.firma && <p className="field-error">{errores.firma}</p>}
           </>
         )}
@@ -568,8 +568,8 @@ export default function RegistroWizard() {
             <p className="lead">Su folio de seguimiento es:</p>
             <div className="folio">{resultado.folio}</div>
             <p style={{ marginTop: 16, color: "var(--ink)" }}>
-              Preséntese en administración para <strong>asignación de estacionamiento</strong> y el
-              <strong> pago del TAG ($100, efectivo)</strong>. TI instalará y activará su TAG.
+              Preséntese en Administración para <strong>asignación de estacionamiento</strong> y el
+              <strong> pago del TAG ($100, efectivo)</strong>. Sistemas instalará y activará su TAG.
             </p>
             <div className="btn-row no-print" style={{ justifyContent: "center", gap: 12, marginTop: 16 }}>
               <button type="button" className="ghost-action" onClick={() => window.print()}>Imprimir / Descargar</button>

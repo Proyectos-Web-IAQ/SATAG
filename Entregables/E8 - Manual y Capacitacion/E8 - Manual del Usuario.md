@@ -100,13 +100,13 @@ Si deja incompletos los campos del gestionante, los mensajes en rojo son los mis
 ## 6. Paso 2 de 6 — Datos del vehículo y procedencia del TAG
 
 1. En **"Marca"** abra el menú y elija su marca del catálogo. Si no aparece, elija **"Otro"**, al final de la lista.
-2. Si eligió **"Otro"**, escriba la marca en el campo que aparece debajo, **"Especifica la marca"**.
+2. Si eligió **"Otro"**, escriba la marca en el campo que aparece debajo, **"Especifique la marca"**.
 3. En **"Modelo"**:
    - Mientras no elija marca, el menú está deshabilitado y muestra **"Elija la marca primero"**.
    - Al elegir marca se cargan sus modelos y el menú muestra **"Seleccione…"**.
-   - Si su modelo no está en la lista, elija **"Otro"** y escríbalo en **"Especifica el modelo"**.
+   - Si su modelo no está en la lista, elija **"Otro"** y escríbalo en **"Especifique el modelo"**.
    - Si la marca que eligió fue **"Otro"**, el modelo se escribe directamente en el campo de texto **"Escriba el modelo"**.
-4. En **"Color"** elija del menú, o elija **"Otro"** y escríbalo en **"Especifica el color"**.
+4. En **"Color"** elija del menú, o elija **"Otro"** y escríbalo en **"Especifique el color"**.
 5. En **"Placas"** escriba la placa del vehículo. El sistema **convierte a mayúsculas automáticamente** conforme usted escribe. Debe tener **de 5 a 8 letras o números, sin guiones ni espacios**.
 6. Si el vehículo aún no tiene placas, marque **"El vehículo aún no tiene placas (nuevo o con permiso)."**. El campo **"Placas"** se deshabilita y deja de ser obligatorio.
 7. En **"TAG"** elija uno de los dos botones:
@@ -150,7 +150,7 @@ Si el aviso cabe completo en la pantalla sin necesidad de desplazamiento, la cas
 ## 8. Paso 4 de 6 — Leer y aceptar el reglamento de acceso
 
 1. Lea la indicación: **"Lea el reglamento completo. La casilla se habilita al llegar a la cláusula final."**. Mientras el texto llega, se muestra **"Cargando…"**.
-2. Desplace el recuadro hasta la última cláusula. El reglamento vigente tiene **22 cláusulas numeradas**. Mientras no llegue al final, la pantalla indica **"Desplázate hasta la cláusula 22 para poder aceptar."**.
+2. Desplace el recuadro hasta la última cláusula. El reglamento vigente tiene **22 cláusulas numeradas**. Mientras no llegue al final, la pantalla indica **"Desplácese hasta la cláusula 22 para poder aceptar."**.
 3. Al llegar al final, marque la casilla **"He leído y acepto el reglamento de acceso vehicular (v2)."**. El número entre paréntesis corresponde a la versión vigente del reglamento.
 4. Pulse **"Siguiente"**. Si no marcó la casilla, aparece **"Debe aceptar el reglamento para continuar."**.
 
@@ -163,7 +163,7 @@ Si el aviso cabe completo en la pantalla sin necesidad de desplazamiento, la cas
 ## 9. Paso 5 de 6 — Firmar y enviar el registro
 
 1. Confirme en la línea superior **quién debe firmar**: la pantalla muestra la palabra **"Firmará"** seguida del nombre completo del gestionante, si lo hay, o del conductor si no lo hay.
-2. Trace la firma dentro del recuadro punteado. Puede hacerlo con el dedo en una pantalla táctil o con el mouse, como indica el texto **"Puedes firmar con el dedo (táctil) o con el mouse."**.
+2. Trace la firma dentro del recuadro punteado. Puede hacerlo con el dedo en una pantalla táctil o con el mouse, como indica el texto **"Puede firmar con el dedo (táctil) o con el mouse."**.
 3. Si el trazo no quedó bien, pulse **"Borrar firma"** y vuelva a firmar. El botón borra el trazo por completo.
 4. Pulse **"Enviar registro"**. Mientras se envía, el botón muestra **"Enviando…"** y queda deshabilitado para evitar envíos dobles. Espere; no vuelva a pulsar.
 
@@ -177,7 +177,7 @@ Si el aviso cabe completo en la pantalla sin necesidad de desplazamiento, la cas
 
 - Si intenta enviar sin trazo, aparece **"Firme en el recuadro para continuar."**. El sistema únicamente comprueba que exista un trazo: no evalúa la caligrafía ni la compara con ninguna firma previa.
 - Un menor de edad **no firma**: firma su padre, madre o tutor. La línea **"Firmará …"** indica siempre quién corresponde.
-- Si el envío falla, aparece en rojo **arriba de los botones**, entre el recuadro de firma y la fila **"Atrás" / "Enviar registro"**, un único mensaje como **"Debes aceptar el reglamento."**, **"Falta la firma."**, **"No se pudo subir la firma: …"** u **"Ocurrió un error."**. Corrija lo señalado y vuelva a enviar.
+- Si el envío falla, aparece en rojo **arriba de los botones**, entre el recuadro de firma y la fila **"Atrás" / "Enviar registro"**, un único mensaje como **"Debe aceptar el reglamento."**, **"Falta la firma."**, **"No se pudo subir la firma: …"** u **"Ocurrió un error."**. Corrija lo señalado y vuelva a enviar.
 
 ---
 
@@ -185,7 +185,7 @@ Si el aviso cabe completo en la pantalla sin necesidad de desplazamiento, la cas
 
 1. Verifique el encabezado **"¡Registro recibido!"** y la etiqueta de estado **"Pendiente"**.
 2. **Anote el folio** que aparece bajo el texto **"Su folio de seguimiento es:"**. Tiene el formato **SATAG-000123**.
-3. Lea la instrucción: **"Preséntese en administración para asignación de estacionamiento y el pago del TAG ($100, efectivo). TI instalará y activará su TAG."**.
+3. Lea la instrucción: **"Preséntese en Administración para asignación de estacionamiento y el pago del TAG ($100, efectivo). Sistemas instalará y activará su TAG."**.
 4. Pulse **"Imprimir / Descargar"**. Se abre el cuadro de impresión de su navegador; desde ahí puede imprimir en papel o, si desea el archivo, elegir la opción **"Guardar como PDF"** dentro del propio cuadro del navegador. La versión impresa oculta la barra superior y los botones.
 5. Cuando haya guardado o impreso el comprobante, pulse **"Volver al inicio"**.
 
@@ -346,7 +346,7 @@ En ningún lado del sitio: no existe pantalla pública de consulta de estado. Su
 Desde el sitio no se puede editar ni cancelar un registro enviado. Entre a **"Solicitar actualización o baja →"**, elija **"Actualizar mis datos"** y describa la corrección. Tenga presente que esa solicitud **no cambia nada en línea**: únicamente avisa a Sistemas, que hará la corrección con usted presente.
 
 **4. ¿Puedo pagar los $100 con tarjeta o por transferencia?**
-No. El sitio no cobra ni genera referencias bancarias. El pago es **exclusivamente en efectivo y en persona**, en Administración, tal como lo indica su propio comprobante: **"Preséntese en administración para asignación de estacionamiento y el pago del TAG ($100, efectivo). TI instalará y activará su TAG."**. Traer su propio TAG tampoco lo exime: cuesta lo mismo y debe llevarlo el día de la instalación.
+No. El sitio no cobra ni genera referencias bancarias. El pago es **exclusivamente en efectivo y en persona**, en Administración, tal como lo indica su propio comprobante: **"Preséntese en Administración para asignación de estacionamiento y el pago del TAG ($100, efectivo). Sistemas instalará y activará su TAG."**. Traer su propio TAG tampoco lo exime: cuesta lo mismo y debe llevarlo el día de la instalación.
 
 **5. Mi hijo es quien maneja, pero es menor de edad. ¿Puede él hacer el trámite y firmar?**
 El menor puede quedar registrado como usuario del beneficio, pero **no puede firmar**. Al marcar **"El conductor es menor de edad."**, el sistema exige los datos del padre, madre o tutor y es esa persona quien acepta el aviso, acepta el reglamento y traza la firma en el Paso 5. El tipo de usuario queda fijo en **"Alumno"**.

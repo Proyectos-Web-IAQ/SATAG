@@ -78,6 +78,8 @@ export async function getAvisoVigente(): Promise<AvisoVigente> {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  if (parrafos.length === 0) throw new Error("No se pudo cargar el contenido del aviso de privacidad. Intente de nuevo más tarde.");
+
   return { version: data.version as number, urlPublica: data.url_publica as string | null, parrafos };
 }
 
@@ -160,7 +162,7 @@ async function subirFirma(dataUrl: string): Promise<{ path: string; sha256: stri
 }
 
 export async function crearRegistro(input: CrearRegistroInput): Promise<CrearRegistroResultado> {
-  if (!input.aceptaReglamento) throw new Error("Debes aceptar el reglamento.");
+  if (!input.aceptaReglamento) throw new Error("Debe aceptar el reglamento.");
   if (!input.firmaDataUrl) throw new Error("Falta la firma.");
 
   // Nota: si el RPC fallara despues de subir, la firma queda huerfana en Storage
