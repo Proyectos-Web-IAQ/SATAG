@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import AdminPanel from "@/components/admin/AdminPanel";
 import GateMfa from "@/components/admin/GateMfa";
@@ -19,8 +19,14 @@ type Modo = "login" | "recuperar";
 // Tope de tiempo para restaurar la sesion al entrar. getSession() y nivelMfa()
 // salen a la red a refrescar el token y no traen temporizador propio: con la red
 // caida el arranque puede tardar decenas de segundos sin rechazar nunca. Pasado
-// el tope se muestra el formulario de acceso; si la sesion llega despues,
-// onAuthStateChange la aplica igual.
+// el tope se sale del estado de verificacion con lo que se haya alcanzado a
+// restaurar: si getSession ya trajo la sesion, se pide el segundo factor; si no
+// trajo nada, sale el formulario de acceso.
+//
+// OJO con lo que decia aqui antes: que "si la sesion llega despues,
+// onAuthStateChange la aplica igual" es FALSO. INITIAL_SESSION dispara al
+// suscribirse, o sea ANTES del tope, y despues no vuelve a haber evento hasta el
+// proximo refresco de token. Por eso el .catch de abajo no borra email ni rol.
 const TOPE_SESION_MS = 10000;
 
 // Mismo texto para los dos finales malos del arranque (fallo y tope): la persona
@@ -40,15 +46,27 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
+  // Folio creciente de las lecturas del AAL. nivelMfa() sale a la red y puede
+  // haber varias lecturas en vuelo a la vez (el arranque, cada evento de auth),
+  // asi que sin folio gana la que responde al final aunque sea la mas vieja. Dos
+  // desenlaces malos que esto cierra: una lectura vieja que devuelve 'aal2'
+  // despues del tope y deja mfaOk en true sin que nadie haya pasado el segundo
+  // factor, y una que devuelve 'aal1' despues de que GateMfa ya verifico y
+  // devuelve a la reja a quien acaba de pasarla. Subir el folio invalida todo lo
+  // que este en vuelo.
+  const folioMfaRef = useRef(0);
+
   // Lee el AAL de la sesion: true solo si el segundo factor ya se supero (aal2).
   // Si no hay sesion o falla la lectura, se trata como NO superado (muestra el gate).
   async function refrescarMfa(hayUsuario: boolean): Promise<void> {
-    if (!hayUsuario) { setMfaOk(false); return; }
+    const folio = ++folioMfaRef.current;
+    const vigente = () => folioMfaRef.current === folio;
+    if (!hayUsuario) { if (vigente()) setMfaOk(false); return; }
     try {
       const nivel = await nivelMfa();
-      setMfaOk(nivel.actual === "aal2");
+      if (vigente()) setMfaOk(nivel.actual === "aal2");
     } catch {
-      setMfaOk(false);
+      if (vigente()) setMfaOk(false);
     }
   }
 
@@ -83,9 +101,20 @@ export default function AdminPage() {
     Promise.race([restaurar(), tope])
       .catch(() => {
         if (!activo) return;
-        setEmail(null);
-        setRol(null);
+        // Promise.race abandona la carrera pero NO cancela restaurar(): sigue
+        // viva y sus escrituras aterrizarian despues, contradiciendo lo que la
+        // pantalla ya decidio. Subir el folio descarta la lectura del AAL que
+        // quedo en vuelo.
+        folioMfaRef.current++;
         setMfaOk(false);
+        // NO se borran email ni rol, a proposito. Si getSession ya habia
+        // devuelto una sesion valida y lo que se colgo fue la lectura del AAL,
+        // borrarlos manda al formulario de acceso a alguien que SI esta
+        // autenticado, y ningun evento posterior la repone: INITIAL_SESSION ya
+        // disparo antes del tope. Conservandolos, la pantalla cae en GateMfa,
+        // que es justo lo que corresponde cuando hay sesion y no se pudo
+        // confirmar el segundo factor. Si lo que se colgo fue getSession, los
+        // dos siguen en null igual y el formulario sale como debe.
         setError(AVISO_SESION);
       })
       .finally(() => {
@@ -173,7 +202,13 @@ export default function AdminPage() {
     return (
       <GateMfa
         adminEmail={email}
-        onVerificado={() => setMfaOk(true)}
+        onVerificado={() => {
+          // Se sube el folio antes de abrir: cualquier lectura del AAL que siga
+          // en vuelo trae un nivel anterior a esta verificacion, y si aterriza
+          // despues devolveria a la reja a quien acaba de pasarla.
+          folioMfaRef.current++;
+          setMfaOk(true);
+        }}
         onSignOut={onSignOut}
       />
     );
