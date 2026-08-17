@@ -16,6 +16,12 @@
 > columna. También se retiró el enlace redundante al aviso en el paso 2 del formulario y el aviso
 > corto del paso 0 quedó plegable, lo que toca **F-01**, **F-02** y **F-03** y entra como **F-39**.
 >
+> **v1.4 (17-ago):** correcciones salidas de la ejecución de la tanda F. Se resuelven los dos
+> choques de folio detectados al armar el guion: **F-29 absorbe a F-09** (ambos pedían `…101`
+> sin pago) y **F-11 pasa a `…103`**, corriendo **F-12 a `…104`**. Se retira la nota obsoleta
+> de F-09 sobre B5: el bloque 46 está aplicado desde el 29-jul y el tipo es obligatorio al
+> cobrar.
+>
 > **v1.3 (30-jul):** el banco de QA ahora siembra la evidencia de firma, que antes no tenía. Entra
 > **E-11**. Ojo con su matiz: el seed puede sembrar los datos probatorios pero **no la imagen** —
 > SQL no escribe bytes en Storage—, así que ver "no se pudo abrir la imagen" en los folios sembrados
@@ -45,10 +51,10 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 
 | ID | Caso | Pre | Pasos | Esperado |
 |---|---|---|---|---|
-| **F-09** | Cobro de un pendiente | `…101` sin pago · rol `admin` | Cobrar $100 en efectivo | Se registra el pago con **folio de recibo automático** `SATAG-AAAA-######`; el expediente pasa a la cola de instalación de TI. *(Nota: la validación del tipo de usuario B5 **no** está conectada — se documenta el estado actual, no se reprueba)* |
+| **F-09** | Cobro de un pendiente | `…101` sin pago · rol `admin` | **Se ejecuta junto con F-29** (los dos piden `…101` sin pago; correr uno destruye la precondición del otro): cobrar $100 en efectivo confirmando el tipo declarado | Se registra el pago con **folio de recibo automático** `SATAG-AAAA-######`; el expediente pasa a la cola de instalación de TI. *(v1.4: la nota anterior —«B5 no conectado»— quedó obsoleta al aplicarse el bloque 46 el 29-jul)* |
 | **F-10** | No hay doble cobro | `…101` ya cobrado | Intentar cobrar otra vez el mismo expediente | El sistema lo impide; el chip muestra "Pagado"; no se genera segundo folio |
-| **F-11** | Doble clic no duplica | `…102` sin pago | Pulsar "Cobrar" dos veces rápido | Se registra **un solo** pago (candado anti-doble-RPC) |
-| **F-12** | Monto editable | `…103` sin pago | Cobrar con monto distinto del predeterminado | Se guarda el monto capturado y queda visible en el historial |
+| **F-11** | Doble clic no duplica | `…103` sin pago *(v1.4: antes `…102`, que chocaba con F-30)* | Pulsar "Cobrar" dos veces rápido | Se registra **un solo** pago (candado anti-doble-RPC) |
+| **F-12** | Monto editable | `…104` sin pago *(v1.4: antes `…103`, corrido por F-11)* | Cobrar con monto distinto del predeterminado | Se guarda el monto capturado y queda visible en el historial |
 | **F-13** | Cola por prioridad de cobro | Banco aplicado | Abrir Administración | Los pendientes sin pago encabezan la lista; los pagados y las bajas se distinguen por chip |
 | **F-14** | Estado de caja | Varios cobros del día | Abrir **Finanzas** | "En caja ahora" = suma de cobros **no cortados**; se muestran acumulados de mes e histórico |
 | **F-15** | Corte con efectivo exacto | Cobros sin cortar | Cortar caja capturando el efectivo contado igual al esperado | El corte se sella con folio, diferencia $0 y la identidad de quien cortó; la caja vuelve a cero |
