@@ -116,6 +116,18 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
   // está puesto no hay lista que mostrar, ni siquiera una vacía.
   const [errorDet, setErrorDet] = useState<Record<string, string | null>>({});
 
+  // Guardia de frescura del detalle: cada lectura toma un folio creciente y solo
+  // la última pedida para esa fila puede escribir. Sin esto, dos lecturas
+  // solapadas de la misma fila —cerrar y reabrir mientras carga, o un doble clic
+  // en Reintentar— podían terminar con la lista buena en caché Y el error rojo
+  // encima, y como DetalleCobros mira el error antes que la lista, la pantalla
+  // del dinero quedaba con «no concilie» sobre datos correctos. Peor todavía: la
+  // lectura vieja apagaba el indicador de carga mientras la nueva seguía en
+  // vuelo, y la fila caía en «Sin cobros en este periodo» — justo el texto
+  // engañoso que D-08 vino a eliminar.
+  const detalleSeqRef = useRef(0);
+  const detalleVigenteRef = useRef<Record<string, number>>({});
+
   // Candado síncrono: el estado visual tarda un render en deshabilitar el botón;
   // cerrar la caja dos veces por un doble toque es justo lo que esto evita.
   const runningRef = useRef(false);
@@ -129,6 +141,9 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
       setCortes(cs);
       // El corte cambió la pertenencia de los cobros: se limpia el detalle
       // cacheado para que vuelva a cargarse con los datos frescos.
+      // ...y se invalidan las lecturas en vuelo: la que empezó antes del corte
+      // traería cobros que ya quedaron sellados en él.
+      detalleVigenteRef.current = {};
       setPagosPorCorte({});
       setErrorDet({});
       setExpandido(null);
@@ -145,12 +160,20 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
   // Lee los cobros de una fila. Se usa al expandirla la primera vez y al
   // reintentar después de un fallo de lectura.
   async function cargarDetalle(clave: string, corteId: string | null) {
+    const folio = ++detalleSeqRef.current;
+    detalleVigenteRef.current[clave] = folio;
+    const vigente = () => detalleVigenteRef.current[clave] === folio;
     setCargandoDet(clave);
     setErrorDet((prev) => ({ ...prev, [clave]: null }));
     try {
       const ps = await listPagosDeCorte(corteId);
+      if (!vigente()) return;
+      // Se limpia también el error: si quedó uno de una lectura anterior de esta
+      // misma fila, taparía con «no concilie» una lista que sí cargó bien.
+      setErrorDet((prev) => ({ ...prev, [clave]: null }));
       setPagosPorCorte((prev) => ({ ...prev, [clave]: ps }));
     } catch (err) {
+      if (!vigente()) return;
       // NO se guarda una lista vacía: sería idéntica a un periodo sin cobros y
       // esta es la pantalla del dinero. Se marca el fallo por fila y, como en
       // pagosPorCorte no queda nada, reabrir la fila también vuelve a leer.
@@ -159,9 +182,10 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
         [clave]: err instanceof Error ? err.message : "No se pudo leer el detalle de cobros.",
       }));
     } finally {
-      // Solo se apaga el indicador si sigue siendo esta fila: si el usuario ya
-      // abrió otra, apagarlo aquí la pintaría como vacía mientras aún carga.
-      setCargandoDet((actual) => (actual === clave ? null : actual));
+      // Solo se apaga el indicador si sigue siendo esta fila Y esta lectura: si
+      // el usuario ya abrió otra, o hay una relectura más nueva en vuelo,
+      // apagarlo aquí pintaría la fila como vacía mientras todavía carga.
+      if (vigente()) setCargandoDet((actual) => (actual === clave ? null : actual));
     }
   }
 
