@@ -30,6 +30,12 @@ export default function RegistroWizard() {
   const [reglamento, setReglamento] = useState<ReglamentoVersion | null>(null);
   const [aviso, setAviso] = useState<AvisoVigente | null>(null);
   const [avisoCorto, setAvisoCorto] = useState<string | null>(null);
+  // "Todavia no llega" no es lo mismo que "no cargo". Al cerrar D-01 se quito el
+  // placeholder "Cargando..." y el null paso a significar las dos cosas, asi que
+  // una peticion en vuelo se acusaba como fallo de conexion. Estas banderas
+  // separan los dos casos.
+  const [avisoPendiente, setAvisoPendiente] = useState(true);
+  const [reglamentoPendiente, setReglamentoPendiente] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CrearRegistroResultado | null>(null);
@@ -82,8 +88,10 @@ export default function RegistroWizard() {
   useEffect(() => {
     getMarcas().then(setMarcas).catch(() => setMarcas([]));
     getColores().then(setColores).catch(() => setColores([]));
-    getReglamentoVigente().then(setReglamento).catch(() => setReglamento(null));
-    getAvisoVigente().then(setAviso).catch(() => setAviso(null));
+    getReglamentoVigente().then(setReglamento).catch(() => setReglamento(null))
+      .finally(() => setReglamentoPendiente(false));
+    getAvisoVigente().then(setAviso).catch(() => setAviso(null))
+      .finally(() => setAvisoPendiente(false));
     getAvisoSimplificado().then(setAvisoCorto).catch(() => setAvisoCorto(null));
   }, []);
 
@@ -169,11 +177,13 @@ export default function RegistroWizard() {
       }
     }
     if (s === 2) {
-      if (!avisoValido) e.aceptaPrivacidad = "No se puede continuar porque el aviso de privacidad no se ha cargado correctamente.";
+      if (avisoPendiente) e.aceptaPrivacidad = "Espere un momento: el aviso de privacidad todavía se está cargando.";
+      else if (!avisoValido) e.aceptaPrivacidad = "No se puede continuar porque el aviso de privacidad no se ha cargado correctamente.";
       else if (!aceptaPrivacidad) e.aceptaPrivacidad = "Debe aceptar el aviso de privacidad para continuar.";
     }
     if (s === 3) {
-      if (!reglamentoValido) e.acepta = "No se puede continuar porque el reglamento no se ha cargado correctamente.";
+      if (reglamentoPendiente) e.acepta = "Espere un momento: el reglamento todavía se está cargando.";
+      else if (!reglamentoValido) e.acepta = "No se puede continuar porque el reglamento no se ha cargado correctamente.";
       else if (!acepta) e.acepta = "Debe aceptar el reglamento para continuar.";
     }
     if (s === 4 && !firma) e.firma = "Firme en el recuadro para continuar.";
@@ -480,9 +490,12 @@ export default function RegistroWizard() {
                 aviso!.parrafos.map((p, i) => (
                   <p key={i} style={{ margin: "0 0 10px" }}>{p}</p>
                 ))
+              ) : avisoPendiente ? (
+                <p className="hint" style={{ margin: 0 }}>Cargando el aviso de privacidad…</p>
               ) : (
                 <p className="field-error" style={{ margin: 0 }}>
-                  No se pudo cargar el aviso de privacidad. Verifique su conexión o recargue la página.
+                  No se pudo cargar el aviso de privacidad. Recargue la página; si el mensaje vuelve
+                  a aparecer, avise al personal de la escuela: puede que la versión publicada esté vacía.
                 </p>
               )}
             </div>
@@ -513,9 +526,12 @@ export default function RegistroWizard() {
             >
               {reglamentoValido ? (
                 <ol>{reglamento!.clausulas.map((c, i) => <li key={i}>{c}</li>)}</ol>
+              ) : reglamentoPendiente ? (
+                <p className="hint" style={{ margin: 0 }}>Cargando el reglamento de acceso…</p>
               ) : (
                 <p className="field-error" style={{ margin: 0 }}>
-                  No se pudo cargar el reglamento de acceso. Verifique su conexión o recargue la página.
+                  No se pudo cargar el reglamento de acceso. Recargue la página; si el mensaje vuelve
+                  a aparecer, avise al personal de la escuela: puede que la versión publicada esté vacía.
                 </p>
               )}
             </div>
