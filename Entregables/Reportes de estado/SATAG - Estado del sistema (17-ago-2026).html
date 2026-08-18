@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SATAG · Estado del sistema · 17 de agosto de 2026</title>
+<style>
+  :root {
+    --ink: #16232C; --muted: #5A6E7A; --line: #D7DFE4; --line-soft: #E8EDF0;
+    --ground: #F4F6F7; --surface: #FFFFFF; --primary: #123F5C; --primary-soft: #E3EBF1;
+    --ok: #206A48; --ok-soft: #E1EFE7; --warn: #92590F; --warn-soft: #F6ECDA;
+    --bad: #9E3A24; --bad-soft: #F7E6E1;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 18px 70px; background: var(--ground); color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    font-size: 15.5px; line-height: 1.58; -webkit-font-smoothing: antialiased;
+  }
+  .doc { max-width: 900px; margin: 0 auto; }
+  header { padding: 46px 0 26px; border-bottom: 3px solid var(--primary); }
+  .memb { font-size: 11.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  h1 { margin: 10px 0 0; font-size: clamp(26px, 4.5vw, 36px); font-weight: 800; letter-spacing: -.02em; line-height: 1.1; }
+  .ficha { margin-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+  .ficha div { background: var(--surface); padding: 9px 14px; font-size: 13.5px; }
+  .ficha b { display: block; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  h2 { margin: 44px 0 0; font-size: 21px; font-weight: 750; letter-spacing: -.015em; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+  p { margin: 12px 0 0; max-width: 74ch; }
+  .lede { color: var(--muted); }
+  .resumen {
+    margin-top: 24px; background: var(--surface); border: 1px solid var(--line);
+    border-left: 4px solid var(--primary); border-radius: 3px; padding: 18px 22px;
+  }
+  .resumen p { margin: 8px 0 0; }
+  .resumen p:first-child { margin-top: 0; }
+  .kpis { display: grid; gap: 1px; background: var(--line); grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); border: 1px solid var(--line); margin-top: 22px; border-radius: 3px; overflow: hidden; }
+  .kpi { background: var(--surface); padding: 16px 18px; }
+  .kpi .n { font-size: 29px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .kpi .n small { font-size: 16px; color: var(--muted); font-weight: 600; }
+  .kpi .k { font-size: 12.5px; color: var(--muted); margin-top: 3px; line-height: 1.35; }
+  .scroll { overflow-x: auto; margin-top: 18px; border: 1px solid var(--line); border-radius: 3px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; background: var(--surface); }
+  th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--line-soft); font-size: 14px; vertical-align: top; }
+  thead th { background: var(--primary-soft); color: var(--primary); font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 750; border-bottom: 1px solid var(--line); }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 2px; white-space: nowrap; }
+  .t-ok { background: var(--ok-soft); color: var(--ok); }
+  .t-warn { background: var(--warn-soft); color: var(--warn); }
+  .t-bad { background: var(--bad-soft); color: var(--bad); }
+  .t-info { background: var(--primary-soft); color: var(--primary); }
+  ul.lista { margin: 14px 0 0; padding-left: 20px; }
+  ul.lista li { margin-top: 8px; max-width: 74ch; }
+  .pedidos { margin-top: 20px; display: grid; gap: 14px; }
+  .pedido { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--warn); border-radius: 3px; padding: 15px 19px; }
+  .pedido h3 { margin: 0; font-size: 15.5px; font-weight: 750; }
+  .pedido p { margin-top: 7px; font-size: 14px; color: var(--muted); }
+  footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+  @media print { body { background: #fff; } .doc { max-width: none; } }
+</style>
+</head>
+<body>
+<div class="doc">
+
+<header>
+  <p class="memb">Instituto Asunción de Querétaro · Departamento de Sistemas · Reporte de estado</p>
+  <h1>SATAG — Sistema de Adquisición de TAG Vehicular</h1>
+  <div class="ficha">
+    <div><b>Corte</b>17 de agosto de 2026</div>
+    <div><b>Elaboró</b>Gerardo Sánchez · Soporte TI Jr.</div>
+    <div><b>Fase</b>Ejecución · pruebas y cierre</div>
+    <div><b>Cierre planeado</b>19 de septiembre de 2026 (SC-021)</div>
+  </div>
+</header>
+
+<div class="resumen">
+  <p><strong>En una frase:</strong> el sistema está construido y funcionando; lo que resta es terminar de probarlo, publicar el aviso de privacidad definitivo y hacer la entrega formal.</p>
+  <p>El desarrollo funcional está completo y desplegado. La ejecución de pruebas pasó esta jornada del 38&nbsp;% al <strong>77&nbsp;%</strong> (59 de 77 casos), con el módulo contable y el de instalación verificados de punta a punta. De los 15 defectos detectados por el proceso de calidad, <strong>11 están corregidos y verificados</strong>; los 4 restantes están calendarizados y ninguno afecta la operación del flujo principal. El cronograma se reprogramó formalmente (solicitud SC-021) a partir del estado real del trabajo.</p>
+</div>
+
+<h2>Avance en números</h2>
+<div class="kpis">
+  <div class="kpi"><span class="n">88<small>%</small></span><div class="k">avance global del proyecto (31 de 44 actividades concluidas)</div></div>
+  <div class="kpi"><span class="n">59<small>/77</small></span><div class="k">casos de prueba ejecutados y aprobados</div></div>
+  <div class="kpi"><span class="n">11<small>/15</small></span><div class="k">defectos corregidos y verificados en el sitio publicado</div></div>
+  <div class="kpi"><span class="n">48<small>/49</small></span><div class="k">bloques de base de datos aplicados y auditados</div></div>
+</div>
+
+<h2>Qué está terminado y probado</h2>
+<ul class="lista">
+  <li><strong>Registro público con firma:</strong> el formulario de alta con firma manuscrita digital (imagen + vector + hash SHA-256 + versión de los documentos aceptados y sello de tiempo). El consentimiento está blindado: si el aviso o el reglamento no cargan, el trámite no avanza.</li>
+  <li><strong>Cobro y corte de caja:</strong> folio de recibo automático y correlativo, validación del tipo de usuario al cobrar, candado contra doble cobro, y cortes de caja sellados e inmutables — se verificó por pantalla y por base de datos que un corte cerrado no se puede alterar ni borrar.</li>
+  <li><strong>Instalación y ciclo de vida del TAG:</strong> validación de número (formato y duplicados), asignación de estacionamiento en una sola transacción, actualización con resumen previo de cambios, bajas con motivo, TAG apartado para reposición, y el buzón público de solicitudes con vinculación de notas.</li>
+  <li><strong>Seguridad:</strong> acceso al panel con contraseña y segundo factor obligatorio (MFA); permisos por rol validados en la base de datos, no solo en pantalla — la tanda completa de pruebas de privacidad y permisos (14 casos) está aprobada.</li>
+  <li><strong>Evidencia de aceptación:</strong> la tanda completa (11 casos): el hash cuadra recalculado desde la base, la imagen de la firma se sirve con enlace temporal de 60 segundos y el panel solo recibe los campos probatorios.</li>
+</ul>
+
+<h2>Pruebas: dónde estamos</h2>
+<div class="scroll">
+  <table>
+    <thead><tr><th>Tanda</th><th class="num">Avance</th><th>Estado</th></tr></thead>
+    <tbody>
+      <tr><td>P · Privacidad, permisos y protección de datos</td><td class="num">14 / 14</td><td><span class="tag t-ok">Completa</span> dos casos con salvedades menores anotadas</td></tr>
+      <tr><td>E · Evidencia de firma</td><td class="num">11 / 11</td><td><span class="tag t-ok">Completa</span></td></tr>
+      <tr><td>F · Funcionamiento</td><td class="num">34 / 39</td><td><span class="tag t-info">En curso</span> los 5 restantes salen de la prueba de campo y del barrido final de textos</td></tr>
+      <tr><td>A · Derechos ARCO y ciclo de vida</td><td class="num">0 / 8</td><td><span class="tag t-warn">Bloqueada por decisión</span> requiere definir el alcance de CC-13 (ver «Decisiones»)</td></tr>
+      <tr><td>U · Facilidad de uso</td><td class="num">0 / 5</td><td><span class="tag t-warn">Por agendar</span> exige personal real de Administración y Sistemas</td></tr>
+    </tbody>
+  </table>
+</div>
+<p class="lede">La evidencia completa (capturas, informe visual y PDF por fecha de ejecución) está en la carpeta «SATAG – Evidencia de pruebas», con la bitácora como fuente única del avance.</p>
+
+<h2>Defectos: encontrados, corregidos, pendientes</h2>
+<p>El proceso de calidad detectó <strong>15 defectos</strong> (D-01 a D-15). Ninguno llegó a usuarios: el sistema no está en operación. Los <strong>11 corregidos</strong> incluyen los seis de lógica del lote C —entre ellos el crítico D-01, que permitía aceptar un aviso que nunca se mostró— reejecutados uno por uno contra el sitio publicado.</p>
+<div class="scroll">
+  <table>
+    <thead><tr><th>Pendiente</th><th>Severidad</th><th>Qué es</th><th>Calendarizado en</th></tr></thead>
+    <tbody>
+      <tr><td>D-04</td><td><span class="tag t-bad">Mayor</span></td><td>El aviso simplificado del paso 1 desaparece sin mensaje si no carga</td><td class="num">Lote B · 29-ago</td></tr>
+      <tr><td>D-14</td><td><span class="tag t-warn">Menor</span></td><td>En celular, el aviso y el reglamento se leen por un recuadro muy pequeño</td><td class="num">Lote B · 29-ago</td></tr>
+      <tr><td>D-13</td><td><span class="tag t-bad">Mayor</span></td><td>El texto publicado del aviso de privacidad no lleva acentos; viaja con la versión 3 que apruebe Legal</td><td class="num">Lote D · 19-sep</td></tr>
+      <tr><td>D-07 (parte servidor)</td><td><span class="tag t-warn">Menor</span></td><td>Cuatro mensajes de la base de datos tratan de tú; se corrigen en el bloque 49</td><td class="num">Lote D · 19-sep</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Cronograma reprogramado (SC-021)</h2>
+<p>El plan anterior vencía el 7 de agosto con el proyecto aún en ejecución. La solicitud <strong>SC-021</strong> fija el cierre al <strong>19 de septiembre</strong> con fechas derivadas del trabajo real y con sus supuestos escritos; solo se movieron las actividades no terminadas, para que el acta de cierre compare plan contra real sin distorsión.</p>
+<div class="scroll">
+  <table>
+    <thead><tr><th>Semana</th><th>Entregable</th></tr></thead>
+    <tbody>
+      <tr><td class="num">18 – 22 ago</td><td>Pruebas restantes y <strong>prueba de campo</strong> (alta real de un vehículo, con las cuentas del personal). Lotes A y F cerrados.</td></tr>
+      <tr><td class="num">25 – 29 ago</td><td><strong>Migración al subdominio institucional</strong> (accesos ya en mano) y lote B (móvil).</td></tr>
+      <tr><td class="num">01 – 05 sep</td><td><strong>Capacitación y pruebas de facilidad de uso</strong> con Administración y Sistemas; arranque de la conciliación documental.</td></tr>
+      <tr><td class="num">08 – 12 sep</td><td>Pruebas y manuales cerrados — hito H5.</td></tr>
+      <tr><td class="num">15 – 19 sep</td><td>Aviso de privacidad v3 aplicado, <strong>aceptación y acta de cierre</strong> — hito H6.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Decisiones y apoyos que se necesitan</h2>
+<div class="pedidos">
+  <div class="pedido">
+    <h3>1 · Aviso de privacidad v3 — Dirección / Legal</h3>
+    <p>Sigue en revisión desde julio y es la única dependencia externa del cierre. Incluye una pregunta nueva que hay que responder antes de firmar el plazo de conservación: <strong>¿cuándo termina la vigencia de un TAG?</strong> (el plazo está definido como «vigencia + X» y ese primer término no existe aún). El plan asume respuesta a más tardar el 12 de septiembre; si tarda más, solo se recorre su cadena directa.</p>
+  </div>
+  <div class="pedido">
+    <h3>2 · Alcance del soporte ARCO (CC-13) — Dirección</h3>
+    <p>La revisión técnica encontró que parte de lo que las pruebas ARCO esperan no está construido (exportación del expediente del titular, bloqueo, rectificación de datos personales). Hay dos caminos: construirlo antes del cierre, o cerrarlo como parcial con el riesgo aceptado por escrito. Las 8 pruebas de esa tanda esperan esta decisión.</p>
+  </div>
+  <div class="pedido">
+    <h3>3 · Tablero de control de cambios — Auditoría</h3>
+    <p>Aprobar SC-021 (la reprogramación vigente) y rechazar como superadas SC-015, SC-019 y SC-020. Hay además 15 revisiones de avance en cola; dos de ellas (de «Pruebas», al 40 %) quedaron desactualizadas el 3 de agosto y, de aprobarse tal cual, pisarían el avance real del 75 %.</p>
+  </div>
+  <div class="pedido">
+    <h3>4 · Agenda de capacitación — Administración y Sistemas</h3>
+    <p>Media jornada en la semana del 1 de septiembre para la capacitación y las 5 pruebas de facilidad de uso, que por diseño deben ejecutarlas las personas que operarán el sistema.</p>
+  </div>
+</div>
+
+<h2>Riesgos que se mantienen a la vista</h2>
+<ul class="lista">
+  <li><strong>Hosting temporal:</strong> el sitio corre en Vercel mientras se ejecuta la migración al subdominio institucional (semana del 25-ago, ya con accesos).</li>
+  <li><strong>Respaldo:</strong> la política de respaldos del proyecto de base de datos y el procedimiento de restauración del bucket de firmas están por documentarse antes de la aceptación.</li>
+  <li><strong>Evidencia y correcciones:</strong> la evidencia de firma retrata el expediente al momento del alta; una corrección posterior de datos no la re-firma. Está identificado y se propondrá tratamiento (nota de diseño o re-aceptación) antes del acta.</li>
+</ul>
+
+<footer>
+  Fuentes: bitácora de ejecución de pruebas (Pruebas/02), matriz de casos v1.4, tablero de CroNoma al corte del 17-ago-2026 y repositorio del proyecto. Los porcentajes de prueba se calculan automáticamente desde la bitácora; ningún avance se captura a mano en el informe.
+</footer>
+
+</div>
+</body>
+</html>
