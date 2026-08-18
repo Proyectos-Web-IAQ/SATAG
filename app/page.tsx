@@ -17,9 +17,9 @@ export default function Inicio() {
         <div className="panel">
           <p className="panel-title">¿Cómo funciona?</p>
           <ol style={{ margin: "0 0 16px", paddingLeft: 20, color: "var(--ink)" }}>
-            <li>Captura sus datos y los de su vehículo.</li>
-            <li>Lee y <strong>firma</strong> el reglamento de acceso.</li>
-            <li>Recibe un comprobante; paga el TAG en administración y Sistemas lo instala.</li>
+            <li>Capture sus datos y los de su vehículo.</li>
+            <li>Lea y <strong>firme</strong> el reglamento de acceso.</li>
+            <li>Reciba su comprobante; pague el TAG en Administración y Sistemas lo instala.</li>
           </ol>
           <Link href="/registro/" className="primary-action" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
             Iniciar registro
