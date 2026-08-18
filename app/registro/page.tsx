@@ -36,6 +36,9 @@ export default function RegistroWizard() {
   // separan los dos casos.
   const [avisoPendiente, setAvisoPendiente] = useState(true);
   const [reglamentoPendiente, setReglamentoPendiente] = useState(true);
+  // D-04: si el aviso simplificado no CARGA, el recuadro ya no desaparece en
+  // silencio — se declara el fallo. (null en avisoCorto = no hay publicado.)
+  const [avisoCortoFallo, setAvisoCortoFallo] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CrearRegistroResultado | null>(null);
@@ -92,7 +95,7 @@ export default function RegistroWizard() {
       .finally(() => setReglamentoPendiente(false));
     getAvisoVigente().then(setAviso).catch(() => setAviso(null))
       .finally(() => setAvisoPendiente(false));
-    getAvisoSimplificado().then(setAvisoCorto).catch(() => setAvisoCorto(null));
+    getAvisoSimplificado().then(setAvisoCorto).catch(() => { setAvisoCorto(null); setAvisoCortoFallo(true); });
   }, []);
 
   // Modelo depende de la marca. Al cambiar marca, se recargan los modelos y se
@@ -281,7 +284,22 @@ export default function RegistroWizard() {
                 párrafo, y el mecanismo es el enlace, que NUNCA se pliega. Lo
                 que se oculta es el detalle de los datos recabados y el canal
                 ARCO, que además viven completos en el aviso integral. */}
-            {avisoCortoParrafos.length > 0 && (
+            {avisoCortoFallo && (
+              <div className="aviso-corto">
+                <p className="panel-title" style={{ marginTop: 0 }}>Aviso de privacidad</p>
+                <p className="field-error" style={{ margin: "0 0 8px" }}>
+                  No se pudo cargar el aviso de privacidad simplificado. Recargue la página;
+                  si el mensaje vuelve a aparecer, avise al personal de la escuela. El aviso
+                  integral sigue disponible en el enlace de abajo.
+                </p>
+                <div className="aviso-corto__acciones">
+                  <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
+                    Consultar el aviso de privacidad integral SATAG
+                  </a>
+                </div>
+              </div>
+            )}
+            {!avisoCortoFallo && avisoCortoParrafos.length > 0 && (
               <div className="aviso-corto">
                 <p className="panel-title" style={{ marginTop: 0 }}>Aviso de privacidad</p>
                 <p style={{ margin: "0 0 8px" }}>{avisoCortoParrafos[0]}</p>

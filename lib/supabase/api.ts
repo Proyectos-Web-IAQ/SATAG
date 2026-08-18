@@ -85,24 +85,22 @@ export async function getAvisoVigente(): Promise<AvisoVigente> {
 }
 
 // Aviso simplificado (CC-09): el texto corto que la ley pide mostrar AL RECABAR
-// los datos, con enlace al integral. Va en consulta aparte y tolera su ausencia
-// a proposito: mientras el bloque 44 no este aplicado, la columna no existe y
-// PostgREST responde error. En ese caso el formulario sigue operando igual que
-// antes (solo con el aviso integral del paso 3), sin romperse.
+// los datos, con enlace al integral. Devuelve null solo cuando NO HAY texto
+// publicado (ausencia legitima); un fallo de consulta LANZA, para que el
+// formulario lo declare en pantalla en lugar de recabar datos sin aviso (D-04).
+// La tolerancia anterior — tragarse el error mientras el bloque 44 no estuviera
+// aplicado — ya no aplica: el bloque corre en la base desde julio, y mantenerla
+// solo servia para disfrazar fallos de red como ausencia de contenido.
 export async function getAvisoSimplificado(): Promise<string | null> {
-  try {
-    const { data, error } = await supabase
-      .from("aviso_versiones")
-      .select("contenido_simplificado")
-      .eq("vigente", true)
-      .limit(1)
-      .maybeSingle();
-    if (error || !data) return null;
-    const texto = data.contenido_simplificado as string | null;
-    return texto && texto.trim() ? texto : null;
-  } catch {
-    return null;
-  }
+  const { data, error } = await supabase
+    .from("aviso_versiones")
+    .select("contenido_simplificado")
+    .eq("vigente", true)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`No se pudo cargar el aviso simplificado: ${error.message}`);
+  const texto = (data?.contenido_simplificado as string | null) ?? null;
+  return texto && texto.trim() ? texto : null;
 }
 
 // ---- Alta publica (paso 3+4): sube firma a Storage y llama al RPC crear_registro ----
