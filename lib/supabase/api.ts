@@ -41,7 +41,7 @@ export async function getModelos(marca: string): Promise<string[]> {
 export async function getReglamentoVigente(): Promise<ReglamentoVersion> {
   const { data, error } = await supabase
     .from("reglamento_versiones")
-    .select("version, contenido")
+    .select("id, version, contenido")
     .eq("vigente", true)
     .limit(1)
     .maybeSingle();
@@ -54,10 +54,11 @@ export async function getReglamentoVigente(): Promise<ReglamentoVersion> {
     .map((s) => s.trim())
     .filter(Boolean);
 
-  return { version: data.version as number, vigente: true, clausulas };
+  return { id: data.id as string, version: data.version as number, vigente: true, clausulas };
 }
 
 export interface AvisoVigente {
+  id: string; // uuid de la version mostrada; viaja al RPC como evidencia (D-01)
   version: number;
   urlPublica: string | null;
   parrafos: string[];
@@ -66,7 +67,7 @@ export interface AvisoVigente {
 export async function getAvisoVigente(): Promise<AvisoVigente> {
   const { data, error } = await supabase
     .from("aviso_versiones")
-    .select("version, contenido, url_publica")
+    .select("id, version, contenido, url_publica")
     .eq("vigente", true)
     .limit(1)
     .maybeSingle();
@@ -80,7 +81,7 @@ export async function getAvisoVigente(): Promise<AvisoVigente> {
 
   if (parrafos.length === 0) throw new Error("No se pudo cargar el contenido del aviso de privacidad. Intente de nuevo más tarde.");
 
-  return { version: data.version as number, urlPublica: data.url_publica as string | null, parrafos };
+  return { id: data.id as string, version: data.version as number, urlPublica: data.url_publica as string | null, parrafos };
 }
 
 // Aviso simplificado (CC-09): el texto corto que la ley pide mostrar AL RECABAR
@@ -125,6 +126,10 @@ export interface CrearRegistroInput {
   firmaTrazos: FirmaTrazos | null; // vector del trazo (evidencia)
   firmanteNombre: string;
   aceptaReglamento: boolean;
+  // Versiones que el formulario MOSTRO (D-01): el RPC las exige y las registra
+  // como evidencia; ya no las resuelve por su cuenta.
+  reglamentoVersionId: string;
+  avisoVersionId: string;
   metadata?: Record<string, unknown>; // evidencia extra (ej. consentimiento) para aceptaciones.metadata
 }
 
@@ -193,6 +198,8 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     p_usuario_es_menor: input.usuarioEsMenor,
     p_procedencia_tag: input.procedenciaTag,
     p_observaciones: input.observaciones,
+    p_reglamento_version_id: input.reglamentoVersionId,
+    p_aviso_version_id: input.avisoVersionId,
   });
 
   if (error) throw new Error(error.message);

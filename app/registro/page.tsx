@@ -210,7 +210,7 @@ export default function RegistroWizard() {
     // reglamentoVersion en null. La navegacion ya lo impide paso a paso, pero
     // el envio es el unico punto donde la firma se vuelve evidencia, asi que
     // se vuelve a comprobar aqui y se devuelve a la persona al paso que fallo.
-    if (!avisoValido || !reglamentoValido) {
+    if (!aviso || !reglamento || !avisoValido || !reglamentoValido) {
       setError("No se puede enviar el registro porque el aviso de privacidad o el reglamento no se cargaron. Recargue la página e inténtelo de nuevo.");
       setMostrarErrores(true);
       setStep(avisoValido ? 3 : 2);
@@ -233,6 +233,8 @@ export default function RegistroWizard() {
         firmaTrazos: trazos,
         firmanteNombre: hayGestionante ? gestionanteNombreCompleto : conductorNombreCompleto,
         aceptaReglamento: acepta,
+        reglamentoVersionId: reglamento.id,
+        avisoVersionId: aviso.id,
         metadata: {
           consentimiento: {
             aceptaReglamento: acepta,

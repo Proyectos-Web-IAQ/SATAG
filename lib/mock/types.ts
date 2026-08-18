@@ -17,6 +17,7 @@ export interface Estacionamiento {
 }
 
 export interface ReglamentoVersion {
+  id: string; // uuid de la version mostrada; viaja al RPC como evidencia (D-01)
   version: number;
   vigente: boolean;
   clausulas: string[];
