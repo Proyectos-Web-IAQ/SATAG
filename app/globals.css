@@ -154,6 +154,14 @@ a { color: var(--primary-strong); }
   max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius);
   padding: 14px 16px; background: var(--field-bg); font-size: 0.95rem;
 }
+/* D-14: en teléfono el documento se leía por una mirilla de ~5 renglones con
+   media pantalla vacía encima. La caja crece a la altura disponible del
+   viewport; la puerta de «desplácese hasta el final» queda intacta — solo
+   cambia cuánto se lee por pantalla. (dvh con respaldo vh para navegadores
+   viejos; los que no entienden ninguna conservan los 220px.) */
+@media (max-width: 640px) {
+  .reglamento { max-height: 55vh; max-height: min(55dvh, 520px); }
+}
 .reglamento ol { margin: 0; padding-left: 20px; }
 .reglamento li { margin-bottom: 8px; }
 .sigpad {
