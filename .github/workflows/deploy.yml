@@ -17,8 +17,11 @@
 # contraseña por correo; si el Site URL sigue en Vercel, esos enlaces llevan al
 # dominio viejo. (SEVAD no tenía este paso: entraba con usuario y contraseña.)
 #
-# Mientras la migración no esté hecha, este flujo queda inerte: sin los secrets
-# de FTP no corre, y Vercel sigue publicando desde main como hasta ahora.
+# Mientras la migración no esté hecha, este flujo queda INERTE por la guarda
+# `if` del trabajo: no corre hasta que exista la variable de repositorio
+# DEPLOY_GODADDY = true (Settings > Secrets and variables > Actions > Variables).
+# Así no deja ejecuciones en rojo por secrets que todavía no existen, y Vercel
+# sigue publicando desde main como hasta ahora.
 
 name: Deploy a GoDaddy (satag)
 
@@ -44,6 +47,9 @@ concurrency:
 
 jobs:
   deploy:
+    # Interruptor de la migración: prender DEPLOY_GODADDY=true cuando el
+    # subdominio, la cuenta FTP y los secrets estén listos.
+    if: vars.DEPLOY_GODADDY == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Obtener el código
