@@ -1,0 +1,57 @@
+# Verificación automática de SATAG.
+#
+# Existe porque hasta el 18-ago-2026 el proyecto no tenía ninguna: cada
+# corrección podía revertirse en silencio y nadie se enteraba hasta el
+# siguiente barrido manual del arnés. Corre en cada envío a main y en cada
+# pull request, y bloquea el mezclado si algo se rompe.
+#
+# Lo que NO hace todavía: probar el sitio con navegador. Esa parte vive en
+# el arnés (repositorio aparte) y se dispara a mano contra el sitio ya
+# publicado; el siguiente paso natural es un trabajo posterior al despliegue
+# que corra `capturar.mjs --solo=fallos` contra la URL de producción.
+
+name: Verificación
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Tipos (tsc)
+        run: npm run typecheck
+
+      - name: Estilo (eslint)
+        run: npm run lint
+
+      - name: Guardián de antipatrones
+        run: npm run guardian
+
+      - name: Compilar
+        # Valores de relleno: el cliente de Supabase se construye al cargar el
+        # módulo y aborta si faltan, pero la compilación no llama a la base.
+        # Las credenciales reales viven en Vercel, no aquí.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ejemplo.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_compilacion
+        run: npm run build
+
+      - name: Mapa de funciones SQL vivas
+        # Informativo: deja en el registro qué bloque define el cuerpo vigente
+        # de cada función, que es lo que de verdad corre en la base.
+        run: npm run guardian:mapa
