@@ -1,0 +1,19 @@
+# Encabezados de cache para SATAG (sitio estatico servido en GoDaddy/Apache).
+#
+# Objetivo: que un visitante que REGRESA siempre reciba la version actual y no se
+# quede con una copia vieja "trabada" en su navegador.
+#
+# - El HTML se revalida en cada visita (no-cache): el navegador pregunta al
+#   servidor si hay algo nuevo antes de usar su copia. Si no cambio, responde 304
+#   (rapido); si cambio, baja el HTML nuevo.
+# - Los recursos con huella (hash) en el nombre (/_next/static/...) cambian de
+#   nombre en cada build, asi que el navegador descarga lo nuevo por si mismo; no
+#   hace falta tocar su cache.
+#
+# Va guardado por mod_headers; si el modulo no estuviera, el bloque se ignora sin
+# romper nada.
+<IfModule mod_headers.c>
+  <FilesMatch "\.html$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>

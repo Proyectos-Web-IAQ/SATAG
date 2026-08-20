@@ -1,0 +1,85 @@
+# Despliegue automático de SATAG a GoDaddy (cPanel).
+#
+# Réplica del que ya funciona en SEVAD desde el 24-jun-2026, con una adición:
+# antes de compilar corre la verificación (tipos, estilo y guardián), así que
+# nunca se publica algo que no pasó las reglas del proyecto.
+#
+# Requiere estos GitHub Secrets (Settings > Secrets and variables > Actions):
+#   FTP_SERVER                            host FTP del cPanel («Configurar cliente FTP»)
+#   FTP_USERNAME                          usuario FTP dedicado (ej. deploy-satag@satag.asuncionqro.edu.mx)
+#   FTP_PASSWORD                          contraseña de ese usuario
+#   NEXT_PUBLIC_SUPABASE_URL              la de .env.local
+#   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY  la de .env.local (es pública por diseño)
+#
+# ANTES del primer despliegue, en Supabase > Authentication > URL Configuration:
+# cambiar el Site URL a https://satag.asuncionqro.edu.mx y añadir sus Redirect
+# URLs (/admin/invite/ y /admin/reset/). SATAG manda invitaciones y restablecer
+# contraseña por correo; si el Site URL sigue en Vercel, esos enlaces llevan al
+# dominio viejo. (SEVAD no tenía este paso: entraba con usuario y contraseña.)
+#
+# Mientras la migración no esté hecha, este flujo queda inerte: sin los secrets
+# de FTP no corre, y Vercel sigue publicando desde main como hasta ahora.
+
+name: Deploy a GoDaddy (satag)
+
+on:
+  push:
+    branches: [main]
+    # Lo que no cambia el sitio compilado no redespliega.
+    paths-ignore:
+      - 'Desarrollo/**'
+      - 'Entregables/**'
+      - 'Investigacion/**'
+      - 'Plan de Direccion/**'
+      - 'Pruebas/**'
+      - 'supabase/**'
+      - 'scripts/**'
+      - '**.md'
+  workflow_dispatch: {}
+
+# Evita despliegues solapados si hay varios envíos seguidos.
+concurrency:
+  group: deploy-godaddy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificar antes de publicar
+        # Tipos, estilo y las tres reglas del guardián. Si algo falla, no se sube.
+        run: npm run verificar
+
+      - name: Compilar export estático
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY }}
+
+      - name: Subir por FTP a cPanel
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Si el run falla con error de TLS/certificado, cambiar ftps -> ftp.
+          protocol: ftps
+          port: 21
+          local-dir: ./out/
+          # './' asume una cuenta FTP cuyo directorio raíz ES la carpeta del
+          # subdominio (lo recomendado: si se filtra, solo alcanza a SATAG).
+          # Con la cuenta principal del cPanel sería:
+          #   server-dir: ./public_html/satag.asuncionqro.edu.mx/
+          server-dir: ./
