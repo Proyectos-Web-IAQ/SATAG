@@ -271,12 +271,15 @@ function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
   onCobradoPor: (v: string) => void;
   onSubmit: (pago: PagoCapturado) => void;
 }) {
-  const [monto, setMonto] = useState("100");
+  // Precio del TAG confirmado en minuta (24-ago-2026, junta con Gerencia
+  // Administrativa): $100 fijo, en efectivo. No es capturable: un campo
+  // editable en caja invita al error de dedo. Si el precio cambia, se
+  // actualiza AQUI, en un solo lugar.
+  const PRECIO_TAG = 100;
   // CC-05: arranca en lo que el titular declaró en el alta. Casi siempre es
   // correcto; lo que importa es que alguien lo confirme mirándolo.
   const [tipo, setTipo] = useState<TipoUsuario>(r.tipoUsuario);
-  const montoNumero = Number(monto.replace(",", "."));
-  const montoValido = Number.isFinite(montoNumero) && montoNumero > 0;
+  const montoNumero = PRECIO_TAG;
   const nombreValido = cobradoPor.trim().length > 0;
   // Un menor de edad se registra como alumno y firma su gestionante (CC-11).
   // Cambiarle el tipo aquí dejaría el expediente contradiciendo su evidencia de
@@ -290,9 +293,9 @@ function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
       <p className="ti-hint">El estacionamiento y el TAG los asigna TI después de confirmar este pago.</p>
       <div className="field">
         <span>Monto en efectivo</span>
-        <input className={`input ${monto !== "" && !montoValido ? "invalid" : ""}`} inputMode="decimal"
-          value={monto} onChange={(e) => setMonto(e.target.value)} aria-label={`Monto para ${r.folio}`} />
-        {monto !== "" && !montoValido && <p className="field-error">Capture un monto mayor a cero.</p>}
+        <p className="monto-fijo" aria-label={`Monto para ${r.folio}`}>
+          {dinero.format(PRECIO_TAG)} <span className="monto-fijo__nota">precio único del TAG</span>
+        </p>
       </div>
       <div className="field">
         <span>Confirme el tipo de usuario</span>
@@ -322,9 +325,9 @@ function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
           onChange={(e) => onCobradoPor(e.target.value)} placeholder="Nombre del cajero" />
         {!nombreValido && <p className="field-error">Indique quién recibió el pago.</p>}
       </div>
-      <button type="button" className="primary-action" disabled={busy || !montoValido || !nombreValido}
+      <button type="button" className="primary-action" disabled={busy || !nombreValido}
         onClick={() => onSubmit({ monto: montoNumero, cobradoPor: cobradoPor.trim(), tipoUsuario: tipoEfectivo })}>
-        {montoValido ? `Registrar pago de ${dinero.format(montoNumero)}` : "Registrar pago"}
+        {`Registrar pago de ${dinero.format(montoNumero)}`}
       </button>
     </div>
   );

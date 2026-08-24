@@ -433,6 +433,14 @@ a { color: var(--primary-strong); }
   .loader .b { animation-duration: 0s; opacity: 1; }
 }
 
+/* Monto fijo en el cobro: dato, no campo. */
+.monto-fijo {
+  background: var(--field-bg); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--ink); font-size: 1.05rem; font-weight: 800; margin: 0;
+  min-height: 46px; padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+}
+.monto-fijo__nota { color: var(--muted); font-size: .78rem; font-weight: 600; }
+
 /* ---------- Modal de confirmación ---------- */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(15, 29, 56, .45);
