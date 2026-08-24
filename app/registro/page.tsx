@@ -92,6 +92,14 @@ export default function RegistroWizard() {
   // rechazada sin atender y el estado en null "por accidente". Dejarlo
   // explicito es lo que permite distinguir "no cargo" de "cargo vacio", que es
   // de lo que depende que las puertas del consentimiento no se abran solas.
+  // Ctrl+P también debe llevarse la copia completa: los <details> cerrados no
+  // se imprimen y el CSS no puede abrirlos.
+  useEffect(() => {
+    const abrir = () => document.querySelectorAll(".copia-doc").forEach((d) => d.setAttribute("open", ""));
+    window.addEventListener("beforeprint", abrir);
+    return () => window.removeEventListener("beforeprint", abrir);
+  }, []);
+
   useEffect(() => {
     getMarcas().then(setMarcas).catch(() => setMarcas([]));
     getColores().then(setColores).catch(() => setColores([]));
@@ -657,7 +665,10 @@ export default function RegistroWizard() {
             </div>
 
             <div className="btn-row no-print" style={{ justifyContent: "center", gap: 12, marginTop: 16 }}>
-              <button type="button" className="ghost-action" onClick={() => window.print()}>Imprimir / Descargar</button>
+              <button type="button" className="ghost-action" onClick={() => {
+                document.querySelectorAll(".copia-doc").forEach((d) => d.setAttribute("open", ""));
+                window.print();
+              }}>Imprimir / Descargar</button>
               <Link href="/" className="primary-action" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
                 Volver al inicio
               </Link>
