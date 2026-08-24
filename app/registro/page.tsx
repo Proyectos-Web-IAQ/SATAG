@@ -169,11 +169,9 @@ export default function RegistroWizard() {
     const e: Record<string, string> = {};
     if (s === 0) {
       if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = "Escriba el apellido paterno.";
-      if (!conductorApellidoMaterno.trim()) e.conductorApellidoMaterno = "Escriba el apellido materno.";
       if (!conductorNombre.trim()) e.conductorNombre = "Escriba el nombre o nombres.";
       if (hayGestionante) {
         if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = "Escriba el apellido paterno.";
-        if (!gestionanteApellidoMaterno.trim()) e.gestionanteApellidoMaterno = "Escriba el apellido materno.";
         if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escriba el nombre o nombres.";
         if (!gestionanteRelacion) {
           e.gestionanteRelacion = esMenor
@@ -352,7 +350,7 @@ export default function RegistroWizard() {
                 {errores.conductorApellidoPaterno && <p className="field-error">{errores.conductorApellidoPaterno}</p>}
               </div>
               <div className="field">
-                <span>Apellido materno del conductor</span>
+                <span>Apellido materno del conductor <em className="opcional">(opcional)</em></span>
                 <input className={`input ${errores.conductorApellidoMaterno ? "invalid" : ""}`} value={conductorApellidoMaterno}
                   onChange={(e) => setConductorApellidoMaterno(e.target.value)} placeholder="Ej. López" />
                 {errores.conductorApellidoMaterno && <p className="field-error">{errores.conductorApellidoMaterno}</p>}
@@ -404,7 +402,7 @@ export default function RegistroWizard() {
                     {errores.gestionanteApellidoPaterno && <p className="field-error">{errores.gestionanteApellidoPaterno}</p>}
                   </div>
                   <div className="field">
-                    <span>Apellido materno del gestionante</span>
+                    <span>Apellido materno del gestionante <em className="opcional">(opcional)</em></span>
                     <input className={`input ${errores.gestionanteApellidoMaterno ? "invalid" : ""}`} value={gestionanteApellidoMaterno}
                       onChange={(e) => setGestionanteApellidoMaterno(e.target.value)} placeholder="Ej. Ruiz" />
                     {errores.gestionanteApellidoMaterno && <p className="field-error">{errores.gestionanteApellidoMaterno}</p>}

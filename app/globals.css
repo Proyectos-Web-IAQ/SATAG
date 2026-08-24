@@ -107,6 +107,7 @@ a { color: var(--primary-strong); }
 }
 .input:disabled, .field input:disabled { opacity: .55; cursor: not-allowed; }
 .hint { font-size: 0.8rem; color: var(--muted); }
+.opcional { color: var(--muted); font-size: .78rem; font-style: normal; font-weight: 600; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.95rem; }
 .check input { margin-top: 3px; }
