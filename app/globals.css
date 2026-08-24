@@ -79,6 +79,15 @@ a { color: var(--primary-strong); }
   box-shadow: var(--shadow);
   max-width: 720px; width: min(100%, 720px); padding: 28px;
 }
+/* Lote B (SC-018): en un telefono de 390px, los 24px del marco mas los 28px
+   del panel se comian 104px del ancho — mas de una cuarta parte de la
+   pantalla en aire. En angosto el marco casi desaparece y el panel respira
+   con 14px: se recuperan ~60px para el contenido, que es texto legal y
+   campos. El escritorio no cambia. */
+@media (max-width: 640px) {
+  .page-shell { padding: 12px 6px; }
+  .survey-panel { padding: 18px 14px; }
+}
 .login-panel { max-width: 460px; }
 
 .survey-header { margin: 0 0 22px; }
