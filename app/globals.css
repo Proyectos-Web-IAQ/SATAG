@@ -521,9 +521,56 @@ a { color: var(--primary-strong); }
 .input.invalid, .select.invalid { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(235, 0, 40, .14); }
 
 /* ---------- Impresión del comprobante ---------- */
+/* ---------- Copia del trámite para el titular ----------
+   El equivalente del ejemplar en papel que la familia se lleva a casa: los
+   datos registrados y el texto íntegro de lo que aceptó. En pantalla va
+   plegada para no sepultar el folio; al imprimir se abre sola (ver @media
+   print más abajo), porque una copia que hay que desplegar a mano no es una
+   copia. */
+.copia-titular {
+  border-top: 1px dashed var(--line);
+  margin-top: 28px; padding-top: 20px; text-align: left;
+}
+.copia-datos { display: grid; gap: 8px; margin: 14px 0 18px; }
+.copia-datos > div {
+  display: grid; grid-template-columns: 150px 1fr; gap: 12px;
+  border-bottom: 1px solid var(--line); padding-bottom: 8px;
+}
+.copia-datos dt { color: var(--muted); font-size: .82rem; font-weight: 700; }
+.copia-datos dd { color: var(--ink); font-size: .92rem; margin: 0; }
+.copia-doc { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; }
+.copia-doc > summary {
+  cursor: pointer; font-size: .88rem; font-weight: 800; color: var(--primary-strong);
+  padding: 12px 14px; list-style-position: inside;
+}
+.copia-doc[open] > summary { border-bottom: 1px solid var(--line); }
+.copia-doc > ol, .copia-doc > p { font-size: .85rem; color: var(--ink); line-height: 1.55; }
+.copia-doc > ol { margin: 12px 0; padding: 0 16px 0 34px; }
+.copia-doc > ol li { margin-bottom: 8px; }
+.copia-doc > p { margin: 10px 14px; }
+.copia-constancia {
+  font-size: .82rem; color: var(--muted); line-height: 1.5;
+  border-left: 3px solid var(--primary); padding-left: 12px; margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .copia-datos > div { grid-template-columns: 1fr; gap: 2px; }
+}
+
 @media print {
   .app-header, .btn-row, .stepper, .top-row, .footer, .no-print { display: none !important; }
   body { background: #fff; }
   .page-shell { padding: 0; display: block; }
   .survey-panel { box-shadow: none; border: 0; max-width: 100%; }
+
+  /* La copia sale COMPLETA aunque en pantalla estuviera plegada: el contenido
+     de un <details> cerrado sigue en el documento, solo oculto. */
+  .copia-doc > *:not(summary) { display: block !important; }
+  .copia-doc > ol { display: block !important; }
+  .copia-doc { break-inside: auto; page-break-inside: auto; border-color: #ccc; }
+  .copia-doc > summary { list-style: none; }
+  .copia-doc > summary::-webkit-details-marker { display: none; }
+  .copia-doc > ol li { break-inside: avoid; page-break-inside: avoid; }
+  .copia-titular { break-before: page; page-break-before: always; }
+  .copia-datos > div { break-inside: avoid; page-break-inside: avoid; }
 }

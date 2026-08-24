@@ -42,6 +42,10 @@ export default function RegistroWizard() {
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<CrearRegistroResultado | null>(null);
+  // Fecha de envío para la copia del titular. Es la del dispositivo, no el sello
+  // del servidor (ese vive en `aceptaciones.sello_tiempo`); por eso se rotula
+  // como «fecha de envío» y no como sello oficial.
+  const [enviadoEn, setEnviadoEn] = useState<string | null>(null);
 
   // ---- Formulario ----
   const [conductorNombre, setConductorNombre] = useState("");
@@ -250,6 +254,9 @@ export default function RegistroWizard() {
         },
       });
       setResultado(res);
+      setEnviadoEn(new Date().toLocaleString("es-MX", {
+        dateStyle: "long", timeStyle: "short",
+      }));
       setStep(5);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Ocurrió un error.");
@@ -481,7 +488,7 @@ export default function RegistroWizard() {
               <input type="checkbox" checked={sinPlacas} onChange={(e) => setSinPlacas(e.target.checked)} />
               <span>El vehículo aún no tiene placas (nuevo o con permiso).</span>
             </label>
-            <div className="field">
+            <div className="field" style={{ marginTop: 18 }}>
               <span>TAG</span>
               <div className="chip-row">
                 <button type="button" className={`select-chip ${procedenciaTag === "escuela" ? "on" : ""}`}
@@ -489,8 +496,18 @@ export default function RegistroWizard() {
                 <button type="button" className={`select-chip ${procedenciaTag === "propio" ? "on" : ""}`}
                   onClick={() => setProcedenciaTag("propio")}>Ya tengo TAG propio</button>
               </div>
-              {procedenciaTag === "propio" && (
-                <p className="hint">El registro y la activación de un TAG propio tienen el mismo costo ($100); llévelo el día de la instalación.</p>
+              {procedenciaTag === "escuela" ? (
+                <p className="hint">
+                  El TAG cuesta <strong>$100</strong> y se paga en efectivo en Administración,
+                  después de enviar este registro.
+                </p>
+              ) : (
+                <p className="hint">
+                  El registro y la activación tienen el mismo costo (<strong>$100</strong>). Lleve su TAG
+                  el día de la instalación: para funcionar debe quedar <strong>pegado al parabrisas</strong>.
+                  Sistemas valorará si ese modelo puede darse de alta; si no es compatible, se le
+                  instalará uno de la escuela.
+                </p>
               )}
             </div>
           </>
@@ -591,6 +608,54 @@ export default function RegistroWizard() {
               Preséntese en Administración para <strong>asignación de estacionamiento</strong> y el
               <strong> pago del TAG ($100, efectivo)</strong>. Sistemas instalará y activará su TAG.
             </p>
+            {/* ----- Copia para el titular -----
+                En el trámite de papel se llenan dos ejemplares y la familia se lleva
+                uno, con el reglamento completo, para leerlo con calma después de
+                firmar. Esta sección es su equivalente digital: queda plegada en
+                pantalla para no sepultar el folio, y al imprimir o guardar como PDF
+                sale completa. Sin ella, quien firma no conserva copia de lo que
+                aceptó, que es una regresión frente al proceso en papel. */}
+            <div className="copia-titular">
+              <p className="panel-title">Su copia del trámite</p>
+              <p className="hint">
+                Guarde este comprobante: incluye los datos que registró y el texto completo del
+                reglamento y del aviso de privacidad que aceptó. Con «Imprimir / Descargar» puede
+                conservarlo en papel o como PDF.
+              </p>
+
+              <dl className="copia-datos">
+                <div><dt>Folio</dt><dd>{resultado.folio}</dd></div>
+                <div><dt>Fecha de envío</dt><dd>{enviadoEn ?? "—"}</dd></div>
+                <div><dt>Conductor</dt><dd>{conductorNombreCompleto}</dd></div>
+                {hayGestionante && (
+                  <div>
+                    <dt>Firmó</dt>
+                    <dd>{gestionanteNombreCompleto}{gestionanteRelacion ? ` (${gestionanteRelacion})` : ""}</dd>
+                  </div>
+                )}
+                <div><dt>Vehículo</dt><dd>{marcaFinal} {modeloFinal} · {colorFinal}</dd></div>
+                <div><dt>Placas</dt><dd>{sinPlacas ? "Sin placas (vehículo nuevo o con permiso)" : placas}</dd></div>
+                <div><dt>TAG</dt><dd>{procedenciaTag === "escuela" ? "Se compra a la escuela" : "Propio (lo trae la familia)"}</dd></div>
+              </dl>
+
+              <details className="copia-doc">
+                <summary>Reglamento de acceso vehicular (v{reglamento?.version ?? "—"}) — el que aceptó</summary>
+                <ol>{(reglamento?.clausulas ?? []).map((c, i) => <li key={i}>{c}</li>)}</ol>
+              </details>
+
+              <details className="copia-doc">
+                <summary>Aviso de privacidad (v{aviso?.version ?? "—"})</summary>
+                {(aviso?.parrafos ?? []).map((t, i) => <p key={i}>{t}</p>)}
+              </details>
+
+              <p className="copia-constancia">
+                Al enviar este registro, <strong>{hayGestionante ? gestionanteNombreCompleto : conductorNombreCompleto}</strong>{" "}
+                aceptó el reglamento (v{reglamento?.version ?? "—"}) y el aviso de privacidad
+                (v{aviso?.version ?? "—"}) y firmó de manera electrónica. La firma y su sello de
+                tiempo quedaron resguardados por el Instituto Asunción de Querétaro.
+              </p>
+            </div>
+
             <div className="btn-row no-print" style={{ justifyContent: "center", gap: 12, marginTop: 16 }}>
               <button type="button" className="ghost-action" onClick={() => window.print()}>Imprimir / Descargar</button>
               <Link href="/" className="primary-action" style={{ display: "inline-flex", alignItems: "center", textDecoration: "none" }}>
