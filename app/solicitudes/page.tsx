@@ -170,8 +170,7 @@ export default function SolicitudesPage() {
             </div>
             <div className="notice">
               <strong>Con folio</strong> ubicamos su registro al instante. <strong>Sin folio</strong>,
-              deje sus datos y quién es; Sistemas lo ubica por su nombre. En ningún caso se
-              muestran datos de su registro (LFPDPPP).
+              deje sus datos y quién es; Sistemas lo ubica por su nombre.
             </div>
           </div>
         )}
@@ -297,8 +296,9 @@ export default function SolicitudesPage() {
         )}
 
         <div className="notice" style={{ marginTop: 16 }}>
-          <strong>Privacidad.</strong> Esta página no muestra ningún dato de su registro. Los datos
-          que capture se usan solo para ubicarlo y atender su solicitud (LFPDPPP).
+          <strong>Privacidad.</strong> Esta página nunca muestra datos de su registro, y lo que
+          usted capture aquí se usa únicamente para ubicarlo y atender su solicitud, conforme a
+          la Ley Federal de Protección de Datos Personales en Posesión de los Particulares.
         </div>
 
         <p style={{ marginTop: 16, textAlign: "right" }}>
