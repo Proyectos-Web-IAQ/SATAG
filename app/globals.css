@@ -165,7 +165,13 @@ a { color: var(--primary-strong); }
 .reglamento ol { margin: 0; padding-left: 20px; }
 .reglamento li { margin-bottom: 8px; }
 .sigpad {
-  border: 2px dashed var(--line); border-radius: var(--radius); background: #fff;
+  border: 2px dashed var(--line); border-radius: var(--radius);
+  /* La línea base orienta el trazo como el renglón de un documento en papel.
+     Va como fondo CSS del canvas: el bitmap que se exporta a PNG no la
+     incluye, así que la evidencia de firma sale limpia. */
+  background:
+    linear-gradient(to top, transparent 52px, #d3dae7 52px, #d3dae7 53px, transparent 53px),
+    #fff;
   touch-action: none; width: 100%; height: 200px; display: block;
 }
 .comprobante { text-align: center; }

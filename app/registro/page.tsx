@@ -597,8 +597,10 @@ export default function RegistroWizard() {
             <p className="lead">
               Firmará <strong>{hayGestionante ? gestionanteNombreCompleto || "el gestionante" : conductorNombreCompleto || "el conductor"}</strong>.
             </p>
+            <p className="hint" style={{ marginBottom: 8 }}>
+              Firme sobre la línea, como lo haría en papel: con el dedo (táctil) o con el mouse.
+            </p>
             <SignaturePad onChange={setFirma} onTrazos={setTrazos} trazosIniciales={trazos} />
-            <p className="hint" style={{ marginTop: 8 }}>Puede firmar con el dedo (táctil) o con el mouse.</p>
             {errores.firma && <p className="field-error">{errores.firma}</p>}
           </>
         )}
@@ -684,7 +686,8 @@ export default function RegistroWizard() {
             {step < 4 ? (
               <button type="button" className="primary-action" onClick={avanzar}>Siguiente</button>
             ) : (
-              <button type="button" className="primary-action" onClick={enviarValidado} disabled={enviando}>
+              <button type="button" className="primary-action" onClick={enviarValidado} disabled={enviando || !firma}
+                title={!firma ? "Falta la firma" : undefined}>
                 {enviando ? "Enviando…" : "Enviar registro"}
               </button>
             )}
