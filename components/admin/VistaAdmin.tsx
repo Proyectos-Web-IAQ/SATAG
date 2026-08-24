@@ -63,7 +63,6 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmCfg | null>(null);
-  const [cobradoPor, setCobradoPor] = useState(nombreSesion);
   // El estado visual tarda un render en deshabilitar botones. Este candado
   // sincrono evita dos RPCs si se toca dos veces la confirmacion muy rapido.
   const runningRef = useRef(false);
@@ -200,7 +199,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
                   <DetalleRegistro r={r} />
                   <HistorialPagos r={r} />
                   {porCobrar(r) ? (
-                    <FormPago r={r} busy={busy} cobradoPor={cobradoPor} onCobradoPor={setCobradoPor}
+                    <FormPago r={r} busy={busy} cobradoPor={nombreSesion}
                       onSubmit={(pago) => confirmarPago(r, pago)} />
                   ) : (
                     <EstadoPago r={r} />
@@ -231,7 +230,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
                 <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}
                   espera={r.createdAt.slice(0, 10)}>
                   <DetalleRegistro r={r} />
-                  <FormPago r={r} busy={busy} cobradoPor={cobradoPor} onCobradoPor={setCobradoPor}
+                  <FormPago r={r} busy={busy} cobradoPor={nombreSesion}
                     onSubmit={(pago) => confirmarPago(r, pago)} />
                   <EvidenciaFirmaPanel registroId={r.id} />
                 </TarjetaRegistro>
@@ -264,11 +263,10 @@ function ChipCobro({ r }: { r: Registro }) {
   return <span className="status-chip status-chip--activo">Pagado</span>;
 }
 
-function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
+function FormPago({ r, busy, cobradoPor, onSubmit }: {
   r: Registro;
   busy: boolean;
   cobradoPor: string;
-  onCobradoPor: (v: string) => void;
   onSubmit: (pago: PagoCapturado) => void;
 }) {
   // Precio del TAG confirmado en minuta (24-ago-2026, junta con Gerencia
@@ -280,7 +278,6 @@ function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
   // correcto; lo que importa es que alguien lo confirme mirándolo.
   const [tipo, setTipo] = useState<TipoUsuario>(r.tipoUsuario);
   const montoNumero = PRECIO_TAG;
-  const nombreValido = cobradoPor.trim().length > 0;
   // Un menor de edad se registra como alumno y firma su gestionante (CC-11).
   // Cambiarle el tipo aquí dejaría el expediente contradiciendo su evidencia de
   // firma, así que el RPC lo rechaza; la pantalla ni siquiera lo ofrece.
@@ -321,11 +318,12 @@ function FormPago({ r, busy, cobradoPor, onCobradoPor, onSubmit }: {
       <p className="notice admin-auto-receipt"><strong>Folio de recibo:</strong> se generará automáticamente al confirmar.</p>
       <div className="field">
         <span>Cobrado por</span>
-        <input className={`input ${!nombreValido ? "invalid" : ""}`} value={cobradoPor}
-          onChange={(e) => onCobradoPor(e.target.value)} placeholder="Nombre del cajero" />
-        {!nombreValido && <p className="field-error">Indique quién recibió el pago.</p>}
+        {/* Identidad de la sesion, no texto libre: quien cobra es quien esta
+            firmado en el panel, igual que en el corte de caja. El RPC ademas
+            la sella desde el JWT (bloque 50). */}
+        <p className="monto-fijo">{cobradoPor} <span className="monto-fijo__nota">usuario de esta sesión</span></p>
       </div>
-      <button type="button" className="primary-action" disabled={busy || !nombreValido}
+      <button type="button" className="primary-action" disabled={busy}
         onClick={() => onSubmit({ monto: montoNumero, cobradoPor: cobradoPor.trim(), tipoUsuario: tipoEfectivo })}>
         {`Registrar pago de ${dinero.format(montoNumero)}`}
       </button>
