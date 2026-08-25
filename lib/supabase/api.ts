@@ -216,7 +216,7 @@ export async function crearSolicitud(input: {
   tipo: "actualizacion" | "baja";
   detalle: string;
 }): Promise<void> {
-  const { error } = await supabase.rpc("crear_solicitud", {
+  const { data, error } = await supabase.rpc("crear_solicitud", {
     p_folio: input.folio.trim(),
     p_placas_o_tag: input.placasOTag.trim(),
     p_tipo: input.tipo,
@@ -228,6 +228,15 @@ export async function crearSolicitud(input: {
       throw new Error("Sin conexion con el servidor. Revise su red e intente de nuevo.");
     }
     throw new Error(error.message);
+  }
+  // Bloque 51: el caso «no coincide» ya no lanza desde la base — devuelve
+  // { recibida: false, mensaje } para poder anotar el intento fallido (un
+  // raise revertiria ese registro). Para la pantalla es el mismo error de
+  // siempre. Se aceptan las dos formas para que el cliente pueda publicarse
+  // ANTES de aplicar el bloque.
+  const r = data as { recibida?: boolean; mensaje?: string } | null;
+  if (r && r.recibida === false) {
+    throw new Error(r.mensaje || "Los datos no coinciden con ningun registro vigente");
   }
 }
 
