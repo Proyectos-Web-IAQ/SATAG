@@ -109,6 +109,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
 
   const [modo, setModo] = useState<Modo>("inicio");
   const [query, setQuery] = useState("");
+  // Padrón real: se pagina y se filtra (ver VistaAdmin).
+  const [filtroTi, setFiltroTi] = useState<"todos" | "pendiente" | "activo" | "baja">("todos");
+  const [mostrarTi, setMostrarTi] = useState(25);
   const [selId, setSelId] = useState<string | null>(null);
   const [accionPadron, setAccionPadron] = useState<Accion | null>(null);
 
@@ -185,7 +188,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       .join(" ").toLowerCase().includes(q);
   // sort() es estable: dentro de cada grupo se conserva el orden de listRegistros
   // (nuevos primero).
-  const padron = [...(q ? registros.filter(coincide) : registros)].sort((a, b) => grupoTi(a) - grupoTi(b));
+  const padron = [...(q ? registros.filter(coincide) : registros)]
+    .filter((r) => filtroTi === "todos" ? true : r.estado === filtroTi)
+    .sort((a, b) => grupoTi(a) - grupoTi(b));
   // Búsqueda dentro de "Actualizar datos" / "Dar de baja" para atender a quien
   // llega sin solicitud previa (el caso normal: se atiende en el momento).
   const listaSolicitudes = modo === "actualizar" ? solicitanActualizar : modo === "baja" ? solicitanBaja : [];
@@ -383,10 +388,16 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
           <div className="panel">
             <p className="panel-title">Padrón completo ({padron.length})</p>
             <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
-              value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
+              value={query} onChange={(e) => { setQuery(e.target.value); setMostrarTi(25); }} style={{ marginBottom: 10 }} />
+            <div className="chip-row" style={{ marginBottom: 12 }}>
+              {([["todos", "Todos"], ["pendiente", "Pendientes"], ["activo", "Activos"], ["baja", "Baja"]] as const).map(([k, label]) => (
+                <button key={k} type="button" className={`select-chip ${filtroTi === k ? "on" : ""}`}
+                  onClick={() => { setFiltroTi(k); setMostrarTi(25); }}>{label}</button>
+              ))}
+            </div>
             {banners}
             <div className="ti-cards">
-              {padron.map((r) => (
+              {padron.slice(0, mostrarTi).map((r) => (
                 <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
                   <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                   {r.estado === "baja" ? (
@@ -415,7 +426,13 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                 </TarjetaRegistro>
               ))}
               {padron.length === 0 && (
-                <p className="ti-hint">{q ? `Sin resultados para «${query}».` : "Aún no hay registros en el padrón."}</p>
+                <p className="ti-hint">{q || filtroTi !== "todos" ? "Sin resultados con esa búsqueda o filtro." : "Aún no hay registros en el padrón."}</p>
+              )}
+              {padron.length > mostrarTi && (
+                <button type="button" className="ghost-action" style={{ alignSelf: "center" }}
+                  onClick={() => setMostrarTi((m) => m + 25)}>
+                  Mostrar {Math.min(25, padron.length - mostrarTi)} más (quedan {padron.length - mostrarTi})
+                </button>
               )}
             </div>
           </div>

@@ -39,6 +39,12 @@ const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MX
 
 const porCobrar = (r: Registro) => r.estado === "pendiente" && r.pagos.length === 0;
 
+const PAGINA = 25;
+type FiltroAdmin = "todos" | "por-cobrar" | "pagado" | "baja";
+const FILTROS_ADMIN: [FiltroAdmin, string][] = [
+  ["todos", "Todos"], ["por-cobrar", "Por cobrar"], ["pagado", "Pagados"], ["baja", "Baja"],
+];
+
 // Orden del padrón en Admin: primero lo que Admin debe cobrar; luego lo que
 // sigue en proceso (pagado esperando que TI instale, o con solicitud abierta);
 // al final lo que ya no requiere movimiento (activo al día o dado de baja).
@@ -57,6 +63,10 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
   const [loading, setLoading] = useState(true);
   const [modo, setModo] = useState<Modo>("inicio");
   const [query, setQuery] = useState("");
+  // Padrón real: se pagina y se filtra. Con el banco de QA (59) la página ya
+  // medía 8 820 px; con 300 familias sería scroll infinito para la cajera.
+  const [filtro, setFiltro] = useState<FiltroAdmin>("todos");
+  const [mostrar, setMostrar] = useState(PAGINA);
   const [selId, setSelId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -95,8 +105,13 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
         .join(" ").toLowerCase().includes(q));
     // sort() es estable: dentro de cada grupo se conserva el orden que ya trae
     // listRegistros (nuevos primero).
-    return [...base].sort((a, b) => grupoAdmin(a) - grupoAdmin(b));
-  }, [q, registros]);
+    const conFiltro = base.filter((r) =>
+      filtro === "todos" ? true
+      : filtro === "por-cobrar" ? porCobrar(r)
+      : filtro === "pagado" ? r.estado !== "baja" && r.pagos.length > 0
+      : r.estado === "baja");
+    return [...conFiltro].sort((a, b) => grupoAdmin(a) - grupoAdmin(b));
+  }, [q, registros, filtro]);
 
   async function run(fn: () => Promise<AccionResultado>, ok: (resultado: AccionResultado) => string) {
     if (runningRef.current) return;
@@ -118,7 +133,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
   }
 
   function irA(m: Modo) {
-    setModo(m); setSelId(null); setQuery("");
+    setModo(m); setSelId(null); setQuery(""); setMostrar(PAGINA);
     setFeedback(null); setError(null);
   }
 
@@ -190,10 +205,16 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
           <div className="panel">
             <p className="panel-title">Padrón completo ({padron.length})</p>
             <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
-              value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
+              value={query} onChange={(e) => { setQuery(e.target.value); setMostrar(PAGINA); }} style={{ marginBottom: 10 }} />
+            <div className="chip-row" style={{ marginBottom: 12 }}>
+              {FILTROS_ADMIN.map(([k, label]) => (
+                <button key={k} type="button" className={`select-chip ${filtro === k ? "on" : ""}`}
+                  onClick={() => { setFiltro(k); setMostrar(PAGINA); }}>{label}</button>
+              ))}
+            </div>
             {banners}
             <div className="ti-cards">
-              {padron.map((r) => (
+              {padron.slice(0, mostrar).map((r) => (
                 <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}
                   espera={porCobrar(r) ? r.createdAt.slice(0, 10) : undefined}>
                   <DetalleRegistro r={r} />
@@ -210,7 +231,13 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
                 </TarjetaRegistro>
               ))}
               {padron.length === 0 && (
-                <p className="ti-hint">{q ? `Sin resultados para «${query}».` : "Aún no hay registros en el padrón."}</p>
+                <p className="ti-hint">{q || filtro !== "todos" ? "Sin resultados con esa búsqueda o filtro." : "Aún no hay registros en el padrón."}</p>
+              )}
+              {padron.length > mostrar && (
+                <button type="button" className="ghost-action" style={{ alignSelf: "center" }}
+                  onClick={() => setMostrar((m) => m + PAGINA)}>
+                  Mostrar {Math.min(PAGINA, padron.length - mostrar)} más (quedan {padron.length - mostrar})
+                </button>
               )}
             </div>
           </div>
