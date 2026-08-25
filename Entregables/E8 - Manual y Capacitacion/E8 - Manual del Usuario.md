@@ -34,7 +34,7 @@ Conviene entender el alcance real del sistema para no esperar de él algo que no
 
 1. Abra la dirección del sistema en su navegador. En la parte superior de todas las pantallas verá la barra permanente con el monograma del Instituto, el título **"SATAG"** y el subtítulo **"Adquisición de TAG Vehicular"**. Esa barra no tiene menú ni botones: la navegación se hace siempre con los enlaces que están dentro de cada pantalla.
 2. En la portada verá el encabezado **"Registro de acceso vehicular"** y la explicación **"Dé de alta su vehículo para obtener el TAG de acceso al estacionamiento del Instituto Asunción de Querétaro. El trámite toma unos minutos."**.
-3. Lea el bloque **"¿Cómo funciona?"**, que resume el trámite en tres puntos: **"Captura sus datos y los de su vehículo."**, **"Lee y firma el reglamento de acceso."** y **"Recibe un comprobante; paga el TAG en administración y Sistemas lo instala."**.
+3. Lea el bloque **"¿Cómo funciona?"**, que resume el trámite en tres puntos: **"Capture sus datos y los de su vehículo."**, **"Lea y firme el reglamento de acceso."** y **"Reciba su comprobante; pague el TAG en Administración y Sistemas lo instala."**.
 4. Pulse **"Iniciar registro"**. Se abre el asistente en la pantalla **"Datos del solicitante"**, con el indicador **"Paso 1 de 6"**.
 
 **Resultado:** el asistente queda abierto en el **"Paso 1 de 6"**.
@@ -60,7 +60,7 @@ Use este procedimiento cuando **el propio conductor es mayor de edad y es quien 
 
 **Notas de la pantalla:**
 
-- Si falta algún dato, los mensajes aparecen **en rojo debajo del campo correspondiente** y el asistente no avanza. Los mensajes son **"Escriba el nombre o nombres."**, **"Escriba el apellido paterno."** y **"Escriba el apellido materno."**.
+- Si falta algún dato, los mensajes aparecen **en rojo debajo del campo correspondiente** y el asistente no avanza. Los mensajes son **"Escriba el nombre o nombres."** y **"Escriba el apellido paterno."**. El apellido materno es **opcional** (la etiqueta lo indica): puede dejarse vacío, por ejemplo cuando la persona tiene un solo apellido.
 - El botón **"Atrás"** se ve en pantalla pero está deshabilitado en este paso, porque es el primero.
 
 ---
@@ -78,7 +78,7 @@ Use este procedimiento cuando el conductor es **mayor de edad**, pero **quien pa
 
 **Resultado:** el registro guarda a las dos personas y la relación entre ellas, y el asistente queda configurado para que en el Paso 5 **firme el gestionante**, no el conductor.
 
-Si deja incompletos los campos del gestionante, los mensajes en rojo son los mismos del conductor: **"Escriba el nombre o nombres."**, **"Escriba el apellido paterno."** y **"Escriba el apellido materno."**.
+Si deja incompletos los campos del gestionante, los mensajes en rojo son los mismos del conductor: **"Escriba el nombre o nombres."** y **"Escriba el apellido paterno."**. El apellido materno del gestionante también es opcional.
 
 ---
 
@@ -112,7 +112,7 @@ Si deja incompletos los campos del gestionante, los mensajes en rojo son los mis
 7. En **"TAG"** elija uno de los dos botones:
    - **"Lo compro a la escuela"**, que viene elegido de inicio.
    - **"Ya tengo TAG propio"**, si trae su propio dispositivo.
-8. Si elige **"Ya tengo TAG propio"**, lea el aviso que aparece: **"El registro y la activación de un TAG propio tienen el mismo costo ($100); llévelo el día de la instalación."**.
+8. Debajo de las dos opciones aparece un aviso según la elegida. Con **"Lo compro a la escuela"**: **"El TAG cuesta $100 y se paga en efectivo en Administración, después de enviar este registro."**. Con **"Ya tengo TAG propio"**: **"El registro y la activación tienen el mismo costo ($100). Lleve su TAG el día de la instalación: para funcionar debe quedar pegado al parabrisas. Sistemas valorará si ese modelo puede darse de alta; si no es compatible, se le instalará uno de la escuela."**.
 9. Pulse **"Siguiente"**.
 
 **Resultado:** se avanza a **"Aviso de privacidad"** (**"Paso 3 de 6"**) con el vehículo y la procedencia del TAG capturados.
@@ -163,7 +163,7 @@ Si el aviso cabe completo en la pantalla sin necesidad de desplazamiento, la cas
 ## 9. Paso 5 de 6 — Firmar y enviar el registro
 
 1. Confirme en la línea superior **quién debe firmar**: la pantalla muestra la palabra **"Firmará"** seguida del nombre completo del gestionante, si lo hay, o del conductor si no lo hay.
-2. Trace la firma dentro del recuadro punteado. Puede hacerlo con el dedo en una pantalla táctil o con el mouse, como indica el texto **"Puede firmar con el dedo (táctil) o con el mouse."**.
+2. Lea la instrucción que aparece arriba del recuadro: **"Firme sobre la línea, como lo haría en papel: con el dedo (táctil) o con el mouse."**. Trace la firma dentro del recuadro punteado, apoyándose en la línea gris que lo cruza. El botón **"Enviar registro"** permanece apagado hasta que exista un trazo.
 3. Si el trazo no quedó bien, pulse **"Borrar firma"** y vuelva a firmar. El botón borra el trazo por completo.
 4. Pulse **"Enviar registro"**. Mientras se envía, el botón muestra **"Enviando…"** y queda deshabilitado para evitar envíos dobles. Espere; no vuelva a pulsar.
 
@@ -236,8 +236,8 @@ Use este camino si conserva el folio de su comprobante (formato **SATAG-000123**
 |---|---|
 | **"Los datos no coinciden con ningun registro vigente"** | El folio y la placa (o el número de TAG) deben corresponder exactamente a un registro que no esté dado de baja. Revise ambos datos. |
 | **"Ya hay una solicitud de este tipo en proceso para tu registro"** | Ya envió una solicitud igual y sigue pendiente. Solo se admite una por tipo y por registro; espere a que Sistemas la atienda. |
-| **"Captura tu folio y tus placas (o No. de TAG)"** | Faltan datos de identificación. |
-| **"Describe brevemente que necesitas"** | El campo de descripción quedó vacío. |
+| **"Capture su folio y sus placas (o No. de TAG)"** | Faltan datos de identificación. |
+| **"Describa brevemente que necesita"** | El campo de descripción quedó vacío. |
 | **"El detalle no puede exceder 500 caracteres"** | Acorte su descripción. |
 | **"Sin conexion con el servidor. Revise su red e intente de nuevo."** | Falló la conexión. Revise su red y reintente. |
 
@@ -290,7 +290,7 @@ Este tramo es **enteramente presencial**: el sitio público no interviene.
 2. Preséntese en **Administración** del Instituto. Ahí se registra el pago del TAG por **$100 en efectivo** y se le asigna el o los estacionamientos que correspondan.
 3. Ni el monto ni el estacionamiento se capturan en el sitio público: los registra el personal de Administración en su panel interno. **Usted no elige estacionamiento desde el sitio.**
 4. Después, pase con el personal de **Sistemas (TI)**, que instala el TAG en su vehículo, captura el número de dispositivo y lo activa. **El número de TAG no se captura en el alta**: lo asigna Sistemas al instalarlo.
-5. Si eligió **"Ya tengo TAG propio"**, lleve su dispositivo el día de la instalación; el costo es el mismo ($100).
+5. Si eligió **"Ya tengo TAG propio"**, lleve su dispositivo el día de la instalación; el costo es el mismo ($100). Para funcionar debe quedar pegado al parabrisas, y Sistemas valorará si ese modelo puede darse de alta; si no es compatible, se le instalará uno de la escuela.
 
 **Resultado:** el TAG queda instalado y activo, y su registro deja de estar **"Pendiente"**.
 

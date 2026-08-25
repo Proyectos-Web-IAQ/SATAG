@@ -94,12 +94,10 @@ Es la forma recomendada de trabajar: muestra unicamente lo que falta cobrar y re
 3. Localice el expediente. Cada tarjeta muestra las placas (o **"SIN PLACAS"** cuando el vehiculo se dio de alta sin placas, o un guion **"—"** cuando no hay placas capturadas), el distintivo "Por cobrar", marca-modelo-color, el nombre y el tipo de usuario, el folio del expediente (formato SATAG-######), el estacionamiento si ya lo tiene, "TAG …" o "sin TAG", y un distintivo de espera que dice "hoy", "hace 1 día" o "hace N días".
 4. Toque la cabecera de la tarjeta para abrirla; la pantalla desplazara esa tarjeta al inicio de la vista.
 5. **Verifique el expediente antes de recibir el dinero.** En el detalle encontrara "Gestionante (paga y firma)" (puede decir "El mismo conductor"), "Procedencia TAG", el apartado "TAG apartado" cuando existe una reserva, "Pagos" (dira "Sin pago"), "Estacionamiento" (dira "Sin asignar") y "Observaciones", si las hay.
-6. Revise el campo **"Monto en efectivo"**: viene prellenado con **100** y es editable. Capture el importe que realmente recibio.
-   - Si escribe algo que no sea un numero mayor a cero, el recuadro se marca y aparece "Captura un monto mayor a cero.".
+6. Revise el **"Monto en efectivo"**: muestra **$100.00** con la nota "precio unico del TAG". **No es un campo capturable**: el precio quedo fijado en minuta (24-ago-2026) y lo aplica el sistema; si algun dia cambiara, se actualiza en el sistema, no en ventanilla.
 7. Lea el aviso "Folio de recibo: se generará automáticamente al confirmar.". **No existe un campo para teclear el folio**: lo asigna el sistema.
-8. Revise **"Cobrado por"**: viene prellenado con su nombre, deducido del correo de la sesion, y **se puede corregir** si el dinero lo recibio otra persona (el campo sugiere "Nombre del cajero"). **Cuidado: el nombre que deje escrito se conserva para todos los cobros siguientes**, tanto en esta cola como en el padron, hasta que usted lo vuelva a cambiar o cierre sesion. Si lo corrigio para un cobro puntual, **devuelvalo a su nombre antes del siguiente**: un pago registrado no se puede editar ni cancelar, de modo que el nombre equivocado queda para siempre en el recibo y en el corte.
-   - Si lo deja vacio aparece "Indica quién recibió el pago." y el boton queda deshabilitado.
-9. Pulse el boton, que muestra el importe capturado: **"Registrar pago de $100.00"**. Si el monto no es valido, el boton dice solo "Registrar pago" y esta apagado.
+8. Revise **"Cobrado por"**: muestra su nombre, deducido del correo de la sesion, con la nota "usuario de esta sesion". **No se puede cambiar**: quien cobra es quien esta firmado en el panel, y el sistema sella ademas su correo en el recibo. Si el dinero lo recibe otra persona, esa persona debe cobrar desde su propia sesion.
+9. Pulse el boton **"Registrar pago de $100.00"**.
 10. Se abre la ventana de confirmacion **"Registrar pago"**. Leala completa: resume el monto, el folio del expediente, el nombre del titular, las placas (o "sin placas") y quien cobra. Por ejemplo: "Se registrará un pago en efectivo de $100.00 para SATAG-000123, NOMBRE DEL TITULAR (ABC-123-D). El sistema generará el folio del recibo. Cobrado por Gerardo Sanchez. ¿Continuar?".
 11. Pulse **"Registrar pago"** para ejecutar, o **"Cancelar"** para volver sin cobrar.
 12. La pantalla se desplaza al aviso verde con el folio del recibo generado, por ejemplo "Pago de $100.00 registrado · recibo SATAG-2026-000045 (SATAG-000123).", y el expediente desaparece de la cola.
@@ -119,8 +117,6 @@ Los tres primeros avisos de esta tabla no apagan ningun boton: **sustituyen por 
 | "✓ Pago registrado. El expediente ya no está en la cola de cobro." | Ese expediente ya fue cobrado. No admite un segundo pago. |
 | "Registro dado de baja; no admite cobro desde esta pantalla." | El expediente esta dado de baja. Consulte con TI antes de recibir dinero. |
 | "Registro bloqueado; debe resolverse el bloqueo antes de continuar." | El expediente tiene un bloqueo. Debe resolverse antes de cobrar. |
-| "Captura un monto mayor a cero." | El campo "Monto en efectivo" tiene algo escrito que no es un numero mayor a cero. Capture un importe valido. Si el campo queda **vacio** no aparece ningun mensaje: el boton simplemente queda apagado y dice "Registrar pago". |
-| "Indica quién recibió el pago." | El campo "Cobrado por" quedo vacio o solo con espacios. Escriba el nombre de quien recibio el dinero. |
 
 Si el cobro no se completa, la pantalla muestra en rojo el motivo concreto (por ejemplo "El registro ya tiene el pago SATAG-2026-000045 registrado" o "El registro esta dado de baja") y, solo cuando no logra identificarlo, "No se pudo registrar el pago.". En cualquiera de los casos **no se cobro nada**: corrija lo que indique el mensaje e intentelo de nuevo.
 
@@ -139,7 +135,7 @@ Use esta via cuando ya sabe de que expediente se trata y quiere buscarlo por nom
 3. Identifique la tarjeta por su distintivo: solo **"Por cobrar"** puede admitir cobro. Abrala y **confirme que aparece el formulario de pago antes de recibir el dinero**: si en su lugar se lee "Registro bloqueado; debe resolverse el bloqueo antes de continuar." o "Registro dado de baja; no admite cobro desde esta pantalla.", ese expediente no se puede cobrar.
 4. Toque la cabecera de la tarjeta para abrirla.
 5. Revise **"Procedencia TAG"**: dira "Propio" cuando el usuario aporta su propio TAG y "Escuela" cuando lo pone el instituto. Si ya existe una reserva, vera ademas el apartado "TAG apartado" con su numero.
-6. Capture **"Monto en efectivo"** y **"Cobrado por"**, y pulse **"Registrar pago de $…"**.
+6. Confirme el tipo de usuario y pulse **"Registrar pago de $100.00"** (el monto y el cobrador los pone el sistema).
 7. Confirme en la ventana **"Registrar pago"** siguiendo los pasos 10 a 12 de la seccion 3.
 
 > **Advertencia. El TAG propio tambien se cobra.** El sistema no distingue la procedencia al momento de cobrar: un expediente con "Procedencia TAG: Propio" aparece en la cola igual que cualquier otro y usa el mismo formulario. **No existen descuentos, exenciones ni precio diferenciado.**
@@ -278,7 +274,7 @@ Es la forma de cuadrar **antes** de cerrar el corte.
 | "El registro ya tiene el pago SATAG-2026-000045 registrado" | Ese expediente ya fue cobrado; solo admite un pago. |
 | "El registro esta dado de baja" | No se puede cobrar un expediente dado de baja. |
 | "Registro no encontrado" | El expediente ya no existe. Verifique con TI. |
-| "Tu usuario no tiene el rol requerido (admin)" | Su cuenta no tiene el rol de Administracion. |
+| "Su usuario no tiene el rol requerido (admin)" | Su cuenta no tiene el rol de Administracion. |
 | "Se requiere sesion con segundo factor (MFA)" | Debe completar la verificacion en dos pasos. |
 | "Corte SATAG-CORTE-2026-000003 cerrado · $300.00 en 3 cobro(s) · cuadró exacto." | El corte quedo cerrado en definitiva. |
 | "No hay cobros pendientes de cortar: la caja esta en ceros" | No habia nada que cortar (o alguien mas ya corto). |

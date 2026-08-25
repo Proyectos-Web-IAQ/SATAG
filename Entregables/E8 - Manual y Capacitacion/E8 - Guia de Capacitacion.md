@@ -147,9 +147,9 @@ Use el expediente de práctica. **Este es el bloque que no se puede recortar.**
 1. Pulse la tarjeta **"Registrar pago"** y muestre la cola: la del expediente que lleva **más tiempo esperando** hasta el más reciente. Señale que esta pantalla **no tiene buscador** y que se regresa con **"← Inicio"**.
 2. Abra la tarjeta tocando su cabecera y **revise el expediente antes de hablar de dinero**: **"Gestionante (paga y firma)"**, **"Procedencia TAG"**, **"Pagos"** y **"Estacionamiento"**.
 3. Recalque la regla de ventanilla: **reciba el dinero solo cuando ya esté viendo el formulario de pago**. Explique que un expediente bloqueado también se muestra **"Por cobrar"** y que al abrirlo aparece **"Registro bloqueado; debe resolverse el bloqueo antes de continuar."** en lugar del formulario.
-4. Muestre el campo **"Monto en efectivo"**, prellenado con **100**, y aclare que ese 100 es **una comodidad de captura, no una tarifa**: si la cuota autorizada cambia, el importe se teclea a mano en cada cobro.
+4. Muestre el **"Monto en efectivo"**: **$100.00, "precio único del TAG"**, sin campo que teclear. Aclare que el precio quedó fijado en minuta (24-ago-2026) y lo aplica el sistema: **nadie captura importes en ventanilla**.
 5. Lea en voz alta el aviso **"Folio de recibo: se generará automáticamente al confirmar."** y señale que **no existe ningún campo para teclear el folio**.
-6. Deténgase en el campo **"Cobrado por"** y explique **la trampa más costosa de esta pantalla**: viene prellenado con su nombre, **es editable**, y **el nombre que deje escrito se conserva para todos los cobros siguientes** hasta que lo cambie de nuevo o cierre sesión. Si lo corrigió para un cobro puntual, **devuélvalo a su nombre antes del siguiente**.
+6. Deténgase en **"Cobrado por"**: muestra el nombre del **usuario de esta sesión** y **no se puede cambiar**. Explique la regla: **quien cobra es quien está firmado**, y el recibo lleva sellado su correo. Si otra persona va a recibir dinero, entra con su propia cuenta; nunca se cobra "a nombre de".
 7. Pulse el botón **"Registrar pago de $100.00"** y **lea completa, en voz alta, la ventana de confirmación**: resume el monto, el folio del expediente, el titular, las placas y quién cobra.
 8. **Antes de confirmar, haga la pregunta al grupo:** ¿qué pasa si algo de lo que dice esa ventana está mal? Respuesta: se pulsa **"Cancelar"**, porque **después no hay corrección posible**.
 9. Confirme con **"Registrar pago"** y muestre el aviso verde con el folio del recibo. Insista en **anotar el folio en el momento**: el sistema **no imprime ni envía comprobante**.
@@ -324,8 +324,8 @@ Recórralos en voz alta en el bloque de cierre. Son los que generan reprocesos, 
 
 1. **El corte de caja no se puede deshacer.** No hay botón, pantalla ni procedimiento para reabrir, corregir, anular o borrar un corte cerrado, ni siquiera para el personal técnico. La corrección se documenta en las **"Observaciones"** del **corte siguiente**.
 2. **Un pago registrado tampoco se corrige.** No hay edición, cancelación ni reembolso, y **cada expediente admite un solo pago**.
-3. **El campo "Cobrado por" se conserva de un cobro a otro** hasta que se cambie de nuevo o se cierre sesión. Si se corrigió para un cobro puntual, hay que devolverlo antes del siguiente: el nombre equivocado queda para siempre en el recibo y en el corte.
-4. **El 100 prellenado no es una tarifa configurable.** Si la cuota autorizada cambia, el importe se captura a mano en cada cobro.
+3. **"Cobrado por" es la identidad de la sesión y no se edita.** Cada quien cobra desde su propia cuenta; el recibo y el corte llevan sellado el correo de quien cobró.
+4. **El monto es fijo ($100) y lo aplica el sistema.** No hay importes capturables en ventanilla; un cambio de precio es un cambio en el sistema, con su registro.
 5. **El TAG propio se cobra igual.** No existen descuentos, exenciones ni precio diferenciado en la pantalla.
 6. **El distintivo "Pagado" habla solo del cobro**, no del ciclo de vida del expediente: un registro puede decir **"Pagado"** aunque TI todavía no haya instalado el TAG.
 7. **Un expediente "Por cobrar" puede estar bloqueado.** El distintivo no garantiza que se pueda cobrar: **reciba el dinero solo cuando ya esté viendo el formulario de pago**.
@@ -373,7 +373,7 @@ Entréguela impresa al inicio del bloque de cierre. Cada participante la marca p
 **Cobro**
 
 - [ ] Localizo la tarjeta **"Registrar pago"** y entiendo qué significa el color de su contador.
-- [ ] Registro un cobro completo desde la cola **"Registrar pago"**, capturando **"Monto en efectivo"** y **"Cobrado por"**.
+- [ ] Registro un cobro completo desde la cola **"Registrar pago"**, confirmando el tipo de usuario (el monto y el cobrador los pone el sistema).
 - [ ] Localizo un expediente por nombre, por placa y por folio en el **"Padrón completo (N)"** y lo cobro desde ahí.
 - [ ] Distingo los distintivos **"Por cobrar"**, **"Pagado"** y **"Baja"**, y sé que hablan solo del cobro.
 - [ ] Antes de recibir dinero, verifico que aparezca el formulario de pago y no un aviso de bloqueo o de baja.
@@ -381,7 +381,7 @@ Entréguela impresa al inicio del bloque de cierre. Cada participante la marca p
 - [ ] Anoto el folio del recibo en el momento y sé explicar por qué el sistema no entrega comprobante impreso.
 - [ ] Consulto el apartado **"Pagos registrados"** de un expediente y encuentro el folio, el importe, la fecha y el responsable.
 - [ ] Sé que un pago no se puede editar, cancelar ni reembolsar, y qué debo hacer si me equivoco.
-- [ ] Reviso el campo **"Cobrado por"** antes de cada cobro y lo devuelvo a mi nombre si lo cambié.
+- [ ] Sé que **"Cobrado por"** es mi sesión y que, si otra persona cobra, debe entrar con su propia cuenta.
 
 **Finanzas y corte**
 

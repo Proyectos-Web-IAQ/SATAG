@@ -109,7 +109,7 @@ Es el procedimiento principal de TI y el que se realiza en el estacionamiento, j
 - **"El TAG {número} ya esta apartado en otro registro"** y **"El TAG apartado {número} ya esta activo en otro registro"**.
 - Un aviso de que el registro ya tiene TAG instalado — la reposición no se hace aquí, sino desde **"Actualizar datos"**.
 - **"Solo se instala TAG en registros pendientes (este esta en {estado})"**.
-- **"Elige al menos un estacionamiento antes de instalar el TAG"**.
+- **"Elija al menos un estacionamiento antes de instalar el TAG"**.
 - **"El TAG apartado no puede ser el mismo que el TAG que se instala"**.
 - **"Solo se aparta un TAG cuando la familia usa su propio TAG (procedencia propio)"** — solo se aparta el TAG de la escuela cuando la familia trae el suyo.
 - **"El registro esta dado de baja"** / **"El registro ya esta dado de baja"**.
@@ -210,7 +210,7 @@ Aplica cuando la familia trajo su propio dispositivo, se le apartó un TAG de la
 3. Abra la tarjeta.
 4. Revise el **"Motivo de baja"**. Si había una petición de baja pendiente —una solicitud con folio o una nota del buzón ya vinculada que pidió baja—, el campo llega **prellenado con su detalle**. Si no, escríbalo; el ejemplo que sugiere es **"Ej. egreso, cambio de vehículo"**. **Es obligatorio.**
 5. Revise **"Atendido por"**.
-6. Pulse el botón rojo **"Dar de baja"**. Está apagado mientras el motivo esté vacío o solo tenga espacios; el sistema lo repite con **"Indica el motivo de la baja"**.
+6. Pulse el botón rojo **"Dar de baja"**. Está apagado mientras el motivo esté vacío o solo tenga espacios; el sistema lo repite con **"Indique el motivo de la baja"**.
 7. Lea el diálogo **"Dar de baja"**: *"Se dará de baja el registro {folio} ({titular}) y su TAG quedará inactivo. ¿Continuar?"*.
 8. Pulse el botón rojo **"Dar de baja"** para ejecutar, o **"Cancelar"**.
 
@@ -337,7 +337,7 @@ Sirve cuando la petición ya no procede: se atendió por otra vía, está duplic
 | **"Se requiere sesion con segundo factor (MFA)"** | La sesión no completó la verificación en dos pasos. Salga y vuelva a entrar capturando el código. |
 | **"La sesion expiro. Cierre sesion y vuelva a entrar."** | Su sesión caducó. Pulse **"Salir"** y entre de nuevo. |
 | **"Sin conexion con el servidor. Revise su red e intente de nuevo."** | Falla de red, frecuente en el estacionamiento. Acérquese a una zona con señal y repita la acción. |
-| **"Tu usuario no tiene el rol requerido (ti)"** / **"Su usuario no tiene permiso para esta accion. Verifique su rol con el administrador."** | Su cuenta no tiene el perfil necesario. Solicite el ajuste al administrador del sistema. |
+| **"Su usuario no tiene el rol requerido (ti)"** / **"Su usuario no tiene permiso para esta accion. Verifique su rol con el administrador."** | Su cuenta no tiene el perfil necesario. Solicite el ajuste al administrador del sistema. |
 | **"Elija al menos un estacionamiento."** | Al instalar es obligatorio marcar al menos un estacionamiento. |
 | **"Lleva {n} dígitos; deben ser de 6 a 11."** | El número de TAG está incompleto o mal capturado. |
 | **"Modifique algún dato para poder guardar."** | No cambió nada en el formulario de actualización. |
