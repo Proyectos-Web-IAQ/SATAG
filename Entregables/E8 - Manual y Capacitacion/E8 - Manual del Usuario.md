@@ -186,8 +186,12 @@ Si el aviso cabe completo en la pantalla sin necesidad de desplazamiento, la cas
 1. Verifique el encabezado **"¡Registro recibido!"** y la etiqueta de estado **"Pendiente"**.
 2. **Anote el folio** que aparece bajo el texto **"Su folio de seguimiento es:"**. Tiene el formato **SATAG-000123**.
 3. Lea la instrucción: **"Preséntese en Administración para asignación de estacionamiento y el pago del TAG ($100, efectivo). Sistemas instalará y activará su TAG."**.
-4. Pulse **"Imprimir / Descargar"**. Se abre el cuadro de impresión de su navegador; desde ahí puede imprimir en papel o, si desea el archivo, elegir la opción **"Guardar como PDF"** dentro del propio cuadro del navegador. La versión impresa oculta la barra superior y los botones.
-5. Cuando haya guardado o impreso el comprobante, pulse **"Volver al inicio"**.
+4. Debajo aparece el apartado **"Su copia del trámite"**, con la nota **"Guarde este comprobante: incluye los datos que registró y el texto completo del reglamento y del aviso de privacidad que aceptó. Con «Imprimir / Descargar» puede conservarlo en papel o como PDF."**. Es el equivalente del ejemplar que la familia se llevaba en papel y contiene:
+   - Los datos registrados: **"Folio"**, **"Fecha de envío"**, **"Conductor"**, **"Firmó"** (solo cuando firmó otra persona por el conductor; entre paréntesis, su relación), **"Vehículo"**, **"Placas"** (o **"Sin placas (vehículo nuevo o con permiso)"**) y **"TAG"** (**"Se compra a la escuela"** o **"Propio (lo trae la familia)"**).
+   - Dos apartados plegados: **"Reglamento de acceso vehicular (v2) — el que aceptó"** y **"Aviso de privacidad (v2)"**. En pantalla se abren al tocarlos; al imprimir se despliegan solos y salen completos.
+   - La constancia: **"Al enviar este registro, [nombre de quien firmó] aceptó el reglamento (v2) y el aviso de privacidad (v2) y firmó de manera electrónica. La firma y su sello de tiempo quedaron resguardados por el Instituto Asunción de Querétaro."**.
+5. Pulse **"Imprimir / Descargar"**. Se abre el cuadro de impresión de su navegador; desde ahí puede imprimir en papel o, si desea el archivo, elegir la opción **"Guardar como PDF"** dentro del propio cuadro del navegador. La versión impresa oculta la barra superior y los botones, e incluye la copia completa del trámite (varias hojas).
+6. Cuando haya guardado o impreso el comprobante, pulse **"Volver al inicio"**.
 
 **Resultado:** su registro queda en estado **"Pendiente"** en el sistema, a la espera del pago en Administración y de la instalación por parte de TI.
 
@@ -235,7 +239,7 @@ Use este camino si conserva el folio de su comprobante (formato **SATAG-000123**
 | Mensaje | Qué significa |
 |---|---|
 | **"Los datos no coinciden con ningun registro vigente"** | El folio y la placa (o el número de TAG) deben corresponder exactamente a un registro que no esté dado de baja. Revise ambos datos. |
-| **"Ya hay una solicitud de este tipo en proceso para tu registro"** | Ya envió una solicitud igual y sigue pendiente. Solo se admite una por tipo y por registro; espere a que Sistemas la atienda. |
+| **"Ya hay una solicitud de este tipo en proceso para su registro"** | Ya envió una solicitud igual y sigue pendiente. Solo se admite una por tipo y por registro; espere a que Sistemas la atienda. |
 | **"Capture su folio y sus placas (o No. de TAG)"** | Faltan datos de identificación. |
 | **"Describa brevemente que necesita"** | El campo de descripción quedó vacío. |
 | **"El detalle no puede exceder 500 caracteres"** | Acorte su descripción. |
@@ -266,7 +270,7 @@ Use este camino si perdió el comprobante o nunca anotó el folio.
 - El botón **"Enviar nota"** permanece deshabilitado hasta que estén llenos todos los datos obligatorios de su caso. **La pantalla no indica cuál campo falta.**
 - En este camino **no existe el perfil "Alumno"**: solo **"Padre/Madre/Tutor"**, **"Maestro"** y **"Administrativo"**.
 - Los campos **"Nombre del alumno"** y **"Grado y grupo"** solo se muestran y solo son obligatorios para el perfil **"Padre/Madre/Tutor"**.
-- Mensajes que puede recibir del sistema: **"Falta su nombre"**, **"Indique quien solicita (padres, maestro, administrativo o alumno)"**, **"Indique que necesita: actualizar datos o dar de baja"**, **"Como padre, madre o tutor, indique el nombre del alumno y su grado"**, **"Cuentenos brevemente que necesita"** y **"El detalle no puede exceder 500 caracteres"**.
+- Mensajes que puede recibir del sistema: **"Falta su nombre"**, **"Indique quien solicita (padres, maestro, administrativo o alumno)"**, **"Indique que necesita: actualizar datos o dar de baja"**, **"Como padre, madre o tutor, indique el nombre del alumno y su grado"**, **"Cuentenos brevemente que necesita"**, **"El detalle no puede exceder 500 caracteres"** y **"Se recibieron demasiadas notas desde esta conexion. Espere una hora o acuda a Sistemas."** (este último aparece cuando desde una misma conexión a internet ya se enviaron diez notas en la última hora; una familia normal nunca lo ve).
 
 > **Advertencia.** El trámite que usted señala en una nota sin folio es **orientativo**. Sistemas lo corrobora al vincular su nota con el expediente y puede aplicar el trámite que en realidad corresponda al caso.
 

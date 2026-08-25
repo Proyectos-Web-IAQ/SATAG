@@ -140,7 +140,7 @@ Use esta via cuando ya sabe de que expediente se trata y quiere buscarlo por nom
 
 > **Advertencia. El TAG propio tambien se cobra.** El sistema no distingue la procedencia al momento de cobrar: un expediente con "Procedencia TAG: Propio" aparece en la cola igual que cualquier otro y usa el mismo formulario. **No existen descuentos, exenciones ni precio diferenciado.**
 
-> **Nota sobre el monto.** El 100 prellenado es unicamente una comodidad de captura escrita en la pantalla, **no una tarifa configurable**. Si la cuota autorizada cambia, el nuevo importe se captura a mano en cada cobro.
+> **Nota sobre el monto.** El $100.00 es un dato del sistema, **no un campo**: la pantalla lo muestra con la leyenda "precio unico del TAG" y no admite capturar otro importe. Si la cuota autorizada cambia, se cambia en el sistema (con registro), no en ventanilla.
 
 > **Recuerde.** Administracion cobra; TI instala. La propia pantalla lo advierte: "El estacionamiento y el TAG los asigna TI después de confirmar este pago.".
 
