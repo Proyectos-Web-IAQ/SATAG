@@ -37,3 +37,6 @@ build/
 *.tsbuildinfo
 .env
 .env.local
+
+# --- Tandas generadas para armar staging (salida de supabase/staging/armar-tandas.ps1) ---
+supabase/staging/salida/
