@@ -332,9 +332,9 @@ se descarta.
    corresponda."**.
 2. Abrir la tarjeta: el expediente completo, la **"Bitácora"** (**"Fecha"**, **"Tipo"**, **"Motivo"**,
    **"Por"**) y el bloque **"Evidencia de aceptación"** con el botón **"Ver la firma"** (texto de
-   pantalla; los manuales de E8 aún no lo describen). Al pulsarlo: la imagen de la firma, quién firmó y
+   pantalla; Manual de TI §13.1). Al pulsarlo: la imagen de la firma, quién firmó y
    en qué calidad, versión del reglamento y del aviso aceptados, sello de tiempo y hash. El enlace de la
-   imagen caduca en 60 segundos y el archivo nunca es público.
+   imagen caduca en 60 segundos y el archivo nunca es público. (Descrito en el Manual de TI §13.1 desde el 26-ago.)
 
 **Qué se dice.** "Esto es lo que respalda al Instituto si alguien niega haber aceptado el reglamento. Lo
 ven los cuatro perfiles del panel, y Consulta solo lee: no puede cobrar, instalar ni borrar. El sistema
@@ -442,7 +442,7 @@ el cierre del 19-sep · **M** conviene hoy · **B** puede esperar.
 ### D.5 Impresos
 
 - [ ] **Comprobante de ejemplo**: `escritorio-comprobante.pdf` del 3-sep (dos hojas: folio + copia del trámite), una copia por asistente.
-- [ ] **Manual del Usuario** (`E8 - Manual del Usuario.md`), una copia; antes de imprimir, agregar en su §10 la sección **"Su copia del trámite"** del comprobante, que hoy no describe.
+- [ ] **Manual del Usuario** (`E8 - Manual del Usuario.md`), una copia (su §10 ya describe **"Su copia del trámite"** desde el 25-ago).
 - [ ] **Manual de Administración**, una copia para quien vaya a cobrar (la nota de §4 sobre el monto se conció el 25-ago con el monto fijo de §3).
 - [ ] **Nota de decisión del plazo de conservación** (`E6 - Nota de Decision - Plazo de Conservacion.md`) con su hoja de firma en §7, para resolver B5/B6 en el acto.
 - [ ] **Tablero E6 de decisiones** y la **tabla B** de este documento, para marcar en vivo.
