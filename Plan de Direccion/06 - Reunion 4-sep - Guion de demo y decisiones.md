@@ -172,9 +172,10 @@ el aviso verde del recibo, con captura.
    registrará un pago en efectivo de $100.00 para SATAG-000123, NOMBRE DEL TITULAR (ABC-123-D). El
    sistema generará el folio del recibo. Cobrado por Gerardo Sanchez. ¿Continuar?"**. **Pulsar
    "Cancelar".** Decir en voz alta que se canceló y que no se cobró nada.
-7. Captura del resultado (17-ago, tanda F): el aviso verde **"Pago de $100.00 registrado · recibo
+7. El resultado **no tiene captura** (los cobros del 17-ago se ejecutaron a mano y no se fotografiaron):
+   se describe con el manual en la mano —el aviso verde **"Pago de $100.00 registrado · recibo
    SATAG-2026-000045 (SATAG-000123)."**, el distintivo que pasa a **"Pagado"** y el apartado **"Pagos
-   registrados"** con fecha, quién cobró y folio del recibo.
+   registrados"** con fecha, quién cobró y folio del recibo— o se ejecuta en staging.
 
 **Qué se dice.** "El precio es un dato del sistema, no se teclea: quedó fijado en la minuta del 24-ago.
 Quien cobra es quien está firmado en el panel; el recibo lleva su correo sellado. Cada expediente admite
@@ -196,9 +197,10 @@ que se anota en el momento."
 
 ### Paso 3 · Corte de caja en Finanzas (4 min)
 
-**Modo:** capturas del 17-ago (`2026-08-17/panel/03-pestana-finanzas.png` y las de la tanda F). En el
-sitio real la pestaña muestra **"✓ La caja está en ceros. No hay cobros pendientes de cortar."** y el
-formulario ni siquiera aparece, así que se abre en vivo solo para enseñar los tres indicadores.
+**Modo:** en vivo para los tres indicadores (en el sitio real la pestaña muestra **"✓ La caja está en
+ceros. No hay cobros pendientes de cortar."** y el formulario ni siquiera aparece) y la captura
+`03-pestana-finanzas.png` del 17-ago con la caja llena. **El corte cerrado y el historial no tienen
+captura**: se describen con el manual, o se ejecutan en staging.
 
 **Qué se muestra.**
 
@@ -419,7 +421,7 @@ el cierre del 19-sep · **M** conviene hoy · **B** puede esperar.
 
 - [ ] `2026-08-24/comprobante-copia-titular/`: `escritorio-01-comprobante-plegado.png`, `escritorio-02-copia-desplegada.png`, `escritorio-03-como-sale-impreso.png`, `escritorio-comprobante.pdf` y sus gemelas `celular-*`.
 - [ ] `2026-08-17/panel/`: `01-pestana-administraci-n.png`, `02-pestana-ti.png`, `03-pestana-finanzas.png`, `04-pestana-consulta.png`, `06-expediente-abierto.png`, `07-E07-evidencia-de-firma.png`.
-- [ ] `2026-08-17/tanda-f/` (aviso verde del recibo, corte cerrado, historial, instalación, nota vinculada) — [confirmar] qué capturas exactas y ordenarlas en una carpeta `2026-09-04/demo/` con nombre por paso.
+- [x] Carpeta `2026-09-04-demo/` armada el 26-ago con lo que existe, una subcarpeta por paso (01 alta y comprobante · 02 cobro · 03 corte · 04 instalación TI · 05 buzón · 06 consulta y evidencia). **No existen** capturas del aviso verde del cobro, del corte cerrado ni del historial de cortes: esos tres momentos se describen o se ejecutan en staging.
 - [ ] `2026-08-18/escritorio/` y `celular/`: recorrido público completo (pasos 1 a 5, buzón, aviso).
 - [ ] `2026-08-18/comprobante-SATAG-000001.pdf` (comprobante real, anterior a la copia del titular) por si preguntan por el alta de campo.
 
