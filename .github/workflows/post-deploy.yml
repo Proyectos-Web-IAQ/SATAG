@@ -1,0 +1,75 @@
+# Verificación del sitio YA PUBLICADO, con navegador.
+#
+# verificacion.yml prueba el código antes de publicar (tipos, estilo, guardián,
+# compilación) pero no abre el sitio. Este flujo cubre esa mitad: cuando Vercel
+# termina un despliegue de producción, corre el arnés de Playwright contra la
+# URL publicada con los escenarios de fallo inyectado (D-01, D-04, D-06, D-11),
+# que son los que más veces han reaparecido en silencio. No envía altas ni
+# escribe nada en la base: corta la red desde el navegador y mira qué dice la
+# pantalla.
+#
+# El arnés vive en un repositorio APARTE (decisión del 03-ago: no mover la
+# versión bajo prueba). Este flujo lo descarga con un token de solo lectura.
+#
+# Requiere:
+#   Variable de repositorio  ARNES_POST_DEPLOY = true   (Settings > Secrets and
+#                            variables > Actions > Variables). Sin ella el flujo
+#                            queda INERTE, igual que deploy.yml con DEPLOY_GODADDY.
+#   Secret                   ARNES_TOKEN  — token fino de GitHub con permiso
+#                            Contents: read sobre el repositorio del arnés.
+#   Variable (opcional)      ARNES_REPO   — «organizacion/repositorio» del arnés.
+#                            Por omisión Proyectos-Web-IAQ/satag-arnes.
+#
+# Vercel crea un «deployment» en GitHub por cada despliegue y reporta su estado;
+# el evento deployment_status trae la URL publicada en environment_url.
+
+name: Verificación post-despliegue (navegador)
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      base:
+        description: URL del sitio a probar
+        required: false
+        default: https://satag.vercel.app
+
+jobs:
+  arnes:
+    if: >-
+      vars.ARNES_POST_DEPLOY == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.deployment_status.state == 'success' &&
+        github.event.deployment.environment == 'Production'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el arnés
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.ARNES_REPO || 'Proyectos-Web-IAQ/satag-arnes' }}
+          token: ${{ secrets.ARNES_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Instalar dependencias y Chromium
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Fallos inyectados contra el sitio publicado
+        # --estricto: el arnés sale con código 1 si alguna comprobación queda
+        # en false; sin esa bandera solo las anota (uso manual).
+        env:
+          SATAG_BASE: ${{ github.event.inputs.base || github.event.deployment_status.environment_url }}
+        run: node capturar.mjs --solo=fallos --estricto
+
+      - name: Guardar capturas y resultados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: arnes-fallos-${{ github.run_number }}
+          path: salida/
+          retention-days: 30
