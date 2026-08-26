@@ -172,7 +172,7 @@ Leyenda: ✅ Listo · 🟡 Listo, **pendiente de aprobación/definición** · �
   - [x] 🆕 Copy "de usted" (B7)
 - [x] Reglamento (22 cláusulas) — *Est. 0.5 d* ✅ · texto oficial IAQ publicado (bloque 23)
 - [x] Firma manuscrita digital reforzada — *Est. 2 d* ✅ · PNG en bucket privado + trazos + evidencia
-  - [ ] 🆕 Extraer la firma a **módulo reutilizable** independiente (`lib/firma/`) (B8) — funciona en `components/SignaturePad.tsx` + `lib/supabase/api.ts`; aún no extraída a su propio paquete
+  - [x] Firma como **módulo reutilizable** en `lib/firma/` (B8 / CC-08, 26-ago): captura, subida, hash, URL firmada y verificación de imagen con cliente y bucket por parámetro; SATAG lo consume desde `@/lib/firma`
   - [x] Hash SHA-256 + versión de reglamento/aviso + sello de tiempo (CC-10)
   - [x] Firmante gestionante/tutor cuando aplique (CC-11)
 - [x] Guardar registro + comprobante — *Est. 1 d* ✅ · RPC `crear_registro` (bloque 19)
@@ -205,8 +205,9 @@ al subdominio institucional y a la aceptación. Queda por hacer: las pruebas for
 manual/capacitación, la aprobación institucional del aviso, la **migración al subdominio institucional +
 Cloudflare** y la aceptación.
 
-Pendientes menores que **no bloquean** el cierre: extracción de la firma a `lib/firma/` (B8, 31-jul) y
-el rate limiting de los RPC públicos (riesgo aceptado, documentado en el caso `P-11`). El alcance real
+Los dos pendientes menores que se arrastraban desde el 31-jul quedaron cerrados en agosto: la firma
+está extraída a `lib/firma/` (B8 / CC-08, 26-ago) y el rate limiting de los RPC públicos se aplicó con
+el bloque 51 (SC-023, 25-ago; su verificación P-11 sigue en la bitácora de pruebas). El alcance real
 superó la línea base de ~22.5 días-persona por las features añadidas después de la junta (SC-003, folios
 automáticos, apartar/usar TAG, roles finos + MFA y el corte de caja); el cierre objetivo sigue
 en **~03-ago-2026**.

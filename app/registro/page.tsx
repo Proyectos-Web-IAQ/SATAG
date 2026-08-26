@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import SignaturePad, { type FirmaTrazos } from "@/components/SignaturePad";
+import { SignaturePad, type FirmaTrazos } from "@/lib/firma";
 import {
   getMarcas, getModelos, getColores, getReglamentoVigente, getAvisoVigente, getAvisoSimplificado, crearRegistro,
 } from "@/lib/supabase/api";

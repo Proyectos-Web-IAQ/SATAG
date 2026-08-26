@@ -9,6 +9,7 @@
 // recargan la lista despues de actuar, asi que el registro actualizado llega
 // por listRegistros y devolverlo aqui seria un segundo viaje redundante.
 import { supabaseAuth } from "./auth";
+import { urlFirmada } from "@/lib/firma";
 import type {
   CambiosRegistro,
   CorteCaja,
@@ -361,13 +362,8 @@ const BUCKET_FIRMAS = "firmas";
 export const FIRMA_URL_SEGUNDOS = 60;
 
 // aceptaciones.firma_url guarda la ruta CON el bucket adelante
-// ('firmas/<uuid>.png', ver lib/supabase/api.ts). El SDK de Storage ya recibe
-// el bucket por su cuenta y espera la ruta SIN ese prefijo: pasársela completa
-// hace que busque 'firmas/firmas/<uuid>.png' y responda "no encontrado".
-function rutaEnBucket(firmaUrl: string): string {
-  const ruta = firmaUrl.trim().replace(/^\/+/, "");
-  return ruta.startsWith(`${BUCKET_FIRMAS}/`) ? ruta.slice(BUCKET_FIRMAS.length + 1) : ruta;
-}
+// ('firmas/<uuid>.png', ver lib/supabase/api.ts); urlFirmada (lib/firma) le
+// quita ese prefijo antes de pedirla al SDK de Storage.
 
 interface EvidenciaRow {
   registro_id: string;
@@ -404,11 +400,10 @@ export async function obtenerEvidenciaFirma(registroId: string): Promise<Evidenc
   let firmaUrl: string | null = null;
   let firmaError: string | null = null;
   try {
-    const firmada = await supabaseAuth.storage
-      .from(BUCKET_FIRMAS)
-      .createSignedUrl(rutaEnBucket(row.firma_url), FIRMA_URL_SEGUNDOS);
-    if (firmada.error) firmaError = traducirError(firmada.error.message);
-    else firmaUrl = firmada.data.signedUrl;
+    firmaUrl = await urlFirmada(supabaseAuth, row.firma_url, {
+      bucket: BUCKET_FIRMAS,
+      segundos: FIRMA_URL_SEGUNDOS,
+    });
   } catch (e) {
     firmaError = traducirError(e instanceof Error ? e.message : "No se pudo abrir la imagen de la firma.");
   }

@@ -43,8 +43,13 @@ app/
    ├─ invite/page.tsx          Activación de cuenta por invitación (token_hash + verifyOtp)
    └─ reset-password/page.tsx  Recuperación de contraseña
 
+lib/firma/                     MÓDULO REUTILIZABLE de firma (CC-08): se copia tal cual a otro sistema
+├─ SignaturePad.tsx            Captura en canvas → PNG + trazos vectoriales, sin dependencias
+├─ servicio.ts                 Subida al bucket privado, SHA-256, URL firmada temporal, verificación de la imagen
+├─ tipos.ts · index.ts         Tipos `Firma`/`FirmaTrazos` y única puerta de entrada (`@/lib/firma`)
+└─ README.md                   Qué se copia, qué parámetros pide y qué NO incluye
+
 components/
-├─ SignaturePad.tsx            Captura de firma en canvas → PNG + trazos, sin dependencias
 ├─ Loader.tsx · ConfirmDialog.tsx
 └─ admin/
    ├─ AdminPanel.tsx           Contenedor del panel y pestañas por rol
@@ -106,9 +111,13 @@ Detalle en [`04 - Seguridad, RLS y Privacidad`](04%20-%20Seguridad%2C%20RLS%20y%
 ## 7. Módulo de firma (reuso)
 
 El objetivo (rev. Dirección 03-jul, B8) era empaquetar la firma como módulo portátil, reutilizable en
-otros sistemas del IAQ. **Aún no se ha extraído:** hoy vive repartida entre
-`components/SignaturePad.tsx` (captura en canvas) y `lib/supabase/api.ts` (subida al bucket privado y
-hash). La frontera propuesta está en
+otros sistemas del IAQ. **Extraído el 26-ago-2026 a `lib/firma/`:** captura (`SignaturePad`), servicio
+(`subirFirma`, `urlFirmada`, `sha256Hex`, `verificarImagen`, con el cliente de Supabase y el bucket por
+parámetro) y tipos (`Firma`, `FirmaTrazos`), con su `README`. SATAG lo consume desde `@/lib/firma` en
+el alta (`lib/supabase/api.ts`) y en la evidencia del panel (`lib/supabase/apiPanel.ts`). Lo que queda
+fuera del módulo, a propósito, es lo específico de cada sistema: el hash legal del paquete firmado lo
+genera la base (`crear_registro`, bloque 19) y el visor `components/admin/EvidenciaFirma.tsx` lee la
+vista `v_evidencia_firma`. La frontera está en
 [`06 - Firma Electrónica`](06%20-%20Firma%20Electronica%20%28mecanica%20y%20valor%20legal%29.md) §9.
 
 ## 8. Verificación antes de publicar
