@@ -79,7 +79,7 @@ Es el procedimiento principal de TI y el que se realiza en el estacionamiento, j
 1. En el inicio pulse **"Instalar TAG"**. La pantalla se abre con **"← Inicio"** y el título **"Instalar TAG"**.
 2. Si no hay trabajo, verá **"✓ No hay TAGs pendientes de instalar. Todo al día."**.
 3. Toque la cabecera de la tarjeta de la persona para abrir su expediente. Al abrirse, la tarjeta sube sola al inicio visible de la pantalla.
-4. Revise el detalle antes de tocar nada: **"Gestionante (paga y firma)"** (dice **"El mismo conductor"** cuando coinciden), **"Procedencia TAG"**, **"TAG apartado"** si lo hay, **"Pagos"**, **"Estacionamiento"**, **"Instalado"** y **"Observaciones"**.
+4. Revise el detalle antes de tocar nada: **"Gestionante (paga y firma)"** (dice **"El mismo conductor"** cuando coinciden), **"Procedencia TAG"**, **"TAG apartado"** si lo hay, **"Pagos"**, **"Estacionamiento"**, **"Instalado"** y **"Observaciones"**. Al final de la tarjeta está **"Evidencia de aceptación"** con el botón **"Ver la firma"** (sección 13.1), por si necesita cotejar quién firmó.
 5. En **"Estacionamiento (acceso del TAG)"** toque los chips de los estacionamientos que le corresponden a esa familia (E1, E2, …). **Puede elegir más de uno.** Vienen preseleccionados los que el registro ya traiga.
 6. Capture el número en el campo **"No. de TAG (6–11 dígitos)"**. El campo **solo acepta dígitos** y admite un máximo de 11; el ejemplo que muestra es **"Ej. 9426780"**.
 7. Revise la casilla **"La familia trae su propio TAG (se aparta el de la escuela)"**. **Llega ya marcada si en el alta la familia declaró que trae su propio TAG**, y en ese caso la etiqueta del campo ya dice **"No. de TAG (6–11 dígitos) — el propio de la familia"**. Márquela si la familia trajo su dispositivo y **desmárquela si el TAG que va a instalar es de la escuela**: esta casilla es la que decide la procedencia que queda guardada en el expediente.
@@ -325,6 +325,20 @@ Sirve cuando la petición ya no procede: se atendió por otra vía, está duplic
 **Resultado:** se obtiene la lista filtrada del padrón y, al abrir cada expediente, su historial completo de movimientos —alta, baja, reposición, cambio, prueba, bloqueo y rectificación— con quién los hizo. Desde aquí **no se puede ejecutar ninguna acción**, tal como lo indica el aviso permanente **"Vista de solo consulta: las acciones se ejecutan desde Administración o TI, según corresponda."**.
 
 > **Nota.** **"Limpiar"** borra los filtros de chips pero **no** el texto del buscador. Si sigue viendo pocos resultados, revise también el campo de búsqueda. Si nada coincide, aparece **"Sin resultados con los filtros actuales."**.
+
+### 13.1. Ver la evidencia de la firma ("Evidencia de aceptación")
+
+Al final de cada expediente abierto —en las colas de TI, en el padrón y en las pestañas de Administración y Consulta— aparece el apartado **"Evidencia de aceptación"** con la explicación **"Firma manuscrita, versiones aceptadas y sello de tiempo. Se consulta bajo demanda: el enlace de la imagen es temporal y el archivo nunca es público."** y el botón **"Ver la firma"**. Lo ven los cuatro perfiles; ninguno puede modificarla.
+
+1. Pulse **"Ver la firma"** (mientras carga dice **"Abriendo…"**).
+2. Se muestra la imagen de la firma y, debajo, los datos probatorios: **"Firmó"** (nombre y, entre paréntesis, en qué calidad: por ejemplo **"el propio titular"**), **"Sello de tiempo"**, **"Reglamento aceptado"** y **"Aviso de privacidad aceptado"** (**"Versión N"**, o **"No consta"**), **"Hash del paquete firmado (SHA256)"**, **"Hash de la imagen (SHA-256)"** (abreviados; el valor completo aparece al dejar el puntero encima) y **"Trazos vectoriales"** (**"Conservados junto con la imagen"** o **"No se conservaron para esta firma"**).
+3. Debajo se lee **"El enlace de la imagen caduca a los 60 segundos."** con el enlace **"Volver a abrirla"**: pasado ese tiempo la imagen deja de cargar y hay que pedir otro enlace. Es intencional: nadie puede guardarse una dirección permanente de una firma.
+
+**Resultado:** puede cotejar quién firmó, cuándo y qué versión exacta del reglamento y del aviso aceptó, sin que la imagen salga del sistema.
+
+> **Si en lugar de la imagen aparece "No se pudo abrir la imagen de la firma…"**, el texto continúa con **"Los datos de abajo conservan su valor probatorio."**: el hash, las versiones y el sello siguen siendo válidos aunque la imagen no cargue en ese momento. Reintente con **"Volver a abrirla"** o avise a Sistemas.
+>
+> **Si aparece "Este expediente no tiene evidencia de firma registrada. Los expedientes dados de alta por el formulario siempre la tienen; si falta, el registro se capturó por otra vía."**, el expediente no entró por el formulario público (por ejemplo, un registro de prueba). No es un error del sistema.
 
 ---
 

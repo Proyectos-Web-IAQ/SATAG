@@ -97,10 +97,11 @@ Es la forma recomendada de trabajar: muestra unicamente lo que falta cobrar y re
 6. Revise el **"Monto en efectivo"**: muestra **$100.00** con la nota "precio unico del TAG". **No es un campo capturable**: el precio quedo fijado en minuta (24-ago-2026) y lo aplica el sistema; si algun dia cambiara, se actualiza en el sistema, no en ventanilla.
 7. Lea el aviso "Folio de recibo: se generará automáticamente al confirmar.". **No existe un campo para teclear el folio**: lo asigna el sistema.
 8. Revise **"Cobrado por"**: muestra su nombre, deducido del correo de la sesion, con la nota "usuario de esta sesion". **No se puede cambiar**: quien cobra es quien esta firmado en el panel, y el sistema sella ademas su correo en el recibo. Si el dinero lo recibe otra persona, esa persona debe cobrar desde su propia sesion.
-9. Pulse el boton **"Registrar pago de $100.00"**.
-10. Se abre la ventana de confirmacion **"Registrar pago"**. Leala completa: resume el monto, el folio del expediente, el nombre del titular, las placas (o "sin placas") y quien cobra. Por ejemplo: "Se registrará un pago en efectivo de $100.00 para SATAG-000123, NOMBRE DEL TITULAR (ABC-123-D). El sistema generará el folio del recibo. Cobrado por Gerardo Sanchez. ¿Continuar?".
-11. Pulse **"Registrar pago"** para ejecutar, o **"Cancelar"** para volver sin cobrar.
-12. La pantalla se desplaza al aviso verde con el folio del recibo generado, por ejemplo "Pago de $100.00 registrado · recibo SATAG-2026-000045 (SATAG-000123).", y el expediente desaparece de la cola.
+9. Si necesita cotejar quien firmo antes de confirmar el tipo de usuario, al final de la tarjeta esta **"Evidencia de aceptación"** con el boton **"Ver la firma"**: muestra la imagen, quien firmo y en que calidad, el sello de tiempo y las versiones del reglamento y del aviso que acepto. El enlace de la imagen caduca a los 60 segundos (**"Volver a abrirla"** pide otro). Es solo lectura.
+10. Pulse el boton **"Registrar pago de $100.00"**.
+11. Se abre la ventana de confirmacion **"Registrar pago"**. Leala completa: resume el monto, el folio del expediente, el nombre del titular, las placas (o "sin placas") y quien cobra. Por ejemplo: "Se registrará un pago en efectivo de $100.00 para SATAG-000123, NOMBRE DEL TITULAR (ABC-123-D). El sistema generará el folio del recibo. Cobrado por Gerardo Sanchez. ¿Continuar?".
+12. Pulse **"Registrar pago"** para ejecutar, o **"Cancelar"** para volver sin cobrar.
+13. La pantalla se desplaza al aviso verde con el folio del recibo generado, por ejemplo "Pago de $100.00 registrado · recibo SATAG-2026-000045 (SATAG-000123).", y el expediente desaparece de la cola.
 
 **Resultado:** el expediente queda con un pago en efectivo y folio de recibo automatico (formato SATAG-AAAA-000001), sale de la cola de cobro, su distintivo cambia a "Pagado" en el padron, el dinero entra a la caja actual de la pestaña "Finanzas" y TI queda habilitado para instalar el TAG.
 
@@ -136,7 +137,7 @@ Use esta via cuando ya sabe de que expediente se trata y quiere buscarlo por nom
 4. Toque la cabecera de la tarjeta para abrirla.
 5. Revise **"Procedencia TAG"**: dira "Propio" cuando el usuario aporta su propio TAG y "Escuela" cuando lo pone el instituto. Si ya existe una reserva, vera ademas el apartado "TAG apartado" con su numero.
 6. Confirme el tipo de usuario y pulse **"Registrar pago de $100.00"** (el monto y el cobrador los pone el sistema).
-7. Confirme en la ventana **"Registrar pago"** siguiendo los pasos 10 a 12 de la seccion 3.
+7. Confirme en la ventana **"Registrar pago"** siguiendo los pasos 11 a 13 de la seccion 3.
 
 > **Advertencia. El TAG propio tambien se cobra.** El sistema no distingue la procedencia al momento de cobrar: un expediente con "Procedencia TAG: Propio" aparece en la cola igual que cualquier otro y usa el mismo formulario. **No existen descuentos, exenciones ni precio diferenciado.**
 
