@@ -107,6 +107,8 @@
   @keyframes aparece { from { opacity: 0; background: var(--green-soft); } to { opacity: 1; } }
 
   .hoja { width: 100%; max-width: 24rem; background: #fffdf6; border: 1px solid #e7e0c9; border-radius: 6px; box-shadow: 0 18px 40px rgba(16,29,53,.18); padding: 1.4rem 1.6rem; position: relative; }
+  /* La segunda hoja del tramite asoma detras (sombras solidas desplazadas). */
+  .hoja.doble { box-shadow: 12px -12px 0 -1px #fffdf6, 12px -12px 0 0 #dcd4b8, 0 18px 40px rgba(16,29,53,.18); }
   .hoja h3 { font-family: var(--display); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--navy); margin-bottom: 1rem; text-align: center; }
   .hoja .campo { font-size: .78rem; color: var(--ink-soft); margin-bottom: .85rem; }
   .hoja .campo .linea { display: block; height: 1.15rem; border-bottom: 1.5px solid #cbc3a8; margin-top: .15rem; position: relative; overflow: hidden; }
@@ -274,15 +276,15 @@
       </div>
     </section>
 
-    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="1" data-idas="0" data-tiempo="día 1">
+    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="2" data-idas="0" data-tiempo="día 1">
       <div class="texto">
         <div class="num">Hoy · Paso 2 de 7</div>
-        <h2>El papá llega al módulo: hoja de papel y pago</h2>
-        <p>Recibe una hoja, la llena a mano —nombre, vehículo, placa—, la firma y paga. Todo lo que el Instituto sabe del trámite vive en esa hoja.</p>
-        <span class="sello mal">Captura nº 1 · letra a mano, sin validación</span>
+        <h2>El papá llega al módulo: dos hojas de papel y pago</h2>
+        <p>Recibe dos hojas de papel, las llena a mano —nombre, vehículo, placa—, las firma y paga. Todo lo que el Instituto sabe del trámite vive en esas hojas.</p>
+        <span class="sello mal">Captura nº 1 · letra a mano, sin validación · 2 hojas por trámite</span>
       </div>
       <div class="visual">
-        <div class="hoja">
+        <div class="hoja doble">
           <h3>Solicitud de TAG vehicular</h3>
           <div class="campo">Nombre del solicitante <span class="linea" data-mano="Nombre Apellido Apellido"></span></div>
           <div class="campo">Vehículo <span class="linea" data-mano="Camioneta gris 2021"></span></div>
@@ -293,7 +295,7 @@
       </div>
     </section>
 
-    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="1" data-idas="1" data-tiempo="día 1">
+    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="2" data-idas="1" data-tiempo="día 1">
       <div class="texto">
         <div class="num">Hoy · Paso 3 de 7</div>
         <h2>«Hablen a Sistemas»</h2>
@@ -305,7 +307,7 @@
       </div>
     </section>
 
-    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="1" data-idas="2" data-tiempo="día 1">
+    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="2" data-idas="2" data-tiempo="día 1">
       <div class="texto">
         <div class="num">Hoy · Paso 4 de 7</div>
         <h2>Sistemas va al estacionamiento e instala</h2>
@@ -325,11 +327,11 @@
       </div>
     </section>
 
-    <section class="paso" data-acto="hoy" data-capturas="2" data-papel="1" data-idas="3" data-tiempo="día 2" data-manos="quieta">
+    <section class="paso" data-acto="hoy" data-capturas="2" data-papel="2" data-idas="3" data-tiempo="día 1 → 2" data-manos="quieta">
       <div class="texto">
         <div class="num">Hoy · Paso 5 de 7</div>
         <h2>De regreso: transcribir las hojas a la hoja de cálculo</h2>
-        <p>Otra vez en la oficina, Sistemas lee cada hoja y la vuelve a escribir, campo por campo, en la hoja de cálculo, descifrando la letra manuscrita cuando hace falta.</p>
+        <p>De vuelta en la oficina, Sistemas lee cada hoja y la vuelve a escribir, campo por campo, en la hoja de cálculo, descifrando la letra cuando hace falta. Echándole ganas, la transcripción alcanza a arrancar el mismo día de la instalación; lo que no alcanza es el alta en ZK, que se va a la segunda jornada.</p>
         <span class="sello mal">Captura nº 2 · el mismo dato, otra vez</span>
       </div>
       <div class="visual">
@@ -344,11 +346,11 @@
       </div>
     </section>
 
-    <section class="paso" data-acto="hoy" data-capturas="3" data-papel="1" data-idas="3" data-tiempo="día 2">
+    <section class="paso" data-acto="hoy" data-capturas="3" data-papel="2" data-idas="3" data-tiempo="día 2">
       <div class="texto">
         <div class="num">Hoy · Paso 6 de 7</div>
         <h2>…y de la hoja de cálculo, a ZK: uno por uno</h2>
-        <p>Buscar la tarjeta, abrir el diálogo, teclear nombre, departamento y placa. Repetir por cada TAG instalado. Una jornada de captura tras la jornada de instalación.</p>
+        <p>Buscar la tarjeta, abrir el diálogo, teclear nombre, departamento y placa. Repetir por cada TAG instalado: la segunda jornada se va en esto.</p>
         <span class="sello mal">Captura nº 3 · el mismo dato, por tercera vez</span>
       </div>
       <div class="visual">
@@ -363,11 +365,11 @@
       </div>
     </section>
 
-    <section class="paso" data-acto="hoy" data-capturas="3" data-papel="1" data-idas="3" data-tiempo="~2 jornadas">
+    <section class="paso" data-acto="hoy" data-capturas="3" data-papel="2" data-idas="3" data-tiempo="~2 jornadas">
       <div class="texto">
         <div class="num">Hoy · Paso 7 de 7</div>
-        <h2>La hoja termina en el armario de la bodega</h2>
-        <p>La única constancia firmada del trámite —y del pago— queda guardada en papel, en el armario de la bodega de Sistemas. Consultarla después significa ir a buscarla.</p>
+        <h2>Las hojas terminan en el armario de la bodega</h2>
+        <p>La única constancia firmada del trámite —y del pago— queda guardada en papel: dos hojas por trámite, <strong>132 hojas en los dos lunes medidos</strong>, en el armario de la bodega de Sistemas. Consultarla después significa ir a buscarla.</p>
         <span class="sello mal">La evidencia existe, pero nadie puede consultarla</span>
       </div>
       <div class="visual">
@@ -504,7 +506,7 @@
         <ul>
           <li>El mismo dato se escribe <strong>3 veces</strong>: papel, hoja de cálculo y ZK</li>
           <li>El trámite avanza por llamadas y memoria</li>
-          <li>La evidencia firmada vive en un armario</li>
+          <li>La evidencia firmada vive en un armario: <strong>132 hojas</strong> en dos lunes (2 por trámite)</li>
           <li>Instalar + capturar: <strong>casi 2 jornadas</strong></li>
         </ul>
         <div class="gran">3 capturas · 2 jornadas</div>
@@ -523,6 +525,7 @@
       <div class="dato-medido">
         <div class="cifra">66 TAGs<small>instalados los últimos dos lunes</small></div>
         <div class="cifra">38 + 28<small>31 de agosto · 7 de septiembre</small></div>
+        <div class="cifra">132 hojas<small>de papel · 2 por trámite</small></div>
         <div class="nota">Medido en campo: con una sola persona instalando <em>y</em> dando de alta al sistema, el proceso de hoy toma <strong>más de una jornada completa</strong>.</div>
       </div>
     </section>
