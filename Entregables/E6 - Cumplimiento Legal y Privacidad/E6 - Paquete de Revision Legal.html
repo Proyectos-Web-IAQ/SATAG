@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>SATAG · Paquete de revisión legal</title>
+<style>
+  @page { size: letter; margin: 2cm 2.2cm; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; color: #23293a; font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1 { font-size: 19pt; color: #182947; margin: 0 0 2pt; }
+  h2 { font-size: 13.5pt; color: #182947; border-bottom: 2px solid #3fa463; padding-bottom: 3pt; margin: 22pt 0 8pt; }
+  h3 { font-size: 11.5pt; color: #182947; margin: 14pt 0 4pt; }
+  h4 { font-size: 10.5pt; color: #182947; margin: 10pt 0 3pt; }
+  p { margin: 5pt 0; }
+  .meta { color: #5a6274; margin: 0 0 4pt; }
+  .cinta { background: #e6f3ea; border-left: 4px solid #3fa463; padding: 8pt 10pt; margin: 12pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 9.5pt; }
+  th, td { border: 1px solid #cfd5df; padding: 5pt 7pt; text-align: left; vertical-align: top; }
+  th { background: #f0f2f6; color: #182947; }
+  .accion { font-weight: 700; color: #182947; white-space: nowrap; }
+  blockquote { border-left: 3px solid #cfd5df; margin: 6pt 0; padding: 2pt 10pt; color: #5a6274; }
+  ul, ol { margin: 5pt 0; padding-left: 20pt; }
+  li { margin: 3pt 0; }
+  code { font-family: Consolas, monospace; font-size: 9.5pt; background: #f0f2f6; padding: 0 3pt; }
+  .anexo { page-break-before: always; }
+  .anexo-titulo { background: #182947; color: #fff; padding: 8pt 12pt; font-size: 13pt; font-weight: 700; }
+  .anexo-sub { color: #5a6274; font-size: 9.5pt; margin: 4pt 0 12pt; }
+  .pie { margin-top: 26pt; padding-top: 8pt; border-top: 1px solid #cfd5df; color: #5a6274; font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<h1>SATAG — Paquete de revisión legal</h1>
+<p class="meta"><b>Sistema de Adquisición de TAG Vehicular · Instituto Asunción de Querétaro, A.C.</b></p>
+<p class="meta">Preparado por Soporte TI (Gerardo Sánchez) · 7 de septiembre de 2026 · Vía: Gerencia Administrativa</p>
+
+<div class="cinta">
+  <b>Qué se pide y para cuándo.</b> Este paquete reúne todo lo que corresponde revisar, decidir o
+  aprobar a Dirección y Legal antes de que SATAG salga a producción. Son <b>tres documentos por
+  aprobar o validar</b> (anexos A, B y C) y <b>tres decisiones</b> que esos documentos necesitan para
+  quedar completos. Respuesta deseada a más tardar el <b>viernes 12 de septiembre de 2026</b> para
+  sostener la salida a producción del 19. Dudas: Soporte TI, con copia a la Gerencia Administrativa.
+</div>
+
+<h2>1 · El sistema, en una página</h2>
+<p>
+SATAG sustituye el trámite en papel del TAG vehicular de acceso a los estacionamientos. La familia
+o el empleado <b>captura sus propios datos en línea y firma en pantalla</b>; Administración registra
+el cobro ($100, dato fijo del sistema, con folio de recibo automático e inmutable — control interno,
+no CFDI); Sistemas instala y activa el TAG. No hay cuentas ni contraseñas para las familias: el
+trámite es anónimo y el folio del comprobante se muestra una sola vez.
+</p>
+<p><b>Datos que recaba:</b> nombre del conductor y del gestionante (padre/madre/tutor o cónyuge cuando
+aplica), tipo de usuario, datos del vehículo (marca, modelo, color, placas), estacionamientos,
+registro del cobro, firma manuscrita digital y su evidencia. No recaba datos sensibles, CURP,
+correos ni teléfonos de las familias.</p>
+<p><b>La firma es electrónica simple reforzada</b> (no es e.firma del SAT): junto con la imagen de la
+firma se conserva la <b>versión exacta</b> del reglamento y del aviso que la persona aceptó, sello de
+tiempo, hash SHA-256 del paquete y bitácora. El sistema <b>no permite firmar</b> si el aviso o el
+reglamento no cargaron; el servidor rechaza cualquier alta sin las versiones mostradas.</p>
+<p><b>Menores de edad:</b> un conductor menor se registra como alumno y el aviso y el reglamento los
+acepta y firma su padre, madre o tutor como representante. Así lo exige y lo guarda el sistema.</p>
+<p><b>Resguardo:</b> los datos viven en Supabase (encargado tecnológico, región us-east-1) con reglas
+de acceso por rol; el panel del personal exige cuenta institucional y verificación en dos pasos; la
+imagen de la firma está en almacenamiento privado y solo se consulta con enlaces temporales de 60
+segundos. Desde el sitio público nadie puede consultar datos de ningún registro.</p>
+<p><b>Derechos ARCO:</b> el sistema permite exportar, corregir, bloquear y suprimir expedientes a
+petición del responsable. Los plazos legales de respuesta (20 días hábiles + 15 para ejecutar,
+art. 31 LFPDPPP) corren por parte del responsable que se designe en la decisión D1.</p>
+
+<h2>2 · Lo que se pide, punto por punto</h2>
+<table>
+  <tr><th style="width:4%">#</th><th style="width:24%">Tema</th><th style="width:11%">Acción</th><th>Detalle y pregunta concreta</th></tr>
+  <tr>
+    <td>A</td><td><b>Aviso de privacidad integral SATAG</b> (Anexo A)</td><td class="accion">APROBAR</td>
+    <td>Borrador completo listo desde julio. Para emitir la versión definitiva (v3) solo faltan dos
+    datos que dependen de las decisiones D1 y D2 de esta tabla: el <b>responsable ARCO</b> y el
+    <b>plazo de conservación</b>. La v3 incorpora además: ortografía con acentos, las opciones de
+    limitación de uso (art. 15 fr. IV) y la remisión a la videovigilancia que el reglamento anuncia.</td>
+  </tr>
+  <tr>
+    <td>B</td><td><b>Reglamento de acceso vehicular v2</b> — 22 cláusulas (Anexo B)</td><td class="accion">VALIDAR</td>
+    <td>Es el texto oficial del IAQ que hoy aceptan y firman los usuarios. Puntos que ameritan la
+    revisión de Legal: <b>límites de responsabilidad</b> por daños y robo (cláusulas 1, 4, 9 y 10),
+    la <b>videovigilancia 24 h</b> que anuncia la cláusula 17, la consignación del vehículo a los 3
+    días (cláusula 8) y la reserva de modificación (cláusula 22). Si Legal modifica el texto, se
+    publica una v3: <b>las firmas ya otorgadas conservan la versión que aceptaron</b>.</td>
+  </tr>
+  <tr>
+    <td>C</td><td><b>Aviso simplificado</b> (se muestra al recabar los datos)</td><td class="accion">APROBAR</td>
+    <td>Versión corta que encabeza el formulario, con enlace al integral. Debe quedar alineada al
+    integral aprobado en A. (Texto vigente visible en el sitio, paso 1 del registro.)</td>
+  </tr>
+  <tr>
+    <td>D1</td><td><b>Responsable de datos personales (ARCO)</b></td><td class="accion">DECIDIR</td>
+    <td>¿Departamento o persona con nombre? <b>Recomendación de TI:</b> Administración como
+    responsable formal con un titular operativo interno; TI como ejecutor técnico (exporta, bloquea,
+    suprime) a petición. Da continuidad ante cambios de personal y es lo que el aviso necesita para
+    nombrarse completo (art. 29 LFPDPPP).</td>
+  </tr>
+  <tr>
+    <td>D2</td><td><b>Plazo de conservación de expedientes</b> (Anexo C)</td><td class="accion">DECIDIR</td>
+    <td>¿Cuánto se guarda un expediente después de la baja y quién ejecuta la supresión?
+    <b>Recomendación: 6 años desde la baja, plazo único para todo el expediente incluida la firma</b>
+    (referencia de 72 meses; evita conservar datos de menores «por si acaso»). La alternativa limpia
+    es 10 años para todo; dos plazos distintos no son viables (la evidencia está atada al expediente).
+    El Anexo C desarrolla el análisis completo.</td>
+  </tr>
+  <tr>
+    <td>D3</td><td><b>Fin de la «vigencia del TAG»</b></td><td class="accion">DECIDIR</td>
+    <td>Qué evento termina la vigencia, para que el plazo de D2 tenga desde cuándo contar.
+    <b>Recomendación:</b> la <b>baja del registro</b> (egreso, cambio de vehículo, cancelación), que es
+    lo que el sistema ya asienta con fecha. La alternativa (fin de cada ciclo escolar con renovación)
+    exigiría un proceso de renovación que hoy no existe.</td>
+  </tr>
+  <tr>
+    <td>E1</td><td><b>Buzón</b> <code>aviso.privacidad@asuncionqro.edu.mx</code></td><td class="accion">CONFIRMAR</td>
+    <td>El aviso ya imprime ese correo como canal ARCO. Confirmar que el buzón <b>existe</b> y quién
+    lo atiende (idealmente el titular operativo de D1). Un aviso que promete un canal que nadie lee
+    es un incumplimiento frente al titular.</td>
+  </tr>
+  <tr>
+    <td>E2</td><td><b>Domicilio del responsable</b></td><td class="accion">CONFIRMAR</td>
+    <td>El aviso usa: <i>Cerrada de la Asunción #16, Col. Loma Dorada, Querétaro, Qro., C.P. 76060</i>.
+    Confirmar que coincide con el acta constitutiva / aviso de privacidad general del IAQ.</td>
+  </tr>
+</table>
+
+<h3>Solo para conocimiento (no requieren decisión de Legal ahora)</h3>
+<ul>
+  <li><b>DPA con Supabase:</b> TI firmará el acuerdo de tratamiento de datos del proveedor desde su
+  consola y archivará el PDF; la región queda documentada (us-east-1).</li>
+  <li><b>NOM-151 (constancia de conservación):</b> diferida a una fase posterior; se cotiza solo si
+  Dirección desea mayor fuerza probatoria para la evidencia de firma.</li>
+  <li><b>Cobro de $100:</b> el sistema emite folio interno automático por pago y por corte de caja,
+  inmutables y con identidad de quien cobra. No emite CFDI; el tratamiento contable lo define la
+  Gerencia Administrativa.</li>
+</ul>
+
+<h2>3 · Qué sigue después de la respuesta</h2>
+<p>Con A, D1 y D2 resueltos, TI emite el aviso v3 y lo publica <b>versionado</b>: cada persona que
+firme a partir de entonces acepta la v3, y quienes firmaron antes conservan registrada la versión
+exacta que aceptaron. Si B trae cambios, se publica el reglamento v3 bajo el mismo principio. Ningún
+punto de este paquete requiere desarrollo adicional: son textos y decisiones, no programación.</p>
+
+<p class="pie">SATAG · Paquete de revisión legal · 7-sep-2026 · Preparado por Soporte TI del IAQ.
+Fuentes internas: tablero E6 de decisiones legales, investigación legal del proyecto (LFPDPPP 2025),
+documentación técnica de seguridad y privacidad. Los anexos reproducen los textos íntegros.</p>
+
+<div class="anexo">
+  <div class="anexo-titulo">Anexo A · Aviso de privacidad integral SATAG (borrador para aprobación)</div>
+  <p class="anexo-sub">Texto completo del borrador. Las notas «pendiente de completar por IAQ» corresponden a las decisiones D1 y D2 de la tabla.</p>
+  <h2>Aviso de Privacidad SATAG</h2>
+<blockquote><p><b>Proyecto:</b> SATAG - Sistema de Adquisicion de TAG Vehicular.<br><b>Institucion:</b> Instituto Asuncion de Queretaro, A.C.<br><b>Fecha de borrador:</b> 06/07/2026.<br><b>Estado:</b> borrador para revision de Direccion/Legal.<br><b>Nota:</b> este texto es una base operativa derivada de la investigacion legal del proyecto. Debe validarse formalmente antes de publicarse.</p></blockquote>
+<h3>1. Aviso de privacidad integral especifico SATAG</h3>
+<h4>Identidad y domicilio del responsable</h4>
+<p>El Instituto Asuncion de Queretaro, A.C. ("IAQ"), con domicilio en Cerrada de la Asuncion #16, Col. Loma Dorada, Queretaro, Qro., Mexico, C.P. 76060, es responsable del tratamiento de los datos personales recabados mediante SATAG, sistema usado para la adquisicion, administracion, control, cambio, baja e instalacion del TAG vehicular de acceso al estacionamiento escolar.</p>
+<blockquote><p><b>Correo institucional de privacidad:</b> <code>aviso.privacidad@asuncionqro.edu.mx</code>.<br><b>Pendiente de completar por IAQ:</b> persona/departamento responsable de datos personales. (Legal debe confirmar que este domicilio coincide con el del aviso general/acta constitutiva.)</p></blockquote>
+<h4>Datos personales que se recaban</h4>
+<p>Para operar SATAG, el IAQ puede recabar:</p>
+<ul><li>Nombre del usuario del TAG.</li><li>Nombre del padre, madre, tutor o gestionante, cuando aplique.</li><li>Tipo de usuario: alumno, padre/madre/tutor, docente, administrativo u otro rol autorizado.</li><li>Datos del vehiculo: placas, marca, modelo, color e indicador de vehiculo sin placas cuando aplique.</li><li>Datos administrativos del TAG: solicitud, estacionamiento asignado, estado del tramite, No. de dispositivo TAG, cambios, reposiciones, baja y movimientos asociados.</li><li>Datos de pago administrativo: registro del cobro en efectivo del TAG, monto, fecha, persona que registra el cobro y folio de recibo. El sistema genera un folio de recibo automatico por cada pago (formato <code>SATAG-AAAA-######</code>) como control interno; no se emite comprobante fiscal.</li><li>Firma manuscrita digital: imagen, trazos de captura cuando se conserven, nombre del firmante, fecha y hora de aceptacion.</li><li>Evidencia digital de aceptacion: version del reglamento, version del aviso de privacidad, hash SHA-256, sello de tiempo y bitacora del evento.</li><li>Datos tecnicos razonables del uso del sistema, como fecha/hora, identificadores de sesion, IP o user-agent cuando sea necesario para seguridad, evidencia o auditoria.</li><li>Solicitudes relacionadas con derechos ARCO, revocacion, cambio o baja.</li></ul>
+<p>Los datos anteriores no se consideran sensibles por si mismos. Sin embargo, el IAQ debe evitar capturar en observaciones informacion de salud, discapacidad, religion, opiniones politicas, datos familiares innecesarios u otros datos sensibles.</p>
+<h4>Finalidades primarias</h4>
+<p>Los datos se usaran para:</p>
+<ul><li>Registrar solicitudes de adquisicion o uso de TAG vehicular.</li><li>Identificar al usuario, gestionante y vehiculo asociado al TAG.</li><li>Administrar la asignacion de estacionamiento y control de acceso vehicular.</li><li>Registrar la aceptacion del reglamento del estacionamiento.</li><li>Conservar evidencia de la firma electronica simple reforzada.</li><li>Registrar administrativamente el pago en efectivo del TAG.</li><li>Gestionar instalacion, cambio, reposicion, baja o inactivacion del TAG.</li><li>Atender solicitudes ARCO, revocacion, aclaraciones, rectificaciones y bajas.</li><li>Mantener seguridad, auditoria, trazabilidad y control interno del sistema.</li><li>Cumplir obligaciones legales, administrativas, contables o requerimientos de autoridad competente.</li></ul>
+<h4>Firma electronica simple reforzada</h4>
+<p>La aceptacion del reglamento se realiza mediante firma manuscrita digital capturada en pantalla. Esta firma no es e.firma del SAT ni firma electronica avanzada. Para reforzar su valor probatorio, SATAG conserva junto con la firma la version exacta del reglamento, la version del aviso de privacidad, un sello de tiempo, metadatos de aceptacion, bitacora y hash SHA-256 del paquete firmado.</p>
+<p>El firmante declara que los datos proporcionados son correctos y que acepta el reglamento de estacionamiento aplicable al TAG solicitado.</p>
+<h4>Menores de edad</h4>
+<p>Cuando el usuario del TAG sea alumno menor de edad, la aceptacion del reglamento y del aviso de privacidad debera realizarla el padre, madre o tutor que actue como gestionante. El alumno menor puede aparecer como usuario del beneficio vehicular, pero la autorizacion y aceptacion deben provenir de su representante.</p>
+<h4>Encargados tecnologicos y nube</h4>
+<p>SATAG puede alojar datos en servicios de nube, incluyendo Supabase como proveedor tecnologico y la infraestructura cloud que este utilice. Dichos proveedores actuan como encargados tecnologicos para almacenamiento, base de datos, autenticacion, seguridad, respaldos y operacion tecnica del sistema.</p>
+<p>El IAQ debera conservar la documentacion contractual o terminos aplicables del proveedor, incluyendo DPA o documento equivalente cuando corresponda, region del proyecto, subprocesadores y medidas de seguridad disponibles.</p>
+<h4>Transferencias</h4>
+<p>El IAQ no transferira los datos personales de SATAG a terceros para finalidades distintas a las informadas, salvo los casos permitidos por la legislacion aplicable, requerimiento de autoridad competente, cumplimiento de obligaciones legales o cuando sea necesario para proteger derechos del IAQ o de la comunidad escolar.</p>
+<p>La comunicacion de datos a proveedores tecnologicos que procesan informacion por cuenta del IAQ se considera remision a encargados y debe estar documentada en los terminos o contratos aplicables.</p>
+<p>Si en el futuro se comparten datos con una empresa operadora del estacionamiento, aseguradora u otro tercero independiente, el aviso debera revisarse antes de iniciar esa transferencia.</p>
+<h4>Derechos ARCO y revocacion</h4>
+<p>La persona titular, o su representante legal cuando corresponda, puede solicitar acceso, rectificacion, cancelacion u oposicion respecto de sus datos personales. Tambien puede revocar su consentimiento cuando proceda.</p>
+<p>El IAQ debera designar una persona o departamento para atender estas solicitudes e informar:</p>
+<ul><li>Nombre del area responsable.</li><li>Correo electronico.</li><li>Domicilio o medio de recepcion.</li><li>Requisitos de identificacion.</li><li>Plazos de respuesta y ejecucion.</li></ul>
+<blockquote><p><b>Correo institucional para privacidad/ARCO:</b> <code>aviso.privacidad@asuncionqro.edu.mx</code>.<br><b>Pendiente de completar por IAQ:</b> persona o departamento responsable ARCO.</p></blockquote>
+<h4>Conservacion, bloqueo y supresion</h4>
+<p>Los datos se conservaran mientras el TAG este vigente y durante el plazo necesario para cumplir finalidades administrativas, legales, contables o de responsabilidad relacionadas con el uso del estacionamiento.</p>
+<p>Cuando proceda la cancelacion o baja, el IAQ podra bloquear el registro para impedir tratamientos ordinarios y conservarlo temporalmente solo para responsabilidades pendientes. Al agotarse la finalidad y el plazo aprobado, los datos deberan suprimirse o disociarse de forma segura, incluyendo la eliminacion de firmas en Storage cuando corresponda.</p>
+<blockquote><p><b>Pendiente de aprobar:</b> plazo concreto de conservacion/bloqueo/supresion.</p></blockquote>
+<h4>Medidas de seguridad</h4>
+<p>El IAQ aplicara medidas administrativas, tecnicas y fisicas proporcionales al tratamiento, incluyendo control de accesos, RLS en base de datos, almacenamiento privado de firmas, URLs firmadas temporales, TLS, respaldos, bitacoras, MFA para administradores y acceso limitado al personal autorizado.</p>
+<h4>Cambios al aviso</h4>
+<p>El IAQ podra modificar este aviso por cambios legales, institucionales, tecnicos u operativos. Las versiones vigentes y anteriores deberan conservarse para acreditar que aviso acepto cada usuario al momento de firmar.</p>
+<h3>2. Aviso de privacidad simplificado para formulario</h3>
+<p>Texto recomendado para mostrar antes de capturar datos:</p>
+<blockquote><p>El Instituto Asuncion de Queretaro, A.C. es responsable del tratamiento de sus datos personales en SATAG. Usaremos su informacion para registrar y administrar la solicitud del TAG vehicular, asociar el vehiculo y placas al usuario, gestionar asignacion, pago, instalacion, cambio o baja del TAG, conservar evidencia de aceptacion del reglamento y atender solicitudes relacionadas con privacidad o control vehicular. Se recabaran nombre, tipo de usuario, datos del vehiculo, placas, datos del gestionante cuando aplique, firma manuscrita digital, version del reglamento/aviso aceptado, datos administrativos del TAG y registro del cobro en efectivo. Sus datos se resguardan en sistemas institucionales y proveedores tecnologicos de nube usados por el IAQ. Puede consultar el aviso integral y ejercer derechos ARCO o revocar su consentimiento mediante el canal institucional que el IAQ designe.</p></blockquote>
+<p>Casilla no premarcada:</p>
+<blockquote><p>He leido el aviso de privacidad de SATAG y acepto el tratamiento de mis datos personales para las finalidades indicadas.</p></blockquote>
+<p>Enlace:</p>
+<blockquote><p>Consultar aviso de privacidad integral SATAG.</p></blockquote>
+<h3>3. Texto de aceptacion de reglamento, privacidad y firma</h3>
+<p>Texto recomendado antes de firmar:</p>
+<blockquote><p>Declaro que la informacion proporcionada es correcta y que he leido y acepto el reglamento de acceso vehicular del Instituto Asuncion de Queretaro aplicable al TAG solicitado. Reconozco que mi firma manuscrita digital se usara como firma electronica simple para dejar evidencia de aceptacion del reglamento y del aviso de privacidad SATAG. Autorizo que se conserve junto con mi firma la version del reglamento, version del aviso, sello de tiempo, hash de integridad y bitacora de aceptacion.</p></blockquote>
+<p>Texto adicional cuando firma un gestionante:</p>
+<blockquote><p>Declaro que actuo como padre, madre, tutor o gestionante autorizado del usuario del TAG y que cuento con facultad para realizar esta solicitud y aceptar el reglamento y el tratamiento de datos personales en su nombre cuando corresponda.</p></blockquote>
+<p>Texto obligatorio para menores:</p>
+<blockquote><p>Si el usuario del TAG es alumno menor de edad, la solicitud y firma deben realizarse por padre, madre o tutor. El alumno menor no debe firmar como titular de consentimiento o aceptacion.</p></blockquote>
+<h3>4. Campos pendientes antes de publicacion</h3>
+<table><tr><th>Campo</th><th>Estado</th></tr><tr><td>Domicilio legal exacto del IAQ</td><td>Capturado (Cerrada de la Asuncion #16, Col. Loma Dorada, Queretaro, Qro., C.P. 76060); Legal confirma</td></tr><tr><td>Correo ARCO</td><td><code>aviso.privacidad@asuncionqro.edu.mx</code></td></tr><tr><td>Persona/departamento responsable ARCO</td><td>Pendiente</td></tr><tr><td>URL final del aviso integral</td><td>Definida: ruta <code>/aviso-de-privacidad</code> (pagina publicada el 28-jul); el dominio se fija al migrar al subdominio institucional</td></tr><tr><td>Plazo de conservacion de expedientes SATAG</td><td>Pendiente</td></tr><tr><td>Region Supabase y DPA archivado</td><td>Pendiente</td></tr><tr><td>Aprobacion de Direccion/Legal</td><td>Pendiente</td></tr></table>
+</div>
+
+<div class="anexo">
+  <div class="anexo-titulo">Anexo B · Reglamento de acceso vehicular IAQ — v2 vigente (22 cláusulas)</div>
+  <p class="anexo-sub">Texto oficial publicado en el sistema y aceptado por los firmantes; numeración idéntica a la que ve el usuario.</p>
+  <ol>
+    <li>El uso del estacionamiento no tendrá ningún costo siempre y cuando sea personal contratado por el Instituto Asunción de Querétaro AC (IAQ) y padres de familia del mismo, el cual solo le da derecho al uso del espacio sin ninguna responsabilidad para el IAQ.</li>
+    <li>Se colocará una calcomanía numerada al parabrisas de su vehículo (TAG) (para control de acceso) como empleado (previa solicitud) se le asignará una TAG, y por familia (previa solicitud) en ambos casos tendrán costo, así como las reposiciones o adicionales dicho costo será notificado una vez que solicite el nuevo TAG. Es importante señalar que cualquier reposición de TAG o tarjeta deja inactivo el anterior. El contar con un TAG o calcomanía de acceso no garantiza la disponibilidad de espacio, ya que está sujeto a las capacidades de ocupación de nuestros estacionamientos.</li>
+    <li>Ningún usuario podrá tener acceso al estacionamiento sin la calcomanía o TAG en su vehículo.</li>
+    <li>No respondemos por daños parciales o totales a su vehículo, por el robo parcial o total del mismo o por los objetos dejados en el interior del vehículo.</li>
+    <li>La función del Portero solo se limita a abrir y cerrar el estacionamiento en los horarios convenidos publicados en el interior del mismo estacionamiento; por favor cierre su vehículo y llévese sus llaves.</li>
+    <li>El Portero no está autorizado a mover su vehículo, por tal motivo no le proporcione las llaves del mismo.</li>
+    <li>En los casos de eventos generales del IAQ el estacionamiento se compartirá libremente con los Padres de Familia del IAQ por lo que estará sujeto a disponibilidad de espacios.</li>
+    <li>El horario de estacionamiento será de 6:30 hrs a 17:00 hrs, en caso de no recoger su vehículo en el transcurso de 3 días naturales, se turnará a la autoridad correspondiente para la consignación del mismo.</li>
+    <li>No respondemos por siniestros ocasionados por derrumbes, terremotos, inundaciones y cualquier otro siniestro natural o siniestros que pongan en riesgo la integridad de su vehículo.</li>
+    <li>Todo el daño imputable al IAQ se realizará en nuestros talleres.</li>
+    <li>Deberá de respetar los espacios asignados para el vehículo sin invadir otro cajón, cuidando no golpear con las puertas o con su automóvil los vehículos contiguos.</li>
+    <li>La velocidad máxima de circulación dentro del estacionamiento es de 10 Km/h, debiendo respetar los señalamientos de circulación, cajones de minusválidos, sentido de la circulación interna, rampas, áreas de tránsito peatonal y cualquier otra existente.</li>
+    <li>Como peatón deberá circular por los accesos y salidas peatonales; en ningún caso podrá invadir las áreas de tránsito vehicular para evitar un accidente.</li>
+    <li>En caso de acudir con menores, siempre deberán estar acompañados por un adulto para su supervisión y cuidado.</li>
+    <li>Una vez estacionado el vehículo no podrá permanecer ningún pasajero en el mismo por más de media hora y en ningún caso deberá de permanecer un menor sin la supervisión de un adulto.</li>
+    <li>No se permitirá el acceso con mascotas en los vehículos.</li>
+    <li>El estacionamiento cuenta con un circuito cerrado de video vigilancia, el cual está en operación las 24 horas.</li>
+    <li>Para el acceso a los estacionamientos deberá esperar a que la pluma baje, acercarse con su vehículo y permitir que el TAG les dé el acceso; cualquier daño ocasionado al vehículo o propiedad del IAQ por no respetar esta indicación no será responsabilidad del IAQ y en su caso pagará por los daños ocasionados a la pluma y su mecanismo.</li>
+    <li>Los lugares asignados como exclusivos de padres de familia tienen un tiempo de uso máximo de 30 minutos.</li>
+    <li>Para los alumnos de prepa que requieran TAG únicamente podrán acceder al estacionamiento 1, dentro del horario escolar y en caso de no respetarse puede retirarse el acceso al estacionamiento.</li>
+    <li>Cualquier situación no prevista en el presente documento se someterá a revisión por parte del IAQ.</li>
+    <li>El instituto se reserva el derecho de modificar las políticas de este reglamento; en caso de que se produjeran cambios serán aplicadas las vigentes.</li>
+  </ol>
+</div>
+
+<div class="anexo">
+  <div class="anexo-titulo">Anexo C · Nota de decisión: plazo de conservación de expedientes</div>
+  <p class="anexo-sub">Análisis y recomendación enviados a Dirección el 3 de agosto de 2026; resuelve la decisión D2.</p>
+  <h2>Nota de decisión — Plazo de conservación de los expedientes SATAG</h2>
+<blockquote><p><b>Para:</b> Dirección del IAQ · Asesoría Legal<br><b>De:</b> Soporte TI — Gerardo Sánchez<br><b>Fecha:</b> 03-ago-2026<br><b>Decide:</b> Dirección / Legal · <b>Prepara:</b> TI · <b>Opera:</b> Administración<br><b>Corresponde a:</b> fila 4 del tablero de Decisiones Legales Pendientes</p></blockquote>
+<hr>
+<h3>1. Qué se pide decidir</h3>
+<p>**Cuánto tiempo conserva el Instituto los expedientes del TAG vehicular después de que el TAG se da de baja, y qué se hace con ellos al vencer ese plazo.**</p>
+<p>Es una sola decisión con dos partes: el número de años y quién ejecuta la supresión.</p>
+<h3>2. Por qué no puede esperar</h3>
+<p>El aviso de privacidad <b>ya publicado en el sistema</b> promete, en su apartado de conservación:</p>
+<blockquote><p>«Al agotarse la finalidad y el plazo aprobado, los datos se suprimirán o disociarán de forma<br>segura, incluyendo la eliminación de firmas en almacenamiento cuando corresponda.»</p></blockquote>
+<p>Hoy <b>no existe ese plazo aprobado</b>, y tampoco un procedimiento que ejecute la supresión. El aviso compromete al Instituto a algo que el Instituto todavía no ha definido. Mientras siga así, la aprobación del aviso por parte de Legal quedaría firmando una promesa sin contenido.</p>
+<p>Hay además un matiz de redacción que conviene corregir en la misma versión. El borrador interno decía «los datos <b>deberán</b> suprimirse» —una obligación del Instituto hacia sí mismo— y el texto que se publicó dice «los datos <b>se suprimirán</b>» —un compromiso frente a la persona titular—. La segunda forma es más exigente. Es defendible, pero sólo si hay un plazo y alguien encargado de cumplirlo.</p>
+<p>Ninguna de las dos cosas depende del desarrollo del sistema: el sistema ya tiene los campos donde anotar la fecha de bloqueo y la de supresión. Falta la decisión institucional.</p>
+<h3>3. Qué dice el marco legal</h3>
+<p>De la investigación legal del proyecto:</p>
+<ul><li><b>No hay un plazo fijo para particulares.</b> La ley obliga a que exista uno, definido por el</li></ul>
+<p>  responsable en función de la finalidad, no a que sea de una duración concreta.</p>
+<ul><li>La LFPDPPP usa <b>72 meses (6 años)</b> como referencia al hablar de incumplimientos contractuales</li></ul>
+<p>  (art. 10).</p>
+<ul><li>Para evidencia firmada suele invocarse por analogía el **art. 49 del Código de Comercio (10</li></ul>
+<p>  años)**. La propia investigación advierte que la analogía es débil en este caso: el Instituto no   celebra un acto mercantil con el reglamento de estacionamiento.</p>
+<ul><li>La ley pide expresamente <b>no conservar indefinidamente datos de menores</b> «por si acaso». Una</li></ul>
+<p>  parte importante de los conductores de SATAG son alumnos.</p>
+<h3>4. Recomendación</h3>
+<p>**Un plazo único de 6 años contados desde la baja del TAG, para todo el expediente, incluida la evidencia de firma.**</p>
+<p>Al darse de baja, el expediente pasa a <b>bloqueado</b>: deja de usarse en la operación diaria y sólo queda disponible para aclaraciones, responsabilidades o requerimientos. Cumplidos los 6 años, se suprime, incluida la imagen de la firma en el almacenamiento privado.</p>
+<p>Por qué 6 y no 10:</p>
+<ol><li>Es el plazo que la propia ley usa como referencia, y cubre de sobra la vida útil de una</li></ol>
+<p>   aclaración sobre un TAG de estacionamiento escolar.</p>
+<ol><li>Diez años se justifican por la fuerza probatoria de la firma en actos mercantiles, y éste no lo</li></ol>
+<p>   es. Conservar una década los datos de un alumno tiene un costo de privacidad que el beneficio    probatorio no compensa.</p>
+<ol><li>Es un solo número. Un plazo único se puede cumplir con una revisión anual y una lista; dos</li></ol>
+<p>   plazos distintos obligan a construir un mecanismo intermedio (ver el apartado 5).</p>
+<p><b>Si Dirección prefiere máxima fuerza probatoria</b>, la alternativa coherente es **10 años para todo el expediente**, no 10 sólo para la firma. La razón es técnica y está en el apartado siguiente.</p>
+<h3>5. Advertencia técnica sobre la opción de dos plazos</h3>
+<p>La recomendación anterior del tablero contemplaba 6 años para los datos operativos y 10 para la evidencia de firma. <b>Esa combinación no es gratuita.</b> En la base, la evidencia de firma está atada al expediente con borrado en cascada: al eliminar el expediente se elimina también su aceptación, su firma y su hash.</p>
+<p>Conservar la firma cinco años más que el expediente exigiría <b>no borrar</b> el expediente a los 6 años sino *disociarlo* —vaciar los datos personales y dejar la fila viva sosteniendo la evidencia—, lo que implica una rutina nueva que hoy no existe y que habría que construir, probar y documentar. Es viable, pero es trabajo adicional posterior al cierre del proyecto.</p>
+<p>Por eso las dos opciones limpias son <b>6 años para todo</b> (recomendada) o <b>10 años para todo</b>.</p>
+<h3>6. Qué pasa una vez decidido</h3>
+<p>Nada de esto bloquea la entrega del sistema; se hace después y por su cuenta.</p>
+<table><tr><th>Paso</th><th>Quién</th><th>Cuándo</th></tr><tr><td>Registrar la decisión en el tablero y publicar la v3 del aviso con el plazo escrito</td><td>TI</td><td>Al recibir la decisión</td></tr><tr><td>Que la baja calcule y guarde la fecha de supresión en el expediente</td><td>TI</td><td>Con el lote de arreglos posterior a las pruebas</td></tr><tr><td>Revisar una vez al año los expedientes que hayan cumplido el plazo y ejecutar la supresión</td><td>Administración pide · TI ejecuta</td><td>Anual, a partir del primer aniversario</td></tr></table>
+<p>Dos avisos para quien publique la v3 del aviso:</p>
+<ul><li>Cambiar el texto del aviso <b>obliga a resembrar el banco de pruebas</b>, porque las firmas de</li></ul>
+<p>  prueba guardan la huella del texto anterior. Hay que hacerlo antes de volver a certificar.</p>
+<ul><li>La publicación de una versión nueva tiene hoy un fallo conocido que borraría el aviso corto del</li></ul>
+<p>  formulario sin dar error. Está identificado y va corregido en el mismo bloque de base que se   aplicará al terminar las pruebas. <b>No publique la v3 antes de ese bloque.</b></p>
+<h3>7. Decisión</h3>
+<table><tr><th><b>Plazo aprobado</b></th><th>☐ 6 años desde la baja (recomendado) · ☐ 10 años desde la baja · ☐ Otro: ______</th></tr><tr><td><b>Área responsable del proceso</b></td><td></td></tr><tr><td><b>Nombre y cargo de quien aprueba</b></td><td></td></tr><tr><td><b>Fecha</b></td><td></td></tr><tr><td><b>Firma</b></td><td></td></tr></table>
+<blockquote><p>Al recibir esta decisión, TI la registra en la fila 4 del tablero, la refleja en el aviso de<br>privacidad y la marca como <b>Decidido</b>.</p></blockquote>
+</div>
+
+</body>
+</html>

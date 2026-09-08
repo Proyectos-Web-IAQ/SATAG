@@ -28,6 +28,7 @@ import type {
   RegistroIncompleto,
   ResultadoCorte,
   Solicitud,
+  TagInventario,
   TipoMovimiento,
   TipoSolicitud,
   TipoUsuario,
@@ -504,6 +505,52 @@ export async function darBaja(id: string, motivo: string, hechoPor: string): Pro
 export async function usarTagApartado(id: string, hechoPor: string): Promise<AccionResultado> {
   return rpc("usar_tag_apartado", {
     p_registro_id: id,
+    p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
+// ---- SC-025: inventario de TAGs de la escuela (alta anticipada) ----
+
+interface TagInventarioRow {
+  no_dispositivo: string;
+  dado_de_alta_por: string;
+  dado_de_alta_en: string;
+  asignado_a: string | null;
+  asignado_en: string | null;
+}
+
+// Inventario completo (disponibles y asignados); la pantalla separa por
+// asignadoA. Se ordena por alta: los lotes recientes quedan al final.
+export async function listTagsInventario(): Promise<TagInventario[]> {
+  const { data, error } = await supabaseAuth
+    .from("inventario_tags")
+    .select("no_dispositivo, dado_de_alta_por, dado_de_alta_en, asignado_a, asignado_en")
+    .order("dado_de_alta_en", { ascending: true });
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as TagInventarioRow[]).map((t) => ({
+    noDispositivo: t.no_dispositivo,
+    dadoDeAltaPor: t.dado_de_alta_por,
+    dadoDeAltaEn: t.dado_de_alta_en,
+    asignadoA: t.asignado_a,
+    asignadoEn: t.asignado_en,
+  }));
+}
+
+// Alta de un lote. El RPC valida todo-o-nada y rechaza con la lista exacta de
+// numeros invalidos o repetidos (inventario, padron activo o apartados).
+export async function altaTagsInventario(numeros: string[], hechoPor: string): Promise<AccionResultado> {
+  return rpc("alta_inventario_tags", {
+    p_numeros: numeros,
+    p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
+// Retira del inventario un TAG que sigue disponible (capturado por error,
+// danado, devuelto). Un TAG asignado no se retira: su historia vive en el
+// expediente y el RPC lo rechaza con el folio.
+export async function retirarTagInventario(noDispositivo: string, hechoPor: string): Promise<AccionResultado> {
+  return rpc("retirar_tag_inventario", {
+    p_no_dispositivo: noDispositivo,
     p_hecho_por: hechoPor.trim() || null,
   });
 }

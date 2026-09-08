@@ -1,0 +1,2 @@
+
+CORRIDA ABORTADA antes de arrancar (1 peticiones). Revise el error de arriba; no hay nada que registrar en CAPACIDAD.md.

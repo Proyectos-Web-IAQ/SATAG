@@ -18,5 +18,10 @@ export default defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Herramientas operativas en Node (puente a ZKBioSecurity y pruebas de
+    // carga con k6): no son parte de la app Next y usan require()/globals
+    // propios de sus entornos.
+    "Campo/**",
+    "pruebas-carga/**",
   ]),
 ]);

@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Antes y después — SATAG</title>
+<link href="https://fonts.googleapis.com/css2?family=Raleway:wght@600;700;800&family=Libre+Franklin:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #182947; --navy-deep: #101d35; --green: #3fa463; --green-soft: #e6f3ea;
+    --paper: #f7f8fa; --card: #ffffff; --ink: #23293a; --ink-soft: #5a6274;
+    --line: #dfe3ea; --rojo: #b3453e; --rojo-soft: #f8ecea; --ambar: #b07d2b;
+    --display: "Raleway", "Segoe UI", system-ui, sans-serif;
+    --body: "Libre Franklin", "Segoe UI", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body { font-family: var(--body); background: var(--navy-deep); color: var(--ink); overflow: hidden; }
+
+  .marco { height: 100%; display: flex; flex-direction: column; }
+
+  /* ===== cabecera ===== */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.1rem 2.2rem .9rem; color: #fff; flex: 0 0 auto;
+  }
+  header .titulo { font-family: var(--display); font-weight: 800; font-size: 1.25rem; letter-spacing: .04em; }
+  header .titulo small { display: block; font-family: var(--body); font-weight: 400; font-size: .78rem; color: #aebad0; letter-spacing: .12em; text-transform: uppercase; margin-top: .2rem; }
+  #acto {
+    font-family: var(--display); font-weight: 800; font-size: 1rem; letter-spacing: .1em; text-transform: uppercase;
+    padding: .55rem 1.3rem; border-radius: 999px; border: 2px solid transparent; transition: all .4s;
+  }
+  #acto.hoy { background: var(--rojo-soft); color: var(--rojo); border-color: var(--rojo); }
+  #acto.satag { background: var(--green-soft); color: var(--green); border-color: var(--green); }
+  #acto.cierre { background: #fff; color: var(--navy); border-color: #fff; }
+
+  /* ===== contadores ===== */
+  .hud { display: flex; gap: .7rem; justify-content: center; padding: 0 2rem .8rem; flex: 0 0 auto; }
+  .hud .pill {
+    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.18); color: #dfe6f2;
+    border-radius: 12px; padding: .45rem 1rem; text-align: center; min-width: 10.5rem; transition: all .4s;
+  }
+  .hud .pill b { display: block; font-family: var(--display); font-size: 1.35rem; font-weight: 800; color: #fff; }
+  .hud .pill span { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
+  .hud .pill.alerta b { color: #ff9d94; }
+  .hud .pill.bien b { color: #7fd6a0; }
+
+  /* ===== escenario ===== */
+  .escenario { flex: 1 1 auto; position: relative; margin: 0 2.2rem; min-height: 0; }
+  .paso {
+    position: absolute; inset: 0; display: none; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 2rem; align-items: center; background: var(--paper); border-radius: 18px; padding: 2.2rem 2.6rem;
+  }
+  .paso.activa { display: grid; animation: entra .5s ease-out; }
+  @keyframes entra { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  .texto .num {
+    font-family: var(--display); font-weight: 800; font-size: .85rem; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-soft); margin-bottom: .6rem;
+  }
+  .texto h2 { font-family: var(--display); font-weight: 800; font-size: 2.15rem; line-height: 1.15; color: var(--navy); margin-bottom: 1rem; }
+  .texto p { font-size: 1.13rem; line-height: 1.55; color: var(--ink-soft); max-width: 34rem; }
+  .texto .sello {
+    display: inline-block; margin-top: 1.1rem; padding: .45rem 1rem; border-radius: 999px;
+    font-size: .85rem; font-weight: 600; letter-spacing: .04em;
+  }
+  .sello.mal { background: var(--rojo-soft); color: var(--rojo); }
+  .sello.bien { background: var(--green-soft); color: var(--green); }
+
+  /* ===== mockups ===== */
+  .visual { display: flex; align-items: center; justify-content: center; min-width: 0; }
+  .ventana { width: 100%; max-width: 30rem; background: var(--card); border-radius: 12px; box-shadow: 0 18px 40px rgba(16,29,53,.18); overflow: hidden; border: 1px solid var(--line); }
+  .ventana .barra { display: flex; align-items: center; gap: .4rem; padding: .5rem .8rem; background: #eef1f5; border-bottom: 1px solid var(--line); font-size: .72rem; color: var(--ink-soft); }
+  .ventana .barra i { width: .6rem; height: .6rem; border-radius: 50%; background: #cdd4de; }
+  .zk-cab { background: #2e7d4f; color: #fff; padding: .5rem .9rem; font-size: .8rem; font-weight: 600; letter-spacing: .05em; }
+  table.zk { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  table.zk th { background: #f0f4f1; color: var(--ink-soft); font-weight: 600; text-align: left; padding: .4rem .7rem; border-bottom: 1px solid var(--line); }
+  table.zk td { padding: .42rem .7rem; border-bottom: 1px solid #edf0f4; color: var(--ink); }
+  table.zk td.vacio { color: #c2c9d4; font-style: italic; }
+  table.zk tr.nueva td { animation: aparece .6s .5s both; }
+  @keyframes aparece { from { opacity: 0; background: var(--green-soft); } to { opacity: 1; } }
+
+  .hoja { width: 100%; max-width: 24rem; background: #fffdf6; border: 1px solid #e7e0c9; border-radius: 6px; box-shadow: 0 18px 40px rgba(16,29,53,.18); padding: 1.4rem 1.6rem; position: relative; }
+  .hoja h3 { font-family: var(--display); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--navy); margin-bottom: 1rem; text-align: center; }
+  .hoja .campo { font-size: .78rem; color: var(--ink-soft); margin-bottom: .85rem; }
+  .hoja .campo .linea { display: block; height: 1.15rem; border-bottom: 1.5px solid #cbc3a8; margin-top: .15rem; position: relative; overflow: hidden; }
+  .hoja .campo .linea::after {
+    content: attr(data-mano); position: absolute; left: .2rem; bottom: 0; white-space: nowrap;
+    font-family: "Segoe Script", "Comic Sans MS", cursive; font-size: .85rem; color: #3b4a6b;
+    width: 0; overflow: hidden; animation: escribe 1.4s .4s forwards;
+  }
+  .paso[data-manos="quieta"] .hoja .campo .linea::after { animation: none; width: 100%; }
+  @keyframes escribe { to { width: 100%; } }
+  .hoja .firma { margin-top: 2.2rem; border-top: 1.5px solid #cbc3a8; padding-top: .3rem; font-size: .7rem; color: var(--ink-soft); text-align: center; position: relative; }
+  .hoja .firma .rubrica {
+    position: absolute; top: -1.45rem; left: 0; right: 0; text-align: center;
+    font-family: "Segoe Script", "Comic Sans MS", cursive; font-size: 1.05rem; color: #3b4a6b;
+    opacity: 0; animation: firma-cae .5s 1.9s forwards;
+  }
+  .paso[data-manos="quieta"] .hoja .firma .rubrica { animation: none; opacity: 1; }
+  @keyframes firma-cae { to { opacity: 1; } }
+  .billete { position: absolute; right: -1.6rem; bottom: -1.2rem; background: var(--green-soft); border: 1.5px solid var(--green); color: var(--green); font-weight: 700; border-radius: 8px; padding: .5rem .9rem; font-size: 1rem; transform: rotate(6deg); }
+
+  .telefonos { display: flex; align-items: center; gap: 1.4rem; font-size: 3.2rem; }
+  .telefonos .onda { font-family: var(--display); font-weight: 800; font-size: 1.15rem; color: var(--navy); letter-spacing: .18em; animation: parpadea 1.1s infinite alternate; }
+  @keyframes parpadea { from { opacity: .35; } to { opacity: 1; } }
+
+  .auto { position: relative; width: 100%; max-width: 26rem; }
+  .auto svg { width: 100%; display: block; }
+  .auto .tag {
+    position: absolute; top: 34%; left: 56%; background: var(--navy); color: #fff; font-size: .72rem;
+    padding: .3rem .6rem; border-radius: 6px; font-weight: 600; letter-spacing: .05em;
+    animation: pega .7s .5s both;
+  }
+  @keyframes pega { from { transform: translateY(-26px) scale(1.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  table.sheet { width: 100%; border-collapse: collapse; font-size: .78rem; }
+  table.sheet th { background: #e9f2ec; color: #2e7d4f; font-weight: 600; padding: .35rem .6rem; border: 1px solid #d4e3d8; text-align: left; }
+  table.sheet td { padding: .35rem .6rem; border: 1px solid #e4ebe6; color: var(--ink); }
+  table.sheet tr.nueva td { animation: aparece .6s .6s both; }
+
+  .dialogo { padding: 1.1rem 1.3rem; }
+  .dialogo .fila { display: flex; gap: .7rem; margin-bottom: .65rem; align-items: center; }
+  .dialogo label { flex: 0 0 6.2rem; font-size: .74rem; color: var(--ink-soft); text-align: right; }
+  .dialogo .caja { flex: 1; border: 1px solid var(--line); border-radius: 4px; padding: .3rem .5rem; font-size: .8rem; min-height: 1.6rem; background: #fff; }
+  .dialogo .caja.tecleo { overflow: hidden; white-space: nowrap; }
+  .paso.activa .dialogo .caja.tecleo { animation: teclea 1.3s .5s both steps(18); }
+  @keyframes teclea { from { max-width: 0; } to { max-width: 100%; } }
+
+  .armario { text-align: center; }
+  .armario .mueble { font-size: 6.5rem; line-height: 1; }
+  .armario .papeles { display: flex; justify-content: center; gap: .3rem; margin-top: .8rem; }
+  .armario .papeles i {
+    width: 2rem; height: 2.6rem; background: #f5edd4; border: 1.5px solid #a89c74; border-radius: 2px;
+    box-shadow: 0 3px 8px rgba(16,29,53,.22); animation: guarda .8s both;
+  }
+  .armario .papeles i:nth-child(2) { animation-delay: .25s; } .armario .papeles i:nth-child(3) { animation-delay: .5s; }
+  .armario .papeles i:nth-child(4) { animation-delay: .75s; } .armario .papeles i:nth-child(5) { animation-delay: 1s; }
+  @keyframes guarda { from { transform: translateY(-30px); opacity: 0; } to { transform: none; opacity: .85; } }
+
+  .cel { width: 15rem; background: var(--navy-deep); border-radius: 26px; padding: .7rem; box-shadow: 0 18px 40px rgba(16,29,53,.3); }
+  .cel .pantalla { background: #fff; border-radius: 18px; overflow: hidden; }
+  .cel .app-cab { background: var(--navy); color: #fff; padding: .7rem .9rem; font-family: var(--display); font-weight: 700; font-size: .85rem; }
+  .cel .app-cuerpo { padding: .8rem .9rem; }
+  .cel .app-cuerpo .campo { margin-bottom: .6rem; }
+  .cel .app-cuerpo label { display: block; font-size: .62rem; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: .2rem; }
+  .cel .app-cuerpo .caja { border: 1px solid var(--line); border-radius: 6px; padding: .35rem .5rem; font-size: .75rem; }
+  .cel .boton { background: var(--green); color: #fff; text-align: center; border-radius: 8px; padding: .5rem; font-weight: 600; font-size: .8rem; margin-top: .4rem; }
+
+  .recibo { width: 100%; max-width: 21rem; background: #fff; border-radius: 10px; box-shadow: 0 18px 40px rgba(16,29,53,.18); padding: 1.3rem 1.5rem; border-top: 6px solid var(--green); }
+  .recibo h3 { font-family: var(--display); font-size: .95rem; color: var(--navy); margin-bottom: .8rem; }
+  .recibo .linea { display: flex; justify-content: space-between; font-size: .85rem; padding: .3rem 0; border-bottom: 1px dashed var(--line); }
+  .recibo .linea b { color: var(--navy); }
+  .recibo .total { font-size: 1.05rem; margin-top: .5rem; display: flex; justify-content: space-between; font-weight: 700; color: var(--green); }
+
+  .consola { width: 100%; max-width: 30rem; background: var(--navy-deep); border-radius: 10px; padding: 1.1rem 1.3rem; font-family: Consolas, monospace; font-size: .8rem; color: #cfe6d8; box-shadow: 0 18px 40px rgba(16,29,53,.3); }
+  .consola div { opacity: 0; animation: linea .01s forwards; }
+  .paso.activa .consola div:nth-child(1) { animation-delay: .3s; } .paso.activa .consola div:nth-child(2) { animation-delay: 1s; }
+  .paso.activa .consola div:nth-child(3) { animation-delay: 1.7s; } .paso.activa .consola div:nth-child(4) { animation-delay: 2.4s; }
+  .paso.activa .consola div:nth-child(5) { animation-delay: 3.1s; }
+  @keyframes linea { to { opacity: 1; } }
+  .consola .ok { color: #7fd6a0; font-weight: 700; }
+
+  /* ===== cierre ===== */
+  .paso.cierre-grid { grid-template-columns: 1fr 1fr; align-items: stretch; }
+  .col-cierre { border-radius: 14px; padding: 1.8rem 2rem; display: flex; flex-direction: column; }
+  .col-cierre.hoy { background: var(--rojo-soft); }
+  .col-cierre.satag { background: var(--green-soft); }
+  .col-cierre h2 { font-family: var(--display); font-weight: 800; font-size: 1.15rem; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 1.2rem; }
+  .col-cierre.hoy h2 { color: var(--rojo); } .col-cierre.satag h2 { color: var(--green); }
+  .col-cierre ul { list-style: none; display: flex; flex-direction: column; gap: .85rem; }
+  .col-cierre li { font-size: 1.02rem; line-height: 1.4; color: var(--ink); padding-left: 1.6rem; position: relative; }
+  .col-cierre.hoy li::before { content: "✗"; position: absolute; left: 0; color: var(--rojo); font-weight: 700; }
+  .col-cierre.satag li::before { content: "✓"; position: absolute; left: 0; color: var(--green); font-weight: 700; }
+  .col-cierre .gran { margin-top: auto; padding-top: 1.2rem; font-family: var(--display); font-weight: 800; font-size: 1.7rem; }
+  .col-cierre.hoy .gran { color: var(--rojo); } .col-cierre.satag .gran { color: var(--green); }
+  .dato-medido {
+    grid-column: 1 / -1; background: var(--navy); color: #fff; border-radius: 12px;
+    padding: .95rem 1.6rem; display: flex; align-items: center; justify-content: center; gap: 2.2rem; flex-wrap: wrap;
+  }
+  .dato-medido .cifra { font-family: var(--display); font-weight: 800; font-size: 1.55rem; }
+  .dato-medido .cifra small { display: block; font-family: var(--body); font-weight: 400; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: #aebad0; }
+  .dato-medido .nota { font-size: .95rem; color: #dfe6f2; max-width: 30rem; line-height: 1.4; }
+
+  /* ===== controles ===== */
+  .controles { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; gap: 1rem; padding: .9rem 2rem 1.1rem; }
+  .controles button {
+    background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.25);
+    border-radius: 8px; padding: .45rem .95rem; font-size: .9rem; cursor: pointer; font-family: var(--body);
+  }
+  .controles button:hover { background: rgba(255,255,255,.22); }
+  .puntos { display: flex; gap: .45rem; }
+  .puntos i { width: .55rem; height: .55rem; border-radius: 50%; background: rgba(255,255,255,.25); cursor: pointer; transition: all .3s; }
+  .puntos i.hoy-p.on { background: #ff9d94; transform: scale(1.35); }
+  .puntos i.satag-p.on { background: #7fd6a0; transform: scale(1.35); }
+  .puntos i.cierre-p.on { background: #fff; transform: scale(1.35); }
+
+  @media (max-width: 900px) {
+    .paso { grid-template-columns: 1fr; overflow-y: auto; }
+    .hud .pill { min-width: 7rem; }
+  }
+</style>
+</head>
+<body>
+<div class="marco">
+  <header>
+    <div class="titulo">SATAG · Sistema de Adquisición de TAG Vehicular
+      <small>Instituto Asunción de Querétaro — el proceso, antes y después</small>
+    </div>
+    <div id="acto" class="hoy">Así funciona hoy</div>
+  </header>
+
+  <div class="hud">
+    <div class="pill" id="hud-capturas"><b>0</b><span>capturas del mismo dato</span></div>
+    <div class="pill" id="hud-papel"><b>0</b><span>hojas de papel</span></div>
+    <div class="pill" id="hud-idas"><b>0</b><span>llamadas y traslados</span></div>
+    <div class="pill" id="hud-tiempo"><b>—</b><span>tiempo del trámite</span></div>
+  </div>
+
+  <div class="escenario">
+
+    <!-- ============ ACTO 1: HOY ============ -->
+    <section class="paso" data-acto="hoy" data-capturas="0" data-papel="0" data-idas="0" data-tiempo="día 0">
+      <div class="texto">
+        <div class="num">Hoy · Paso 1 de 7</div>
+        <h2>Sistemas da de alta los TAGs por adelantado en ZKBioSecurity</h2>
+        <p>Antes de que exista un solo trámite, Sistemas captura las tarjetas en ZK: números sin dueño, esperando a que alguien los reclame.</p>
+        <span class="sello mal">Trabajo por adelantado, sin datos de nadie</span>
+      </div>
+      <div class="visual">
+        <div class="ventana">
+          <div class="barra"><i></i><i></i><i></i>&nbsp;ZKBioSecurity — Personal</div>
+          <div class="zk-cab">Usuarios</div>
+          <table class="zk">
+            <tr><th>Nombre</th><th>Departamento</th><th>Tarjeta</th></tr>
+            <tr><td class="vacio">— sin asignar —</td><td>Padres de familia</td><td>13079101</td></tr>
+            <tr><td class="vacio">— sin asignar —</td><td>Padres de familia</td><td>13079102</td></tr>
+            <tr class="nueva"><td class="vacio">— sin asignar —</td><td>Padres de familia</td><td>13079103</td></tr>
+            <tr class="nueva"><td class="vacio">— sin asignar —</td><td>Padres de familia</td><td>13079104</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="1" data-idas="0" data-tiempo="día 1">
+      <div class="texto">
+        <div class="num">Hoy · Paso 2 de 7</div>
+        <h2>El papá llega al módulo: hoja de papel y pago</h2>
+        <p>Recibe una hoja, la llena a mano —nombre, vehículo, placa—, la firma y paga. Todo lo que el Instituto sabe del trámite vive en esa hoja.</p>
+        <span class="sello mal">Captura nº 1 · letra a mano, sin validación</span>
+      </div>
+      <div class="visual">
+        <div class="hoja">
+          <h3>Solicitud de TAG vehicular</h3>
+          <div class="campo">Nombre del solicitante <span class="linea" data-mano="Nombre Apellido Apellido"></span></div>
+          <div class="campo">Vehículo <span class="linea" data-mano="Camioneta gris 2021"></span></div>
+          <div class="campo">Placa <span class="linea" data-mano="ABC123D"></span></div>
+          <div class="firma"><span class="rubrica">Nombre A.</span>Firma del solicitante</div>
+          <div class="billete">$100</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="1" data-idas="1" data-tiempo="día 1">
+      <div class="texto">
+        <div class="num">Hoy · Paso 3 de 7</div>
+        <h2>«Hablen a Sistemas»</h2>
+        <p>Con la hoja pagada, alguien tiene que avisarle a Sistemas por teléfono que hay TAGs por instalar. Si Sistemas está en otra cosa, el papá espera.</p>
+        <span class="sello mal">El trámite depende de un aviso telefónico, sin registro</span>
+      </div>
+      <div class="visual">
+        <div class="telefonos">📞 <span class="onda">RING · RING</span> 🧑‍💻</div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="hoy" data-capturas="1" data-papel="1" data-idas="2" data-tiempo="día 1">
+      <div class="texto">
+        <div class="num">Hoy · Paso 4 de 7</div>
+        <h2>Sistemas va al estacionamiento e instala</h2>
+        <p>Se pega el TAG al parabrisas, se decide ahí mismo qué número le toca y a qué estacionamientos entra… y se anota <em>a mano, en la misma hoja</em>.</p>
+        <span class="sello mal">El número de TAG también nace en papel</span>
+      </div>
+      <div class="visual">
+        <div class="auto">
+          <svg viewBox="0 0 420 180">
+            <path d="M40 130 Q60 80 130 72 L170 45 Q210 30 265 45 L300 72 Q375 80 390 125 L390 140 Q390 150 378 150 L62 150 Q48 150 44 140 Z" fill="#182947"/>
+            <path d="M175 52 Q210 40 258 52 L285 74 L160 74 Z" fill="#bcd4ea"/>
+            <circle cx="115" cy="150" r="22" fill="#101d35"/><circle cx="115" cy="150" r="10" fill="#5a6274"/>
+            <circle cx="320" cy="150" r="22" fill="#101d35"/><circle cx="320" cy="150" r="10" fill="#5a6274"/>
+          </svg>
+          <div class="tag">TAG 13079103</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="hoy" data-capturas="2" data-papel="1" data-idas="3" data-tiempo="día 2" data-manos="quieta">
+      <div class="texto">
+        <div class="num">Hoy · Paso 5 de 7</div>
+        <h2>De regreso: transcribir las hojas a la hoja de cálculo</h2>
+        <p>Otra vez en la oficina, Sistemas lee cada hoja y la vuelve a escribir, campo por campo, en la hoja de cálculo, descifrando la letra manuscrita cuando hace falta.</p>
+        <span class="sello mal">Captura nº 2 · el mismo dato, otra vez</span>
+      </div>
+      <div class="visual">
+        <div class="ventana">
+          <div class="barra"><i></i><i></i><i></i>&nbsp;Hoja de cálculo — Registros</div>
+          <table class="sheet">
+            <tr><th>No. de TAG</th><th>Nombre</th><th>Vehículo</th><th>Placa</th></tr>
+            <tr><td>13079101</td><td>Nombre Apellido</td><td>SUV azul</td><td>XYZ456K</td></tr>
+            <tr class="nueva"><td>13079103</td><td>Nombre Apellido</td><td>Camioneta gris</td><td>ABC123D</td></tr>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="hoy" data-capturas="3" data-papel="1" data-idas="3" data-tiempo="día 2">
+      <div class="texto">
+        <div class="num">Hoy · Paso 6 de 7</div>
+        <h2>…y de la hoja de cálculo, a ZK: uno por uno</h2>
+        <p>Buscar la tarjeta, abrir el diálogo, teclear nombre, departamento y placa. Repetir por cada TAG instalado. Una jornada de captura tras la jornada de instalación.</p>
+        <span class="sello mal">Captura nº 3 · el mismo dato, por tercera vez</span>
+      </div>
+      <div class="visual">
+        <div class="ventana">
+          <div class="barra"><i></i><i></i><i></i>&nbsp;ZKBioSecurity — Editar</div>
+          <div class="dialogo">
+            <div class="fila"><label>Tarjeta</label><div class="caja">13079103</div></div>
+            <div class="fila"><label>Nombre</label><div class="caja tecleo">NOMBRE APELLIDO…</div></div>
+            <div class="fila"><label>Celular (placa)</label><div class="caja tecleo">ABC123D</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="hoy" data-capturas="3" data-papel="1" data-idas="3" data-tiempo="~2 jornadas">
+      <div class="texto">
+        <div class="num">Hoy · Paso 7 de 7</div>
+        <h2>La hoja termina en el armario de la bodega</h2>
+        <p>La única constancia firmada del trámite —y del pago— queda guardada en papel, en el armario de la bodega de Sistemas. Consultarla después significa ir a buscarla.</p>
+        <span class="sello mal">La evidencia existe, pero nadie puede consultarla</span>
+      </div>
+      <div class="visual">
+        <div class="armario">
+          <div class="mueble">🗄️</div>
+          <div class="papeles"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ ACTO 2: SATAG ============ -->
+    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="0" data-tiempo="minuto 0">
+      <div class="texto">
+        <div class="num">Con SATAG · Paso 1 de 4</div>
+        <h2>El papá solicita desde su celular</h2>
+        <p>Escanea un QR o entra al sitio, llena sus datos <strong>una sola vez</strong> y el sistema los valida en el momento: sin letra ilegible, sin campos a medias.</p>
+        <span class="sello bien">Captura única · validada desde el origen</span>
+      </div>
+      <div class="visual">
+        <div class="cel">
+          <div class="pantalla">
+            <div class="app-cab">SATAG · Solicitud</div>
+            <div class="app-cuerpo">
+              <div class="campo"><label>Nombre completo</label><div class="caja">Nombre Apellido Apellido</div></div>
+              <div class="campo"><label>Vehículo</label><div class="caja">Camioneta gris 2021</div></div>
+              <div class="campo"><label>Placas</label><div class="caja">ABC123D</div></div>
+              <div class="boton">Enviar solicitud</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="0" data-tiempo="minuto 5">
+      <div class="texto">
+        <div class="num">Con SATAG · Paso 2 de 4</div>
+        <h2>Paga en caja: folio inmutable y comprobante</h2>
+        <p>El cobro queda ligado a la persona que lo registró, con folio que no se puede alterar, y el titular se lleva su comprobante. La caja cuadra sola en el corte.</p>
+        <span class="sello bien">Blindaje contable desde el primer peso</span>
+      </div>
+      <div class="visual">
+        <div class="recibo">
+          <h3>Comprobante de pago</h3>
+          <div class="linea"><span>Folio</span><b>SATAG-000004</b></div>
+          <div class="linea"><span>Concepto</span><b>TAG vehicular</b></div>
+          <div class="linea"><span>Registrado por</span><b>sesión de caja</b></div>
+          <div class="total"><span>Total</span><span>$100.00</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="1" data-tiempo="mismo día">
+      <div class="texto">
+        <div class="num">Con SATAG · Paso 3 de 4</div>
+        <h2>Sistemas instala y captura el TAG ahí mismo</h2>
+        <p>La instalación es la misma de siempre —pegar el TAG— pero el número se captura en SATAG desde el celular, en el estacionamiento. No hay hoja que transcribir de regreso.</p>
+        <span class="sello bien">El dato nace una vez y ya no se vuelve a escribir</span>
+      </div>
+      <div class="visual">
+        <div class="cel">
+          <div class="pantalla">
+            <div class="app-cab">SATAG · Instalación</div>
+            <div class="app-cuerpo">
+              <div class="campo"><label>Expediente</label><div class="caja">SATAG-000004 · pagado ✓</div></div>
+              <div class="campo"><label>No. de TAG</label><div class="caja">13079103</div></div>
+              <div class="boton">Marcar como instalado</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="1" data-tiempo="minutos">
+      <div class="texto">
+        <div class="num">Con SATAG · Paso 4 de 4</div>
+        <h2>Y ZK se actualiza de un jalón</h2>
+        <p>Una consulta y un comando generan el archivo de importación oficial. ZK actualiza a todas las personas del lote de una sola vez, sin capturar a nadie a mano.</p>
+        <span class="sello bien">Probado hoy con un caso real: correctos 1, fallidos 0</span>
+      </div>
+      <div class="visual">
+        <div class="consola">
+          <div>&gt; export desde SATAG … <span class="ok">listo</span></div>
+          <div>&gt; node generar-import-zk-desde-satag.cjs</div>
+          <div>&nbsp;&nbsp;tarjetas de ZK llenadas: <span class="ok">1</span></div>
+          <div>&gt; importar en ZKBioSecurity…</div>
+          <div>&nbsp;&nbsp;<span class="ok">Correctos: 1. Fallidos: 0.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CIERRE ============ -->
+    <section class="paso cierre-grid" data-acto="cierre" data-capturas="1" data-papel="0" data-idas="1" data-tiempo="minutos">
+      <div class="col-cierre hoy">
+        <h2>Hoy, con papel</h2>
+        <ul>
+          <li>El mismo dato se escribe <strong>3 veces</strong>: papel, hoja de cálculo y ZK</li>
+          <li>El trámite avanza por llamadas y memoria</li>
+          <li>La evidencia firmada vive en un armario</li>
+          <li>Instalar + capturar: <strong>casi 2 jornadas</strong></li>
+        </ul>
+        <div class="gran">3 capturas · 2 jornadas</div>
+      </div>
+      <div class="col-cierre satag">
+        <h2>Con SATAG</h2>
+        <ul>
+          <li>El dato se captura <strong>1 vez</strong>, validado, y viaja solo hasta ZK</li>
+          <li>Cada paso queda registrado: quién, cuándo y cuánto</li>
+          <li>Pago con folio inmutable y evidencia consultable al instante</li>
+          <li>La actualización de ZK toma <strong>minutos</strong>, en lote</li>
+        </ul>
+        <div class="gran">1 captura · minutos</div>
+      </div>
+      <div class="dato-medido">
+        <div class="cifra">66 TAGs<small>instalados los últimos dos lunes</small></div>
+        <div class="cifra">38 + 28<small>31 de agosto · 7 de septiembre</small></div>
+        <div class="nota">Medido en campo: con una sola persona instalando <em>y</em> dando de alta al sistema, el proceso de hoy toma <strong>más de una jornada completa</strong>.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <div class="controles">
+    <button id="b-inicio" title="Reiniciar (R)">⟲</button>
+    <button id="b-prev" title="Anterior (←)">‹</button>
+    <button id="b-play" title="Pausa / continuar (espacio)">⏸</button>
+    <button id="b-next" title="Siguiente (→)">›</button>
+    <div class="puntos" id="puntos"></div>
+    <button id="b-vel" title="Velocidad">1×</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var pasos = Array.prototype.slice.call(document.querySelectorAll('.paso'));
+  var acto = document.getElementById('acto');
+  var hud = {
+    capturas: document.querySelector('#hud-capturas b'),
+    papel: document.querySelector('#hud-papel b'),
+    idas: document.querySelector('#hud-idas b'),
+    tiempo: document.querySelector('#hud-tiempo b')
+  };
+  var pillas = {
+    capturas: document.getElementById('hud-capturas'),
+    papel: document.getElementById('hud-papel'),
+    idas: document.getElementById('hud-idas'),
+    tiempo: document.getElementById('hud-tiempo')
+  };
+  var puntos = document.getElementById('puntos');
+  var DURACION = 7000;
+  var vel = 1, i = 0, timer = null, corriendo = true;
+  var yaPintado = false, inicioTimer = 0, esperaTimer = 0;
+
+  function aplicaVelocidad() {
+    if (document.getAnimations) {
+      document.getAnimations().forEach(function (a) { a.playbackRate = vel; });
+    }
+  }
+
+  pasos.forEach(function (p, k) {
+    var punto = document.createElement('i');
+    punto.className = p.dataset.acto + '-p';
+    punto.addEventListener('click', function () { ir(k, true, true); });
+    puntos.appendChild(punto);
+  });
+  var listaPuntos = Array.prototype.slice.call(puntos.children);
+
+  function pinta() {
+    var p = pasos[i];
+    pasos.forEach(function (x) { x.classList.remove('activa'); });
+    // reflow para que las animaciones internas se reinicien
+    void p.offsetWidth;
+    p.classList.add('activa');
+    listaPuntos.forEach(function (x, k) { x.classList.toggle('on', k === i); });
+
+    var a = p.dataset.acto;
+    acto.className = a;
+    acto.textContent = a === 'hoy' ? 'Así funciona hoy' : a === 'satag' ? 'Así funciona con SATAG' : 'La diferencia';
+
+    hud.capturas.textContent = p.dataset.capturas;
+    hud.papel.textContent = p.dataset.papel;
+    hud.idas.textContent = p.dataset.idas;
+    hud.tiempo.textContent = p.dataset.tiempo;
+    var esSatag = (a !== 'hoy');
+    ['capturas', 'papel', 'idas', 'tiempo'].forEach(function (n) {
+      pillas[n].classList.toggle('bien', esSatag);
+      pillas[n].classList.toggle('alerta', !esSatag && n === 'capturas' && Number(p.dataset.capturas) > 1);
+    });
+    aplicaVelocidad();
+  }
+
+  function programa() {
+    clearTimeout(timer);
+    if (!corriendo) return;
+    if (i >= pasos.length - 1) return; // el cierre se queda en pantalla
+    esperaTimer = DURACION / vel;
+    inicioTimer = Date.now();
+    timer = setTimeout(function () { ir(i + 1, false); }, esperaTimer);
+  }
+
+  function ir(k, manual, fuerza) {
+    var n = Math.max(0, Math.min(pasos.length - 1, k));
+    if (n === i && yaPintado && !fuerza) return; // en los limites no repinta
+    i = n;
+    yaPintado = true;
+    pinta();
+    if (manual && corriendo) programa(); else if (!manual) programa();
+  }
+
+  function alterna() {
+    corriendo = !corriendo;
+    document.getElementById('b-play').textContent = corriendo ? '⏸' : '▶';
+    if (corriendo) programa(); else clearTimeout(timer);
+  }
+
+  document.getElementById('b-play').addEventListener('click', alterna);
+  document.getElementById('b-next').addEventListener('click', function () { ir(i + 1, true); });
+  document.getElementById('b-prev').addEventListener('click', function () { ir(i - 1, true); });
+  document.getElementById('b-inicio').addEventListener('click', function () { ir(0, true, true); });
+  document.getElementById('b-vel').addEventListener('click', function () {
+    // conserva el tiempo ya transcurrido del paso al cambiar la velocidad
+    var fraccion = (corriendo && timer && esperaTimer) ? Math.min(1, (Date.now() - inicioTimer) / esperaTimer) : 0;
+    vel = vel === 1 ? 1.5 : vel === 1.5 ? 2 : 1;
+    this.textContent = vel + '×';
+    aplicaVelocidad();
+    clearTimeout(timer);
+    if (corriendo && i < pasos.length - 1) {
+      esperaTimer = Math.max(300, (DURACION / vel) * (1 - fraccion));
+      inicioTimer = Date.now();
+      timer = setTimeout(function () { ir(i + 1, false); }, esperaTimer);
+    }
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.altKey || e.ctrlKey || e.metaKey) return; // no pisar atajos del navegador
+    if (e.key === ' ' && e.target && e.target.closest && e.target.closest('button')) return; // deja que el boton enfocado se active
+    if (e.key === 'ArrowRight') ir(i + 1, true);
+    else if (e.key === 'ArrowLeft') ir(i - 1, true);
+    else if (e.key === ' ') { e.preventDefault(); alterna(); }
+    else if (e.key === 'r' || e.key === 'R') ir(0, true, true);
+  });
+
+  // ?paso=N (1..12) salta a ese paso; &auto=0 arranca pausado
+  var q = new URLSearchParams(location.search);
+  var pIni = parseInt(q.get('paso'), 10);
+  if (q.get('auto') === '0') { corriendo = false; document.getElementById('b-play').textContent = '▶'; }
+  ir(isNaN(pIni) ? 0 : pIni - 1, true, true);
+})();
+</script>
+</body>
+</html>

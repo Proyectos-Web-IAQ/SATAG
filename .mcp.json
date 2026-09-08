@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "cronoma": {
+      "command": "node",
+      "args": [
+        "c:/Users/GerardoSánchez/Documents/Proyectos WEB/PMO-main/PMO-main/mcp/server.js"
+      ],
+      "env": {
+        "CRONOMA_PROYECTO": "SATAG",
+        "CRONOMA_PERFIL": "iaq"
+      }
+    }
+  }
+}

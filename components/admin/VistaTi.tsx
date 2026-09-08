@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TramiteSolicitado } from "@/lib/mock/types";
+import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TagInventario, TramiteSolicitado } from "@/lib/mock/types";
 import { getMarcas, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
@@ -13,6 +13,9 @@ import {
   descartarSolicitud,
   vincularNota,
   usarTagApartado,
+  listTagsInventario,
+  altaTagsInventario,
+  retirarTagInventario,
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
@@ -21,7 +24,7 @@ import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
 
-type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos";
+type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
 type Accion = "instalar" | "actualizar" | "baja";
 
 type ConfirmCfg = {
@@ -93,6 +96,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   // trabajo del día como las otras tres: es lo que se quedó a medias y nadie
   // volvió a mirar. El criterio vive en la vista SQL (bloque 45).
   const [incompletos, setIncompletos] = useState<RegistroIncompleto[]>([]);
+  // SC-025: inventario de TAGs de la escuela (alta anticipada). Los disponibles
+  // se ofrecen al instalar; la asignacion la hace el RPC al activar el TAG.
+  const [inventario, setInventario] = useState<TagInventario[]>([]);
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
@@ -131,14 +137,16 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const [list, notasList, incompletosList] = await Promise.all([
+      const [list, notasList, incompletosList, inventarioList] = await Promise.all([
         listRegistros(),
         listNotasSinExpediente(),
         listRegistrosIncompletos(),
+        listTagsInventario(),
       ]);
       setRegistros(list);
       setNotas(notasList);
       setIncompletos(incompletosList);
+      setInventario(inventarioList);
       setLoadError(null);
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los registros.");
@@ -181,6 +189,14 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     () => registros.filter((r) => r.estado !== "baja" && pidePendiente(r, "baja"))
       .sort(porUrgencia((r) => fechaEsperaTramite(r, "baja"))),
     [registros]);
+  // SC-025: los TAGs listos para instalar (dados de alta por adelantado).
+  const tagsDisponibles = useMemo(
+    () => inventario.filter((t) => t.asignadoA === null),
+    [inventario]);
+  const tagsAsignados = useMemo(
+    () => inventario.filter((t) => t.asignadoA !== null)
+      .sort((a, b) => (b.asignadoEn ?? "").localeCompare(a.asignadoEn ?? "")),
+    [inventario]);
 
   const q = query.trim().toLowerCase();
   const coincide = (r: Registro) =>
@@ -276,6 +292,28 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       ok: `TAG apartado ${r.tagApartadoNo} activado en ${r.folio}. El anterior quedó inactivo.`,
     });
   }
+  // SC-025: alta anticipada de un lote de TAGs al inventario. El RPC valida
+  // todo-o-nada; si algun numero ya existe en alguna parte, rechaza con la lista.
+  function confirmarAltaInventario(numeros: string[], alTerminar?: () => void) {
+    setConfirm({
+      title: "Dar de alta TAGs al inventario",
+      message: `Se darán de alta ${numeros.length} TAG${numeros.length === 1 ? "" : "s"} al inventario: ${numeros.join(", ")}. Quedarán disponibles para elegirse al instalar. ¿Continuar?`,
+      confirmLabel: "Dar de alta", danger: false,
+      action: () => altaTagsInventario(numeros, tiNombre),
+      ok: `${numeros.length} TAG${numeros.length === 1 ? "" : "s"} en el inventario, disponible${numeros.length === 1 ? "" : "s"} para instalar.`,
+      after: alTerminar,
+    });
+  }
+  // Retira un TAG que sigue disponible (capturado por error, danado, devuelto).
+  function confirmarRetirarInventario(numero: string) {
+    setConfirm({
+      title: "Retirar TAG del inventario",
+      message: `Se retirará el TAG ${numero} del inventario y dejará de aparecer como disponible. ¿Continuar?`,
+      confirmLabel: "Retirar", danger: true,
+      action: () => retirarTagInventario(numero, tiNombre),
+      ok: `TAG ${numero} retirado del inventario.`,
+    });
+  }
   // Cierra una solicitud improcedente sin tocar el registro (motivo obligatorio).
   // Una nota ya vinculada se "cierra" con el mismo RPC una vez atendida.
   function confirmarDescartar(r: Registro, sol: Solicitud, motivo: string) {
@@ -337,7 +375,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
 
   function formPara(accion: Accion, r: Registro) {
     if (accion === "instalar")
-      return <FormInstalar r={r} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo) => confirmarInstalar(r, tag, claves, propio, apartadoNo)} />;
+      return <FormInstalar r={r} estacionamientos={estacionamientos} disponibles={tagsDisponibles.map((t) => t.noDispositivo)} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo) => confirmarInstalar(r, tag, claves, propio, apartadoNo)} />;
     if (accion === "actualizar")
       return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onUsarApartado={() => confirmarUsarApartado(r)} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
     return <FormBaja r={r} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(m) => confirmarBaja(r, m)} />;
@@ -382,6 +420,11 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
             <button type="button" className="ti-action" onClick={() => irA("incompletos")}>
               <span><span className="ti-action__title">Expedientes incompletos</span><span className="ti-action__sub">Les falta algo para operar</span></span>
               <span className={`ti-action__count ti-action__count--${sem(incompletos.length)}`}>{incompletos.length}</span>
+            </button>
+            {/* SC-025: aquí el semáforo se invierte — tener disponibles es lo bueno. */}
+            <button type="button" className="ti-action" onClick={() => irA("tags")}>
+              <span><span className="ti-action__title">TAGs de la escuela</span><span className="ti-action__sub">Inventario: disponibles para instalar</span></span>
+              <span className={`ti-action__count ti-action__count--${tagsDisponibles.length > 0 ? "ok" : "warn"}`}>{tagsDisponibles.length}</span>
             </button>
           </div>
 
@@ -441,7 +484,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         <>
           <div className="ti-topbar">
             <button type="button" className="ti-back" onClick={() => irA("inicio")}>← Inicio</button>
-            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : modo === "incompletos" ? "Expedientes incompletos" : "Dar de baja"}</h2>
+            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : modo === "incompletos" ? "Expedientes incompletos" : modo === "tags" ? "TAGs de la escuela" : "Dar de baja"}</h2>
           </div>
           {banners}
 
@@ -549,6 +592,61 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                 </>
               )
           )}
+
+          {modo === "tags" && (
+            <>
+              <p className="ti-hint" style={{ marginBottom: 12 }}>
+                Dé de alta por adelantado los TAGs de la escuela (por ejemplo, el lote que llega
+                el viernes). El día de instalación aparecen como disponibles y se eligen con un
+                toque; al instalar quedan asignados a su expediente.
+              </p>
+              <FormAltaInventario busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre}
+                onSubmit={(nums, alTerminar) => confirmarAltaInventario(nums, alTerminar)} />
+              <p className="ti-section-title" style={{ marginTop: 18 }}>Disponibles ({tagsDisponibles.length})</p>
+              {tagsDisponibles.length === 0 ? (
+                <p className="ti-hint">No hay TAGs disponibles en el inventario. Dé de alta el siguiente lote arriba.</p>
+              ) : (
+                <div className="table-wrap">
+                  <table className="admin-table">
+                    <thead><tr><th>No. de TAG</th><th>Dado de alta por</th><th></th></tr></thead>
+                    <tbody>
+                      {tagsDisponibles.map((t) => (
+                        <tr key={t.noDispositivo}>
+                          <td><strong>{t.noDispositivo}</strong></td>
+                          <td>{t.dadoDeAltaPor}</td>
+                          <td>
+                            <button type="button" className="link-action" disabled={busy}
+                              onClick={() => confirmarRetirarInventario(t.noDispositivo)}>Retirar</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {tagsAsignados.length > 0 && (
+                <>
+                  <p className="ti-section-title" style={{ marginTop: 18 }}>Ya asignados ({tagsAsignados.length})</p>
+                  <div className="table-wrap">
+                    <table className="admin-table">
+                      <thead><tr><th>No. de TAG</th><th>Expediente</th></tr></thead>
+                      <tbody>
+                        {tagsAsignados.map((t) => {
+                          const r = registros.find((x) => x.id === t.asignadoA);
+                          return (
+                            <tr key={t.noDispositivo}>
+                              <td>{t.noDispositivo}</td>
+                              <td>{r ? `${r.folio} — ${r.usuarioNombre}` : "—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </>
       )}
 
@@ -567,8 +665,8 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
 }
 
 // ---- Formularios de acción ----
-function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmit }: {
-  r: Registro; estacionamientos: string[] | null | undefined; busy: boolean; tiNombre: string;
+function FormInstalar({ r, estacionamientos, disponibles, busy, tiNombre, onTiNombre, onSubmit }: {
+  r: Registro; estacionamientos: string[] | null | undefined; disponibles: string[]; busy: boolean; tiNombre: string;
   onTiNombre: (v: string) => void;
   onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string) => void;
 }) {
@@ -623,6 +721,22 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
       </div>
       <div className="field">
         <span>No. de TAG (6–11 dígitos){propio ? " — el propio de la familia" : ""}</span>
+        {/* SC-025: los TAGs dados de alta por adelantado se eligen con un toque.
+            Con TAG propio no aplican: el que se instala es el de la familia. */}
+        {!propio && disponibles.length > 0 && (
+          <>
+            <div className="chip-row">
+              {disponibles.slice(0, 12).map((n) => (
+                <button key={n} type="button" className={`select-chip ${tag === n ? "on" : ""}`}
+                  onClick={() => setTag((cur) => (cur === n ? "" : n))}>{n}</button>
+              ))}
+            </div>
+            <p className="ti-hint">
+              Disponibles del inventario: toque uno para usarlo, o capture otro número abajo.
+              {disponibles.length > 12 ? ` Hay ${disponibles.length - 12} más en «TAGs de la escuela».` : ""}
+            </p>
+          </>
+        )}
         <input className={`input ${tag !== "" && !valido ? "invalid" : ""}`} inputMode="numeric" autoComplete="off"
           maxLength={11} placeholder="Ej. 9426780" value={tag}
           onChange={(e) => setTag(e.target.value.replace(/[^0-9]/g, ""))} />
@@ -635,6 +749,16 @@ function FormInstalar({ r, estacionamientos, busy, tiNombre, onTiNombre, onSubmi
       {propio && (
         <div className="field">
           <span>No. del TAG apartado (opcional, 6–11 dígitos)</span>
+          {/* SC-025: el TAG que se aparta es de la escuela, así que aquí sí se
+              ofrecen los disponibles del inventario. */}
+          {disponibles.length > 0 && (
+            <div className="chip-row">
+              {disponibles.slice(0, 12).map((n) => (
+                <button key={n} type="button" className={`select-chip ${apartadoNo === n ? "on" : ""}`}
+                  onClick={() => setApartadoNo((cur) => (cur === n ? "" : n))}>{n}</button>
+              ))}
+            </div>
+          )}
           <input className={`input ${apartadoLleno && !apartadoValido ? "invalid" : ""}`} inputMode="numeric" autoComplete="off"
             maxLength={11} placeholder="TAG de la escuela reservado" value={apartadoNo}
             onChange={(e) => setApartadoNo(e.target.value.replace(/[^0-9]/g, ""))} />
@@ -802,6 +926,43 @@ function FormBaja({ r, busy, tiNombre, onTiNombre, onSubmit }: {
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action btn-danger" disabled={busy || !motivo.trim()} onClick={() => onSubmit(motivo)}>
         Dar de baja
+      </button>
+    </div>
+  );
+}
+
+// SC-025: alta anticipada de un lote de TAGs al inventario. Acepta los numeros
+// pegados de corrido (uno por linea, o separados por comas o espacios); valida
+// en vivo y manda el lote completo al RPC, que rechaza todo-o-nada si algun
+// numero ya existe en el inventario, el padron o un apartado.
+function FormAltaInventario({ busy, tiNombre, onTiNombre, onSubmit }: {
+  busy: boolean; tiNombre: string; onTiNombre: (v: string) => void;
+  onSubmit: (numeros: string[], alTerminar: () => void) => void;
+}) {
+  const [texto, setTexto] = useState("");
+  const numeros = useMemo(
+    () => [...new Set(texto.split(/[\s,;]+/).map((s) => s.trim()).filter(Boolean))],
+    [texto]);
+  const invalidos = numeros.filter((n) => !TAG_RE.test(n));
+  const listo = numeros.length > 0 && invalidos.length === 0;
+  return (
+    <div className="ti-form">
+      <div className="field">
+        <span>Números de TAG (uno por línea, o separados por comas o espacios)</span>
+        <textarea className="input" rows={4} inputMode="numeric" autoComplete="off"
+          placeholder={"Ej.\n13078110\n13078111\n13078112"} value={texto}
+          onChange={(e) => setTexto(e.target.value)} />
+        {listo && (
+          <p className="hint">{numeros.length} número{numeros.length === 1 ? "" : "s"} listo{numeros.length === 1 ? "" : "s"} para dar de alta.</p>
+        )}
+        {invalidos.length > 0 && (
+          <p className="field-error">Estos no parecen números de TAG (deben ser de 6 a 11 dígitos): {invalidos.join(", ")}</p>
+        )}
+      </div>
+      <div className="field"><span>Dado de alta por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
+      <button type="button" className="primary-action" disabled={busy || !listo}
+        onClick={() => onSubmit(numeros, () => setTexto(""))}>
+        {listo ? `Dar de alta ${numeros.length} TAG${numeros.length === 1 ? "" : "s"} al inventario` : "Dar de alta al inventario"}
       </button>
     </div>
   );

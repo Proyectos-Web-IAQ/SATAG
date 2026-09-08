@@ -16,6 +16,17 @@ export interface Estacionamiento {
   activo: boolean;
 }
 
+// SC-025: TAG de la escuela dado de alta por adelantado (inventario).
+// asignadoA null = disponible para instalar; con valor = ya quedo en ese
+// expediente (en uso o apartado).
+export interface TagInventario {
+  noDispositivo: string;
+  dadoDeAltaPor: string;
+  dadoDeAltaEn: string;
+  asignadoA: string | null;
+  asignadoEn: string | null;
+}
+
 export interface ReglamentoVersion {
   id: string; // uuid de la version mostrada; viaja al RPC como evidencia (D-01)
   version: number;

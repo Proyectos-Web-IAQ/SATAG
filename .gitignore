@@ -1,5 +1,7 @@
 # --- Datos personales / insumos: NO versionar ---
 Insumos/
+# Exports del registro real de campo (nombres + placas): jamas versionar
+Campo/datos/
 # Padron operativo real (nombres + placas de la comunidad): jamas versionar
 Acceso a estacionamiento.xlsx
 /*.heic
@@ -40,3 +42,8 @@ build/
 
 # --- Tandas generadas para armar staging (salida de supabase/staging/armar-tandas.ps1) ---
 supabase/staging/salida/
+
+# --- Pruebas de carga: el CSV crudo de k6 pesa cientos de MB; se conservan summary.json y analisis.md ---
+pruebas-carga/resultados/*.csv
+pruebas-carga/.env.staging
+pruebas-carga/bin/
