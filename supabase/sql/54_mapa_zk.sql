@@ -67,7 +67,10 @@ begin
 
     v_quien := coalesce(nullif(btrim(coalesce(p_hecho_por, '')), ''), 'TI');
 
-    delete from zk_tarjetas;
+    -- Se vacia completo antes de recargar. El WHERE (siempre verdadero: es la
+    -- clave primaria) es obligatorio: safeupdate de Supabase rechaza un DELETE
+    -- sin WHERE aunque venga de una funcion.
+    delete from zk_tarjetas where no_dispositivo is not null;
 
     insert into zk_tarjetas (no_dispositivo, zk_id, cargado_en, cargado_por)
     select distinct on (btrim(f ->> 'tarjeta'))
