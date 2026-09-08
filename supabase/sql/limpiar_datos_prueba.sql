@@ -108,10 +108,18 @@ begin
         execute 'alter table pagos       disable trigger tg_pagos_congelar_sellado';
         execute 'alter table cortes_caja disable trigger tg_cortes_inmutables';
 
-        -- cascade vacia todo lo que referencia a registros: aceptaciones,
-        -- movimientos, pagos, registro_estacionamientos y solicitudes (incluidas
-        -- las notas del buzon que nunca se vincularon a un expediente).
-        execute 'truncate table registros cascade';
+        -- Desde el bloque 52, inventario_tags referencia a registros: un
+        -- `truncate ... cascade` la arrastraria y vaciaria el inventario de
+        -- TAGs. Se liberan las reservas y se borra con DELETE (las hijas caen
+        -- por on delete cascade: aceptaciones, movimientos, pagos,
+        -- registro_estacionamientos y solicitudes).
+        if to_regclass('public.inventario_tags') is not null then
+            execute 'update inventario_tags set asignado_a = null, asignado_en = null, asignado_por = null where asignado_a is not null';
+            execute 'delete from registros';
+            execute 'delete from solicitudes';
+        else
+            execute 'truncate table registros cascade';
+        end if;
         -- cortes_caja no cuelga de registros: es pagos quien la referencia, asi
         -- que el cascade no la alcanza y se vacia aparte.
         execute 'truncate table cortes_caja cascade';

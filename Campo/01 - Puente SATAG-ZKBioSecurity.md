@@ -9,7 +9,28 @@ las personas existentes sin duplicarlas.
 Validado el 8-sep-2026 con una prueba real de una fila (un TAG recién
 instalado): `Correctos: 1. Fallidos: 0.`, mismo ID, sin duplicado.
 
-## Las piezas (en `Campo/herramientas/`)
+## Desde el panel (SC-025, 8-sep-2026)
+
+En **TI → TAGs de la escuela → Exportar a ZKBioSecurity** el archivo se genera
+directo en el navegador (`lib/zk/plantillaZk.ts`), sin sheet ni línea de
+comandos:
+
+- **Descargar plantilla ZK (TAGs disponibles)**: pre-alta de las tarjetas en
+  ZK como `DISPONIBLE / STOCK SATAG`, depto Padres de familia, ID = No. de TAG.
+- **Descargar padrón instalado para ZK**: los expedientes activos con TAG;
+  actualiza la misma tarjeta con nombre, apellidos, depto y placa (en Celular).
+- Opcional: cargar el export de ZK (`Usuarios_….csv`) para conservar el ID que
+  ZK ya tiene cuando las tarjetas se dieron de alta a mano (evita duplicados).
+
+El archivo sale como **`.xlsx` construido sobre la plantilla oficial** que vive
+en `public/zk/plantilla-importacion-personal.xls`: SheetJS conserva las
+anotaciones en xlsx y las **pierde en xls** (probado el 8-sep). Si el
+importador de ZK rechazara el .xlsx, el respaldo `.csv` (formato del export de
+ZK) se convierte con `convertir-zk-a-xls.ps1`. La plantilla NO carga niveles de
+acceso: no existe columna para ello; ZK los asigna por departamento/nivel como
+ya ocurre con las tarjetas pre-dadas de alta.
+
+## Las piezas por línea de comandos (en `Campo/herramientas/`)
 
 | Archivo | Papel |
 |---|---|

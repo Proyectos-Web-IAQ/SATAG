@@ -13,6 +13,7 @@ import { urlFirmada } from "@/lib/firma";
 import type {
   CambiosRegistro,
   CorteCaja,
+  DatosCapturaTi,
   DiaCaja,
   Estacionamiento,
   EstadoCaja,
@@ -37,6 +38,8 @@ import type {
 
 export interface AccionResultado {
   id: string;
+  // Lo devuelven crear_registro y capturar_expediente_ti (SC-026).
+  folio?: string;
   folioRecibo?: string;
   // CC-05: lo devuelve registrar_pago para poder avisar en pantalla cuando el
   // tipo declarado en el alta no era el correcto y quedó corregido.
@@ -551,6 +554,35 @@ export async function altaTagsInventario(numeros: string[], hechoPor: string): P
 export async function retirarTagInventario(noDispositivo: string, hechoPor: string): Promise<AccionResultado> {
   return rpc("retirar_tag_inventario", {
     p_no_dispositivo: noDispositivo,
+    p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
+// ---- SC-026: captura en sitio desde la hoja fisica (bloque 53) ----
+
+// Crea el expediente en 'pendiente' con movimiento 'alta' atribuido a TI,
+// asigna estacionamientos y reserva el TAG del inventario (si se eligio).
+// No registra pago (Administracion) ni aceptacion digital (la firma esta en
+// la hoja). Devuelve id + folio.
+export async function capturarExpedienteTi(d: DatosCapturaTi, hechoPor: string): Promise<AccionResultado> {
+  return rpc("capturar_expediente_ti", {
+    p_usuario_nombres: d.usuarioNombres.trim(),
+    p_usuario_apellido_paterno: d.usuarioApellidoPaterno.trim(),
+    p_marca: d.marca.trim(),
+    p_modelo: d.modelo.trim(),
+    p_color: d.color.trim(),
+    p_usuario_apellido_materno: d.usuarioApellidoMaterno?.trim() || null,
+    p_tipo_usuario: d.tipoUsuario,
+    p_placas: d.sinPlacas ? null : (d.placas?.trim() || null),
+    p_sin_placas: d.sinPlacas,
+    p_claves: d.claves.length > 0 ? d.claves : null,
+    p_no_dispositivo: d.noDispositivo?.trim() || null,
+    p_gestionante_nombres: d.gestionanteNombres?.trim() || null,
+    p_gestionante_apellido_paterno: d.gestionanteApellidoPaterno?.trim() || null,
+    p_gestionante_apellido_materno: d.gestionanteApellidoMaterno?.trim() || null,
+    p_gestionante_relacion: d.gestionanteRelacion ?? null,
+    p_fecha_hoja: d.fechaHoja || null,
+    p_observaciones: d.observaciones?.trim() || null,
     p_hecho_por: hechoPor.trim() || null,
   });
 }
