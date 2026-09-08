@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CambiosRegistro, DatosCapturaTi, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TagInventario, TipoUsuario, TramiteSolicitado } from "@/lib/mock/types";
+import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TagInventario, TramiteSolicitado } from "@/lib/mock/types";
 import { getMarcas, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
@@ -16,7 +16,6 @@ import {
   listTagsInventario,
   altaTagsInventario,
   retirarTagInventario,
-  capturarExpedienteTi,
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
 import { filaStock, filaPadron, generarXlsxZk, generarCsvZk, leerExportZk, descargarArchivo, fechaArchivo, type FilaZk } from "@/lib/zk/plantillaZk";
@@ -24,9 +23,9 @@ import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
-import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, TIPOS_USUARIO, TIPO_USUARIO_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
 
-type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags" | "capturar";
+type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
 type Accion = "instalar" | "actualizar" | "baja";
 
 type ConfirmCfg = {
@@ -355,24 +354,6 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       ok: `TAG ${numero} retirado del inventario.`,
     });
   }
-  // SC-026: alta desde la hoja fisica firmada, con el TAG del inventario
-  // reservado para el expediente. El pago sigue siendo de Administracion.
-  function confirmarCaptura(d: DatosCapturaTi, alTerminar: () => void) {
-    const titular = [d.usuarioNombres, d.usuarioApellidoPaterno, d.usuarioApellidoMaterno ?? ""].join(" ").replace(/\s+/g, " ").trim();
-    setConfirm({
-      title: "Capturar hoja física",
-      message: `Se capturará el expediente de ${titular} — ${d.marca} ${d.modelo} ${d.color}, ${d.sinPlacas ? "sin placas" : `placas ${d.placas ?? ""}`} — `
-        + (d.noDispositivo ? `con el TAG ${d.noDispositivo} reservado. ` : "sin TAG reservado. ")
-        + "El pago lo registra Administración y la firma queda en la hoja. ¿Continuar?",
-      confirmLabel: "Capturar", danger: false,
-      action: () => capturarExpedienteTi(d, tiNombre),
-      ok: (res) => `Expediente ${res.folio ?? ""} capturado`
-        + (d.noDispositivo ? ` con el TAG ${d.noDispositivo} reservado` : "")
-        + ". Falta el cobro en Administración para poder instalar.",
-      after: alTerminar,
-    });
-  }
-
   // SC-025: archivo de importacion para ZKBioSecurity, generado en el navegador.
   async function descargarZk(tipo: "stock" | "padron", formato: "xlsx" | "csv") {
     if (exportando) return;
@@ -531,12 +512,6 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
               <span><span className="ti-action__title">TAGs de la escuela</span><span className="ti-action__sub">Inventario, alta anticipada y export a ZK</span></span>
               <span className={`ti-action__count ti-action__count--${tagsDisponibles.length > 0 ? "ok" : "warn"}`}>{tagsDisponibles.length}</span>
             </button>
-            {/* SC-026: el contador son los expedientes capturados con TAG reservado
-                que todavia no se instalan. */}
-            <button type="button" className="ti-action" onClick={() => irA("capturar")}>
-              <span><span className="ti-action__title">Capturar hoja física</span><span className="ti-action__sub">Alta desde la hoja firmada, con TAG reservado</span></span>
-              <span className={`ti-action__count ti-action__count--${tagReservadoDe.size > 0 ? "warn" : "ok"}`}>{tagReservadoDe.size}</span>
-            </button>
           </div>
 
           <div className="panel">
@@ -595,7 +570,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         <>
           <div className="ti-topbar">
             <button type="button" className="ti-back" onClick={() => irA("inicio")}>← Inicio</button>
-            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : modo === "incompletos" ? "Expedientes incompletos" : modo === "tags" ? "TAGs de la escuela" : modo === "capturar" ? "Capturar hoja física" : "Dar de baja"}</h2>
+            <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : modo === "incompletos" ? "Expedientes incompletos" : modo === "tags" ? "TAGs de la escuela" : "Dar de baja"}</h2>
           </div>
           {banners}
 
@@ -763,9 +738,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
               <div className="ti-form">
                 <p className="ti-hint">
                   Descargue el archivo y en ZK use Personal → Usuarios → Importar: Fila de Inicio <strong>2</strong>,
-                  «Actualizar el ID de usuario existente» = <strong>Sí</strong>. El ID de cada persona es su No. de TAG;
-                  si las tarjetas ya existen en ZK con otro ID, cargue el export de ZK para conservarlo y que se actualicen
-                  en vez de duplicarse.
+                  «Actualizar el ID de usuario existente» = <strong>Sí</strong>. El ID de cada persona es su No. de TAG.
+                  <strong> Si una tarjeta ya existe en ZK con otro ID (las dadas de alta a mano), ZK rechaza la fila con
+                  «el número de tarjeta ya existe»:</strong> cargue aquí el export de ZK (Personal → Exportar → Usuarios_….csv)
+                  y vuelva a descargar; así el archivo lleva el ID que ZK ya tiene y la actualiza en vez de duplicarla.
                 </p>
                 <div className="field">
                   <span>Export de ZK (opcional): Usuarios_….csv descargado de ZK</span>
@@ -806,18 +782,6 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
             </>
           )}
 
-          {modo === "capturar" && (
-            <>
-              <p className="ti-hint" style={{ marginBottom: 12 }}>
-                Capture el expediente tal como viene en la hoja firmada: toque el TAG que se instaló (o se va a
-                instalar) y siga el orden de la hoja. El pago lo registra Administración; después, en «Instalar TAG»,
-                el número ya aparece reservado.
-              </p>
-              <FormCapturaHoja disponibles={tagsDisponibles.map((t) => t.noDispositivo)} estacionamientos={estacionamientos}
-                marcas={marcas} colores={colores} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre}
-                onSubmit={(d, alTerminar) => confirmarCaptura(d, alTerminar)} />
-            </>
-          )}
         </>
       )}
 
@@ -1109,183 +1073,6 @@ const hoyIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
-
-// SC-026: captura en sitio desde la hoja fisica firmada. El orden de los campos
-// es el de la hoja (titular -> marca/modelo -> color -> placas) para transcribir
-// sin brincar; al tocar un TAG disponible el foco pasa solo al nombre del
-// titular. "Sin placas" limpia y deshabilita las placas con un toque.
-function FormCapturaHoja({ disponibles, estacionamientos, marcas, colores, busy, tiNombre, onTiNombre, onSubmit }: {
-  disponibles: string[]; estacionamientos: string[] | null | undefined; marcas: string[]; colores: string[];
-  busy: boolean; tiNombre: string; onTiNombre: (v: string) => void;
-  onSubmit: (datos: DatosCapturaTi, alTerminar: () => void) => void;
-}) {
-  const refNombres = useRef<HTMLInputElement>(null);
-  const [tag, setTag] = useState("");
-  const [nombres, setNombres] = useState("");
-  const [paterno, setPaterno] = useState("");
-  const [materno, setMaterno] = useState("");
-  const [tipo, setTipo] = useState<TipoUsuario>("padres");
-  const [marca, setMarca] = useState("");
-  const [modelo, setModelo] = useState("");
-  const [color, setColor] = useState("");
-  const [placas, setPlacas] = useState("");
-  const [sinPlacas, setSinPlacas] = useState(false);
-  // Sin catalogo no se inventan claves (D-09): se captura sin estacionamiento y
-  // se asigna al instalar.
-  const [claves, setClaves] = useState<string[] | null>(null);
-  const [conGestionante, setConGestionante] = useState(false);
-  const [gNombres, setGNombres] = useState("");
-  const [gPaterno, setGPaterno] = useState("");
-  const [gMaterno, setGMaterno] = useState("");
-  const [gRelacion, setGRelacion] = useState<"padre" | "madre" | "tutor" | "otro">("otro");
-  const [fechaHoja, setFechaHoja] = useState(hoyIso());
-  const [obs, setObs] = useState("");
-
-  const clavesEfectivas = claves ?? (Array.isArray(estacionamientos) ? estacionamientos : []);
-  const toggleClave = (c: string) =>
-    setClaves((clavesEfectivas.includes(c) ? clavesEfectivas.filter((x) => x !== c) : [...clavesEfectivas, c]));
-
-  const placasNorm = placas.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const faltan: string[] = [];
-  if (!nombres.trim()) faltan.push("nombre del titular");
-  if (!paterno.trim()) faltan.push("apellido paterno");
-  if (!marca.trim()) faltan.push("marca");
-  if (!modelo.trim()) faltan.push("modelo");
-  if (!color.trim()) faltan.push("color");
-  if (!sinPlacas && placasNorm === "") faltan.push("placas (o marque «Sin placas»)");
-  if (conGestionante && gNombres.trim() && !gPaterno.trim()) faltan.push("apellido paterno de quien gestiona");
-  const listo = faltan.length === 0;
-
-  function elegirTag(n: string) {
-    setTag((cur) => (cur === n ? "" : n));
-    refNombres.current?.focus();
-  }
-  function limpiar() {
-    setTag(""); setNombres(""); setPaterno(""); setMaterno(""); setTipo("padres");
-    setMarca(""); setModelo(""); setColor(""); setPlacas(""); setSinPlacas(false);
-    setClaves(null); setConGestionante(false); setGNombres(""); setGPaterno(""); setGMaterno(""); setGRelacion("otro");
-    setObs("");
-  }
-  function enviar() {
-    onSubmit({
-      usuarioNombres: nombres, usuarioApellidoPaterno: paterno, usuarioApellidoMaterno: materno.trim() || null,
-      tipoUsuario: tipo, marca, modelo, color,
-      placas: sinPlacas ? null : placasNorm, sinPlacas,
-      claves: clavesEfectivas, noDispositivo: tag || null,
-      gestionanteNombres: conGestionante ? (gNombres.trim() || null) : null,
-      gestionanteApellidoPaterno: conGestionante ? (gPaterno.trim() || null) : null,
-      gestionanteApellidoMaterno: conGestionante ? (gMaterno.trim() || null) : null,
-      gestionanteRelacion: conGestionante && gNombres.trim() ? gRelacion : null,
-      fechaHoja: fechaHoja || null,
-      observaciones: obs.trim() || null,
-    }, limpiar);
-  }
-
-  return (
-    <div className="ti-form">
-      <div className="field">
-        <span>No. de TAG — opcional: tóquelo solo si la hoja ya trae el TAG instalado; si no, se elige al instalar</span>
-        {disponibles.length === 0 ? (
-          <p className="ti-hint">No hay TAGs disponibles en el inventario. Capture el expediente sin TAG: el número se elige en «Instalar TAG».</p>
-        ) : (
-          <div className="chip-row">
-            {disponibles.map((n) => (
-              <button key={n} type="button" className={`select-chip ${tag === n ? "on" : ""}`} onClick={() => elegirTag(n)}>{n}</button>
-            ))}
-          </div>
-        )}
-        {tag && <p className="hint">TAG {tag} quedará reservado para este expediente (sale de los disponibles) y aparecerá prellenado al instalar.</p>}
-      </div>
-
-      <p className="ti-section-title">Titular (como aparece en la hoja)</p>
-      <div className="field"><span>Nombre(s)</span><input ref={refNombres} className="input" value={nombres} onChange={(e) => setNombres(e.target.value)} autoComplete="off" placeholder="Ej. María del Pilar" /></div>
-      <div className="grid-2">
-        <div className="field"><span>Apellido paterno</span><input className="input" value={paterno} onChange={(e) => setPaterno(e.target.value)} autoComplete="off" /></div>
-        <div className="field"><span>Apellido materno (opcional)</span><input className="input" value={materno} onChange={(e) => setMaterno(e.target.value)} autoComplete="off" /></div>
-      </div>
-      <div className="field">
-        <span>Tipo de usuario</span>
-        <div className="chip-row">
-          {TIPOS_USUARIO.map((t) => (
-            <button key={t} type="button" className={`select-chip ${tipo === t ? "on" : ""}`} onClick={() => setTipo(t)}>{TIPO_USUARIO_LABEL[t]}</button>
-          ))}
-        </div>
-      </div>
-
-      <p className="ti-section-title">Vehículo</p>
-      <div className="grid-2">
-        <div className="field">
-          <span>Marca</span>
-          <input className="input" list="ti-captura-marcas" value={marca} onChange={(e) => setMarca(e.target.value)} autoComplete="off" placeholder="Ej. Nissan" />
-          <datalist id="ti-captura-marcas">{marcas.map((m) => <option key={m} value={m} />)}</datalist>
-        </div>
-        <div className="field"><span>Modelo</span><input className="input" value={modelo} onChange={(e) => setModelo(e.target.value)} autoComplete="off" placeholder="Ej. X-Trail 2021" /></div>
-      </div>
-      <div className="grid-2">
-        <div className="field">
-          <span>Color</span>
-          <input className="input" list="ti-captura-colores" value={color} onChange={(e) => setColor(e.target.value)} autoComplete="off" placeholder="Ej. Gris" />
-          <datalist id="ti-captura-colores">{colores.map((c) => <option key={c} value={c} />)}</datalist>
-        </div>
-        <div className="field">
-          <span>Placas</span>
-          <input className={`input ${!sinPlacas && placas !== "" && placasNorm === "" ? "invalid" : ""}`} value={placas} disabled={sinPlacas}
-            onChange={(e) => setPlacas(e.target.value.toUpperCase())} autoComplete="off" placeholder={sinPlacas ? "Sin placas" : "Ej. ULT413K"} />
-        </div>
-      </div>
-      <label className="check">
-        <input type="checkbox" checked={sinPlacas} onChange={(e) => { setSinPlacas(e.target.checked); if (e.target.checked) setPlacas(""); }} />
-        <span>Sin placas (estrena auto o no recuerda la matrícula): se captura como «sin registrar»</span>
-      </label>
-      <div className="field">
-        <span>Estacionamiento (acceso del TAG)</span>
-        {estacionamientos === undefined ? (
-          <p className="ti-hint">Cargando el catálogo de estacionamientos…</p>
-        ) : estacionamientos === null ? (
-          <p className="ti-hint">No se pudo cargar el catálogo; el acceso se asigna al instalar. Recargue la página si necesita asignarlo ahora.</p>
-        ) : (
-          <div className="chip-row">
-            {estacionamientos.map((c) => (
-              <button key={c} type="button" className={`select-chip ${clavesEfectivas.includes(c) ? "on" : ""}`} onClick={() => toggleClave(c)}>{c}</button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <label className="check">
-        <input type="checkbox" checked={conGestionante} onChange={(e) => setConGestionante(e.target.checked)} />
-        <span>La hoja la firmó otra persona (quien gestiona no es el titular)</span>
-      </label>
-      {conGestionante && (
-        <>
-          <div className="grid-2">
-            <div className="field"><span>Nombre(s) de quien gestiona</span><input className="input" value={gNombres} onChange={(e) => setGNombres(e.target.value)} autoComplete="off" /></div>
-            <div className="field"><span>Apellido paterno</span><input className="input" value={gPaterno} onChange={(e) => setGPaterno(e.target.value)} autoComplete="off" /></div>
-          </div>
-          <div className="grid-2">
-            <div className="field"><span>Apellido materno (opcional)</span><input className="input" value={gMaterno} onChange={(e) => setGMaterno(e.target.value)} autoComplete="off" /></div>
-            <div className="field">
-              <span>Relación con el titular</span>
-              <select className="select" value={gRelacion} onChange={(e) => setGRelacion(e.target.value as "padre" | "madre" | "tutor" | "otro")}>
-                <option value="padre">Padre</option><option value="madre">Madre</option><option value="tutor">Tutor</option><option value="otro">Otro</option>
-              </select>
-            </div>
-          </div>
-        </>
-      )}
-
-      <div className="grid-2">
-        <div className="field"><span>Fecha de la hoja</span><input className="input" type="date" value={fechaHoja} onChange={(e) => setFechaHoja(e.target.value)} /></div>
-        <div className="field"><span>Observaciones (opcional)</span><input className="input" value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ej. modelo ilegible en la hoja" /></div>
-      </div>
-      <div className="field"><span>Capturado por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
-      {!listo && <p className="hint">Falta: {faltan.join(", ")}.</p>}
-      <button type="button" className="primary-action" disabled={busy || !listo} onClick={enviar}>
-        {tag ? `Capturar expediente y reservar TAG ${tag}` : "Capturar expediente"}
-      </button>
-    </div>
-  );
-}
 
 // SC-025: alta anticipada de un lote de TAGs al inventario. Acepta los numeros
 // pegados de corrido (uno por linea, o separados por comas o espacios); valida

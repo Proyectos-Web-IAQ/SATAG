@@ -16,29 +16,6 @@ export interface Estacionamiento {
   activo: boolean;
 }
 
-// SC-026: alta capturada por TI desde la hoja fisica firmada (sin pago ni
-// aceptacion digital; la firma vive en la hoja). noDispositivo = TAG del
-// inventario que queda RESERVADO para el expediente hasta instalarlo.
-export interface DatosCapturaTi {
-  usuarioNombres: string;
-  usuarioApellidoPaterno: string;
-  usuarioApellidoMaterno: string | null;
-  tipoUsuario: TipoUsuario;
-  marca: string;
-  modelo: string;
-  color: string;
-  placas: string | null;
-  sinPlacas: boolean;
-  claves: string[];
-  noDispositivo: string | null;
-  gestionanteNombres: string | null;
-  gestionanteApellidoPaterno: string | null;
-  gestionanteApellidoMaterno: string | null;
-  gestionanteRelacion: "padre" | "madre" | "tutor" | "otro" | null;
-  fechaHoja: string | null; // YYYY-MM-DD
-  observaciones: string | null;
-}
-
 // SC-025: TAG de la escuela dado de alta por adelantado (inventario).
 // asignadoA null = disponible para instalar; con valor = ya quedo en ese
 // expediente (en uso o apartado).
