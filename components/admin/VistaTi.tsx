@@ -112,6 +112,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const [mapaZk, setMapaZk] = useState<Map<string, string> | null>(null);
   const [nombreExportZk, setNombreExportZk] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
+  // El padron se exporta incremental: solo lo instalado desde esta fecha
+  // (default hoy), salvo que TI pida todo el padron.
+  const [desdeZk, setDesdeZk] = useState(hoyIso());
+  const [todoPadronZk, setTodoPadronZk] = useState(false);
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
@@ -230,6 +234,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     }
     return m;
   }, [inventario, registros]);
+  // Lo que saldria en el archivo del padron para ZK con el filtro vigente.
+  const padronZk = registros.filter((r) =>
+    r.estado === "activo" && r.noDispositivo
+    && (todoPadronZk || !desdeZk || (r.fechaInstalacion ?? "") >= desdeZk));
 
   const q = query.trim().toLowerCase();
   const coincide = (r: Registro) =>
@@ -372,14 +380,13 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     try {
       const filas: FilaZk[] = tipo === "stock"
         ? tagsDisponibles.map((t) => filaStock(t.noDispositivo))
-        : registros
-            .filter((r) => r.estado === "activo" && r.noDispositivo)
+        : padronZk
             .map((r) => filaPadron(r, mapaZk?.get(r.noDispositivo!)))
             .filter((f): f is FilaZk => f !== null);
       if (filas.length === 0) {
         throw new Error(tipo === "stock"
           ? "No hay TAGs disponibles que exportar."
-          : "No hay expedientes activos con TAG que exportar.");
+          : "No hay expedientes activos con TAG instalados en ese rango. Cambie la fecha o marque «todo el padrón».");
       }
       const nombre = `zk-${tipo}-satag-${fechaArchivo()}.${formato}`;
       const blob = formato === "xlsx" ? await generarXlsxZk(filas) : generarCsvZk(filas);
@@ -766,14 +773,24 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                     onChange={(e) => cargarExportZk(e.target.files?.[0] ?? null)} />
                   {nombreExportZk && <p className="hint">Se conservarán los IDs de {nombreExportZk}.</p>}
                 </div>
+                <div className="grid-2">
+                  <div className="field">
+                    <span>Padrón: instalados desde</span>
+                    <input className="input" type="date" value={desdeZk} disabled={todoPadronZk} onChange={(e) => setDesdeZk(e.target.value)} />
+                  </div>
+                  <label className="check" style={{ alignSelf: "end", paddingBottom: 12 }}>
+                    <input type="checkbox" checked={todoPadronZk} onChange={(e) => setTodoPadronZk(e.target.checked)} />
+                    <span>Todo el padrón activo (re-escribe lo ya subido con los mismos datos)</span>
+                  </label>
+                </div>
                 <div className="ti-chips">
                   <button type="button" className="primary-action" disabled={exportando || tagsDisponibles.length === 0}
                     onClick={() => descargarZk("stock", "xlsx")}>
                     Descargar plantilla ZK (TAGs disponibles: {tagsDisponibles.length})
                   </button>
-                  <button type="button" className="primary-action" disabled={exportando || registros.every((r) => !(r.estado === "activo" && r.noDispositivo))}
+                  <button type="button" className="primary-action" disabled={exportando || padronZk.length === 0}
                     onClick={() => descargarZk("padron", "xlsx")}>
-                    Descargar padrón instalado para ZK
+                    Descargar padrón instalado para ZK ({padronZk.length})
                   </button>
                 </div>
                 <p className="ti-hint">
