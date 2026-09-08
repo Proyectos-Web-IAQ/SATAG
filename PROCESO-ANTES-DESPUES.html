@@ -33,6 +33,20 @@
   #acto.hoy { background: var(--rojo-soft); color: var(--rojo); border-color: var(--rojo); }
   #acto.satag { background: var(--green-soft); color: var(--green); border-color: var(--green); }
   #acto.cierre { background: #fff; color: var(--navy); border-color: #fff; }
+  #acto.fase2 { background: #fdf3dd; color: var(--ambar); border-color: var(--ambar); }
+  .sello.pendiente { background: #fdf3dd; color: var(--ambar); }
+
+  .calendario { width: 100%; max-width: 28rem; background: var(--card); border-radius: 12px; box-shadow: 0 18px 40px rgba(16,29,53,.18); border: 1px solid var(--line); overflow: hidden; }
+  .calendario .cab { display: grid; grid-template-columns: 3.2rem repeat(3, 1fr); background: #eef1f5; border-bottom: 1px solid var(--line); font-size: .72rem; color: var(--ink-soft); }
+  .calendario .cab div { padding: .5rem .4rem; text-align: center; font-weight: 600; }
+  .calendario .cuerpo { display: grid; grid-template-columns: 3.2rem repeat(3, 1fr); }
+  .calendario .hora { font-size: .68rem; color: var(--ink-soft); padding: .35rem .3rem; border-bottom: 1px solid #edf0f4; text-align: right; }
+  .calendario .celda { border-left: 1px solid #edf0f4; border-bottom: 1px solid #edf0f4; min-height: 2.1rem; padding: .18rem; }
+  .calendario .cita { background: var(--green-soft); border-left: 3px solid var(--green); border-radius: 4px; font-size: .62rem; padding: .22rem .35rem; color: var(--navy); line-height: 1.25; }
+  .calendario .cita b { display: block; font-size: .64rem; }
+  .lista-implica { list-style: none; display: flex; flex-direction: column; gap: .45rem; margin-top: .9rem; }
+  .lista-implica li { font-size: .98rem; color: var(--ink); padding-left: 1.4rem; position: relative; line-height: 1.35; }
+  .lista-implica li::before { content: "→"; position: absolute; left: 0; color: var(--ambar); font-weight: 700; }
 
   /* ===== contadores ===== */
   .hud { display: flex; gap: .7rem; justify-content: center; padding: 0 2rem .8rem; flex: 0 0 auto; }
@@ -189,11 +203,13 @@
     border-radius: 8px; padding: .45rem .95rem; font-size: .9rem; cursor: pointer; font-family: var(--body);
   }
   .controles button:hover { background: rgba(255,255,255,.22); }
+  .controles button:disabled { opacity: .35; cursor: default; }
   .puntos { display: flex; gap: .45rem; }
   .puntos i { width: .55rem; height: .55rem; border-radius: 50%; background: rgba(255,255,255,.25); cursor: pointer; transition: all .3s; }
   .puntos i.hoy-p.on { background: #ff9d94; transform: scale(1.35); }
   .puntos i.satag-p.on { background: #7fd6a0; transform: scale(1.35); }
   .puntos i.cierre-p.on { background: #fff; transform: scale(1.35); }
+  .puntos i.fase2-p.on { background: #f0c66a; transform: scale(1.35); }
 
   @media (max-width: 900px) {
     .paso { grid-template-columns: 1fr; overflow-y: auto; }
@@ -205,7 +221,7 @@
 <div class="marco">
   <header>
     <div class="titulo">SATAG · Sistema de Adquisición de TAG Vehicular
-      <small>Instituto Asunción de Querétaro — el proceso, antes y después</small>
+      <small>Instituto Asunción de Querétaro — el proceso, antes y con SATAG · fase 1 lista para producción</small>
     </div>
     <div id="acto" class="hoy">Así funciona hoy</div>
   </header>
@@ -349,7 +365,7 @@
     <!-- ============ ACTO 2: SATAG ============ -->
     <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="0" data-tiempo="minuto 0">
       <div class="texto">
-        <div class="num">Con SATAG · Paso 1 de 4</div>
+        <div class="num">Con SATAG · Paso 1 de 5</div>
         <h2>El papá solicita desde su celular</h2>
         <p>Escanea un QR o entra al sitio, llena sus datos <strong>una sola vez</strong> y el sistema los valida en el momento: sin letra ilegible, sin campos a medias.</p>
         <span class="sello bien">Captura única · validada desde el origen</span>
@@ -371,7 +387,7 @@
 
     <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="0" data-tiempo="minuto 5">
       <div class="texto">
-        <div class="num">Con SATAG · Paso 2 de 4</div>
+        <div class="num">Con SATAG · Paso 2 de 5</div>
         <h2>Paga en caja: folio inmutable y comprobante</h2>
         <p>El cobro queda ligado a la persona que lo registró, con folio que no se puede alterar, y el titular se lleva su comprobante. La caja cuadra sola en el corte.</p>
         <span class="sello bien">Blindaje contable desde el primer peso</span>
@@ -389,7 +405,19 @@
 
     <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="1" data-tiempo="mismo día">
       <div class="texto">
-        <div class="num">Con SATAG · Paso 3 de 4</div>
+        <div class="num">Con SATAG · Paso 3 de 5</div>
+        <h2>Llamada a Sistemas: igual que hoy, por ahora</h2>
+        <p>Cuando el papá llega con su pago, la forma más inmediata de que Sistemas baje a instalar sigue siendo la llamada. En la fase 1 esto no cambia, y se dice tal cual. La diferencia: Sistemas ya no baja a preguntar nada — el expediente completo va en su celular.</p>
+        <span class="sello pendiente">Se conserva en fase 1 · la fase 2 propone sustituirla por cita agendada</span>
+      </div>
+      <div class="visual">
+        <div class="telefonos">📞 <span class="onda">RING · RING</span> 📱</div>
+      </div>
+    </section>
+
+    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="2" data-tiempo="mismo día">
+      <div class="texto">
+        <div class="num">Con SATAG · Paso 4 de 5</div>
         <h2>Sistemas instala y captura el TAG ahí mismo</h2>
         <p>La instalación es la misma de siempre —pegar el TAG— pero el número se captura en SATAG desde el celular, en el estacionamiento. No hay hoja que transcribir de regreso.</p>
         <span class="sello bien">El dato nace una vez y ya no se vuelve a escribir</span>
@@ -408,26 +436,53 @@
       </div>
     </section>
 
-    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="1" data-tiempo="minutos">
+    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="2" data-tiempo="minutos">
       <div class="texto">
-        <div class="num">Con SATAG · Paso 4 de 4</div>
+        <div class="num">Con SATAG · Paso 5 de 5</div>
         <h2>Y ZK se actualiza de un jalón</h2>
-        <p>Una consulta y un comando generan el archivo de importación oficial. ZK actualiza a todas las personas del lote de una sola vez, sin capturar a nadie a mano.</p>
-        <span class="sello bien">Probado hoy con un caso real: correctos 1, fallidos 0</span>
+        <p>Desde el panel, Sistemas descarga el archivo de importación oficial de ZK: primero los TAGs del inventario (pre-alta), después el padrón ya instalado. ZK actualiza a todas las personas del lote de una sola vez, sin capturar a nadie a mano.</p>
+        <span class="sello bien">Probado hoy con casos reales: 5 + 2 correctos, 0 fallidos</span>
       </div>
       <div class="visual">
         <div class="consola">
-          <div>&gt; export desde SATAG … <span class="ok">listo</span></div>
-          <div>&gt; node generar-import-zk-desde-satag.cjs</div>
-          <div>&nbsp;&nbsp;tarjetas de ZK llenadas: <span class="ok">1</span></div>
-          <div>&gt; importar en ZKBioSecurity…</div>
-          <div>&nbsp;&nbsp;<span class="ok">Correctos: 1. Fallidos: 0.</span></div>
+          <div>&gt; SATAG → plantilla ZK (TAGs disponibles) … <span class="ok">descargada</span></div>
+          <div>&nbsp;&nbsp;importar en ZKBioSecurity: <span class="ok">Correctos: 5. Fallidos: 0.</span></div>
+          <div>&gt; SATAG → padrón instalado … <span class="ok">descargado</span></div>
+          <div>&nbsp;&nbsp;importar en ZKBioSecurity: <span class="ok">Correctos: 2. Fallidos: 0.</span></div>
+          <div>&nbsp;&nbsp;tarjetas actualizadas con nombre, depto y placa · <span class="ok">sin duplicados</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ FASE 2 (PROPUESTA) ============ -->
+    <section class="paso" data-acto="fase2" data-capturas="—" data-papel="—" data-idas="—" data-tiempo="—">
+      <div class="texto">
+        <div class="num">Fase 2 · propuesta, después de la salida a producción</div>
+        <h2>Visitas agendadas en Google Calendar</h2>
+        <p>Al pagar, el papá elige día y hora de instalación (o Administración se la agenda). Sistemas ve su agenda del día y baja a la hora: sin llamadas, sin esperas y sin interrumpir otra atención.</p>
+        <ul class="lista-implica">
+          <li>Un calendario institucional de Sistemas con ventanas de instalación definidas (por ejemplo, dos bloques al día).</li>
+          <li>Conectar SATAG con esa agenda: cita al confirmar el pago y aviso al papá por correo.</li>
+          <li>Medir en la fase 1 cuántas llamadas y bajadas hay por semana, para dimensionar los bloques.</li>
+        </ul>
+        <span class="sello pendiente">Propuesta · no forma parte de la fase 1</span>
+      </div>
+      <div class="visual">
+        <div class="calendario">
+          <div class="cab"><div></div><div>Lun 14</div><div>Mar 15</div><div>Mié 16</div></div>
+          <div class="cuerpo">
+            <div class="hora">9:00</div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000015 · ULT413K</div></div><div class="celda"></div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000018 · UMC797H</div></div>
+            <div class="hora">9:30</div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000016 · B50BAR</div></div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000017 · SW5298B</div></div><div class="celda"></div>
+            <div class="hora">10:00</div><div class="celda"></div><div class="celda"></div><div class="celda"></div>
+            <div class="hora">13:00</div><div class="celda"></div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000019 · ULK489L</div></div><div class="celda"></div>
+            <div class="hora">13:30</div><div class="celda"></div><div class="celda"></div><div class="celda"></div>
+          </div>
         </div>
       </div>
     </section>
 
     <!-- ============ CIERRE ============ -->
-    <section class="paso cierre-grid" data-acto="cierre" data-capturas="1" data-papel="0" data-idas="1" data-tiempo="minutos">
+    <section class="paso cierre-grid" data-acto="cierre" data-capturas="1" data-papel="0" data-idas="2" data-tiempo="minutos">
       <div class="col-cierre hoy">
         <h2>Hoy, con papel</h2>
         <ul>
@@ -439,12 +494,13 @@
         <div class="gran">3 capturas · 2 jornadas</div>
       </div>
       <div class="col-cierre satag">
-        <h2>Con SATAG</h2>
+        <h2>Con SATAG · fase 1</h2>
         <ul>
           <li>El dato se captura <strong>1 vez</strong>, validado, y viaja solo hasta ZK</li>
           <li>Cada paso queda registrado: quién, cuándo y cuánto</li>
           <li>Pago con folio inmutable y evidencia consultable al instante</li>
           <li>La actualización de ZK toma <strong>minutos</strong>, en lote</li>
+          <li>La llamada a Sistemas se conserva; la fase 2 propone la cita agendada</li>
         </ul>
         <div class="gran">1 captura · minutos</div>
       </div>
@@ -458,12 +514,10 @@
   </div>
 
   <div class="controles">
-    <button id="b-inicio" title="Reiniciar (R)">⟲</button>
-    <button id="b-prev" title="Anterior (←)">‹</button>
-    <button id="b-play" title="Pausa / continuar (espacio)">⏸</button>
-    <button id="b-next" title="Siguiente (→)">›</button>
+    <button id="b-inicio" title="Ir al inicio (R)">⟲</button>
+    <button id="b-prev" title="Anterior (←)">‹ Anterior</button>
     <div class="puntos" id="puntos"></div>
-    <button id="b-vel" title="Velocidad">1×</button>
+    <button id="b-next" title="Siguiente (→, espacio o Enter)">Siguiente ›</button>
   </div>
 </div>
 
@@ -483,21 +537,20 @@
     idas: document.getElementById('hud-idas'),
     tiempo: document.getElementById('hud-tiempo')
   };
+  var ETIQUETA = {
+    hoy: 'Así funciona hoy',
+    satag: 'Así funciona con SATAG · fase 1',
+    fase2: 'Fase 2 · propuesta',
+    cierre: 'La diferencia'
+  };
   var puntos = document.getElementById('puntos');
-  var DURACION = 7000;
-  var vel = 1, i = 0, timer = null, corriendo = true;
-  var yaPintado = false, inicioTimer = 0, esperaTimer = 0;
-
-  function aplicaVelocidad() {
-    if (document.getAnimations) {
-      document.getAnimations().forEach(function (a) { a.playbackRate = vel; });
-    }
-  }
+  var i = 0, yaPintado = false;
 
   pasos.forEach(function (p, k) {
     var punto = document.createElement('i');
     punto.className = p.dataset.acto + '-p';
-    punto.addEventListener('click', function () { ir(k, true, true); });
+    punto.title = 'Lámina ' + (k + 1);
+    punto.addEventListener('click', function () { ir(k, true); });
     puntos.appendChild(punto);
   });
   var listaPuntos = Array.prototype.slice.call(puntos.children);
@@ -505,14 +558,14 @@
   function pinta() {
     var p = pasos[i];
     pasos.forEach(function (x) { x.classList.remove('activa'); });
-    // reflow para que las animaciones internas se reinicien
+    // reflow para que las animaciones internas de la lámina se reinicien
     void p.offsetWidth;
     p.classList.add('activa');
     listaPuntos.forEach(function (x, k) { x.classList.toggle('on', k === i); });
 
     var a = p.dataset.acto;
     acto.className = a;
-    acto.textContent = a === 'hoy' ? 'Así funciona hoy' : a === 'satag' ? 'Así funciona con SATAG' : 'La diferencia';
+    acto.textContent = ETIQUETA[a] || '';
 
     hud.capturas.textContent = p.dataset.capturas;
     hud.papel.textContent = p.dataset.papel;
@@ -520,67 +573,42 @@
     hud.tiempo.textContent = p.dataset.tiempo;
     var esSatag = (a !== 'hoy');
     ['capturas', 'papel', 'idas', 'tiempo'].forEach(function (n) {
-      pillas[n].classList.toggle('bien', esSatag);
+      pillas[n].classList.toggle('bien', esSatag && a !== 'fase2');
       pillas[n].classList.toggle('alerta', !esSatag && n === 'capturas' && Number(p.dataset.capturas) > 1);
     });
-    aplicaVelocidad();
+    document.getElementById('b-prev').disabled = (i === 0);
+    document.getElementById('b-next').disabled = (i === pasos.length - 1);
   }
 
-  function programa() {
-    clearTimeout(timer);
-    if (!corriendo) return;
-    if (i >= pasos.length - 1) return; // el cierre se queda en pantalla
-    esperaTimer = DURACION / vel;
-    inicioTimer = Date.now();
-    timer = setTimeout(function () { ir(i + 1, false); }, esperaTimer);
-  }
-
-  function ir(k, manual, fuerza) {
+  // Presentación manual: solo avanza cuando quien presenta lo pide.
+  function ir(k, fuerza) {
     var n = Math.max(0, Math.min(pasos.length - 1, k));
-    if (n === i && yaPintado && !fuerza) return; // en los limites no repinta
+    if (n === i && yaPintado && !fuerza) return;
     i = n;
     yaPintado = true;
     pinta();
-    if (manual && corriendo) programa(); else if (!manual) programa();
   }
 
-  function alterna() {
-    corriendo = !corriendo;
-    document.getElementById('b-play').textContent = corriendo ? '⏸' : '▶';
-    if (corriendo) programa(); else clearTimeout(timer);
-  }
-
-  document.getElementById('b-play').addEventListener('click', alterna);
-  document.getElementById('b-next').addEventListener('click', function () { ir(i + 1, true); });
-  document.getElementById('b-prev').addEventListener('click', function () { ir(i - 1, true); });
-  document.getElementById('b-inicio').addEventListener('click', function () { ir(0, true, true); });
-  document.getElementById('b-vel').addEventListener('click', function () {
-    // conserva el tiempo ya transcurrido del paso al cambiar la velocidad
-    var fraccion = (corriendo && timer && esperaTimer) ? Math.min(1, (Date.now() - inicioTimer) / esperaTimer) : 0;
-    vel = vel === 1 ? 1.5 : vel === 1.5 ? 2 : 1;
-    this.textContent = vel + '×';
-    aplicaVelocidad();
-    clearTimeout(timer);
-    if (corriendo && i < pasos.length - 1) {
-      esperaTimer = Math.max(300, (DURACION / vel) * (1 - fraccion));
-      inicioTimer = Date.now();
-      timer = setTimeout(function () { ir(i + 1, false); }, esperaTimer);
-    }
-  });
+  document.getElementById('b-next').addEventListener('click', function () { ir(i + 1); });
+  document.getElementById('b-prev').addEventListener('click', function () { ir(i - 1); });
+  document.getElementById('b-inicio').addEventListener('click', function () { ir(0, true); });
   document.addEventListener('keydown', function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return; // no pisar atajos del navegador
-    if (e.key === ' ' && e.target && e.target.closest && e.target.closest('button')) return; // deja que el boton enfocado se active
-    if (e.key === 'ArrowRight') ir(i + 1, true);
-    else if (e.key === 'ArrowLeft') ir(i - 1, true);
-    else if (e.key === ' ') { e.preventDefault(); alterna(); }
-    else if (e.key === 'r' || e.key === 'R') ir(0, true, true);
+    var enBoton = e.target && e.target.closest && e.target.closest('button');
+    if ((e.key === ' ' || e.key === 'Enter') && enBoton) return; // deja que el botón enfocado se active
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter' || e.key === 'PageDown') { e.preventDefault(); ir(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'PageUp') { e.preventDefault(); ir(i - 1); }
+    else if (e.key === 'Home' || e.key === 'r' || e.key === 'R') ir(0, true);
+    else if (e.key === 'End') ir(pasos.length - 1);
   });
+  // Clic en la lámina (fuera de los controles) también avanza: cómodo con
+  // presentador o pantalla táctil.
+  document.querySelector('.escenario').addEventListener('click', function () { ir(i + 1); });
 
-  // ?paso=N (1..12) salta a ese paso; &auto=0 arranca pausado
+  // ?paso=N (1..N) abre en esa lámina
   var q = new URLSearchParams(location.search);
   var pIni = parseInt(q.get('paso'), 10);
-  if (q.get('auto') === '0') { corriendo = false; document.getElementById('b-play').textContent = '▶'; }
-  ir(isNaN(pIni) ? 0 : pIni - 1, true, true);
+  ir(isNaN(pIni) ? 0 : pIni - 1, true);
 })();
 </script>
 </body>
