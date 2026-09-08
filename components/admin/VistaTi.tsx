@@ -1165,9 +1165,9 @@ function FormCapturaHoja({ disponibles, estacionamientos, marcas, colores, busy,
   return (
     <div className="ti-form">
       <div className="field">
-        <span>No. de TAG (toque el que se instaló; el foco pasa al titular)</span>
+        <span>No. de TAG — opcional: tóquelo solo si la hoja ya trae el TAG instalado; si no, se elige al instalar</span>
         {disponibles.length === 0 ? (
-          <p className="ti-hint">No hay TAGs disponibles en el inventario. Puede capturar el expediente sin TAG y dar de alta el lote en «TAGs de la escuela».</p>
+          <p className="ti-hint">No hay TAGs disponibles en el inventario. Capture el expediente sin TAG: el número se elige en «Instalar TAG».</p>
         ) : (
           <div className="chip-row">
             {disponibles.map((n) => (
@@ -1175,7 +1175,7 @@ function FormCapturaHoja({ disponibles, estacionamientos, marcas, colores, busy,
             ))}
           </div>
         )}
-        {tag && <p className="hint">TAG {tag} quedará reservado para este expediente.</p>}
+        {tag && <p className="hint">TAG {tag} quedará reservado para este expediente (sale de los disponibles) y aparecerá prellenado al instalar.</p>}
       </div>
 
       <p className="ti-section-title">Titular (como aparece en la hoja)</p>
