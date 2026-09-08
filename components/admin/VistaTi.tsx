@@ -778,7 +778,9 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                 </div>
                 <p className="ti-hint">
                   Los TAGs disponibles salen como «DISPONIBLE / STOCK SATAG» en Padres de familia; al instalarse, el padrón
-                  actualiza la misma tarjeta con la persona y su placa (en Celular). Respaldo en el formato de export de ZK:{" "}
+                  actualiza la misma tarjeta con la persona y su placa (en Celular). La plantilla de ZK no lleva niveles de
+                  acceso: después de importar, asígnelos en ZK por departamento (Acceso → Niveles de acceso → ESTACIONAMIENTO 1 y 2
+                  → Agregar personal → Padres de familia). Respaldo en el formato de export de ZK:{" "}
                   <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("stock", "csv")}>disponibles .csv</button>
                   {" · "}
                   <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("padron", "csv")}>padrón .csv</button>
