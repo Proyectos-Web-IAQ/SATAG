@@ -29,6 +29,7 @@ import type {
   ResultadoCorte,
   Solicitud,
   TagInventario,
+  TarjetaZk,
   TipoMovimiento,
   TipoSolicitud,
   TipoUsuario,
@@ -39,6 +40,8 @@ export interface AccionResultado {
   id: string;
   // Lo devuelven crear_registro y capturar_expediente_ti (SC-026).
   folio?: string;
+  // Lo devuelve cargar_mapa_zk (SC-027): tarjetas que quedaron en el mapa.
+  total?: number;
   folioRecibo?: string;
   // CC-05: lo devuelve registrar_pago para poder avisar en pantalla cuando el
   // tipo declarado en el alta no era el correcto y quedó corregido.
@@ -553,6 +556,37 @@ export async function altaTagsInventario(numeros: string[], hechoPor: string): P
 export async function retirarTagInventario(noDispositivo: string, hechoPor: string): Promise<AccionResultado> {
   return rpc("retirar_tag_inventario", {
     p_no_dispositivo: noDispositivo,
+    p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
+// ---- SC-027: mapa tarjeta -> ID de ZK guardado en la base (bloque 54) ----
+
+interface TarjetaZkRow {
+  no_dispositivo: string;
+  zk_id: string;
+  cargado_en: string;
+  cargado_por: string;
+}
+
+export async function listMapaZk(): Promise<TarjetaZk[]> {
+  const { data, error } = await supabaseAuth
+    .from("zk_tarjetas")
+    .select("no_dispositivo, zk_id, cargado_en, cargado_por")
+    .limit(10000);
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as TarjetaZkRow[]).map((t) => ({
+    noDispositivo: t.no_dispositivo,
+    zkId: t.zk_id,
+    cargadoEn: t.cargado_en,
+    cargadoPor: t.cargado_por,
+  }));
+}
+
+// Reemplaza el mapa completo con el export de ZK ya leido por el cliente.
+export async function cargarMapaZk(filas: { tarjeta: string; id: string }[], hechoPor: string): Promise<AccionResultado> {
+  return rpc("cargar_mapa_zk", {
+    p_filas: filas,
     p_hecho_por: hechoPor.trim() || null,
   });
 }

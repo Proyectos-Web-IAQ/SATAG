@@ -16,6 +16,8 @@ import {
   listTagsInventario,
   altaTagsInventario,
   retirarTagInventario,
+  listMapaZk,
+  cargarMapaZk,
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
 import { filaStock, filaPadron, generarXlsxZk, generarCsvZk, leerExportZk, descargarArchivo, fechaArchivo, type FilaZk } from "@/lib/zk/plantillaZk";
@@ -106,10 +108,12 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   // El inventario se carga aparte: si falla (p.ej. bloque 52 sin aplicar) se
   // dice tal cual, pero las colas de instalar/actualizar/baja siguen operando.
   const [inventarioError, setInventarioError] = useState<string | null>(null);
-  // SC-025: export a ZK. El mapa tarjeta -> ID de ZK viene del export de ZK que
-  // TI carga (opcional) para que el import actualice en vez de duplicar.
-  const [mapaZk, setMapaZk] = useState<Map<string, string> | null>(null);
-  const [nombreExportZk, setNombreExportZk] = useState<string | null>(null);
+  // SC-027: mapa tarjeta -> ID de ZK guardado en la base (bloque 54): con el,
+  // el import de ZK actualiza las tarjetas que ZK ya tenia con otro ID. Se
+  // actualiza subiendo el export de ZK; queda para todas las sesiones.
+  const [mapaZk, setMapaZk] = useState<Map<string, string>>(new Map());
+  const [mapaZkInfo, setMapaZkInfo] = useState<{ total: number; cargadoEn: string; cargadoPor: string } | null>(null);
+  const [mapaZkError, setMapaZkError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
   // El padron se exporta incremental: solo lo instalado desde esta fecha
   // (default hoy), salvo que TI pida todo el padron.
@@ -153,7 +157,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   async function refresh() {
     setLoading(true);
     try {
-      const [list, notasList, incompletosList, inventarioRes] = await Promise.all([
+      const [list, notasList, incompletosList, inventarioRes, mapaRes] = await Promise.all([
         listRegistros(),
         listNotasSinExpediente(),
         listRegistrosIncompletos(),
@@ -161,10 +165,25 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
           (v) => ({ ok: true as const, v }),
           (e: unknown) => ({ ok: false as const, e }),
         ),
+        listMapaZk().then(
+          (v) => ({ ok: true as const, v }),
+          (e: unknown) => ({ ok: false as const, e }),
+        ),
       ]);
       setRegistros(list);
       setNotas(notasList);
       setIncompletos(incompletosList);
+      if (mapaRes.ok) {
+        setMapaZk(new Map(mapaRes.v.map((t) => [t.noDispositivo, t.zkId])));
+        const ultima = mapaRes.v.reduce<typeof mapaRes.v[number] | null>(
+          (acc, t) => (!acc || t.cargadoEn > acc.cargadoEn ? t : acc), null);
+        setMapaZkInfo(ultima ? { total: mapaRes.v.length, cargadoEn: ultima.cargadoEn, cargadoPor: ultima.cargadoPor } : null);
+        setMapaZkError(null);
+      } else {
+        setMapaZk(new Map());
+        setMapaZkInfo(null);
+        setMapaZkError(mapaRes.e instanceof Error ? mapaRes.e.message : "No se pudo cargar el mapa de ZK.");
+      }
       if (inventarioRes.ok) {
         setInventario(inventarioRes.v);
         setInventarioError(null);
@@ -362,7 +381,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       const filas: FilaZk[] = tipo === "stock"
         ? tagsDisponibles.map((t) => filaStock(t.noDispositivo))
         : padronZk
-            .map((r) => filaPadron(r, mapaZk?.get(r.noDispositivo!)))
+            .map((r) => filaPadron(r, mapaZk.get(r.noDispositivo!)))
             .filter((f): f is FilaZk => f !== null);
       if (filas.length === 0) {
         throw new Error(tipo === "stock"
@@ -380,17 +399,23 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       scrollAlAviso(bannersRef.current);
     }
   }
+  // Lee el export de ZK en el navegador y reemplaza el mapa guardado en la base.
   async function cargarExportZk(archivo: File | null) {
-    if (!archivo) { setMapaZk(null); setNombreExportZk(null); return; }
+    if (!archivo) return;
+    let filas: { tarjeta: string; id: string }[];
     try {
       const mapa = await leerExportZk(archivo);
       if (mapa.size === 0) throw new Error("El archivo no parece un export de ZK (Usuarios_….csv).");
-      setMapaZk(mapa); setNombreExportZk(`${archivo.name} (${mapa.size} tarjetas)`);
-      setError(null);
+      filas = [...mapa.entries()].map(([tarjeta, id]) => ({ tarjeta, id }));
     } catch (e) {
-      setMapaZk(null); setNombreExportZk(null);
       setError(e instanceof Error ? e.message : "No se pudo leer el export de ZK.");
+      scrollAlAviso(bannersRef.current);
+      return;
     }
+    await run(
+      () => cargarMapaZk(filas, tiNombre),
+      (res) => `Mapa de ZK actualizado con ${res.total ?? filas.length} tarjetas; queda guardado para todas las sesiones.`,
+    );
   }
 
   // Cierra una solicitud improcedente sin tocar el registro (motivo obligatorio).
@@ -738,16 +763,25 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
               <div className="ti-form">
                 <p className="ti-hint">
                   Descargue el archivo y en ZK use Personal → Usuarios → Importar: Fila de Inicio <strong>2</strong>,
-                  «Actualizar el ID de usuario existente» = <strong>Sí</strong>. El ID de cada persona es su No. de TAG.
-                  <strong> Si una tarjeta ya existe en ZK con otro ID (las dadas de alta a mano), ZK rechaza la fila con
-                  «el número de tarjeta ya existe»:</strong> cargue aquí el export de ZK (Personal → Exportar → Usuarios_….csv)
-                  y vuelva a descargar; así el archivo lleva el ID que ZK ya tiene y la actualiza en vez de duplicarla.
+                  «Actualizar el ID de usuario existente» = <strong>Sí</strong>. El ID de cada persona es su No. de TAG,
+                  salvo las tarjetas que ZK ya tenía con otro ID (las dadas de alta a mano): para esas el archivo usa el
+                  ID del mapa de ZK guardado abajo, y así ZK las actualiza en vez de rechazarlas con «el número de tarjeta
+                  ya existe».
                 </p>
                 <div className="field">
-                  <span>Export de ZK (opcional): Usuarios_….csv descargado de ZK</span>
-                  <input className="input" type="file" accept=".csv,.txt"
-                    onChange={(e) => cargarExportZk(e.target.files?.[0] ?? null)} />
-                  {nombreExportZk && <p className="hint">Se conservarán los IDs de {nombreExportZk}.</p>}
+                  <span>Mapa de IDs de ZK (guardado para todas las sesiones y computadoras)</span>
+                  {mapaZkError ? (
+                    <p className="field-error">No se pudo cargar el mapa de ZK: {mapaZkError}</p>
+                  ) : mapaZkInfo ? (
+                    <p className="hint">
+                      {mapaZkInfo.total} tarjetas · actualizado el {fechaHoraLocal(mapaZkInfo.cargadoEn)} por {mapaZkInfo.cargadoPor}.
+                      Súbalo de nuevo cuando ZK cambie por altas manuales (por ejemplo, cada lunes).
+                    </p>
+                  ) : (
+                    <p className="hint">Sin cargar todavía. Suba el export de ZK (Personal → Exportar → Usuarios_….csv) una sola vez.</p>
+                  )}
+                  <input className="input" type="file" accept=".csv,.txt" disabled={busy}
+                    onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; cargarExportZk(f); }} />
                 </div>
                 <div className="grid-2">
                   <div className="field">
@@ -1068,6 +1102,10 @@ function FormBaja({ r, busy, tiNombre, onTiNombre, onSubmit }: {
     </div>
   );
 }
+
+// Nunca recortar el ISO UTC: se formatea en la zona del Instituto.
+const fechaHoraLocal = (iso: string) =>
+  new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short", timeZone: "America/Mexico_City" }).format(new Date(iso));
 
 const hoyIso = () => {
   const d = new Date();
