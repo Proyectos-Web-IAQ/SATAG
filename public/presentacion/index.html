@@ -35,6 +35,7 @@
   #acto.cierre { background: #fff; color: var(--navy); border-color: #fff; }
   #acto.fase2 { background: #fdf3dd; color: var(--ambar); border-color: var(--ambar); }
   #acto.demo { background: var(--green); color: #fff; border-color: var(--green); }
+  #acto.legal { background: #fdf3dd; color: var(--ambar); border-color: var(--ambar); }
   header .derecha { display: flex; align-items: center; gap: 1rem; }
   header .enlace-panel { color: #aebad0; font-size: .82rem; text-decoration: none; border-bottom: 1px solid rgba(174,186,208,.5); padding-bottom: .1rem; }
   header .enlace-panel:hover { color: #fff; border-color: #fff; }
@@ -189,6 +190,27 @@
   @keyframes linea { to { opacity: 1; } }
   .consola .ok { color: #7fd6a0; font-weight: 700; }
 
+  /* ===== evidencia de aceptacion (lamina legal) ===== */
+  .evidencia { width: 100%; max-width: 25rem; background: var(--card); border-radius: 12px; box-shadow: 0 18px 40px rgba(16,29,53,.18); border: 1px solid var(--line); overflow: hidden; }
+  .evidencia .cab { background: var(--green); color: #fff; padding: .6rem .95rem; font-family: var(--display); font-weight: 700; font-size: .82rem; letter-spacing: .03em; }
+  .evidencia ul { list-style: none; padding: .35rem .95rem .2rem; }
+  .evidencia li { display: flex; gap: .55rem; align-items: flex-start; padding: .42rem 0; border-bottom: 1px dashed var(--line); font-size: .78rem; line-height: 1.35; color: var(--ink-soft); }
+  .evidencia li:last-child { border-bottom: 0; }
+  .evidencia li b { display: block; font-family: var(--display); font-weight: 700; font-size: .7rem; letter-spacing: .05em; text-transform: uppercase; color: var(--navy); margin-bottom: .1rem; }
+  .evidencia li i.tic { color: var(--green); font-style: normal; font-weight: 700; flex: 0 0 auto; }
+  .evidencia .pie { background: #f2f7f4; padding: .55rem .95rem; font-size: .7rem; color: var(--ink-soft); line-height: 1.35; border-top: 1px solid var(--line); }
+  .nota-pie { margin-top: .9rem; font-size: .85rem !important; color: var(--ink-soft); line-height: 1.4; border-left: 3px solid var(--line); padding-left: .75rem; max-width: 34rem; }
+
+  /* ===== lo legal por definir ===== */
+  .paso.legal-grid { grid-template-columns: 1fr; align-content: start; gap: 1rem; padding: 1.6rem 2rem; overflow-y: auto; }
+  table.decisiones { width: 100%; border-collapse: collapse; font-size: .8rem; background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 12px 30px rgba(16,29,53,.1); }
+  table.decisiones th { background: var(--navy); color: #fff; font-family: var(--display); font-weight: 700; font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; text-align: left; padding: .5rem .8rem; }
+  table.decisiones td { padding: .42rem .8rem; border-bottom: 1px solid #edf0f4; color: var(--ink-soft); line-height: 1.3; vertical-align: top; }
+  table.decisiones td.tema { font-weight: 600; color: var(--navy); width: 13.5rem; }
+  table.decisiones td.riesgo { color: var(--rojo); width: 17rem; }
+  table.decisiones td.quien { width: 9.5rem; font-size: .73rem; }
+  table.decisiones tr:last-child td { border-bottom: 0; }
+
   /* ===== cierre ===== */
   .paso.cierre-grid { grid-template-columns: 1fr 1fr; align-items: stretch; }
   .col-cierre { border-radius: 14px; padding: 1.8rem 2rem; display: flex; flex-direction: column; }
@@ -225,6 +247,7 @@
   .puntos i.cierre-p.on { background: #fff; transform: scale(1.35); }
   .puntos i.fase2-p.on { background: #f0c66a; transform: scale(1.35); }
   .puntos i.demo-p.on { background: #7fd6a0; transform: scale(1.35); }
+  .puntos i.legal-p.on { background: #f0c66a; transform: scale(1.35); }
 
   @media (max-width: 900px) {
     .paso { grid-template-columns: 1fr; overflow-y: auto; }
@@ -403,6 +426,30 @@
       </div>
     </section>
 
+    <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="0" data-tiempo="minuto 0">
+      <div class="texto">
+        <div class="num">Con SATAG · Paso 1 de 5 · lo que queda firmado</div>
+        <h2>En esa misma pantalla se firma todo lo legal</h2>
+        <p>Antes de enviar, el titular lee y acepta el <strong>aviso de privacidad</strong> y el <strong>reglamento de acceso vehicular</strong> vigentes, y firma con el dedo. Si alguno de los dos documentos no carga, el sistema no permite enviar el alta. Al terminar, el titular conserva su copia con el texto completo de lo que aceptó, para imprimir o guardar en PDF.</p>
+        <p class="nota-pie">El sitio no usa cookies de rastreo ni analítica. El formulario público no guarda nada en el navegador del padre de familia; el único almacenamiento local es la sesión del personal dentro del panel.</p>
+        <span class="sello bien">Aviso v2 y reglamento v2 · funcionando hoy en el sistema</span>
+      </div>
+      <div class="visual">
+        <div class="evidencia">
+          <div class="cab">Evidencia de aceptación · queda con el expediente</div>
+          <ul>
+            <li><i class="tic">✓</i><div><b>Aviso de privacidad</b>Versión 2, la vigente, con la huella SHA-256 del texto exacto que se mostró</div></li>
+            <li><i class="tic">✓</i><div><b>Reglamento de acceso</b>Versión 2, 22 cláusulas, con su propia huella SHA-256</div></li>
+            <li><i class="tic">✓</i><div><b>Firma manuscrita</b>Imagen en almacenamiento privado, su huella SHA-256 y los trazos capturados</div></li>
+            <li><i class="tic">✓</i><div><b>Sello de tiempo</b>Fecha y hora que pone el servidor, no el teléfono de quien firma</div></li>
+            <li><i class="tic">✓</i><div><b>Origen de la firma</b>Dirección IP y navegador, tomados también en el servidor</div></li>
+            <li><i class="tic">✓</i><div><b>Huella del documento</b>Un solo SHA-256 que ata documentos, datos del trámite y firma</div></li>
+          </ul>
+          <div class="pie">Una sola aceptación por expediente. Se escribe al firmar y la base solo permite leerla: ni el panel ni el personal pueden modificarla o borrarla.</div>
+        </div>
+      </div>
+    </section>
+
     <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="0" data-tiempo="minuto 5">
       <div class="texto">
         <div class="num">Con SATAG · Paso 2 de 5</div>
@@ -457,17 +504,17 @@
     <section class="paso" data-acto="satag" data-capturas="1" data-papel="0" data-idas="2" data-tiempo="minutos">
       <div class="texto">
         <div class="num">Con SATAG · Paso 5 de 5</div>
-        <h2>ZK se actualiza en una sola operación</h2>
-        <p>Desde el panel, Sistemas descarga el archivo de importación oficial de ZK: primero los TAGs del inventario (alta anticipada) y después el padrón ya instalado. ZK actualiza a todas las personas del lote de una sola vez, sin capturar a nadie manualmente.</p>
+        <h2>ZK se actualiza en lote, no uno por uno</h2>
+        <p>Los pasos son los mismos de hoy; lo que cambia es el alta en ZK. Hoy cada TAG se captura a mano, uno por uno. Con SATAG los TAGs se cargan primero al inventario: se descarga la plantilla oficial de ZK y se sube, y todo el lote queda dado de alta <strong>antes</strong> de instalar nada. Durante el día se instalan los TAGs desde el celular y, al cerrar la jornada, se sube una segunda plantilla con el padrón ya instalado.</p>
         <span class="sello bien">Probado el 8 de septiembre con casos reales: 5 + 2 correctos, 0 fallidos</span>
       </div>
       <div class="visual">
         <div class="consola">
-          <div>&gt; SATAG → plantilla ZK (TAGs disponibles) … <span class="ok">descargada</span></div>
-          <div>&nbsp;&nbsp;importar en ZKBioSecurity: <span class="ok">Correctos: 5. Fallidos: 0.</span></div>
-          <div>&gt; SATAG → padrón instalado … <span class="ok">descargado</span></div>
-          <div>&nbsp;&nbsp;importar en ZKBioSecurity: <span class="ok">Correctos: 2. Fallidos: 0.</span></div>
-          <div>&nbsp;&nbsp;tarjetas actualizadas con nombre, departamento y placa · <span class="ok">sin duplicados</span></div>
+          <div>&gt; antes de instalar · inventario de TAGs → plantilla ZK … <span class="ok">Correctos: 5. Fallidos: 0.</span></div>
+          <div>&nbsp;&nbsp;el lote entero queda dado de alta en ZK, sin capturar a nadie</div>
+          <div>&gt; durante el día · los TAGs se instalan y se registran desde el celular</div>
+          <div>&gt; al cerrar la jornada · padrón instalado → plantilla ZK … <span class="ok">Correctos: 2. Fallidos: 0.</span></div>
+          <div>&nbsp;&nbsp;nombre, departamento y placa actualizados · <span class="ok">sin duplicados</span></div>
         </div>
       </div>
     </section>
@@ -526,6 +573,54 @@
     </section>
 
 
+    <!-- ============ LO LEGAL POR DEFINIR ============ -->
+    <section class="paso legal-grid" data-acto="legal" data-capturas="—" data-papel="—" data-idas="—" data-tiempo="—">
+      <div class="texto" style="max-width:none">
+        <div class="num">Lo legal por definir</div>
+        <h2 style="font-size:1.65rem;margin-bottom:.35rem">Seis decisiones que no dependen de Sistemas</h2>
+        <p style="max-width:64rem;font-size:.95rem">El sistema ya guarda la evidencia de cada firma. Lo que sigue son definiciones institucionales: quién responde, cuánto se conserva y qué texto se publica.</p>
+      </div>
+      <table class="decisiones">
+        <tr><th>Qué se decide</th><th>Por qué importa</th><th>Si no se decide</th><th>Quién decide</th></tr>
+        <tr>
+          <td class="tema">Responsable del aviso y contacto para derechos ARCO</td>
+          <td>La ley obliga a designar una persona o un departamento que reciba y responda las solicitudes de acceso, rectificación, cancelación y oposición. El buzón institucional ya está definido.</td>
+          <td class="riesgo">El aviso no puede publicarse como definitivo y una solicitud de un padre de familia no tiene destinatario formal.</td>
+          <td class="quien">Dirección / Administración</td>
+        </tr>
+        <tr>
+          <td class="tema">Plazo de conservación y supresión del expediente</td>
+          <td>Define cuándo se borra un expediente dado de baja, con firma incluida. La recomendación en revisión es un plazo único de seis años desde la baja.</td>
+          <td class="riesgo">Los expedientes se acumulan sin fecha de caducidad. El sistema tiene el campo listo, pero vacío.</td>
+          <td class="quien">Dirección / Legal</td>
+        </tr>
+        <tr>
+          <td class="tema">Publicación del aviso de privacidad v3</td>
+          <td>La v3 corrige la ortografía del texto vigente, incorpora el plazo de conservación, las opciones de limitación de uso y la mención expresa de que no se usan cookies.</td>
+          <td class="riesgo">Se sigue mostrando y firmando la v2, sin acentos y sin plazo de conservación.</td>
+          <td class="quien">Dirección / Legal</td>
+        </tr>
+        <tr>
+          <td class="tema">Trato de la imagen de la firma</td>
+          <td>Decidir si la firma manuscrita se maneja con las cautelas de un dato sensible: quién puede consultarla dentro del panel y durante cuánto tiempo.</td>
+          <td class="riesgo">Hoy los cuatro perfiles del panel pueden verla. Es una decisión ya tomada por Sistemas, pero no ratificada por escrito.</td>
+          <td class="quien">Administración / Legal</td>
+        </tr>
+        <tr>
+          <td class="tema">Custodia de las hojas de papel históricas</td>
+          <td>Las hojas firmadas archivadas en la bodega siguen siendo datos personales, aunque el trámite ya viva en el sistema.</td>
+          <td class="riesgo">Quedan dos archivos en paralelo, uno de ellos sin responsable ni fecha de destrucción.</td>
+          <td class="quien">Administración</td>
+        </tr>
+        <tr>
+          <td class="tema">Política de baja y de reposición del TAG</td>
+          <td>Qué ocurre cuando una familia se va, cambia de auto o pierde el TAG: si se cobra reposición y en qué momento se retira el acceso.</td>
+          <td class="riesgo">Cada caso se resuelve por criterio de quien atiende, y el padrón deja de reflejar quién tiene acceso hoy.</td>
+          <td class="quien">Administración</td>
+        </tr>
+      </table>
+    </section>
+
     <!-- ============ FASE 2 (PROPUESTA) ============ -->
     <section class="paso" data-acto="fase2" data-capturas="—" data-papel="—" data-idas="—" data-tiempo="—">
       <div class="texto">
@@ -583,7 +678,8 @@
     satag: 'Así funciona con SATAG · fase 1',
     fase2: 'Anexo · propuesta',
     cierre: 'La diferencia',
-    demo: 'Pruébelo ahora'
+    demo: 'Pruébelo ahora',
+    legal: 'Lo legal por definir'
   };
   var puntos = document.getElementById('puntos');
   var i = 0, yaPintado = false;
@@ -615,7 +711,7 @@
     hud.tiempo.textContent = p.dataset.tiempo;
     var esSatag = (a !== 'hoy');
     ['capturas', 'papel', 'idas', 'tiempo'].forEach(function (n) {
-      pillas[n].classList.toggle('bien', esSatag && a !== 'fase2' && a !== 'demo');
+      pillas[n].classList.toggle('bien', esSatag && a !== 'fase2' && a !== 'demo' && a !== 'legal');
       pillas[n].classList.toggle('alerta', !esSatag && n === 'capturas' && Number(p.dataset.capturas) > 1);
     });
     document.getElementById('b-prev').disabled = (i === 0);
