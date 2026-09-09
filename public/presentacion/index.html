@@ -50,17 +50,6 @@
   .qr-caja .qr-sub { font-size: .8rem; color: var(--ink-soft); margin-top: .2rem; }
   .sello.pendiente { background: #fdf3dd; color: var(--ambar); }
 
-  .calendario { width: 100%; max-width: 28rem; background: var(--card); border-radius: 12px; box-shadow: 0 18px 40px rgba(16,29,53,.18); border: 1px solid var(--line); overflow: hidden; }
-  .calendario .cab { display: grid; grid-template-columns: 3.2rem repeat(3, 1fr); background: #eef1f5; border-bottom: 1px solid var(--line); font-size: .72rem; color: var(--ink-soft); }
-  .calendario .cab div { padding: .5rem .4rem; text-align: center; font-weight: 600; }
-  .calendario .cuerpo { display: grid; grid-template-columns: 3.2rem repeat(3, 1fr); }
-  .calendario .hora { font-size: .68rem; color: var(--ink-soft); padding: .35rem .3rem; border-bottom: 1px solid #edf0f4; text-align: right; }
-  .calendario .celda { border-left: 1px solid #edf0f4; border-bottom: 1px solid #edf0f4; min-height: 2.1rem; padding: .18rem; }
-  .calendario .cita { background: var(--green-soft); border-left: 3px solid var(--green); border-radius: 4px; font-size: .62rem; padding: .22rem .35rem; color: var(--navy); line-height: 1.25; }
-  .calendario .cita b { display: block; font-size: .64rem; }
-  .lista-implica { list-style: none; display: flex; flex-direction: column; gap: .45rem; margin-top: .9rem; }
-  .lista-implica li { font-size: .98rem; color: var(--ink); padding-left: 1.4rem; position: relative; line-height: 1.35; }
-  .lista-implica li::before { content: "→"; position: absolute; left: 0; color: var(--ambar); font-weight: 700; }
 
   /* ===== contadores ===== */
   .hud { display: flex; gap: .7rem; justify-content: center; padding: 0 2rem .8rem; flex: 0 0 auto; }
@@ -635,7 +624,7 @@
         <div class="tarjeta">
           <h3>Citas de instalación en Google Calendar</h3>
           <p>Al pagar, la familia elige día y hora, o Administración se la agenda. Sistemas consulta su agenda y acude. Es la única de las tres que depende solo de trabajo de Sistemas.</p>
-          <span class="etiqueta">Detalle en la lámina siguiente</span>
+          <span class="etiqueta">Propuesta · por dimensionar</span>
         </div>
         <div class="tarjeta">
           <h3>Conexión directa con ZKBioSecurity</h3>
@@ -646,33 +635,6 @@
           <h3>El padrón histórico en un solo lugar</h3>
           <p>Las familias que ya tienen TAG siguen viviendo en la hoja de cálculo y en ZKBioSecurity. Traerlas a SATAG es un trabajo aparte, posterior a esta salida a producción, y es lo que permitiría consultar en un solo sitio quién tiene acceso hoy.</p>
           <span class="etiqueta">Proyecto aparte · por dimensionar</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ FASE 2 (PROPUESTA) ============ -->
-    <section class="paso" data-acto="fase2" data-capturas="—" data-papel="—" data-idas="—" data-tiempo="—">
-      <div class="texto">
-        <div class="num">Anexo · propuesta para después de la salida a producción</div>
-        <h2>Visitas agendadas en Google Calendar</h2>
-        <p>Al pagar, el padre de familia elige día y hora de instalación (o Administración la agenda por él). Sistemas consulta su agenda del día y acude a la hora: sin llamadas, sin esperas y sin interrumpir otra atención.</p>
-        <ul class="lista-implica">
-          <li>Un calendario institucional de Sistemas con ventanas de instalación definidas (por ejemplo, dos bloques al día).</li>
-          <li>Conectar SATAG con esa agenda: cita al confirmar el pago y aviso al padre de familia por correo.</li>
-          <li>Medir en la fase 1 cuántas llamadas y visitas al estacionamiento hay por semana, para dimensionar los bloques.</li>
-        </ul>
-        <span class="sello pendiente">Propuesta · no forma parte de la fase 1</span>
-      </div>
-      <div class="visual">
-        <div class="calendario">
-          <div class="cab"><div></div><div>Lun 14</div><div>Mar 15</div><div>Mié 16</div></div>
-          <div class="cuerpo">
-            <div class="hora">9:00</div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000115 · ABC123D</div></div><div class="celda"></div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000118 · XYZ456K</div></div>
-            <div class="hora">9:30</div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000116 · JKL789M</div></div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000117 · DEF234F</div></div><div class="celda"></div>
-            <div class="hora">10:00</div><div class="celda"></div><div class="celda"></div><div class="celda"></div>
-            <div class="hora">13:00</div><div class="celda"></div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000119 · GHI567H</div></div><div class="celda"></div>
-            <div class="hora">13:30</div><div class="celda"></div><div class="celda"></div><div class="celda"></div>
-          </div>
         </div>
       </div>
     </section>
