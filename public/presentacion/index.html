@@ -36,6 +36,7 @@
   #acto.fase2 { background: #fdf3dd; color: var(--ambar); border-color: var(--ambar); }
   #acto.demo { background: var(--green); color: #fff; border-color: var(--green); }
   #acto.legal { background: #fdf3dd; color: var(--ambar); border-color: var(--ambar); }
+  #acto.admin { background: #fdf3dd; color: var(--ambar); border-color: var(--ambar); }
   header .derecha { display: flex; align-items: center; gap: 1rem; }
   header .enlace-panel { color: #aebad0; font-size: .82rem; text-decoration: none; border-bottom: 1px solid rgba(174,186,208,.5); padding-bottom: .1rem; }
   header .enlace-panel:hover { color: #fff; border-color: #fff; }
@@ -182,7 +183,7 @@
   .recibo .linea b { color: var(--navy); }
   .recibo .total { font-size: 1.05rem; margin-top: .5rem; display: flex; justify-content: space-between; font-weight: 700; color: var(--green); }
 
-  .consola { width: 100%; max-width: 30rem; background: var(--navy-deep); border-radius: 10px; padding: 1.1rem 1.3rem; font-family: Consolas, monospace; font-size: .8rem; color: #cfe6d8; box-shadow: 0 18px 40px rgba(16,29,53,.3); }
+  .consola { width: 100%; max-width: 33rem; background: var(--navy-deep); border-radius: 10px; padding: 1.1rem 1.3rem; font-family: Consolas, monospace; font-size: .8rem; color: #cfe6d8; box-shadow: 0 18px 40px rgba(16,29,53,.3); }
   .consola div { opacity: 0; animation: linea .01s forwards; }
   .paso.activa .consola div:nth-child(1) { animation-delay: .3s; } .paso.activa .consola div:nth-child(2) { animation-delay: 1s; }
   .paso.activa .consola div:nth-child(3) { animation-delay: 1.7s; } .paso.activa .consola div:nth-child(4) { animation-delay: 2.4s; }
@@ -202,7 +203,7 @@
   .nota-pie { margin-top: .9rem; font-size: .85rem !important; color: var(--ink-soft); line-height: 1.4; border-left: 3px solid var(--line); padding-left: .75rem; max-width: 34rem; }
 
   /* ===== lo legal por definir ===== */
-  .paso.legal-grid { grid-template-columns: 1fr; align-content: start; gap: 1rem; padding: 1.6rem 2rem; overflow-y: auto; }
+  .paso.legal-grid, .paso.ancho { grid-template-columns: 1fr; align-content: start; gap: 1rem; padding: 1.6rem 2rem; overflow-y: auto; }
   table.decisiones { width: 100%; border-collapse: collapse; font-size: .8rem; background: var(--card); border-radius: 10px; overflow: hidden; box-shadow: 0 12px 30px rgba(16,29,53,.1); }
   table.decisiones th { background: var(--navy); color: #fff; font-family: var(--display); font-weight: 700; font-size: .68rem; letter-spacing: .09em; text-transform: uppercase; text-align: left; padding: .5rem .8rem; }
   table.decisiones td { padding: .42rem .8rem; border-bottom: 1px solid #edf0f4; color: var(--ink-soft); line-height: 1.3; vertical-align: top; }
@@ -210,6 +211,21 @@
   table.decisiones td.riesgo { color: var(--rojo); width: 17rem; }
   table.decisiones td.quien { width: 9.5rem; font-size: .73rem; }
   table.decisiones tr:last-child td { border-bottom: 0; }
+
+  /* ===== fases siguientes ===== */
+  .tarjetas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .tarjeta { background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--ambar); border-radius: 12px; padding: 1.1rem 1.2rem; box-shadow: 0 12px 30px rgba(16,29,53,.1); }
+  .tarjeta h3 { font-family: var(--display); font-weight: 800; font-size: 1.02rem; color: var(--navy); margin-bottom: .5rem; line-height: 1.25; }
+  .tarjeta p { font-size: .85rem; line-height: 1.42; color: var(--ink-soft); }
+  .tarjeta .etiqueta { display: inline-block; margin-top: .75rem; font-size: .66rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ambar); background: #fdf3dd; border-radius: 999px; padding: .26rem .65rem; }
+  .dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .col-cierre.duele { background: var(--rojo-soft); }
+  .col-cierre.duele h2 { color: var(--rojo); }
+  .col-cierre.duele li::before { content: "✗"; position: absolute; left: 0; color: var(--rojo); font-weight: 700; }
+  .col-cierre.propuesta { background: #fdf3dd; }
+  .col-cierre.propuesta h2 { color: var(--ambar); }
+  .col-cierre.propuesta li::before { content: "→"; position: absolute; left: 0; color: var(--ambar); font-weight: 700; }
+  .col-cierre.duele li, .col-cierre.propuesta li { font-size: .92rem; }
 
   /* ===== cierre ===== */
   .paso.cierre-grid { grid-template-columns: 1fr 1fr; align-items: stretch; }
@@ -248,6 +264,7 @@
   .puntos i.fase2-p.on { background: #f0c66a; transform: scale(1.35); }
   .puntos i.demo-p.on { background: #7fd6a0; transform: scale(1.35); }
   .puntos i.legal-p.on { background: #f0c66a; transform: scale(1.35); }
+  .puntos i.admin-p.on { background: #f0c66a; transform: scale(1.35); }
 
   @media (max-width: 900px) {
     .paso { grid-template-columns: 1fr; overflow-y: auto; }
@@ -510,11 +527,11 @@
       </div>
       <div class="visual">
         <div class="consola">
-          <div>&gt; antes de instalar · inventario de TAGs → plantilla ZK … <span class="ok">Correctos: 5. Fallidos: 0.</span></div>
-          <div>&nbsp;&nbsp;el lote entero queda dado de alta en ZK, sin capturar a nadie</div>
-          <div>&gt; durante el día · los TAGs se instalan y se registran desde el celular</div>
-          <div>&gt; al cerrar la jornada · padrón instalado → plantilla ZK … <span class="ok">Correctos: 2. Fallidos: 0.</span></div>
-          <div>&nbsp;&nbsp;nombre, departamento y placa actualizados · <span class="ok">sin duplicados</span></div>
+          <div>&gt; antes de instalar · inventario → plantilla ZK</div>
+          <div>&nbsp;&nbsp;ZK: <span class="ok">Correctos: 5. Fallidos: 0.</span> · el lote queda de alta</div>
+          <div>&gt; durante el día · los TAGs se instalan desde el celular</div>
+          <div>&gt; al cerrar · padrón instalado → plantilla ZK</div>
+          <div>&nbsp;&nbsp;ZK: <span class="ok">Correctos: 2. Fallidos: 0.</span> · <span class="ok">sin duplicados</span></div>
         </div>
       </div>
     </section>
@@ -621,6 +638,32 @@
       </table>
     </section>
 
+    <!-- ============ FASES SIGUIENTES ============ -->
+    <section class="paso ancho" data-acto="fase2" data-capturas="—" data-papel="—" data-idas="—" data-tiempo="—">
+      <div class="texto" style="max-width:none">
+        <div class="num">Anexo · después de la salida a producción</div>
+        <h2 style="font-size:1.7rem;margin-bottom:.35rem">Tres frentes para la siguiente fase</h2>
+        <p style="max-width:64rem;font-size:.97rem">Ninguno forma parte de la fase 1 que hoy se presenta. Se enumeran para que Administración y Dirección decidan cuál vale la pena y en qué orden.</p>
+      </div>
+      <div class="tarjetas">
+        <div class="tarjeta">
+          <h3>Citas de instalación en Google Calendar</h3>
+          <p>Al pagar, la familia elige día y hora, o Administración se la agenda. Sistemas consulta su agenda y acude. Es la única de las tres que depende solo de trabajo de Sistemas.</p>
+          <span class="etiqueta">Detalle en la lámina siguiente</span>
+        </div>
+        <div class="tarjeta">
+          <h3>Conexión directa con ZKBioSecurity</h3>
+          <p>Hoy el puente usa la plantilla oficial del fabricante: se descarga de SATAG y se sube a ZK. Con la interfaz de programación del fabricante el alta viajaría sola, sin archivo de por medio. Sistemas ya entregó la investigación, el diseño del conector y la alternativa por archivo que hoy opera.</p>
+          <span class="etiqueta">Requiere comprar la licencia · decisión de Contabilidad</span>
+        </div>
+        <div class="tarjeta">
+          <h3>El padrón histórico en un solo lugar</h3>
+          <p>Las familias que ya tienen TAG siguen viviendo en la hoja de cálculo y en ZKBioSecurity. Traerlas a SATAG es un trabajo aparte, posterior a esta salida a producción, y es lo que permitiría consultar en un solo sitio quién tiene acceso hoy.</p>
+          <span class="etiqueta">Proyecto aparte · por dimensionar</span>
+        </div>
+      </div>
+    </section>
+
     <!-- ============ FASE 2 (PROPUESTA) ============ -->
     <section class="paso" data-acto="fase2" data-capturas="—" data-papel="—" data-idas="—" data-tiempo="—">
       <div class="texto">
@@ -644,6 +687,40 @@
             <div class="hora">13:00</div><div class="celda"></div><div class="celda"><div class="cita"><b>Instalación TAG</b>SATAG-000119 · GHI567H</div></div><div class="celda"></div>
             <div class="hora">13:30</div><div class="celda"></div><div class="celda"></div><div class="celda"></div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ LA PARTE ADMINISTRATIVA ============ -->
+    <section class="paso ancho" data-acto="admin" data-capturas="—" data-papel="—" data-idas="—" data-tiempo="—">
+      <div class="texto" style="max-width:none">
+        <div class="num">Anexo · la parte administrativa</div>
+        <h2 style="font-size:1.7rem;margin-bottom:.35rem">¿Qué le duele hoy del trámite en Administración?</h2>
+        <p style="max-width:64rem;font-size:.97rem">La fase 1 resuelve la captura, el folio del cobro y el corte de caja. Lo que sigue debería salir de lo que Administración señale como su mayor fricción, no de lo que Sistemas suponga. Estas son las que alcanzamos a ver desde fuera.</p>
+      </div>
+      <div class="dos-columnas">
+        <div class="col-cierre duele">
+          <h2>Fricciones que vemos desde Sistemas</h2>
+          <ul>
+            <li>El cobro es en efectivo: hay que contarlo, conciliarlo y cuadrar la caja</li>
+            <li>La familia tiene que venir a la ventanilla; es una ida obligatoria del trámite</li>
+            <li>El estacionamiento se asigna en el mostrador, sin ver cuánto queda libre</li>
+            <li>Para saber quién tiene TAG hay que mirar la hoja de cálculo y ZK, no un solo lugar</li>
+            <li>Sin política escrita de baja y reposición, cada caso se resuelve por criterio</li>
+            <li>El tratamiento fiscal del cobro sigue por confirmar: hoy es control interno</li>
+          </ul>
+        </div>
+        <div class="col-cierre propuesta">
+          <h2>Lo que SATAG podría atender después</h2>
+          <ul>
+            <li>Referencia de pago o cobro en línea, para que la familia no tenga que ir a caja</li>
+            <li>Reporte de ingresos por periodo, además del corte diario que ya existe</li>
+            <li>Ocupación de cada estacionamiento a la vista al momento de asignar</li>
+            <li>Consulta única del padrón, una vez migrado el histórico</li>
+            <li>Aviso automático a quien ya pagó y todavía no tiene el TAG instalado</li>
+            <li>La política de baja y reposición, una vez definida, aplicada por el sistema</li>
+          </ul>
+          <div class="gran" style="font-size:1.05rem;line-height:1.35">Nada de esto está comprometido: es la lista de la que queremos hablar con ustedes.</div>
         </div>
       </div>
     </section>
@@ -679,7 +756,8 @@
     fase2: 'Anexo · propuesta',
     cierre: 'La diferencia',
     demo: 'Pruébelo ahora',
-    legal: 'Lo legal por definir'
+    legal: 'Lo legal por definir',
+    admin: 'Anexo · la parte administrativa'
   };
   var puntos = document.getElementById('puntos');
   var i = 0, yaPintado = false;
@@ -711,7 +789,7 @@
     hud.tiempo.textContent = p.dataset.tiempo;
     var esSatag = (a !== 'hoy');
     ['capturas', 'papel', 'idas', 'tiempo'].forEach(function (n) {
-      pillas[n].classList.toggle('bien', esSatag && a !== 'fase2' && a !== 'demo' && a !== 'legal');
+      pillas[n].classList.toggle('bien', esSatag && a !== 'fase2' && a !== 'demo' && a !== 'legal' && a !== 'admin');
       pillas[n].classList.toggle('alerta', !esSatag && n === 'capturas' && Number(p.dataset.capturas) > 1);
     });
     document.getElementById('b-prev').disabled = (i === 0);
