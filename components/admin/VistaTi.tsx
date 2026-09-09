@@ -512,9 +512,20 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       {modo === "inicio" ? (
         <>
           <div className="ti-actions">
+            {/* El contador cuenta SOLO lo que TI puede instalar hoy (ya pagado). Antes
+                sumaba tambien los que esperan el cobro de Administracion, asi que el
+                numero nunca reflejaba la cola real de instalacion. Los no pagados
+                siguen visibles dentro de la pantalla, atenuados y bajo "Esperando
+                pago"; aqui solo se anuncian en el subtitulo. */}
             <button type="button" className="ti-action" onClick={() => irA("instalar")}>
-              <span><span className="ti-action__title">Instalar TAG</span><span className="ti-action__sub">En espera de instalación</span></span>
-              <span className={`ti-action__count ti-action__count--${sem(porInstalar.length + instalarSinPago.length)}`}>{porInstalar.length + instalarSinPago.length}</span>
+              <span>
+                <span className="ti-action__title">Instalar TAG</span>
+                <span className="ti-action__sub">
+                  En espera de instalación
+                  {instalarSinPago.length > 0 && ` · ${instalarSinPago.length} esperando pago`}
+                </span>
+              </span>
+              <span className={`ti-action__count ti-action__count--${sem(porInstalar.length)}`}>{porInstalar.length}</span>
             </button>
             <button type="button" className="ti-action" onClick={() => irA("actualizar")}>
               <span><span className="ti-action__title">Actualizar datos</span><span className="ti-action__sub">Placas, vehículo o reposición de TAG</span></span>
