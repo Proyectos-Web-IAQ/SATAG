@@ -48,8 +48,11 @@ export default function AvisoDePrivacidad() {
           </>
         )}
 
+        {/* Vuelve al registro, no a la portada. A esta página se llega leyendo
+            el aviso a medio trámite: mandar a la portada obliga a volver a
+            entrar por el principio para retomar el alta. */}
         <p style={{ marginTop: 24 }}>
-          <Link href="/" className="link-action">← Volver al inicio</Link>
+          <Link href="/registro/" className="link-action">← Volver al registro</Link>
         </p>
       </section>
     </main>
