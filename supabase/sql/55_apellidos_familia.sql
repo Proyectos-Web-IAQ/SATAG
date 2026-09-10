@@ -50,15 +50,18 @@
 --     esquema. Costo asumido: el apellido de familia NO queda cubierto
 --     por el hash; si algun dia tiene que ser probatorio, toca una v2 del
 --     payload, no un parche aqui.
---   - `crear_registro` NO valida el campo nuevo. La obligatoriedad vive
---     entera en la restriccion de la parte B; si se validara tambien en
---     la funcion, la parte A dejaria de ser compatible con el cliente
---     publicado y volveria la ventana que este bloque evita.
+--   - `crear_registro` NO valida el campo nuevo. [CORREGIDO EL 10-SEP: SI
+--     lo valida, desde el bloque 58. Cuando se escribio esto, la
+--     obligatoriedad vivia en la restriccion de la parte B, que resulto
+--     ser el instrumento equivocado y quedo revocada.]
 --
 -- SIN BACKFILL: el padron se vacia antes del lunes 14-sep
 -- (`limpiar_padron_piloto.sql`), asi que no hay expedientes viejos que
--- rellenar. Si aun asi la parte B se corriera con padron cargado, el
--- `not valid` los deja en paz de todos modos (ver la parte B).
+-- rellenar. [CORREGIDO EL 10-SEP: aqui decia que si la parte B se
+-- corriera con padron cargado, el `not valid` dejaria en paz a los
+-- expedientes viejos. ES FALSO y costo un incidente en produccion:
+-- `not valid` solo se salta la revision retroactiva una vez, y despues
+-- el CHECK se evalua en cada update. Ver el banner de la parte B.]
 --
 -- Depende de: bloques 12 y 49 aplicados. La version vigente de
 -- crear_registro es la del bloque 49 (D-01: versiones obligatorias), y es
@@ -401,32 +404,42 @@ notify pgrst, 'reload schema';
 -- #####################################################################
 -- #####################################################################
 -- ##                                                                 ##
--- ##   PARTE B - CORRA ESTO DESPUES DE QUE EL DEPLOY ESTE EN VIVO    ##
+-- ##   PARTE B - REVOCADA EL 10-SEP-2026. NO LA CORRA.               ##
 -- ##                                                                 ##
--- ##   Antes no. Mientras el sitio publicado sea el que todavia no   ##
--- ##   captura apellidos de familia, esta restriccion rechaza TODA   ##
--- ##   alta de tipo 'padres'. Haga primero un alta de prueba de      ##
--- ##   padres en el sitio en vivo, confirme que el campo llega       ##
--- ##   lleno, y recien entonces ejecute lo de abajo.                 ##
+-- ##   Se aplico, rompio el sistema en produccion, y el bloque 58    ##
+-- ##   la solto. Queda aqui comentada como testimonio de lo que se   ##
+-- ##   aplico, no como instruccion.                                  ##
+-- ##                                                                 ##
+-- ##   QUE PASO. Esta parte decia que `not valid` dejaba en paz a    ##
+-- ##   los expedientes que ya existian. ES FALSO, y es el error que  ##
+-- ##   costo el incidente: `not valid` solo se salta la revision     ##
+-- ##   retroactiva UNA vez; despues el CHECK se evalua en CADA       ##
+-- ##   insert y en CADA update, sobre la fila nueva completa.        ##
+-- ##                                                                 ##
+-- ##   Como `apellidos_familia` la escribe UN SOLO sitio en todo el  ##
+-- ##   sistema (crear_registro, el alta publica) y ninguna pantalla  ##
+-- ##   del panel la captura ni la corrige, todo expediente de tipo   ##
+-- ##   'padres' con la columna vacia quedo CONGELADO: no se podia    ##
+-- ##   cobrar, ni instalar, ni dar de baja, ni actualizar. Hay 11    ##
+-- ##   bloques que hacen `update registros`. Y `registrar_pago`      ##
+-- ##   CAMBIA el tipo a 'padres' al validarlo en caja, asi que el    ##
+-- ##   empleado que tambien es papa reventaba el cobro entero.       ##
+-- ##                                                                 ##
+-- ##   DONDE VIVE AHORA EL CONTROL: en `crear_registro`, exigido en  ##
+-- ##   el alta con un mensaje en espanol (bloque 58). Es donde        ##
+-- ##   Administracion lo pidio y el unico sitio que escribe el dato. ##
 -- ##                                                                 ##
 -- #####################################################################
 -- #####################################################################
 
--- `not valid` hace exactamente lo que hace falta aqui: NO revisa las filas
--- que ya existen —asi el padron que quede del piloto no impide aplicarla—
--- pero SI se exige en todo insert y en todo update a partir de este
--- momento. No es una restriccion "apagada": lo unico que se salta es la
--- revision retroactiva.
-alter table registros add constraint reg_apellidos_familia_requeridos
-    check (tipo_usuario <> 'padres' or (apellidos_familia is not null and btrim(apellidos_familia) <> ''))
-    not valid;
+-- COMENTADA A PROPOSITO. Descomentarla vuelve a congelar el padron.
+-- alter table registros add constraint reg_apellidos_familia_requeridos
+--     check (tipo_usuario <> 'padres' or (apellidos_familia is not null and btrim(apellidos_familia) <> ''))
+--     not valid;
 
--- Cuando el padron ya este limpio (o completo), esta linea marca la
--- restriccion como validada: recorre una sola vez las filas existentes y,
--- si todas cumplen, el esquema deja de arrastrar el `not valid`. Si alguna
--- no cumple, falla y dice cual: esa es la forma de enterarse, no un
--- accidente. Descomentar y correr a mano.
--- alter table registros validate constraint reg_apellidos_familia_requeridos;
+-- Aqui habia una linea para `validate constraint`. Tampoco corre: la
+-- restriccion ya no existe, la solto el bloque 58. Se retira para que no
+-- quede ni una sola instruccion ejecutable en esta parte del archivo.
 
 
 -- Auditoria esperada:
