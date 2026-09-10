@@ -641,6 +641,62 @@ a { color: var(--primary-strong); }
   .copia-datos > div { grid-template-columns: 1fr; gap: 2px; }
 }
 
+/* ---------- Medida de lectura: texto justificado ----------
+   Miguel pidió el 10-sep que los textos «se lean mejor»: decía que se veían
+   cargados a un lado. El justificado se aplica SOLO a prosa de lectura
+   corrida — el aviso de privacidad, el reglamento, la copia del titular y los
+   párrafos explicativos de las páginas públicas — porque es donde el bloque de
+   texto se lee como un documento. Fuera quedan a propósito:
+
+   - .hint, que sirve lo mismo para un párrafo de cuatro renglones que para el
+     contador «215/500» o un «Cargando el aviso…»;
+   - .aviso-burbuja__texto, que vive en 420px a 0.8rem: ahí el justificado abre
+     ríos de espacio en vez de cerrarlos;
+   - .lead, que son instrucciones de una línea;
+   - .comprobante, centrado por diseño alrededor del folio;
+   - todo el panel (.admin-*, .ti-*), que es tabla y dato, no lectura.
+
+   El :not(.login-panel) deja fuera el acceso del personal: login, MFA,
+   invitación y restablecer contraseña son todos «survey-panel login-panel».
+
+   hyphens: auto es obligatorio aquí, no un adorno. Justificar español sin
+   partir palabras deja renglones con huecos enormes; el <html lang="es"> de
+   app/layout.tsx es lo que le da al navegador el diccionario para partirlas.
+   hyphenate-limit-chars evita partir palabras cortas (donde no está soportado,
+   degrada solo y no rompe nada). */
+.aviso-publico p,
+.reglamento > p,
+.reglamento li,
+.copia-doc > p,
+.copia-doc > ol li,
+.copia-constancia,
+.survey-panel:not(.login-panel) .survey-header p,
+.survey-panel:not(.login-panel) .notice {
+  text-align: justify;
+  text-justify: inter-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  hyphenate-limit-chars: 6 3 3;
+}
+
+/* En un teléfono la columna baja a ~330px: cada renglón lleva tan pocas
+   palabras que estirarlos deja el texto agujereado, que es justo lo contrario
+   de lo que se pidió. Debajo de este ancho se vuelve a bandera izquierda; el
+   guionizado se queda, porque ahí sí ayuda a que el renglón no termine medio
+   vacío. */
+@media (max-width: 480px) {
+  .aviso-publico p,
+  .reglamento > p,
+  .reglamento li,
+  .copia-doc > p,
+  .copia-doc > ol li,
+  .copia-constancia,
+  .survey-panel:not(.login-panel) .survey-header p,
+  .survey-panel:not(.login-panel) .notice {
+    text-align: left;
+  }
+}
+
 @media print {
   .app-header, .btn-row, .stepper, .top-row, .footer, .no-print { display: none !important; }
   body { background: #fff; }
