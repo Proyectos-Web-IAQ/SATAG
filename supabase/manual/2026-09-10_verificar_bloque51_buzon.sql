@@ -93,23 +93,70 @@ $prueba$;
 
 -- ---------------------------------------------------------------------
 -- PASO 4 — El RPC responde sin delatar el limite.
--- Las dos llamadas deben devolver EXACTAMENTE el mismo texto: la primera
--- porque el folio no existe, la segunda porque el limite ya actuo.
+--
+-- Se compara la respuesta de dos direcciones distintas:
+--   A) una sin ningun historial, que falla porque el folio no existe;
+--   B) una que ya alcanzo el limite de 10 fallos.
+-- Las dos deben devolver EXACTAMENTE el mismo jsonb. Ese es el diseno:
+-- el limite responde igual que un fallo normal para no regalar la senal
+-- de que existe ni de cuando se dispara.
+--
+-- DOS COSAS QUE ESTE PASO TENIA MAL (corregidas el 10-sep-2026):
+--
+--   1. El tipo de solicitud valido es 'actualizacion', no 'actualizar'
+--      (bloque 51, linea 133: p_tipo in ('actualizacion','baja')).
+--      Con 'actualizar' el RPC lanza P0001 «Tipo de solicitud invalido»
+--      antes de llegar a nada de lo que se queria probar.
+--
+--   2. En el editor SQL no hay cabeceras de red, asi que fn_ip_peticion()
+--      devuelve null y la rama del limite NI SE EVALUA (la condicion pide
+--      «v_ip is not null and ...»). Sin inyectar la cabecera, este paso no
+--      podia probar el limite aunque el tipo fuera correcto. Se inyecta
+--      aqui la misma cabecera que en produccion pone PostgREST.
+--
+-- SIGUE SIENDO SEGURO EN PRODUCCION: los folios no existen, asi que el
+-- RPC nunca llega al insert en solicitudes. Lo unico que escribe son
+-- filas en intentos_publicos, y el PASO 5 las borra.
 -- ---------------------------------------------------------------------
-select 'folio inexistente' as caso,
-       crear_solicitud('SATAG-999999', 'XXX000', 'actualizar', 'Prueba de verificacion P-11') as respuesta
-union all
-select 'segunda llamada',
-       crear_solicitud('SATAG-999998', 'YYY111', 'actualizar', 'Prueba de verificacion P-11');
+create temp table if not exists _p11 (caso text, respuesta jsonb);
+truncate _p11;
+
+-- A) Direccion sin historial: cae por folio inexistente.
+select set_config('request.headers', '{"x-forwarded-for": "203.0.113.78"}', false);
+insert into _p11
+select 'A · IP sin historial',
+       crear_solicitud('SATAG-999999', 'XXX000', 'actualizacion', 'Prueba de verificacion P-11');
+
+-- B) Direccion que ya alcanzo el limite: se le fabrican los 10 fallos.
+select fn_anotar_intento('203.0.113.77'::inet, 'crear_solicitud', false)
+  from generate_series(1, 10);
+select set_config('request.headers', '{"x-forwarded-for": "203.0.113.77"}', false);
+insert into _p11
+select 'B · IP en el limite',
+       crear_solicitud('SATAG-999998', 'YYY111', 'actualizacion', 'Prueba de verificacion P-11');
+
+select a.respuesta as respuesta_a_sin_historial,
+       b.respuesta as respuesta_b_en_el_limite,
+       case when a.respuesta = b.respuesta
+            then 'CORRECTO: identicas, el limite no se delata'
+            else 'REVISAR: difieren, el limite es detectable desde fuera'
+       end as veredicto
+  from _p11 a, _p11 b
+ where a.caso like 'A%' and b.caso like 'B%';
 
 -- ---------------------------------------------------------------------
 -- PASO 5 — Limpieza. Borra SOLO las filas de la prueba.
+-- 203.0.113.0/24 es el rango reservado para documentacion (RFC 5737):
+-- ninguna peticion real puede venir de ahi, asi que borrar el rango
+-- entero no toca nada de produccion.
 -- ---------------------------------------------------------------------
-delete from intentos_publicos where ip = '203.0.113.77';
+delete from intentos_publicos where ip << '203.0.113.0/24'::inet;
+select set_config('request.headers', '', false);
+drop table if exists _p11;
 
 select 'filas de prueba que quedan (debe ser 0)' as que,
        count(*)::text as valor
-  from intentos_publicos where ip = '203.0.113.77';
+  from intentos_publicos where ip << '203.0.113.0/24'::inet;
 
 -- ---------------------------------------------------------------------
 -- PASO 6 — Foto final, para copiar a la bitacora de pruebas.
