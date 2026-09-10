@@ -51,18 +51,19 @@ export default function RegistroWizard() {
   const [conductorNombre, setConductorNombre] = useState("");
   const [conductorApellidoPaterno, setConductorApellidoPaterno] = useState("");
   const [conductorApellidoMaterno, setConductorApellidoMaterno] = useState("");
-  // Un solo apellido (extranjeros, o identificaciones que solo traen uno).
-  // No viaja a la base: el materno ya es opcional en crear_registro desde el
-  // bloque 49, así que basta con no mandarlo. Lo que sí cambia es la pantalla:
-  // sin la casilla, «Apellido materno (opcional)» le dice a quien solo tiene
-  // uno que le falta algo, y «Apellido paterno» le pide un apellido que en su
-  // identificación no se llama así.
-  const [conductorUnApellido, setConductorUnApellido] = useState(false);
+  // Un solo apellido SOLO para extranjeros. Al resto se le exigen los dos: el
+  // expediente es la base de un trámite con firma, y un apellido de menos
+  // vuelve ambigua a la persona que firmó. Quien viene de un país donde se usa
+  // un solo apellido no puede inventarse el segundo, así que se le da la
+  // salida — pero declarando el motivo, no como una casilla libre que
+  // cualquiera marca para teclear menos.
+  // No viaja a la base: el materno ya es nullable y crear_registro no lo exige.
+  const [conductorExtranjero, setConductorExtranjero] = useState(false);
   const [gestionanteDistinto, setGestionanteDistinto] = useState(false);
   const [gestionanteNombre, setGestionanteNombre] = useState("");
   const [gestionanteApellidoPaterno, setGestionanteApellidoPaterno] = useState("");
   const [gestionanteApellidoMaterno, setGestionanteApellidoMaterno] = useState("");
-  const [gestionanteUnApellido, setGestionanteUnApellido] = useState(false);
+  const [gestionanteExtranjero, setGestionanteExtranjero] = useState(false);
   const [gestionanteRelacion, setGestionanteRelacion] = useState<GestionanteRelacion | "">("");
   const [esMenor, setEsMenor] = useState(false);
   const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>("padres");
@@ -219,10 +220,19 @@ export default function RegistroWizard() {
   function validarPaso(s: number): Record<string, string> {
     const e: Record<string, string> = {};
     if (s === 0) {
-      if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = conductorUnApellido ? "Escriba el apellido." : "Escriba el apellido paterno.";
+      if (!conductorApellidoPaterno.trim()) e.conductorApellidoPaterno = conductorExtranjero ? "Escriba el apellido." : "Escriba el apellido paterno.";
+      // Los dos apellidos son obligatorios salvo que se declare extranjero: el
+      // expediente sustenta un trámite con firma, y un apellido de menos vuelve
+      // ambigua a la persona que firmó frente a un homónimo.
+      if (!conductorExtranjero && !conductorApellidoMaterno.trim()) {
+        e.conductorApellidoMaterno = "Escriba el apellido materno. Si su identificación oficial trae un solo apellido, marque la casilla de extranjero.";
+      }
       if (!conductorNombre.trim()) e.conductorNombre = "Escriba el nombre o nombres.";
       if (hayGestionante) {
-        if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = gestionanteUnApellido ? "Escriba el apellido." : "Escriba el apellido paterno.";
+        if (!gestionanteApellidoPaterno.trim()) e.gestionanteApellidoPaterno = gestionanteExtranjero ? "Escriba el apellido." : "Escriba el apellido paterno.";
+        if (!gestionanteExtranjero && !gestionanteApellidoMaterno.trim()) {
+          e.gestionanteApellidoMaterno = "Escriba el apellido materno. Si su identificación oficial trae un solo apellido, marque la casilla de extranjero.";
+        }
         if (!gestionanteNombre.trim()) e.gestionanteNombre = "Escriba el nombre o nombres.";
         if (!gestionanteRelacion) {
           e.gestionanteRelacion = esMenor
@@ -359,16 +369,18 @@ export default function RegistroWizard() {
             </div>
             {/* Con un solo apellido el campo va a lo ancho, no en media columna
                 con un hueco al lado: el hueco se lee como «aquí falta algo». */}
-            <div className={conductorUnApellido ? undefined : "grid-2"}>
+            {/* Con un solo apellido el campo va a lo ancho, no en media columna
+                con un hueco al lado: el hueco se lee como «aquí falta algo». */}
+            <div className={conductorExtranjero ? undefined : "grid-2"}>
               <div className="field">
-                <span>{conductorUnApellido ? "Apellido del conductor" : "Apellido paterno del conductor"}</span>
+                <span>{conductorExtranjero ? "Apellido del conductor" : "Apellido paterno del conductor"}</span>
                 <input className={`input ${errores.conductorApellidoPaterno ? "invalid" : ""}`} value={conductorApellidoPaterno}
                   onChange={(e) => setConductorApellidoPaterno(e.target.value)} placeholder="Ej. Pérez" />
                 {errores.conductorApellidoPaterno && <p className="field-error">{errores.conductorApellidoPaterno}</p>}
               </div>
-              {!conductorUnApellido && (
+              {!conductorExtranjero && (
                 <div className="field">
-                  <span>Apellido materno del conductor <em className="opcional">(opcional)</em></span>
+                  <span>Apellido materno del conductor</span>
                   <input className={`input ${errores.conductorApellidoMaterno ? "invalid" : ""}`} value={conductorApellidoMaterno}
                     onChange={(e) => setConductorApellidoMaterno(e.target.value)} placeholder="Ej. López" />
                   {errores.conductorApellidoMaterno && <p className="field-error">{errores.conductorApellidoMaterno}</p>}
@@ -376,14 +388,14 @@ export default function RegistroWizard() {
               )}
             </div>
             <label className="check" style={{ marginBottom: 12 }}>
-              <input type="checkbox" checked={conductorUnApellido}
+              <input type="checkbox" checked={conductorExtranjero}
                 onChange={(e) => {
-                  setConductorUnApellido(e.target.checked);
+                  setConductorExtranjero(e.target.checked);
                   // Se limpia al marcar: un materno escrito antes de marcar la
                   // casilla ya no se ve, y no debe viajar escondido al expediente.
                   if (e.target.checked) setConductorApellidoMaterno("");
                 }} />
-              <span>El conductor tiene <strong>un solo apellido</strong> en su identificación oficial.</span>
+              <span>El conductor es <strong>extranjero</strong> y su identificación oficial trae un solo apellido.</span>
             </label>
             <label className="check" style={{ marginBottom: 12 }}>
               <input type="checkbox" checked={esMenor}
@@ -425,16 +437,16 @@ export default function RegistroWizard() {
                     onChange={(e) => setGestionanteNombre(e.target.value)} placeholder="Ej. María Fernanda" />
                   {errores.gestionanteNombre && <p className="field-error">{errores.gestionanteNombre}</p>}
                 </div>
-                <div className={gestionanteUnApellido ? undefined : "grid-2"}>
+                <div className={gestionanteExtranjero ? undefined : "grid-2"}>
                   <div className="field">
-                    <span>{gestionanteUnApellido ? "Apellido del gestionante" : "Apellido paterno del gestionante"}</span>
+                    <span>{gestionanteExtranjero ? "Apellido del gestionante" : "Apellido paterno del gestionante"}</span>
                     <input className={`input ${errores.gestionanteApellidoPaterno ? "invalid" : ""}`} value={gestionanteApellidoPaterno}
                       onChange={(e) => setGestionanteApellidoPaterno(e.target.value)} placeholder="Ej. López" />
                     {errores.gestionanteApellidoPaterno && <p className="field-error">{errores.gestionanteApellidoPaterno}</p>}
                   </div>
-                  {!gestionanteUnApellido && (
+                  {!gestionanteExtranjero && (
                     <div className="field">
-                      <span>Apellido materno del gestionante <em className="opcional">(opcional)</em></span>
+                      <span>Apellido materno del gestionante</span>
                       <input className={`input ${errores.gestionanteApellidoMaterno ? "invalid" : ""}`} value={gestionanteApellidoMaterno}
                         onChange={(e) => setGestionanteApellidoMaterno(e.target.value)} placeholder="Ej. Ruiz" />
                       {errores.gestionanteApellidoMaterno && <p className="field-error">{errores.gestionanteApellidoMaterno}</p>}
@@ -442,12 +454,12 @@ export default function RegistroWizard() {
                   )}
                 </div>
                 <label className="check" style={{ marginBottom: 12 }}>
-                  <input type="checkbox" checked={gestionanteUnApellido}
+                  <input type="checkbox" checked={gestionanteExtranjero}
                     onChange={(e) => {
-                      setGestionanteUnApellido(e.target.checked);
+                      setGestionanteExtranjero(e.target.checked);
                       if (e.target.checked) setGestionanteApellidoMaterno("");
                     }} />
-                  <span>El gestionante tiene <strong>un solo apellido</strong> en su identificación oficial.</span>
+                  <span>El gestionante es <strong>extranjero</strong> y su identificación oficial trae un solo apellido.</span>
                 </label>
                 <div className="field">
                   <span>{esMenor ? "Relación con el menor" : "Relación con el conductor"}</span>
