@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TagInventario, TramiteSolicitado } from "@/lib/mock/types";
 import { getMarcas, getColores } from "@/lib/supabase/api";
 import {
@@ -29,6 +29,11 @@ import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, BadgeEspera
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
 type Accion = "instalar" | "actualizar" | "baja";
+
+// Lo que hay que guardar ANTES de instalar cuando el coche que se presenta no es
+// el que la familia registró. Viaja armado desde el formulario para que la
+// confirmación pueda nombrar el vehículo corregido y no el que quedó viejo.
+type CorreccionVehiculo = { cambios: CambiosRegistro; resumen: string; motivo: string };
 
 type ConfirmCfg = {
   title: string; message: string; confirmLabel: string; danger: boolean;
@@ -306,19 +311,50 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   // así que las acciones repiten el dato clave antes de ejecutar.
   // Instalar define también el estacionamiento (SC-002): el SQL 31 ejecuta
   // asignación + TAG en una sola transacción, con la persona presente.
-  function confirmarInstalar(r: Registro, tag: string, claves: string[], propio: boolean, apartadoNo: string) {
+  function confirmarInstalar(r: Registro, tag: string, claves: string[], propio: boolean, apartadoNo: string, correccion: CorreccionVehiculo | null) {
     const procedencia: ProcedenciaTag = propio ? "propio" : "escuela";
     const apartado = propio ? (apartadoNo.trim() || null) : null;
     const cambiaProcedencia = procedencia !== r.procedenciaTag;
+    // El vehículo que se nombra en la confirmación es el CORREGIDO: es el que
+    // quien instala tiene enfrente. Repetir los datos viejos sería pedirle que
+    // verifique justo lo que acaba de corregir.
+    const c = correccion?.cambios;
+    const placas = c && "placas" in c ? c.placas : r.placas;
+    const vehiculo = `${c?.marca ?? r.marca} ${c?.modelo ?? r.modelo} ${c?.color ?? r.color} (${placas ?? "sin placas"})`;
     setConfirm({
-      title: "Instalar y activar TAG",
-      message: `Se instalará el TAG ${tag} en el ${r.marca} ${r.modelo} ${r.color} (${r.placas ?? "sin placas"}) de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo.`
+      title: correccion ? "Corregir datos e instalar TAG" : "Instalar y activar TAG",
+      message: (correccion ? `Primero se corregirán los datos del vehículo: ${correccion.resumen}. ` : "")
+        + `Se instalará el TAG ${tag} en el ${vehiculo} de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo.`
         + (apartado ? ` Se apartará el TAG ${apartado} de la escuela.` : "")
         + (cambiaProcedencia ? ` El TAG quedará marcado como ${procedencia}.` : "")
         + " Revise bien el número. ¿Continuar?",
-      confirmLabel: "Instalar", danger: false,
-      action: () => instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia }),
-      ok: `TAG ${tag} instalado y activado (${r.folio}).` + (apartado ? ` TAG ${apartado} apartado.` : ""),
+      confirmLabel: correccion ? "Corregir e instalar" : "Instalar", danger: false,
+      // Dos llamadas EN ORDEN, no una transacción: la corrección primero y, sólo
+      // si guardó, la instalación. Si la corrección falla, el await corta aquí
+      // y run() muestra el error sin instalar: un TAG activo apuntando a un
+      // coche que no es el que está enfrente es peor que una instalación
+      // pospuesta. El estacionamiento va en null (no cambia): lo asigna el RPC
+      // de instalación en la misma transacción de siempre.
+      action: async () => {
+        if (!correccion) {
+          return instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia });
+        }
+        await actualizarRegistroConEstacionamiento(r.id, correccion.cambios, null, correccion.motivo, tiNombre);
+        try {
+          return await instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia });
+        } catch (e) {
+          // La corrección YA quedó guardada y run() no refresca cuando algo
+          // falla: sin esto, el segundo intento volvería a mandar los mismos
+          // cambios y el RPC lo rechazaría con «No hay cambios que guardar»,
+          // dejando a TI sin poder instalar por un error que ya resolvió.
+          // Refrescado, el expediente en pantalla ya trae lo corregido y el
+          // reintento sólo instala.
+          await refresh();
+          throw e;
+        }
+      },
+      ok: (correccion ? "Datos del vehículo corregidos. " : "")
+        + `TAG ${tag} instalado y activado (${r.folio}).` + (apartado ? ` TAG ${apartado} apartado.` : ""),
     });
   }
   // claves null = el estacionamiento no cambió (no se llama a su RPC).
@@ -485,7 +521,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       // El TAG reservado desde la captura (SC-026) va primero y prellenado.
       const reservado = tagReservadoDe.get(r.id) ?? null;
       const chips = [...(reservado ? [reservado] : []), ...tagsDisponibles.map((t) => t.noDispositivo)];
-      return <FormInstalar r={r} estacionamientos={estacionamientos} disponibles={chips} tagReservado={reservado} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo) => confirmarInstalar(r, tag, claves, propio, apartadoNo)} />;
+      return <FormInstalar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} disponibles={chips} tagReservado={reservado} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo, correccion) => confirmarInstalar(r, tag, claves, propio, apartadoNo, correccion)} />;
     }
     if (accion === "actualizar")
       return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onUsarApartado={() => confirmarUsarApartado(r)} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
@@ -844,12 +880,99 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   );
 }
 
+// ---- Datos del vehículo (compartidos por instalar y actualizar) ----
+// El mismo vehículo se corrige desde dos sitios: «Actualizar datos» y, ahora, en
+// el momento de instalar el TAG. Si cada formulario llevara su copia de los
+// controles, tarde o temprano uno guardaría las placas en minúsculas, ofrecería
+// otro catálogo de colores o escribiría el resumen distinto del que se le lee al
+// titular. Vive una sola vez aquí y los dos lo usan igual.
+type DatosVehiculo = {
+  placas: string; setPlacas: (v: string) => void;
+  sinPlacas: boolean; setSinPlacas: (v: boolean) => void;
+  marca: string; setMarca: (v: string) => void;
+  modelo: string; setModelo: (v: string) => void;
+  color: string; setColor: (v: string) => void;
+  // Sin placas y sin marcar «sin placas» la BD rechaza el trámite con el mismo
+  // criterio (actualizar_registro): se avisa antes de gastar el viaje al RPC.
+  placasValidas: boolean;
+  // Lo que va al RPC y lo que se le muestra a quien atiende, en ese orden.
+  cambios: CambiosRegistro;
+  resumen: string[];
+};
+
+function useDatosVehiculo(r: Registro): DatosVehiculo {
+  const [placas, setPlacas] = useState(r.placas ?? "");
+  const [sinPlacas, setSinPlacas] = useState(r.sinPlacas);
+  const [marca, setMarca] = useState(r.marca);
+  const [modelo, setModelo] = useState(r.modelo);
+  const [color, setColor] = useState(r.color);
+
+  // Las placas se guardan siempre en mayúsculas: es como las lee la caseta y
+  // como las compara ZK. La cadena vacía es "no capturado", no "sin placas".
+  const placasFinal = sinPlacas ? null : (placas.trim().toUpperCase() || null);
+  const placasValidas = sinPlacas || placasFinal !== null;
+
+  const cambios: CambiosRegistro = {};
+  const resumen: string[] = [];
+  if (placasFinal !== r.placas || sinPlacas !== r.sinPlacas) { cambios.placas = placasFinal; cambios.sinPlacas = sinPlacas; resumen.push(`placas ${r.placas ?? "sin placas"} → ${placasFinal ?? "sin placas"}`); }
+  if (marca !== r.marca) { cambios.marca = marca; resumen.push(`marca ${r.marca} → ${marca}`); }
+  // Un modelo vacío no es un cambio: se ignora en vez de borrar lo capturado.
+  if (modelo.trim() && modelo.trim() !== r.modelo) { cambios.modelo = modelo.trim(); resumen.push(`modelo ${r.modelo} → ${modelo.trim()}`); }
+  if (color !== r.color) { cambios.color = color; resumen.push(`color ${r.color} → ${color}`); }
+
+  return { placas, setPlacas, sinPlacas, setSinPlacas, marca, setMarca, modelo, setModelo, color, setColor, placasValidas, cambios, resumen };
+}
+
+// Los controles del vehículo. Los catálogos siempre incluyen el valor que trae
+// el expediente: si la marca capturada ya no está en el catálogo, el select no
+// puede quedarse en blanco y cambiarla sola. `junto` es la celda que acompaña al
+// color en la última fila —en «Actualizar datos», el motivo—; al instalar el
+// motivo se arma solo y ahí va vacía.
+function CamposVehiculo({ v, r, marcas, colores, junto }: {
+  v: DatosVehiculo; r: Registro; marcas: string[]; colores: string[]; junto?: ReactNode;
+}) {
+  return (
+    <>
+      <div className="grid-2">
+        <div className="field">
+          <span>Placas</span>
+          <input className={`input ${!v.placasValidas ? "invalid" : ""}`} value={v.placas} disabled={v.sinPlacas}
+            onChange={(e) => v.setPlacas(e.target.value.toUpperCase())} placeholder="Ej. UAB1234" />
+        </div>
+        <label className="check ti-check-placas">
+          <input type="checkbox" checked={v.sinPlacas} onChange={(e) => v.setSinPlacas(e.target.checked)} />
+          <span>Sin placas (permiso/nuevo)</span>
+        </label>
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <span>Marca</span>
+          <select className="select" value={v.marca} onChange={(e) => v.setMarca(e.target.value)}>
+            {[...new Set([r.marca, ...marcas])].map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div className="field"><span>Modelo</span><input className="input" value={v.modelo} onChange={(e) => v.setModelo(e.target.value)} /></div>
+      </div>
+      <div className="grid-2">
+        <div className="field">
+          <span>Color</span>
+          <select className="select" value={v.color} onChange={(e) => v.setColor(e.target.value)}>
+            {[...new Set([r.color, ...colores])].map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        {junto}
+      </div>
+    </>
+  );
+}
+
 // ---- Formularios de acción ----
-function FormInstalar({ r, estacionamientos, disponibles, tagReservado, busy, tiNombre, onTiNombre, onSubmit }: {
-  r: Registro; estacionamientos: string[] | null | undefined; disponibles: string[]; tagReservado: string | null;
+function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagReservado, busy, tiNombre, onTiNombre, onSubmit }: {
+  r: Registro; marcas: string[]; colores: string[];
+  estacionamientos: string[] | null | undefined; disponibles: string[]; tagReservado: string | null;
   busy: boolean; tiNombre: string;
   onTiNombre: (v: string) => void;
-  onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string) => void;
+  onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string, correccion: CorreccionVehiculo | null) => void;
 }) {
   // SC-026: si la captura dejo un TAG reservado, viene prellenado.
   const [tag, setTag] = useState(tagReservado ?? "");
@@ -860,13 +983,48 @@ function FormInstalar({ r, estacionamientos, disponibles, tagReservado, busy, ti
   // escuela aparta el suyo. El número apartado es opcional en el momento.
   const [propio, setPropio] = useState(r.procedenciaTag === "propio");
   const [apartadoNo, setApartadoNo] = useState(r.tagApartadoNo ?? "");
+  // El coche que se presenta no siempre es el que la familia registró: las
+  // placas no coinciden, el color es otro, el modelo quedó mal capturado. Antes
+  // había que salirse a «Actualizar datos», buscar otra vez el expediente,
+  // guardar y volver: se perdía el momento y la instalación se posponía. Va
+  // plegada porque el caso normal es que coincida y no queremos alargar la
+  // pantalla de siempre.
+  const [corrigiendo, setCorrigiendo] = useState(false);
+  const veh = useDatosVehiculo(r);
   const valido = TAG_RE.test(tag);
   const apartadoLleno = propio && apartadoNo.trim() !== "";
   const apartadoValido = !apartadoLleno || (TAG_RE.test(apartadoNo) && apartadoNo !== tag);
+  const hayCorreccion = veh.resumen.length > 0;
+  // El motivo se arma solo: en la bitácora tiene que quedar dicho que esto se
+  // corrigió con la persona enfrente, al instalar, y no en un trámite aparte.
+  const correccion: CorreccionVehiculo | null = hayCorreccion
+    ? { cambios: veh.cambios, resumen: veh.resumen.join("; "), motivo: `Corrección al instalar: ${veh.resumen.join("; ")}` }
+    : null;
+  // Sólo estorba la instalación cuando de verdad hay algo que corregir: un
+  // expediente que ya venía sin placas ni «sin placas» se instala como siempre
+  // (ese faltante se atiende en «Expedientes incompletos», no aquí).
+  const correccionInvalida = hayCorreccion && !veh.placasValidas;
   const toggle = (c: string) =>
     setClaves((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
   return (
     <div className="ti-form">
+      {/* Sólo el vehículo. El nombre del titular, el tipo de usuario y la firma
+          no se tocan aquí: quien firmó, firmó. */}
+      <button type="button" className="ghost-action" aria-expanded={corrigiendo}
+        style={{ width: "100%", marginBottom: 14 }}
+        onClick={() => setCorrigiendo((v) => !v)}>
+        {corrigiendo ? "Ocultar la corrección del vehículo" : "¿Los datos del vehículo no coinciden?"}
+      </button>
+      {corrigiendo && (
+        <div className="notice" style={{ marginBottom: 16 }}>
+          <p className="ti-hint" style={{ marginTop: 0 }}>
+            Corrija lo que no coincida con el coche que tiene enfrente. Se guarda en el expediente{" "}
+            {r.folio} al pulsar el botón de instalar, sin salir de esta pantalla.
+          </p>
+          <CamposVehiculo v={veh} r={r} marcas={marcas} colores={colores} />
+          {!veh.placasValidas && <p className="field-error">Capture las placas o marque «Sin placas».</p>}
+        </div>
+      )}
       <div className="field">
         <span>Estacionamiento (acceso del TAG)</span>
         {estacionamientos === undefined ? (
@@ -951,8 +1109,23 @@ function FormInstalar({ r, estacionamientos, disponibles, tagReservado, busy, ti
         </div>
       )}
       <div className="field"><span>Instalado por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
-      <button type="button" className="primary-action" disabled={busy || !valido || claves.length === 0 || !apartadoValido} onClick={() => onSubmit(tag, claves, propio, apartadoNo)}>
-        {valido ? `Instalar y activar TAG ${tag}` : "Instalar y activar"}
+      {/* El resumen vive FUERA de la sección plegable: si se corrige y luego se
+          pliega, lo corregido no puede quedar escondido. Nadie debe corregir un
+          expediente sin darse cuenta. */}
+      {hayCorreccion && (
+        <p className="notice" style={{ marginBottom: 12 }}>
+          <strong>Antes de instalar se corregirá:</strong> {veh.resumen.join("; ")}.
+          {!corrigiendo && (
+            <>{" "}<button type="button" className="link-action" onClick={() => setCorrigiendo(true)}>Revisar</button></>
+          )}
+        </p>
+      )}
+      <button type="button" className="primary-action"
+        disabled={busy || !valido || claves.length === 0 || !apartadoValido || correccionInvalida}
+        onClick={() => onSubmit(tag, claves, propio, apartadoNo, correccion)}>
+        {hayCorreccion
+          ? (valido ? `Corregir datos e instalar el TAG ${tag}` : "Corregir datos e instalar")
+          : (valido ? `Instalar y activar TAG ${tag}` : "Instalar y activar")}
       </button>
     </div>
   );
@@ -965,11 +1138,9 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
   onSubmit: (cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) => void;
 }) {
   const [tag, setTag] = useState(r.noDispositivo ?? "");
-  const [sinPlacas, setSinPlacas] = useState(r.sinPlacas);
-  const [placas, setPlacas] = useState(r.placas ?? "");
-  const [marca, setMarca] = useState(r.marca);
-  const [modelo, setModelo] = useState(r.modelo);
-  const [color, setColor] = useState(r.color);
+  // Placas, marca, modelo y color son los mismos controles y las mismas reglas
+  // que se usan al instalar (ver useDatosVehiculo).
+  const veh = useDatosVehiculo(r);
   // CC-01: TI puede corregir propio/escuela (el titular solo lo declara en el alta).
   const [procedencia, setProcedencia] = useState<ProcedenciaTag>(r.procedenciaTag);
   const [claves, setClaves] = useState<string[]>(r.estacionamientos);
@@ -978,21 +1149,18 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
   const tieneTag = r.noDispositivo !== null;
   const tagCambia = tieneTag && tag !== r.noDispositivo;
   const tagValido = !tieneTag || TAG_RE.test(tag);
-  const placasFinal = sinPlacas ? null : (placas.trim().toUpperCase() || null);
-  const placasValidas = sinPlacas || placasFinal !== null;
   // Aquí sí se permite dejarlo vacío (corregir una asignación equivocada);
   // al instalar es donde se exige al menos uno.
   const estCambia = !mismaAsignacion(claves, r.estacionamientos);
   const toggleEst = (c: string) =>
     setClaves((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
 
+  // El orden importa: es el que se le lee al titular en la confirmación.
   const cambios: CambiosRegistro = {};
   const resumen: string[] = [];
   if (tagCambia && tagValido) { cambios.noDispositivo = tag; resumen.push(`TAG ${r.noDispositivo} → ${tag} (reposición; el anterior queda inactivo)`); }
-  if (placasFinal !== r.placas || sinPlacas !== r.sinPlacas) { cambios.placas = placasFinal; cambios.sinPlacas = sinPlacas; resumen.push(`placas ${r.placas ?? "sin placas"} → ${placasFinal ?? "sin placas"}`); }
-  if (marca !== r.marca) { cambios.marca = marca; resumen.push(`marca ${r.marca} → ${marca}`); }
-  if (modelo.trim() && modelo.trim() !== r.modelo) { cambios.modelo = modelo.trim(); resumen.push(`modelo ${r.modelo} → ${modelo.trim()}`); }
-  if (color !== r.color) { cambios.color = color; resumen.push(`color ${r.color} → ${color}`); }
+  Object.assign(cambios, veh.cambios);
+  resumen.push(...veh.resumen);
   if (procedencia !== r.procedenciaTag) { cambios.procedenciaTag = procedencia; resumen.push(`procedencia ${r.procedenciaTag} → ${procedencia}`); }
   if (estCambia) resumen.push(`estacionamiento ${r.estacionamientos.join(" + ") || "sin asignar"} → ${claves.join(" + ") || "sin asignar"}`);
   const hayCambios = resumen.length > 0;
@@ -1022,35 +1190,8 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
       ) : (
         <p className="ti-hint">Este registro aún no tiene TAG; el número se captura desde «Instalar TAG».</p>
       )}
-      <div className="grid-2">
-        <div className="field">
-          <span>Placas</span>
-          <input className={`input ${!placasValidas ? "invalid" : ""}`} value={placas} disabled={sinPlacas}
-            onChange={(e) => setPlacas(e.target.value.toUpperCase())} placeholder="Ej. UAB1234" />
-        </div>
-        <label className="check ti-check-placas">
-          <input type="checkbox" checked={sinPlacas} onChange={(e) => setSinPlacas(e.target.checked)} />
-          <span>Sin placas (permiso/nuevo)</span>
-        </label>
-      </div>
-      <div className="grid-2">
-        <div className="field">
-          <span>Marca</span>
-          <select className="select" value={marca} onChange={(e) => setMarca(e.target.value)}>
-            {[...new Set([r.marca, ...marcas])].map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
-        <div className="field"><span>Modelo</span><input className="input" value={modelo} onChange={(e) => setModelo(e.target.value)} /></div>
-      </div>
-      <div className="grid-2">
-        <div className="field">
-          <span>Color</span>
-          <select className="select" value={color} onChange={(e) => setColor(e.target.value)}>
-            {[...new Set([r.color, ...colores])].map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-        <div className="field"><span>Motivo (opcional)</span><input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. placas nuevas, TAG dañado" /></div>
-      </div>
+      <CamposVehiculo v={veh} r={r} marcas={marcas} colores={colores}
+        junto={<div className="field"><span>Motivo (opcional)</span><input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. placas nuevas, TAG dañado" /></div>} />
       <div className="field">
         <span>Procedencia del TAG</span>
         <select className="select" value={procedencia} onChange={(e) => setProcedencia(e.target.value as ProcedenciaTag)}>
@@ -1086,7 +1227,7 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
       </div>
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action"
-        disabled={busy || !hayCambios || !tagValido || !placasValidas || (r.tagApartado && procedencia === "escuela")}
+        disabled={busy || !hayCambios || !tagValido || !veh.placasValidas || (r.tagApartado && procedencia === "escuela")}
         onClick={() => onSubmit(cambios, estCambia ? claves : null, resumen.join("; "), motivo)}>
         Guardar cambios
       </button>
