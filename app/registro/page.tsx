@@ -77,6 +77,11 @@ export default function RegistroWizard() {
   const [firma, setFirma] = useState("");
   const [trazos, setTrazos] = useState<FirmaTrazos | null>(null);
   const [avisoCortoAbierto, setAvisoCortoAbierto] = useState(false);
+  // La burbuja del aviso simplificado se cierra con la equis. A propósito NO
+  // se recuerda cerrada entre visitas: al recargar vuelve a aparecer, porque
+  // lo que la ley exige es informar antes de recabar, y cada captura empieza
+  // con una carga de esta página.
+  const [avisoCortoCerrado, setAvisoCortoCerrado] = useState(false);
 
   const avisoRef = useRef<HTMLDivElement>(null);
   const reglamentoRef = useRef<HTMLDivElement>(null);
@@ -287,58 +292,6 @@ export default function RegistroWizard() {
         {step === 0 && (
           <>
             <header className="survey-header"><h1>Datos del solicitante</h1></header>
-            {/* Aviso simplificado (CC-09): la ley pide informar al momento de
-                recabar los datos, no después. El aviso integral se acepta con
-                firma en el paso 2.
-
-                Va plegado salvo el primer párrafo. El art. 16 fr. II pide que
-                aquí consten el responsable, las finalidades y el mecanismo para
-                conocer el integral: lo primero y lo segundo están en ese
-                párrafo, y el mecanismo es el enlace, que NUNCA se pliega. Lo
-                que se oculta es el detalle de los datos recabados y el canal
-                ARCO, que además viven completos en el aviso integral. */}
-            {avisoCortoFallo && (
-              <div className="aviso-corto">
-                <p className="panel-title" style={{ marginTop: 0 }}>Aviso de privacidad</p>
-                <p className="field-error" style={{ margin: "0 0 8px" }}>
-                  No se pudo cargar el aviso de privacidad simplificado. Recargue la página;
-                  si el mensaje vuelve a aparecer, avise al personal de la escuela. El aviso
-                  integral sigue disponible en el enlace de abajo.
-                </p>
-                <div className="aviso-corto__acciones">
-                  <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
-                    Consultar el aviso de privacidad integral SATAG
-                  </a>
-                </div>
-              </div>
-            )}
-            {!avisoCortoFallo && avisoCortoParrafos.length > 0 && (
-              <div className="aviso-corto aviso-corto--resumen">
-                <p className="panel-title" style={{ marginTop: 0 }}>
-                  Aviso de privacidad <span className="aviso-corto__etiqueta">resumen</span>
-                </p>
-                <p style={{ margin: "0 0 8px" }}>{avisoCortoParrafos[0]}</p>
-                {avisoCortoAbierto && avisoCortoParrafos.slice(1).map((p, i) => (
-                  <p key={i} style={{ margin: "0 0 8px" }}>{p}</p>
-                ))}
-                <p className="aviso-corto__nota">
-                  Más adelante verá el aviso completo y ahí podrá aceptarlo. No es el mismo
-                  texto dos veces: esto es el resumen que la ley pide mostrarle antes de
-                  capturar sus datos.
-                </p>
-                <div className="aviso-corto__acciones">
-                  {avisoCortoParrafos.length > 1 && (
-                    <button type="button" className="link-action" aria-expanded={avisoCortoAbierto}
-                      onClick={() => setAvisoCortoAbierto((v) => !v)}>
-                      {avisoCortoAbierto ? "Ocultar el resumen" : "Leer el resumen completo"}
-                    </button>
-                  )}
-                  <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
-                    Abrir el aviso integral
-                  </a>
-                </div>
-              </div>
-            )}
             <div className="field">
               <span>Nombre(s) del conductor</span>
               <input className={`input ${errores.conductorNombre ? "invalid" : ""}`} value={conductorNombre}
@@ -699,6 +652,59 @@ export default function RegistroWizard() {
           </div>
         )}
       </section>
+
+      {/* Aviso simplificado (CC-09) como burbuja al pie.
+          La ley pide informar al momento de recabar los datos, no después
+          (art. 16 fr. II): aquí deben constar el responsable, las finalidades
+          y el mecanismo para conocer el integral. El primer párrafo trae el
+          responsable y las finalidades, y el enlace es el mecanismo: ninguno
+          de los dos se pliega ni se esconde detrás de un clic. Lo que se
+          repliega es el detalle de los datos recabados y el canal ARCO, que
+          viven completos en el integral.
+
+          Va al pie y no arriba porque el contador leyó este recuadro y el
+          aviso integral del paso 3 como el mismo texto dos veces. No lo son
+          —este informa, aquél se acepta y queda sellado— y ninguno se puede
+          quitar, pero encabezando el formulario tenía una jerarquía visual
+          que no le toca. Aparece solo, se puede cerrar con la equis, y NO se
+          recuerda cerrado: al recargar vuelve, para que toda captura de datos
+          nazca con el aviso a la vista.
+
+          Desaparece al llegar al paso 2, donde empieza el integral. */}
+      {step < 2 && !avisoCortoCerrado && (avisoCortoFallo || avisoCortoParrafos.length > 0) && (
+        <aside className="aviso-burbuja" role="region" aria-label="Aviso de privacidad simplificado">
+          <button type="button" className="aviso-burbuja__cerrar" onClick={() => setAvisoCortoCerrado(true)}
+            aria-label="Ocultar el aviso de privacidad">
+            <span aria-hidden>×</span>
+          </button>
+          <p className="aviso-burbuja__titulo">Aviso de privacidad</p>
+          {avisoCortoFallo ? (
+            <p className="field-error" style={{ margin: "0 0 6px" }}>
+              No se pudo cargar el aviso de privacidad simplificado. Recargue la página;
+              si el mensaje vuelve a aparecer, avise al personal de la escuela. El aviso
+              integral sigue disponible en el enlace de abajo.
+            </p>
+          ) : (
+            <>
+              <p className="aviso-burbuja__texto">{avisoCortoParrafos[0]}</p>
+              {avisoCortoAbierto && avisoCortoParrafos.slice(1).map((p, i) => (
+                <p key={i} className="aviso-burbuja__texto">{p}</p>
+              ))}
+            </>
+          )}
+          <div className="aviso-burbuja__acciones">
+            {!avisoCortoFallo && avisoCortoParrafos.length > 1 && (
+              <button type="button" className="link-action" aria-expanded={avisoCortoAbierto}
+                onClick={() => setAvisoCortoAbierto((v) => !v)}>
+                {avisoCortoAbierto ? "Ver menos" : "Ver más"}
+              </button>
+            )}
+            <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
+              Aviso integral
+            </a>
+          </div>
+        </aside>
+      )}
     </main>
   );
 }
