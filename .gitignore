@@ -47,3 +47,6 @@ supabase/staging/salida/
 pruebas-carga/resultados/*.csv
 pruebas-carga/.env.staging
 pruebas-carga/bin/
+
+# Temporales de la conversion a Word (_herramientas/md2docx.ps1)
+*.tmp.html
