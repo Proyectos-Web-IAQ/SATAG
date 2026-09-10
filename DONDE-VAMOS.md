@@ -49,13 +49,22 @@ y a cuántos expedientes alcanza. Puede correrlo antes o después, no cambia nad
 - **El aviso del paso 1 ya se lee como resumen** y el simplificado bajó al pie como burbuja que se
   cierra. Con eso muere la pregunta de si el aviso estaba duplicado: no lo está. Son el simplificado
   y el integral, y la ley pide los dos.
-- **El aviso cambia de base.** Decisión de la tarde: el aviso de SATAG pasa a ser el **aviso
-  institucional que pasó Ana**, textual y entero, más un anexo con lo que SATAG agrega (vehículo,
-  TAG, apellidos de la familia, firma electrónica y su evidencia, nube y cobro). Lo publica el
-  **bloque 60**, como versión 4. El institucional ya confirma responsable, los cinco años, los
-  dieciséis días de videovigilancia y el correo; el texto extraído está en
-  `_Legal - fuentes oficiales/aviso-institucional-IAQ.txt`, fuera del repo.
-  **El bloque 59 quedó obsoleto: parchaba el texto propio que se va a reemplazar. No lo corra.**
+- **El aviso cambia de base.** El aviso de SATAG pasó a ser el **aviso institucional que pasó
+  Ana**, textual y entero, más un anexo con lo que SATAG agrega (vehículo, TAG, apellidos de la
+  familia, firma electrónica y su evidencia, nube y cobro). Lo publicó el **bloque 60**, aplicado
+  por usted, como versión 4. El institucional ya confirma responsable, los cinco años, los dieciséis
+  días de videovigilancia y el correo; el texto extraído está en
+  `_Legal - fuentes oficiales/aviso-institucional-IAQ.txt`, fuera del repo. **El bloque 59 quedó
+  obsoleto: no lo corra.**
+  Documento de revisión para Drive, con solo el delta respecto al general, generado y abierto en
+  Word: `_Para Drive/Aviso de privacidad SATAG v4 - lo nuevo respecto al general.docx`. **Falta
+  subirlo.**
+- **La v4 tenía dos defectos legales**, encontrados minutos después de aplicarla: no reproducía la
+  videovigilancia del estacionamiento (el reglamento del paso 3 sí la anuncia; el aviso del paso 2
+  ya no, y los dos se sellan en el mismo hash) y se contradecía a sí misma en transferencias (import
+  en bloque las del general —que permiten mandar datos a universidades— y prometía que SATAG no
+  hace prospección). Corrige los dos, publicando **versión 5**, el **bloque 61**, redactado y
+  **pendiente de aplicar**. No toca una coma del texto institucional; la v4 queda intacta.
 
 **Ya publicado**, en `origin/main` desde las 14:37 (`09a2ed5`, `6b9b991`, `6523457`, `3f43404`,
 `410ad0c`): el justificado, el campo de apellidos en el alta y la revalidación del vehículo al
@@ -71,8 +80,8 @@ pasa limpio.
 Fuera de orden: cada minuto sin él es un minuto con expedientes de padres congelados. Si mañana
 alguien cobra y corrige un tipo a `padres`, la caja se cae y el cobro no queda registrado.
 
-**2. El bloque 60** (el aviso institucional de Ana, textual, más el anexo de SATAG, como v4).
-**No el 59, que quedó obsoleto.**
+**2. El bloque 61** (corrige la v4: videovigilancia del estacionamiento y transferencias, como
+v5). El 60 ya está aplicado. **No el 59, que quedó obsoleto.**
 Fuera de orden: tiene que estar **antes de la primera familia real**. El texto del aviso se sella en
 el hash de la aceptación al firmar. Una familia que firme con el v3 incompleto queda con esa
 evidencia para siempre, y corregirlo después obliga a una versión 4, no a un parche.
