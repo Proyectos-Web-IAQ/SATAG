@@ -12,6 +12,15 @@
 --     las borra al terminar.
 --   - No toca registros, pagos, cortes ni documentos.
 --
+-- CORRER PASO POR PASO, SELECCIONANDO CADA BLOQUE Y EJECUTANDO SOLO ESO.
+--
+-- El editor SQL de Supabase manda todo el buffer junto y aborta en el
+-- primer error. El PASO 2 FALLA A PROPOSITO: si lo corre junto con los
+-- demas, se lleva por delante los pasos 3 al 6 y parece que el script
+-- esta roto. No lo esta.
+--
+-- Orden: PASO 1 solo -> PASO 2 solo (debe fallar) -> PASOS 3 a 6.
+--
 -- Correr por pasos y copiar los resultados a Pruebas/02.
 -- =====================================================================
 
@@ -32,8 +41,19 @@ select 'funciones de apoyo', (select count(*)::text from pg_proc
 
 -- ---------------------------------------------------------------------
 -- PASO 2 — El rol anonimo NO puede leer la tabla de intentos.
--- Lo esperado es que ESTA CONSULTA FALLE con el error 42501
--- (permission denied). Si devuelve filas, hay un problema.
+--
+-- SELECCIONE Y EJECUTE SOLO ESTE BLOQUE. Tiene que FALLAR. El resultado
+-- correcto es este error, y significa que la prueba PASO:
+--
+--   ERROR: 42501: permission denied for table intentos_publicos
+--   HINT:  Grant the required privileges ... GRANT SELECT ... TO anon;
+--
+-- NO siga la sugerencia del HINT. Postgres la escribe siempre que niega
+-- un permiso, sin saber que aqui la negativa es el diseno: dar ese
+-- GRANT abriria al publico la tabla que registra los intentos y
+-- convertiria el limite del buzon en un oraculo consultable.
+--
+-- Lo que seria un problema es que ESTA CONSULTA DEVUELVA FILAS.
 -- ---------------------------------------------------------------------
 begin;
 set local role anon;
