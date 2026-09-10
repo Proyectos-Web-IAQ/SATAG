@@ -37,7 +37,9 @@ El **Código Nacional de Procedimientos Civiles y Familiares** define la firma e
 
 El **Código de Comercio** prohíbe negar efectos jurídicos, validez o fuerza obligatoria a la información por el solo hecho de estar contenida en un mensaje de datos (Cámara de Diputados, 2025a, art. 89 bis), y precisa que cuando la ley exige forma escrita el requisito se cumple con un mensaje de datos íntegro y accesible, y que cuando además exige firma, se cumple si el mensaje es atribuible a las partes (Cámara de Diputados, 2025a, art. 93).
 
-En materia de datos personales, el **Reglamento de la Ley Federal de Protección de Datos Personales en Posesión de los Particulares** es explícito: tratándose del entorno digital, para recabar el consentimiento expreso por escrito «podrán utilizarse firma electrónica o cualquier mecanismo o procedimiento que al efecto se establezca y permita identificar al titular y recabar su consentimiento» (Cámara de Diputados, 2011, art. 19).
+En materia de datos personales, la **Ley Federal de Protección de Datos Personales en Posesión de los Particulares** vigente es explícita al regular el consentimiento que debe constar por escrito: se obtiene «a través de su firma autógrafa, firma electrónica, o cualquier mecanismo de autenticación que al efecto se establezca» (Cámara de Diputados, 2025e, art. 8). La ley nombra la firma electrónica en su propio texto, sin necesidad de acudir a norma reglamentaria.
+
+*Nota sobre el reglamento.* El Reglamento de 2011 desarrolla la ley de 2010, que quedó abrogada el 20 de marzo de 2025 sin que ningún transitorio preserve expresamente la vigencia del reglamento. La Cámara de Diputados lo sigue publicando como texto vigente y su artículo 19 dice lo mismo en términos más detallados, de modo que puede citarse como apoyo. Este documento no se apoya en él: la regla que importa está en el artículo 8 de la ley vigente.
 
 ### 2.3 El criterio de valoración es la fiabilidad del método
 
@@ -104,8 +106,8 @@ Además, el titular obtiene al terminar una copia del trámite con el texto ínt
 | Momento cierto | CNPCF art. 349 | Sello de tiempo del servidor, no manipulable desde el dispositivo del firmante. |
 | Atribución | CCF art. 1834 bis; CCom art. 93 | Cubierta parcialmente. Véase el apartado 3.5. |
 | Inalterabilidad posterior | CNPCF art. 350 | La aceptación se escribe una sola vez y el sistema no ofrece forma de modificarla ni borrarla desde el panel. |
-| Consentimiento expreso en entorno digital | Reglamento LFPDPPP art. 19 | Firma electrónica sobre el aviso de privacidad, con la versión y su huella registradas. |
-| Prueba de que el aviso se puso a disposición | Reglamento LFPDPPP arts. 20 y 31 | La versión exacta del aviso mostrado queda registrada, junto con el registro de que el texto se recorrió hasta el final. |
+| Consentimiento expreso que consta por escrito | LFPDPPP art. 8 | Firma electrónica sobre el aviso de privacidad, con la versión y su huella registradas. |
+| Prueba de que el aviso se puso a disposición | Principio de información, LFPDPPP arts. 15 y 16 | La versión exacta del aviso mostrado queda registrada, junto con el registro de que el texto se recorrió hasta el final. |
 
 ### 3.4 La prueba de que el método funciona
 
@@ -141,7 +143,7 @@ Existe, sin embargo, un elemento que el caso anterior no tiene: **el Instituto y
 
 El mecanismo consiste en enviar el enlace de firma únicamente a ese correo registrado, acompañado de un código de un solo uso que debe introducirse para firmar. Con ello se satisface el supuesto del artículo 90, fracción II, del Código de Comercio, y además el del artículo 90 bis, que presume que el mensaje proviene del emisor cuando se aplicó adecuadamente un procedimiento acordado previamente con él (Cámara de Diputados, 2025a, arts. 90 y 90 bis). Para que esa presunción opere conviene que el procedimiento quede declarado en el propio documento que se firma.
 
-Sobre menores de edad, la regla es clara: quien no ha cumplido dieciocho años no puede obligarse por sí mismo, y consienten quienes ejercen la patria potestad o la tutela (Cámara de Diputados, 2025b, arts. 23, 424, 425 y 646). La Ley General de los Derechos de Niñas, Niños y Adolescentes añade la protección de su intimidad y de sus datos (Cámara de Diputados, 2025d, arts. 76 a 80), y el interés superior de la niñez es principio constitucional (Constitución Política de los Estados Unidos Mexicanos, 2026, art. 4).
+Sobre menores de edad, la regla es clara: quien no ha cumplido dieciocho años no puede obligarse por sí mismo, y consienten quienes ejercen la patria potestad o la tutela (Cámara de Diputados, 2025b, arts. 23, 424, 425 y 646). La Ley General de los Derechos de Niñas, Niños y Adolescentes añade dos reglas aplicables: el derecho a la intimidad personal y familiar y a la protección de sus datos personales (Cámara de Diputados, 2025d, art. 76), y el derecho a ser escuchados y tomados en cuenta en los asuntos de su interés, conforme a su edad y madurez (Cámara de Diputados, 2025d, art. 71). Este último es el que sostiene recabar la opinión del adolescente además del consentimiento de quien lo representa. El interés superior de la niñez es principio constitucional (Constitución Política de los Estados Unidos Mexicanos, 2026, art. 4).
 
 ---
 
@@ -159,7 +161,9 @@ La constancia tiene una vigencia mínima de diez años desde su emisión (Secret
 
 **Una constancia por cada documento firmado.** Cada expediente obtiene su propio sello del tercero. Es la modalidad más sencilla de exhibir: se presenta el documento y su constancia.
 
-**Una constancia por lote.** En lugar de sellar cada documento, se sellan todos los del periodo mediante un único código que los resume. Reduce el costo de manera considerable, pero tiene dos consecuencias: para demostrar un caso concreto hay que presentar además la prueba de que ese documento formaba parte del lote sellado, y la fecha certificada tiene la granularidad del periodo, no del minuto.
+**Una constancia por lote.** Conviene ser preciso aquí, porque la norma **no ofrece esta modalidad**: su apéndice describe la solicitud de una constancia sobre la huella de *un* mensaje de datos. El lote se construye sobre la norma, no dentro de ella, y la forma correcta es convertir el propio lote en un mensaje de datos: se genera un documento que enumera las huellas de todos los expedientes del periodo, y se solicita la constancia sobre la huella de ese documento.
+
+Tiene dos consecuencias que el área legal debe conocer. Para demostrar un caso concreto hay que exhibir tres cosas y no una: la constancia, el documento que enumera las huellas, y el expediente cuya huella figura en esa lista. Y la fecha certificada tiene la granularidad del periodo elegido, no del minuto de la firma.
 
 ### 6.3 El costo, con la aritmética a la vista
 
@@ -170,9 +174,9 @@ El siguiente cálculo supone **400 firmas al año**, que es el orden de magnitud
 | Modalidad | Constancias al año | Costo anual a 14 pesos | Costo anual a 90 pesos |
 |---|---|---|---|
 | Una por cada documento firmado | 400 | 5,600 pesos | 36,000 pesos |
-| Una diaria, por lote | 365 | 5,110 pesos | 32,850 pesos |
-| Una semanal, por lote | 52 | 728 pesos | 4,680 pesos |
-| Una mensual, por lote | 12 | 168 pesos | 1,080 pesos |
+| Una diaria, sobre el documento que enumera las huellas del día | 365 | 5,110 pesos | 32,850 pesos |
+| Una semanal, sobre el documento que enumera las huellas de la semana | 52 | 728 pesos | 4,680 pesos |
+| Una mensual, sobre el documento que enumera las huellas del mes | 12 | 168 pesos | 1,080 pesos |
 
 La fórmula es directa: **número de constancias al año multiplicado por el precio unitario**. En la modalidad por documento, el número de constancias es igual al número de firmas, de modo que el costo crece con el volumen. En la modalidad por lote, el número de constancias depende únicamente de la frecuencia elegida, y el volumen de firmas deja de influir en el precio.
 

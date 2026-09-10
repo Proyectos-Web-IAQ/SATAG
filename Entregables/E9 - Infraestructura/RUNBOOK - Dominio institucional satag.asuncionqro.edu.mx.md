@@ -38,12 +38,17 @@ No toque el sitio de la raíz ni los registros de correo. El correo del Institut
 4. **Directorio: cámbielo a `public_html/satag.asuncionqro.edu.mx`**, no lo deje en la carpeta personal. Así, si esa credencial se filtra, solo alcanza a SATAG.
 5. Cuota: sin límite.
 
+> **Trampa comprobada el 10 de septiembre.** Mientras escribe el nombre de usuario, cPanel va autocompletando el directorio y le añade al final una subcarpeta con el mismo nombre, del estilo `.../satag.asuncionqro.edu.mx/deploy-satag`. **Bórrela antes de crear la cuenta.** Si se queda, el despliegue sube el sitio a esa subcarpeta, que nadie sirve, y el dominio responde vacío sin ningún mensaje de error que explique por qué.
+
 ## Paso 3. Cloudflare: el registro DNS
 
 1. Cloudflare, zona `asuncionqro.edu.mx`, sección DNS.
 2. Agregar registro: tipo **A**, nombre `satag`, dirección IPv4 `208.109.203.174`.
 3. **Encienda el proxy, la nube naranja.** Es lo que da el certificado válido: el plan de GoDaddy no tiene AutoSSL disponible.
 4. El modo SSL/TLS de la zona ya está en «Completo» desde SEVAD. Solo verifíquelo, no lo cambie: afecta a toda la zona.
+5. **Antes de guardar, compare la fila de `satag` con la de `sevad`.** Deben quedar idénticas salvo el nombre: mismo tipo, misma dirección, mismo proxy.
+
+> **Trampa comprobada el 10 de septiembre.** En el primer intento la dirección se guardó como `200.109.203.174` en lugar de `208`. Un dígito. Con el proxy encendido ese error **es invisible**: al consultar el dominio se responden las direcciones de Cloudflare de todos modos, así que todo parece correcto. El fallo aparece mucho después, al publicar, como un error 522 o 523 que no dice en ningún momento que la dirección de origen esté mal. De ahí el punto 5: comparar contra `sevad`, que se sabe buena, cuesta diez segundos y ahorra una tarde.
 
 ## Paso 4. GitHub: secretos y el interruptor
 
@@ -62,6 +67,8 @@ En el repositorio de SATAG, Settings, Secrets and variables, Actions.
 **Variable** (pestaña Variables): `DEPLOY_GODADDY` = `true`. Esta es la que enciende el flujo.
 
 No la ponga en `true` hasta terminar los pasos 1 a 3, o el despliegue fallará en rojo.
+
+> **Trampa.** `DEPLOY_GODADDY` va en la pestaña **Variables**, no en Secrets. Las dos pestañas viven en la misma pantalla y es fácil equivocarse. Si se crea como secreto, el flujo **no falla en rojo: simplemente no corre nunca**, y no hay ningún mensaje que lo explique. Después de crearla, confirme que aparece bajo «Repository variables».
 
 ## Paso 5. Supabase: las direcciones de autenticación
 
@@ -98,11 +105,13 @@ El primer despliegue de SEVAD tardó unos 44 segundos.
 
 Esto es lo que se olvida y aparece días después:
 
-- La dirección pública del aviso de privacidad vigente, que se guarda en la base junto con el texto.
 - El código QR y los enlaces de la presentación pública, que hoy apuntan a `satag.vercel.app`.
-- Los enlaces del comprobante y del buzón, si citan el dominio.
-- El arnés de pruebas, que apunta al sitio por una variable de entorno.
+- El arnés de pruebas y el script de pruebas de carga, que traen el sitio como valor por omisión.
 - La documentación que cita `satag.vercel.app`.
+
+**Lo que NO hay que tocar, aunque parezca:** la dirección pública del aviso de privacidad que guarda la base. Se verificó el 10 de septiembre: ese campo almacena la ruta relativa `/aviso-de-privacidad`, no el dominio. Es independiente del hosting y no cambia nunca. Quien publique una versión nueva del aviso debe seguir escribiéndola relativa, sin dominio delante.
+
+Los enlaces del comprobante y del buzón tampoco citan el dominio: son relativos.
 
 Pídame la lista exacta con archivo y línea cuando llegue aquí, y le preparo los cambios en un solo lote.
 

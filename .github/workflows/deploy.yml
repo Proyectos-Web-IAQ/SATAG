@@ -13,7 +13,7 @@
 #
 # ANTES del primer despliegue, en Supabase > Authentication > URL Configuration:
 # cambiar el Site URL a https://satag.asuncionqro.edu.mx y añadir sus Redirect
-# URLs (/admin/invite/ y /admin/reset/). SATAG manda invitaciones y restablecer
+# URLs (/admin/invite/ y /admin/reset-password/). SATAG manda invitaciones y restablecer
 # contraseña por correo; si el Site URL sigue en Vercel, esos enlaces llevan al
 # dominio viejo. (SEVAD no tenía este paso: entraba con usuario y contraseña.)
 #
