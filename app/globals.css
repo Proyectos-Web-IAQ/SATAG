@@ -473,6 +473,26 @@ a { color: var(--primary-strong); }
 }
 .aviso-corto .panel-title { font-size: 0.9rem; color: var(--ink); margin-bottom: 6px; }
 .aviso-corto a { color: var(--primary-strong); font-weight: 700; }
+
+/* El resumen del paso 1 se atenúa a propósito. El contador leyó el recuadro
+   de aquí y el aviso integral del paso 3 como el mismo texto repetido; no lo
+   son (art. 16 fr. II exige el simplificado ANTES de capturar datos, y el
+   integral es el que se acepta y queda sellado), pero si al padre de familia
+   le parece duplicado, estorba. Se marca como resumen y se baja de peso
+   visual para que se lea como antesala y no como una segunda aceptación. */
+.aviso-corto--resumen {
+  border-left-color: var(--line);
+  background: transparent;
+  font-size: 0.78rem;
+}
+.aviso-corto--resumen .panel-title { font-size: 0.82rem; color: var(--muted); font-weight: 600; }
+.aviso-corto__etiqueta {
+  background: var(--field-bg); border: 1px solid var(--line); border-radius: 999px;
+  color: var(--muted); font-size: 0.68rem; font-weight: 600;
+  letter-spacing: 0.02em; margin-left: 6px; padding: 1px 8px; text-transform: uppercase;
+  vertical-align: middle;
+}
+.aviso-corto__nota { color: var(--muted); font-style: italic; margin: 8px 0 0; }
 /* El aviso corto va plegado salvo su primer párrafo, para que el formulario
    empiece a la vista. El botón de desplegar y el enlace al integral comparten
    renglón y se apilan solos en pantalla angosta. */

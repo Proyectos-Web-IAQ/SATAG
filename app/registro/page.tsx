@@ -313,21 +313,28 @@ export default function RegistroWizard() {
               </div>
             )}
             {!avisoCortoFallo && avisoCortoParrafos.length > 0 && (
-              <div className="aviso-corto">
-                <p className="panel-title" style={{ marginTop: 0 }}>Aviso de privacidad</p>
+              <div className="aviso-corto aviso-corto--resumen">
+                <p className="panel-title" style={{ marginTop: 0 }}>
+                  Aviso de privacidad <span className="aviso-corto__etiqueta">resumen</span>
+                </p>
                 <p style={{ margin: "0 0 8px" }}>{avisoCortoParrafos[0]}</p>
                 {avisoCortoAbierto && avisoCortoParrafos.slice(1).map((p, i) => (
                   <p key={i} style={{ margin: "0 0 8px" }}>{p}</p>
                 ))}
+                <p className="aviso-corto__nota">
+                  Más adelante verá el aviso completo y ahí podrá aceptarlo. No es el mismo
+                  texto dos veces: esto es el resumen que la ley pide mostrarle antes de
+                  capturar sus datos.
+                </p>
                 <div className="aviso-corto__acciones">
                   {avisoCortoParrafos.length > 1 && (
                     <button type="button" className="link-action" aria-expanded={avisoCortoAbierto}
                       onClick={() => setAvisoCortoAbierto((v) => !v)}>
-                      {avisoCortoAbierto ? "Ocultar el aviso" : "Leer el aviso completo"}
+                      {avisoCortoAbierto ? "Ocultar el resumen" : "Leer el resumen completo"}
                     </button>
                   )}
                   <a href="/aviso-de-privacidad/" target="_blank" rel="noreferrer">
-                    Consultar el aviso de privacidad integral SATAG
+                    Abrir el aviso integral
                   </a>
                 </div>
               </div>
