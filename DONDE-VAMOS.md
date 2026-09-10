@@ -140,8 +140,10 @@ ya no se corrige un texto, se publica otra versión.
 - **Capturar los apellidos de la familia desde el panel.** Hoy solo los escribe el alta. El bloque 58
   mueve la exigencia al alta, así que ya no congela nada; una pantalla para corregirlos desde el
   panel es comodidad, y no cabe antes del lunes.
-- **La casilla de un solo apellido**, porque hoy el materno ya es opcional y nadie se queda sin
-  registrarse.
+- ~~La casilla de un solo apellido~~ — **hecha el 10-sep por la tarde**, antes de cerrar: casilla
+  «tiene un solo apellido en su identificación oficial» para conductor y gestionante. Oculta el
+  materno, lo limpia, y la etiqueta pasa de «Apellido paterno» a «Apellido». Solo cliente: el
+  materno ya era opcional en `crear_registro`.
 
 ## Una cosa que le van a preguntar
 
