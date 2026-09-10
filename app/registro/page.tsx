@@ -58,6 +58,10 @@ export default function RegistroWizard() {
   const [gestionanteRelacion, setGestionanteRelacion] = useState<GestionanteRelacion | "">("");
   const [esMenor, setEsMenor] = useState(false);
   const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>("padres");
+  // Apellidos con los que la escuela identifica a la familia. Solo se piden a
+  // los padres de familia: es el dato que Administración coteja contra el
+  // padrón escolar antes de instalar el TAG.
+  const [apellidosFamilia, setApellidosFamilia] = useState("");
   const [marca, setMarca] = useState("");
   const [marcaOtro, setMarcaOtro] = useState("");
   const [modelos, setModelos] = useState<string[]>([]);
@@ -89,6 +93,11 @@ export default function RegistroWizard() {
   // si la casilla se desmarca (D-02). Forzar "alumno" MIENTRAS esta marcada es
   // deliberado; que se quede pegado despues, no.
   const tipoAntesDeMenor = useRef<TipoUsuario | null>(null);
+  // Los apellidos que ya estaban escritos antes de ese mismo rebote. Es el
+  // gemelo del ref de arriba: si aquel devuelve el tipo al desmarcar la
+  // casilla, este tiene que devolver el dato que colgaba del tipo. null = no
+  // hay nada guardado, o sea el cambio de tipo lo hizo el titular a mano.
+  const apellidosAntesDeMenor = useRef<string | null>(null);
 
   const avisoValido = Boolean(aviso?.parrafos && aviso.parrafos.length > 0);
   const reglamentoValido = Boolean(reglamento?.clausulas && reglamento.clausulas.length > 0);
@@ -125,6 +134,35 @@ export default function RegistroWizard() {
     setModelo("");
     getModelos(marca).then(setModelos).catch(() => setModelos([]));
   }, [marca]);
+
+  // Los apellidos de la familia cuelgan del tipo de usuario igual que el modelo
+  // libre cuelga de la marca: si el tipo cambia, lo capturado ya no corresponde
+  // y se limpia. Sin esto, quien empieza como padre de familia y se corrige a
+  // maestro mandaria un apellido que el expediente no debe llevar.
+  //
+  // Pero por aqui pasa TAMBIEN el rebote de la casilla «menor de edad», que
+  // fuerza el tipo a 'alumno' y al desmarcarse devuelve el anterior. Ese viaje
+  // de ida y vuelta no es una correccion del titular: quien marca y desmarca la
+  // casilla por curiosidad se encontraba el campo vacio otra vez —y en un
+  // telefono queda abajo del pliegue—, asi que «Siguiente» le reclamaba un dato
+  // que jura haber escrito.
+  //
+  // De las dos salidas se eligio RECORDAR el valor, y no "no limpiar cuando el
+  // tipo regresa": cuando la casilla se marca, el campo ya desaparecio de la
+  // pantalla y su estado ya se vacio, asi que al volver no queda nada a que
+  // regresar si no se guardo antes. La restitucion se hace aqui dentro y no en
+  // el onChange de la casilla porque este efecto corre DESPUES de aquel:
+  // cualquier valor que pusiera la casilla lo borraria este.
+  useEffect(() => {
+    if (tipoUsuario !== "padres") {
+      setApellidosFamilia("");
+      return;
+    }
+    // Solo la casilla llena el ref, de modo que un cambio de tipo hecho a mano
+    // llega aqui con null y limpia como siempre.
+    setApellidosFamilia(apellidosAntesDeMenor.current ?? "");
+    apellidosAntesDeMenor.current = null;
+  }, [tipoUsuario]);
 
   // Si el aviso/reglamento caben sin scroll, se consideran "leidos" al entrar (solo si el contenido cargo correctamente).
   useEffect(() => {
@@ -183,6 +221,12 @@ export default function RegistroWizard() {
             ? "Indique si es padre, madre o tutor del menor."
             : "Indique la relación del gestionante.";
         }
+      }
+      // Obligatorio solo para padres de familia: es el único tipo que se coteja
+      // contra el padrón escolar (un maestro o un administrativo no tienen
+      // «apellidos de familia» en la escuela).
+      if (tipoUsuario === "padres" && !apellidosFamilia.trim()) {
+        e.apellidosFamilia = "Escriba los apellidos de la familia.";
       }
     }
     if (s === 1) {
@@ -244,6 +288,9 @@ export default function RegistroWizard() {
         usuarioEsMenor: esMenor,
         firmanteRol: hayGestionante ? (gestionanteRelacion || "otro") : "usuario",
         tipoUsuario,
+        // El estado ya se limpia al cambiar de tipo; el candado se repite aquí
+        // porque este es el punto donde el dato deja de ser editable.
+        apellidosFamilia: tipoUsuario === "padres" ? apellidosFamilia.trim() : null,
         marca: marcaFinal, modelo: modeloFinal, color: colorFinal,
         placas: sinPlacas ? null : placas, sinPlacas,
         procedenciaTag, observaciones: null,
@@ -325,8 +372,10 @@ export default function RegistroWizard() {
                   if (marcado && gestionanteRelacion === "otro") setGestionanteRelacion("");
                   if (marcado) {
                     // Un conductor menor es, por definición, alumno. Se recuerda el
-                    // tipo anterior para no perderlo si la casilla se desmarca.
+                    // tipo anterior —y con él los apellidos que colgaban de ese
+                    // tipo— para no perderlos si la casilla se desmarca.
                     tipoAntesDeMenor.current = tipoUsuario;
+                    apellidosAntesDeMenor.current = apellidosFamilia;
                     setTipoUsuario("alumno");
                   } else if (tipoAntesDeMenor.current !== null) {
                     setTipoUsuario(tipoAntesDeMenor.current);
@@ -392,6 +441,24 @@ export default function RegistroWizard() {
               </select>
               {esMenor && <p className="hint" style={{ margin: "6px 0 0" }}>Un conductor menor de edad se registra como alumno.</p>}
             </div>
+            {/* Solo a los padres de familia: es el dato con el que la escuela
+                los tiene identificados y el que Administración coteja antes de
+                instalar. Pedírselo a un maestro o a un administrativo no
+                significa nada, por eso el campo aparece y desaparece con el
+                tipo de usuario. */}
+            {tipoUsuario === "padres" && (
+              <div className="field">
+                <span>Apellidos de la familia</span>
+                <input className={`input ${errores.apellidosFamilia ? "invalid" : ""}`} value={apellidosFamilia}
+                  onChange={(e) => setApellidosFamilia(e.target.value)} placeholder="Ej. Pérez López" />
+                <p className="hint" style={{ margin: 0 }}>
+                  Los apellidos con los que la escuela identifica a su familia —
+                  normalmente los de sus hijos. Sirven para confirmar que el TAG se
+                  instala a una familia de la comunidad.
+                </p>
+                {errores.apellidosFamilia && <p className="field-error">{errores.apellidosFamilia}</p>}
+              </div>
+            )}
           </>
         )}
 
@@ -595,6 +662,11 @@ export default function RegistroWizard() {
                 <div><dt>Folio</dt><dd>{resultado.folio}</dd></div>
                 <div><dt>Fecha de envío</dt><dd>{enviadoEn ?? "—"}</dd></div>
                 <div><dt>Conductor</dt><dd>{conductorNombreCompleto}</dd></div>
+                {/* La copia dice traer «los datos que registró»: si se capturaron
+                    los apellidos de la familia, aquí van también. */}
+                {apellidosFamilia.trim() !== "" && (
+                  <div><dt>Apellidos de la familia</dt><dd>{apellidosFamilia.trim()}</dd></div>
+                )}
                 {hayGestionante && (
                   <div>
                     <dt>Firmó</dt>

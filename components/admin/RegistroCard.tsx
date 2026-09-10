@@ -157,6 +157,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
       <div className="detail-grid" style={{ marginBottom: 12 }}>
         <div><div className="k">Gestionante (paga y firma)</div><div className="v">{r.gestionanteNombre ?? "El mismo conductor"}</div></div>
         <div><div className="k">Tipo de usuario</div><div className="v"><TipoUsuarioValidado r={r} /></div></div>
+        <ApellidosFamilia r={r} />
         <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>
         {r.tagApartado && <div><div className="k">TAG apartado</div><div className="v">{r.tagApartadoNo}</div></div>}
         <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
@@ -196,6 +197,38 @@ function TipoUsuarioValidado({ r }: { r: Registro }) {
         </span>
       )}
     </>
+  );
+}
+
+// Apellidos con los que la escuela identifica a la familia. Los captura UN SOLO
+// sitio en todo el sistema —el alta publica—, y sin embargo hay expedientes de
+// padres que nacen sin ellos: los que TI levanta desde la hoja de campo, y el
+// que nacio como maestro y Administracion corrige a 'padres' en la caja. Por eso
+// al tipo 'padres' el renglon se le muestra SIEMPRE: escondido, un expediente
+// que nadie puede cotejar contra el padron escolar se ve identico a uno
+// completo, y este dato es la unica señal de que se puede cotejar. A los demas
+// tipos el dato no les corresponde, asi que ahi el renglon sigue apareciendo
+// solo si hay algo que enseñar.
+//
+// El faltante se marca con el chip ambar del reporte de incompletos (CC-02):
+// ahi ambar ya significa "falta informacion o alguien debe dar seguimiento",
+// que es exactamente esto. Rojo no: rojo esta reservado a lo que los RPC no
+// pueden producir, y un expediente de padres sin apellidos si es posible.
+function ApellidosFamilia({ r }: { r: Registro }) {
+  const apellidos = r.apellidosFamilia?.trim();
+  if (!apellidos && r.tipoUsuario !== "padres") return null;
+  return (
+    <div>
+      <div className="k">Apellidos de la familia</div>
+      <div className="v">
+        {apellidos ? apellidos : (
+          <span className="motivo-chip motivo-chip--warn"
+            title="Este expediente es de un padre de familia y no trae los apellidos de la familia: sin ellos no se puede cotejar contra el padrón escolar antes de instalar el TAG.">
+            Sin capturar
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -116,6 +116,14 @@ export interface Registro {
   // Menor de edad (CC-11): firma su gestionante y el tipo queda fijo en
   // 'alumno'. Administración no puede cambiárselo al validar.
   usuarioEsMenor: boolean;
+  // Apellidos con los que la escuela identifica a la familia. Solo se pide a
+  // los padres de familia: es el dato con el que Administración coteja contra
+  // el padrón escolar que el TAG se instala a una familia de la comunidad.
+  // Va como `string | null` —y no opcional— porque es una columna más del
+  // expediente que puede venir vacía (igual que gestionanteNombre o placas):
+  // los tipos maestro/alumno/admin no la llevan, y los expedientes anteriores
+  // a la columna tampoco.
+  apellidosFamilia: string | null;
   // Vehículo (aplanado)
   marca: string;
   modelo: string;
@@ -164,6 +172,13 @@ export interface CrearRegistroInput {
   gestionanteNombre: string | null;
   gestionanteNombrePartes?: NombrePersona | null;
   tipoUsuario: TipoUsuario;
+  // Único lugar de todo el sistema donde se escriben los apellidos de la
+  // familia: ninguna pantalla del panel los captura después. Va con el mismo
+  // criterio que en `Registro` —`string | null`, no opcional— para que quien
+  // arme la entrada tenga que decidir qué manda: `null` cuando el titular no se
+  // declara padre de familia, y los apellidos cuando sí. Omitible, se colaría
+  // un alta sin el dato sin que nada lo acusara.
+  apellidosFamilia: string | null;
   marca: string;
   modelo: string;
   color: string;

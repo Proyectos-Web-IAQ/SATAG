@@ -113,6 +113,9 @@ export interface CrearRegistroInput {
   usuarioEsMenor: boolean; // menor de edad: exige gestionante padre/madre/tutor (CC-11)
   firmanteRol: FirmanteRol; // quien firma: el propio usuario o el gestionante
   tipoUsuario: TipoUsuario;
+  // Apellidos con los que la escuela identifica a la familia. Solo lo llenan
+  // los padres de familia; en los demas tipos viaja null.
+  apellidosFamilia: string | null;
   marca: string;
   modelo: string;
   color: string;
@@ -184,6 +187,10 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     p_observaciones: input.observaciones,
     p_reglamento_version_id: input.reglamentoVersionId,
     p_aviso_version_id: input.avisoVersionId,
+    // Ultimo parametro de la firma nueva del RPC. PostgREST resuelve la funcion
+    // por los NOMBRES de los argumentos, asi que este alta solo funciona con el
+    // bloque ya aplicado: el orden de salida es primero la base, luego el deploy.
+    p_apellidos_familia: input.apellidosFamilia?.trim() || null,
   });
 
   if (error) throw new Error(error.message);

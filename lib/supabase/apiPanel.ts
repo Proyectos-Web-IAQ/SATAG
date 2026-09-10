@@ -116,6 +116,7 @@ interface RegistroRow {
   tipo_validado_por: string | null;
   tipo_validado_en: string | null;
   usuario_es_menor: boolean;
+  apellidos_familia: string | null;
   marca: string;
   modelo: string;
   color: string;
@@ -142,6 +143,7 @@ interface RegistroRow {
 const SELECT_REGISTRO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
   tipo_validado, tipo_validado_por, tipo_validado_en, usuario_es_menor,
+  apellidos_familia,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
   tag_apartado, tag_apartado_no, estado,
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por,
@@ -222,6 +224,7 @@ function mapRegistro(r: RegistroRow): Registro {
     tipoValidadoPor: r.tipo_validado_por,
     tipoValidadoEn: r.tipo_validado_en,
     usuarioEsMenor: r.usuario_es_menor,
+    apellidosFamilia: r.apellidos_familia,
     marca: r.marca,
     modelo: r.modelo,
     color: r.color,
@@ -259,8 +262,11 @@ export async function listRegistros(filtro?: string): Promise<Registro[]> {
   const registros = (data as unknown as RegistroRow[]).map(mapRegistro);
   const q = (filtro ?? "").trim().toLowerCase();
   if (!q) return registros;
+  // Los apellidos de la familia entran al buscador porque es como llega la
+  // gente al mostrador ("vengo por lo de los Pérez"), y no siempre coinciden
+  // con los del conductor que quedo en el expediente.
   return registros.filter((r) =>
-    [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio]
+    [r.usuarioNombre, r.gestionanteNombre ?? "", r.apellidosFamilia ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio]
       .join(" ").toLowerCase().includes(q));
 }
 
