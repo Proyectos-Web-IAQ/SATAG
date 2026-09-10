@@ -641,6 +641,38 @@ a { color: var(--primary-strong); }
   .copia-datos > div { grid-template-columns: 1fr; gap: 2px; }
 }
 
+/* ---------- Apellidos de la familia, resaltados en el expediente ----------
+   Es el dato con el que Administracion coteja contra la lista de inscritos
+   antes de autorizar la instalacion de un TAG: el control de externos que se
+   pidio en la junta del 9-sep. En la rejilla de detalle se veia exactamente
+   igual que el color del coche, y para encontrarlo habia que leer renglon por
+   renglon. Ocupa el ancho completo —asi no se parte en la mitad de una de las
+   dos columnas— y el valor sube de cuerpo y pasa al azul institucional, con la
+   barra lateral que esta hoja ya usa para lo que hay que leer aparte (ver
+   .copia-constancia). Se busca de un vistazo; no se lee de corrido.
+   El chip ambar de «Sin capturar» conserva su propio tratamiento: ahi lo que
+   importa es que falta, no el valor. */
+.detail-grid .apellidos-familia { grid-column: 1 / -1; }
+.detail-grid .apellidos-familia .v {
+  background: var(--field-bg);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--primary-strong);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: .3px;
+  padding: 6px 12px;
+}
+/* Cuando falta el dato, el renglon no debe gritar con el estilo del valor:
+   el chip ya dice lo suyo y el fondo azul le restaria alarma. */
+.detail-grid .apellidos-familia .v:has(.motivo-chip) {
+  background: none;
+  border-left: 0;
+  font-size: inherit;
+  letter-spacing: normal;
+  padding: 0;
+}
+
 /* ---------- Medida de lectura: texto justificado ----------
    Miguel pidió el 10-sep que los textos «se lean mejor»: decía que se veían
    cargados a un lado. El justificado se aplica SOLO a prosa de lectura

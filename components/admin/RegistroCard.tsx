@@ -218,7 +218,7 @@ function ApellidosFamilia({ r }: { r: Registro }) {
   const apellidos = r.apellidosFamilia?.trim();
   if (!apellidos && r.tipoUsuario !== "padres") return null;
   return (
-    <div>
+    <div className="apellidos-familia">
       <div className="k">Apellidos de la familia</div>
       <div className="v">
         {apellidos ? apellidos : (
