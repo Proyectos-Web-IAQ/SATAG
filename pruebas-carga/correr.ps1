@@ -117,7 +117,7 @@ if ($Prueba -eq "flujo") {
         foreach ($o in $estado.origins) { foreach ($ls in $o.localStorage) { if ($ls.name -eq "satag-admin-auth") { $sesion = $ls.value | ConvertFrom-Json } } }
         if (-not $sesion) { throw "estado-panel.json no trae la sesion satag-admin-auth" }
         $args_k6 += @("-e", "REFRESH_TOKEN=$($sesion.refresh_token)")
-        if (-not $vars["FRONT_URL"]) { $args_k6 += @("-e", "FRONT_URL=https://satag.vercel.app") }
+        if (-not $vars["FRONT_URL"]) { $args_k6 += @("-e", "FRONT_URL=https://satag.asuncionqro.edu.mx") }
     }
     if ($env:SUPABASE_SERVICE_ROLE) { $args_k6 += @("-e", "SUPABASE_SERVICE_ROLE=$env:SUPABASE_SERVICE_ROLE"); Write-Host "vigia: activo (service_role tomada del entorno)" }
     else { Write-Host "vigia: inactivo (sin `$env:SUPABASE_SERVICE_ROLE); no habra umbral de conexiones ni CPU" }

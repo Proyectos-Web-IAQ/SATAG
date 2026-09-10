@@ -32,7 +32,7 @@ on:
       base:
         description: URL del sitio a probar
         required: false
-        default: https://satag.vercel.app
+        default: https://satag.asuncionqro.edu.mx
 
 jobs:
   arnes:
