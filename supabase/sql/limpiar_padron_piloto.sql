@@ -76,6 +76,26 @@ begin
     delete from solicitudes;      -- notas del buzon sin expediente (registro_id null)
     delete from cortes_caja;
 
+    -- IMPRESCINDIBLE antes de volver a subir los candados (corregido 10-sep-2026).
+    --
+    -- La FK pagos.corte_id -> cortes_caja es DEFERRABLE INITIALLY DEFERRED a
+    -- proposito (bloque 42, linea 144). Al borrar registros, la cascada borra
+    -- pagos y encola las comprobaciones de esa FK, que no corren hasta el
+    -- commit. Con esa cola pendiente, PostgreSQL rechaza cualquier ALTER TABLE
+    -- sobre cortes_caja:
+    --
+    --   ERROR 55006: cannot ALTER TABLE "cortes_caja" because it has pending
+    --   trigger events
+    --
+    -- y como todo esto es una sola transaccion, el error revierte el borrado
+    -- entero. Forzar las comprobaciones aqui vacia la cola y deja pasar los
+    -- ALTER. Si alguna quedara sin cumplirse, falla en esta linea y el borrado
+    -- se revierte, que es justo lo que se quiere.
+    --
+    -- Este script se escribio antes del bloque 42 y nunca se habia corrido con
+    -- un corte de caja existente; el piloto del 8-sep fue el primero.
+    execute 'set constraints all immediate';
+
     execute 'alter table pagos       enable trigger tg_pagos_no_borrar_sellado';
     execute 'alter table pagos       enable trigger tg_pagos_no_truncar_sellado';
     execute 'alter table pagos       enable trigger tg_pagos_congelar_sellado';
@@ -114,5 +134,25 @@ select u.email, u.raw_app_meta_data ->> 'rol' as rol
   from auth.users u
  order by u.email;
 
--- PASO 4 — Las imagenes de firma del bucket `firmas` no se borran con SQL:
--- use pruebas-carga/limpiar-storage.mjs o el Dashboard (Storage -> firmas).
+-- ---------------------------------------------------------------------
+-- PASO 4 — LAS IMAGENES DE FIRMA. Leer completo antes de actuar.
+--
+-- Las imagenes del bucket `firmas` NO se borran con SQL, y aqui hay una
+-- trampa que ya costo una instruccion equivocada (corregida el 10-sep-2026):
+--
+--   `pruebas-carga/limpiar-storage.mjs` NO SIRVE PARA ESTO.
+--
+-- Ese script busca con `search: "pc-"` y filtra `^pc-<32 hex>\.png$`, que son
+-- los artefactos de la prueba de carga. Las firmas reales se llaman
+-- `<uuid>.png` (lib/firma/servicio.ts:36) y NO las toca. Ademas aborta contra
+-- el proyecto de produccion salvo con --ventana-produccion.
+--
+-- Correrlo dejaria creer que las firmas se borraron cuando siguen ahi, y son
+-- de personas reales.
+--
+-- LO QUE SI FUNCIONA: sacar la lista de archivos ANTES de borrar los
+-- expedientes (`respaldo_padron_piloto.sql`, PASO 2, da la ruta de cada uno
+-- sin el bucket delante) y borrarlos desde el Dashboard, en Storage > firmas,
+-- o con la API de Storage usando esa lista. Cuando `aceptaciones` desaparezca
+-- ya no habra forma de saber cuales eran.
+-- ---------------------------------------------------------------------

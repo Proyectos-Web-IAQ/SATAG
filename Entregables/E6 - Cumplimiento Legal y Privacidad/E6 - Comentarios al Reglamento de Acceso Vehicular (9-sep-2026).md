@@ -33,6 +33,8 @@ Cualquier cambio que Arturo apruebe se publica en el sistema como **versión 3**
 | 12 | 8 | Vehículo no recogido en 3 días naturales «se turnará a la autoridad correspondiente para la consignación». | Revisar la redacción: un particular no consigna vehículos; puede reportar abandono. Que Legal decida el texto. | C | Media |
 | 13 | 10 | «Todo el daño imputable al IAQ se realizará en nuestros talleres». | Revisar: no queda claro qué talleres ni si el Instituto los tiene. | C | Baja |
 | 14 | 4, 9, 18 | Exclusiones de responsabilidad por daños, robo, siniestros y daños a la pluma. | Ya está en el tablero legal (E6, fila 10) como revisión de Legal sobre responsabilidad civil. Sin cambio propuesto por Sistemas. | C | Media |
+| 15 | nueva | No existe. Hoy nada prohíbe fumar ni consumir dentro del estacionamiento. | **Conducta dentro del estacionamiento.** Prohibir fumar, ingerir bebidas alcohólicas y consumir sustancias tóxicas o enervantes dentro del estacionamiento y de los vehículos que estén en él, con el retiro del acceso como consecuencia. | A | Alta |
+| 16 | nueva | No existe. La cláusula 3 solo dice que sin TAG no se accede, no que deba estar adherido. | **Colocación del TAG.** El TAG permanece adherido al parabrisas del vehículo declarado en todo momento; el Instituto verifica su colocación y el TAG desprendido, retirado o puesto en otro vehículo se da de baja sin previo aviso, con reposición a costo. | A | Alta |
 
 ## Redacción propuesta para las cláusulas nuevas y modificadas
 
@@ -53,6 +55,12 @@ Se ofrece como punto de partida. Numeración provisional.
 **Cláusula nueva. Aceptación y datos personales.** La solicitud del TAG y la aceptación de este reglamento se realizan por medios electrónicos en el sistema del Instituto. La aceptación queda registrada con fecha, hora y la versión del reglamento aceptada, y se conserva como evidencia. Los datos personales se tratan conforme al aviso de privacidad del sistema, que el titular acepta en el mismo acto.
 
 **Cláusula nueva. Menores de edad.** Cuando el titular sea menor de edad, la solicitud y la aceptación las realizará el padre, la madre o el tutor.
+
+**Cláusula nueva. Conducta dentro del estacionamiento.** Queda prohibido fumar, ingerir bebidas alcohólicas y consumir cualquier sustancia tóxica o enervante dentro del estacionamiento y en el interior de los vehículos que se encuentren en él. El incumplimiento puede dar lugar al retiro del acceso al estacionamiento.
+
+**Cláusula nueva. Colocación del TAG.** El TAG debe permanecer adherido al parabrisas del vehículo declarado durante todo el tiempo que esté vigente. El Instituto verifica su colocación. El TAG que se encuentre desprendido, retirado o colocado en un vehículo distinto del declarado será dado de baja sin previo aviso, y su reposición tendrá el costo que la Administración publique.
+
+> **Nota de Sistemas sobre esta cláusula.** La instrucción original era decir que «el sistema detecta los TAG despegados y los da de baja automáticamente». No conviene redactarlo así, y no por escrúpulo: hoy quien detecta es una persona, y afirmar un mecanismo automático en un documento que la familia acepta le da a esa familia un argumento en contra del Instituto el día que reclame una baja. La redacción propuesta consigue el mismo efecto disuasorio, o más, porque la consecuencia es incondicional y no depende de que exista tal sistema. Además no dice quién verifica, lo que deja al Instituto libre de hacerlo como quiera hoy y de automatizarlo mañana sin volver a tocar el reglamento.
 
 **Cláusula 17 (modificada).** El estacionamiento cuenta con un circuito cerrado de videovigilancia en operación las 24 horas, conforme al aviso de privacidad del Instituto.
 
