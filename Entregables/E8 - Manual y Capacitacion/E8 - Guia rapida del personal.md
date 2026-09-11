@@ -89,7 +89,7 @@ cuadra. Las dudas de caja, al CP Vicente.
    - Sin apellidos, si es alumno: «Este expediente no trae los apellidos de la familia: busque al titular
      por su nombre en GES antes de cobrar.»
    - Con «Maestro» o «Administrativo» no sale recordatorio: verifique **[PENDIENTE: contra qué]**.
-   - Si la familia no aparece en GES: ____ (por definir)
+   - **Si la familia no aparece en GES, no reciba el pago.** Sin pago no se instala el TAG.
 8. Toque «Registrar pago de $100.00», lea el resumen y toque «Registrar pago».
 9. Queda hecho con «Pago de $100.00 registrado · recibo SATAG-2026-000123 (SATAG-000123)…». La tarjeta
    sale de «Registrar pago» (en «Padrón completo» se ve «Pagado») y la familia pasa con TI, que instala y
