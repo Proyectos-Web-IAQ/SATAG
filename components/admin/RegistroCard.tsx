@@ -207,7 +207,7 @@ function TipoUsuarioValidado({ r }: { r: Registro }) {
 
 // Tipos que pertenecen a una familia de la comunidad y por eso llevan apellidos
 // de familia. Mismo criterio que TIPOS_CON_FAMILIA del alta publica.
-const TIPOS_CON_FAMILIA: TipoUsuario[] = ["padres", "alumno", "otro"];
+export const TIPOS_CON_FAMILIA: TipoUsuario[] = ["padres", "alumno", "otro"];
 
 // Apellidos con los que la escuela identifica a la familia. Los captura UN SOLO
 // sitio en todo el sistema —el alta publica—, y sin embargo hay expedientes de

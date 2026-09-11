@@ -12,7 +12,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import {
   DetalleRegistro, TarjetaRegistro, scrollAlAviso,
-  TIPOS_USUARIO, TIPO_USUARIO_LABEL,
+  TIPOS_USUARIO, TIPO_USUARIO_LABEL, TIPOS_CON_FAMILIA,
 } from "@/components/admin/RegistroCard";
 
 type Modo = "inicio" | "pago";
@@ -326,6 +326,11 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
   const [parentesco, setParentesco] = useState(r.parentescoOtro ?? "");
   const pideParentesco = tipoEfectivo === "otro";
   const faltaParentesco = pideParentesco && !parentesco.trim();
+  // El cotejo contra GES lo hace Administración al cobrar, no TI al instalar.
+  // Va por el tipo confirmado en la caja: un maestro corregido aquí a padres
+  // también se coteja, y casi siempre llega sin apellidos de familia.
+  const cotejaGes = TIPOS_CON_FAMILIA.includes(tipoEfectivo);
+  const apellidosFamilia = r.apellidosFamilia?.trim();
 
   return (
     <div className="ti-form admin-payment-form">
@@ -378,6 +383,15 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
             la sella desde el JWT (bloque 50). */}
         <p className="monto-fijo">{cobradoPor} <span className="monto-fijo__nota">usuario de esta sesión</span></p>
       </div>
+      {cotejaGes && (
+        <p className="notice" style={{ margin: "0 0 16px", padding: "10px 12px" }}>
+          {apellidosFamilia
+            ? <>Antes de cobrar, confirme en GES que la familia <strong>{apellidosFamilia}</strong> tiene alumnos inscritos.</>
+            : tipoEfectivo === "alumno"
+              ? "Este expediente no trae los apellidos de la familia: busque al titular por su nombre en GES antes de cobrar."
+              : "Este expediente no trae los apellidos de la familia: pregunte el nombre del alumno y búsquelo en GES antes de cobrar."}
+        </p>
+      )}
       <button type="button" className="primary-action" disabled={busy || faltaParentesco}
         onClick={() => onSubmit({
           monto: montoNumero, cobradoPor: cobradoPor.trim(), tipoUsuario: tipoEfectivo,
