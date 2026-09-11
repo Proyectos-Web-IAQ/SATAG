@@ -37,7 +37,7 @@ SATAG sirve para registrar su vehículo y obtener el TAG de acceso al estacionam
 
 Entre a **satag.asuncionqro.edu.mx** y pulse **«Iniciar registro»**. Avance con «Siguiente».
 
-1. **Datos del solicitante.** Nombre y dos apellidos del conductor (uno solo, si es extranjero: marque esa casilla). Si es menor de edad, marque «El conductor es menor de edad.»; si es mayor pero paga y firma otra persona, marque «El pago y la firma los hace otra persona…». Capture a quien firma («gestionante») y su relación. En «Tipo de usuario» (viene en «Padre / Madre / Tutor») elija el del conductor; si es otro familiar, elija **«Otro familiar (tío, abuelo…)»** y escriba el parentesco. Llene **«Apellidos de la familia»**.
+1. **Datos del solicitante.** Nombre y dos apellidos del conductor (uno solo, si es extranjero: marque esa casilla). Si es menor de edad, marque «El conductor es menor de edad.»; si es mayor pero paga y firma otra persona, marque «El pago y la firma los hace otra persona…». Capture a quien firma («gestionante») y su relación. En «Tipo de usuario» (viene en «Padre / Madre / Tutor») elija el del conductor; si es otro familiar, elija **«Otro familiar»** y escriba el parentesco. Llene **«Apellidos de la familia»**.
 2. **Datos del vehículo.** Marca, modelo, color y placas **sin guiones ni espacios** (si aún no tiene, marque esa casilla). Si algo no está en la lista, elija «Otro». En «TAG»: «Lo compro a la escuela» o «Ya tengo TAG propio».
 3. **Aviso de privacidad.** Deslice el texto hasta el final y marque la casilla.
 4. **Reglamento de acceso.** Igual: hasta el final, y marque la casilla.

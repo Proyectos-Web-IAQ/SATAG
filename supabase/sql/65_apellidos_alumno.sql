@@ -42,11 +42,14 @@
 -- pagina e intente de nuevo". Ese mensaje se escribio justo para ese caso:
 -- al recargar le llega el formulario nuevo, que si tiene el campo.
 --
--- HISTORIA. El 11-sep se aplico antes del deploy (en su version sin
--- candado) y tumbo el alta de alumno en produccion; se revirtio volviendo
--- a correr supabase/manual/2026-09-11_URGENTE_alumno_sin_apellidos_familia.sql.
--- Por eso ahora arranca con un candado de sesion que el SQL no puede
--- saltarse solo (paso 0).
+-- HISTORIA. El 11-sep, hacia las 12:50, se aplico antes del deploy (en su
+-- version sin candado) y rechazo las altas de alumno mientras el sitio
+-- siguio sirviendo el formulario viejo; la ventana se cerro sola cuando el
+-- formulario nuevo quedo en linea (a mas tardar 13:26), porque desde
+-- entonces el formulario manda el dato que la base exige. No hizo falta
+-- el script urgente. Se volvio a aplicar, ya con candado, despues de
+-- comprobar /registro/ a mano. Por eso arranca con un candado de sesion
+-- que el SQL no puede saltarse solo (paso 0).
 --
 -- QUE HACE, EN ORDEN:
 --   0. Candado: aborta si no se declaro, en la misma sesion, que el
@@ -83,11 +86,12 @@
 --
 --     set satag.cliente_nuevo_verificado = 'SI, EL SITIO YA PIDE APELLIDOS A ALUMNO';
 --
---    Existe porque este bloque se aplico DOS VECES antes del deploy el
---    11-sep, y las dos veces tumbo el alta de alumno en produccion: su
---    guardia comprobaba la base (firma del 63, aviso del 64), y la base
---    estaba lista; lo que no estaba era el sitio, y eso el SQL no lo puede
---    ver. Sin la frase, el bloque aborta sin tocar nada. Mismo patron que
+--    Existe porque la exigencia de apellidos a alumno se aplico DOS VECES
+--    antes del deploy el 11-sep (primero dentro de una version previa del
+--    63, despues con este mismo bloque), y las dos veces rechazo el alta de
+--    alumno en produccion: su guardia comprobaba la base (firma del 63,
+--    aviso del 64), y la base estaba lista; lo que no estaba era el sitio,
+--    y eso el SQL no lo puede ver. Sin la frase, el bloque aborta sin tocar nada. Mismo patron que
 --    `satag.confirmo_borrado` de limpiar_padron_piloto.sql.
 -- ---------------------------------------------------------------------
 
