@@ -24,6 +24,9 @@ type PagoCapturado = {
   // no ser el que el titular declaró en el alta; si difiere, el RPC corrige el
   // expediente y lo anota en la bitácora.
   tipoUsuario: TipoUsuario;
+  // Parentesco con la familia, confirmado igual que el tipo. Solo cuando el
+  // tipo confirmado es 'otro'; null en los demás.
+  parentescoOtro: string | null;
 };
 
 type ConfirmCfg = {
@@ -146,12 +149,18 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
     // El cambio de tipo se dice ANTES de cobrar: el pago no se puede deshacer y
     // la corrección queda en la bitácora del expediente.
     const corrige = pago.tipoUsuario !== r.tipoUsuario;
+    const parentescoAntes = r.parentescoOtro?.trim() || null;
+    const parentesco = pago.parentescoOtro === null ? ""
+      : parentescoAntes === null ? ` El parentesco con la familia quedará registrado como «${pago.parentescoOtro}».`
+      : parentescoAntes !== pago.parentescoOtro ? ` El parentesco con la familia quedará corregido de «${parentescoAntes}» a «${pago.parentescoOtro}».`
+      : ` Parentesco con la familia: «${pago.parentescoOtro}».`;
     setConfirm({
       title: "Registrar pago",
       message: `Se registrará un pago en efectivo de ${dinero.format(pago.monto)} para ${r.folio}, ${r.usuarioNombre} (${r.placas ?? "sin placas"}). El sistema generará el folio del recibo. Cobrado por ${pago.cobradoPor}.`
         + (corrige
           ? ` El tipo de usuario quedará corregido de ${TIPO_USUARIO_LABEL[r.tipoUsuario]} a ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}, y el cambio se anotará en la bitácora.`
           : ` Queda validado como ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`)
+        + parentesco
         + " ¿Continuar?",
       confirmLabel: "Registrar pago",
       action: () => registrarPago(r.id, pago),
@@ -311,6 +320,12 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
   const tipoFijo = r.usuarioEsMenor;
   const tipoEfectivo: TipoUsuario = tipoFijo ? "alumno" : tipo;
   const corrige = tipoEfectivo !== r.tipoUsuario;
+  // Arranca en lo que declaró el titular y no se borra al cambiar de chip: quien
+  // toca 'otro' por error y regresa no pierde lo escrito. Solo viaja si el tipo
+  // confirmado es 'otro'.
+  const [parentesco, setParentesco] = useState(r.parentescoOtro ?? "");
+  const pideParentesco = tipoEfectivo === "otro";
+  const faltaParentesco = pideParentesco && !parentesco.trim();
 
   return (
     <div className="ti-form admin-payment-form">
@@ -342,6 +357,19 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
           </p>
         )}
       </div>
+      {pideParentesco && (
+        <div className="field">
+          <span>Parentesco con la familia</span>
+          <p className="ti-hint" style={{ margin: 0 }}>
+            {r.parentescoOtro?.trim()
+              ? "Es el que se declaró en el alta. Confírmelo con la persona presente; si no corresponde, corríjalo."
+              : "El expediente no lo trae. Pregúntelo a la persona presente y escríbalo con sus palabras."}
+          </p>
+          <input className={`input ${faltaParentesco ? "invalid" : ""}`} value={parentesco}
+            onChange={(e) => setParentesco(e.target.value)} placeholder="Ej. tío del alumno" />
+          {faltaParentesco && <p className="field-error">Escriba el parentesco con la familia.</p>}
+        </div>
+      )}
       <p className="notice admin-auto-receipt"><strong>Folio de recibo:</strong> se generará automáticamente al confirmar.</p>
       <div className="field">
         <span>Cobrado por</span>
@@ -350,8 +378,11 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
             la sella desde el JWT (bloque 50). */}
         <p className="monto-fijo">{cobradoPor} <span className="monto-fijo__nota">usuario de esta sesión</span></p>
       </div>
-      <button type="button" className="primary-action" disabled={busy}
-        onClick={() => onSubmit({ monto: montoNumero, cobradoPor: cobradoPor.trim(), tipoUsuario: tipoEfectivo })}>
+      <button type="button" className="primary-action" disabled={busy || faltaParentesco}
+        onClick={() => onSubmit({
+          monto: montoNumero, cobradoPor: cobradoPor.trim(), tipoUsuario: tipoEfectivo,
+          parentescoOtro: pideParentesco ? parentesco.trim() : null,
+        })}>
         {`Registrar pago de ${dinero.format(montoNumero)}`}
       </button>
     </div>

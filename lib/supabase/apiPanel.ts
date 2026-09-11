@@ -117,6 +117,7 @@ interface RegistroRow {
   tipo_validado_en: string | null;
   usuario_es_menor: boolean;
   apellidos_familia: string | null;
+  parentesco_otro: string | null;
   marca: string;
   modelo: string;
   color: string;
@@ -143,7 +144,7 @@ interface RegistroRow {
 const SELECT_REGISTRO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
   tipo_validado, tipo_validado_por, tipo_validado_en, usuario_es_menor,
-  apellidos_familia,
+  apellidos_familia, parentesco_otro,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
   tag_apartado, tag_apartado_no, estado,
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por,
@@ -225,6 +226,7 @@ function mapRegistro(r: RegistroRow): Registro {
     tipoValidadoEn: r.tipo_validado_en,
     usuarioEsMenor: r.usuario_es_menor,
     apellidosFamilia: r.apellidos_familia,
+    parentescoOtro: r.parentesco_otro,
     marca: r.marca,
     modelo: r.modelo,
     color: r.color,
@@ -443,16 +445,20 @@ export async function obtenerEvidenciaFirma(registroId: string): Promise<Evidenc
 // obligatorio (el RPC del bloque 46 rechaza el cobro sin él): es el único
 // momento del flujo en que alguien del instituto tiene al titular enfrente.
 // Si el tipo confirmado difiere del declarado en el alta, el RPC corrige el
-// expediente y deja movimiento en la bitácora.
+// expediente y deja movimiento en la bitácora. El parentesco del tipo 'otro'
+// viaja en el mismo acto, por la misma razón: null en los demás tipos.
 export async function registrarPago(
   id: string,
-  data: { monto: number; cobradoPor: string; tipoUsuario: TipoUsuario },
+  data: { monto: number; cobradoPor: string; tipoUsuario: TipoUsuario; parentescoOtro: string | null },
 ): Promise<AccionResultado> {
   return rpc("registrar_pago", {
     p_registro_id: id,
     p_monto: data.monto,
     p_cobrado_por: data.cobradoPor.trim() || null,
     p_tipo_usuario: data.tipoUsuario,
+    // PostgREST resuelve la funcion por los NOMBRES de los argumentos: el cobro
+    // solo funciona con el bloque que agrega este parametro ya aplicado.
+    p_parentesco_otro: data.parentescoOtro?.trim() || null,
   });
 }
 

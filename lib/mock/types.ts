@@ -1,7 +1,11 @@
 // Tipos del dominio (espejo del modelo de datos, doc 01). El prototipo usa estos
 // mismos shapes para que al conectar Supabase solo cambie la implementación, no las pantallas.
 
-export type TipoUsuario = "maestro" | "padres" | "alumno" | "admin";
+// 'otro' es el familiar que no es padre/madre/tutor —un tío, un abuelo— y que
+// aun así entra en coche a la escuela. Se le piden los apellidos de la familia y, en texto
+// libre, su parentesco: sin ese cotejo entraría al estacionamiento alguien de
+// quien la escuela no sabe a qué familia pertenece.
+export type TipoUsuario = "maestro" | "padres" | "alumno" | "admin" | "otro";
 export type GestionanteRelacion = "padre" | "madre" | "tutor" | "otro";
 export type FirmanteRol = "usuario" | "padre" | "madre" | "tutor" | "otro";
 export type ProcedenciaTag = "escuela" | "propio";
@@ -116,14 +120,20 @@ export interface Registro {
   // Menor de edad (CC-11): firma su gestionante y el tipo queda fijo en
   // 'alumno'. Administración no puede cambiárselo al validar.
   usuarioEsMenor: boolean;
-  // Apellidos con los que la escuela identifica a la familia. Solo se pide a
-  // los padres de familia: es el dato con el que Administración coteja contra
-  // el padrón escolar que el TAG se instala a una familia de la comunidad.
+  // Apellidos con los que la escuela identifica a la familia. Se piden a los
+  // tipos que pertenecen a una familia de la comunidad —padres, alumno y otro
+  // familiar—: es el dato con el que Administración coteja contra el padrón
+  // escolar que el TAG se instala a una familia de la comunidad.
   // Va como `string | null` —y no opcional— porque es una columna más del
   // expediente que puede venir vacía (igual que gestionanteNombre o placas):
-  // los tipos maestro/alumno/admin no la llevan, y los expedientes anteriores
-  // a la columna tampoco.
+  // los tipos maestro/admin no la llevan, y los expedientes anteriores a la
+  // columna tampoco.
   apellidosFamilia: string | null;
+  // Parentesco en texto libre del tipo 'otro' (tío del alumno, abuela). Lo
+  // declara el titular en el alta y Administración lo confirma o corrige al
+  // cobrar. `string | null` con el mismo criterio que los apellidos: solo lo
+  // lleva 'otro', y los expedientes anteriores a la columna no lo traen.
+  parentescoOtro: string | null;
   // Vehículo (aplanado)
   marca: string;
   modelo: string;
@@ -175,10 +185,15 @@ export interface CrearRegistroInput {
   // Único lugar de todo el sistema donde se escriben los apellidos de la
   // familia: ninguna pantalla del panel los captura después. Va con el mismo
   // criterio que en `Registro` —`string | null`, no opcional— para que quien
-  // arme la entrada tenga que decidir qué manda: `null` cuando el titular no se
-  // declara padre de familia, y los apellidos cuando sí. Omitible, se colaría
-  // un alta sin el dato sin que nada lo acusara.
+  // arme la entrada tenga que decidir qué manda: `null` cuando el titular no
+  // pertenece a una familia de la comunidad, y los apellidos cuando sí.
+  // Omitible, se colaría un alta sin el dato sin que nada lo acusara.
   apellidosFamilia: string | null;
+  // Parentesco declarado por el tipo 'otro' (texto libre: «tío del alumno»,
+  // «abuela»). Es lo único que dice qué relación tiene esa persona con la
+  // familia, así que viaja con el mismo criterio que los apellidos: null en los
+  // demás tipos, nunca omitido.
+  parentescoOtro: string | null;
   marca: string;
   modelo: string;
   color: string;

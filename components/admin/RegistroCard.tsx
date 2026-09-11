@@ -5,11 +5,14 @@ import type { Registro, Solicitud, TipoUsuario, TramiteSolicitado } from "@/lib/
 import EstadoChip from "@/components/admin/EstadoChip";
 
 // Rol de quien deja una nota del buzon (SC-003), en texto legible.
+// El buzon publico NO ofrece 'otro' (ni 'alumno'); la entrada esta aqui porque
+// el mapa es exhaustivo sobre TipoUsuario y el compilador la exige.
 export const ROL_LABEL: Record<TipoUsuario, string> = {
   padres: "padre/madre/tutor",
   maestro: "maestro",
   admin: "administrativo",
   alumno: "alumno",
+  otro: "otro familiar",
 };
 
 // Las mismas categorias que ROL_LABEL, pero como etiqueta de opcion: se usan
@@ -20,10 +23,11 @@ export const TIPO_USUARIO_LABEL: Record<TipoUsuario, string> = {
   maestro: "Maestro",
   alumno: "Alumno",
   admin: "Administrativo",
+  otro: "Otro familiar",
 };
 
 // Orden en que se ofrecen: primero el caso mas frecuente.
-export const TIPOS_USUARIO: TipoUsuario[] = ["padres", "maestro", "alumno", "admin"];
+export const TIPOS_USUARIO: TipoUsuario[] = ["padres", "maestro", "alumno", "admin", "otro"];
 
 // Tramite que pide el cliente en una nota (SC-003), en texto legible.
 export const TRAMITE_LABEL: Record<TramiteSolicitado, string> = {
@@ -158,6 +162,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
         <div><div className="k">Gestionante (paga y firma)</div><div className="v">{r.gestionanteNombre ?? "El mismo conductor"}</div></div>
         <div><div className="k">Tipo de usuario</div><div className="v"><TipoUsuarioValidado r={r} /></div></div>
         <ApellidosFamilia r={r} />
+        <ParentescoOtro r={r} />
         <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>
         {r.tagApartado && <div><div className="k">TAG apartado</div><div className="v">{r.tagApartadoNo}</div></div>}
         <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
@@ -200,30 +205,54 @@ function TipoUsuarioValidado({ r }: { r: Registro }) {
   );
 }
 
+// Tipos que pertenecen a una familia de la comunidad y por eso llevan apellidos
+// de familia. Mismo criterio que TIPOS_CON_FAMILIA del alta publica.
+const TIPOS_CON_FAMILIA: TipoUsuario[] = ["padres", "alumno", "otro"];
+
 // Apellidos con los que la escuela identifica a la familia. Los captura UN SOLO
 // sitio en todo el sistema —el alta publica—, y sin embargo hay expedientes de
-// padres que nacen sin ellos: los que TI levanta desde la hoja de campo, y el
-// que nacio como maestro y Administracion corrige a 'padres' en la caja. Por eso
-// al tipo 'padres' el renglon se le muestra SIEMPRE: escondido, un expediente
-// que nadie puede cotejar contra el padron escolar se ve identico a uno
-// completo, y este dato es la unica señal de que se puede cotejar. A los demas
-// tipos el dato no les corresponde, asi que ahi el renglon sigue apareciendo
-// solo si hay algo que enseñar.
+// familia que nacen sin ellos: los que TI levanta desde la hoja de campo, los de
+// alumno anteriores a que el alta se los pidiera, y el que nacio como maestro y
+// Administracion corrige en la caja a uno de estos tipos. Por eso a los tipos
+// de TIPOS_CON_FAMILIA el renglon se les muestra SIEMPRE: escondido, un
+// expediente que nadie puede cotejar contra el padron escolar se ve identico a
+// uno completo, y este dato es la unica señal de que se puede cotejar. A
+// maestro y administrativo el dato no les corresponde, asi que ahi el renglon
+// sigue apareciendo solo si hay algo que enseñar.
 //
 // El faltante se marca con el chip ambar del reporte de incompletos (CC-02):
 // ahi ambar ya significa "falta informacion o alguien debe dar seguimiento",
 // que es exactamente esto. Rojo no: rojo esta reservado a lo que los RPC no
-// pueden producir, y un expediente de padres sin apellidos si es posible.
+// pueden producir, y un expediente de familia sin apellidos si es posible.
 function ApellidosFamilia({ r }: { r: Registro }) {
   const apellidos = r.apellidosFamilia?.trim();
-  if (!apellidos && r.tipoUsuario !== "padres") return null;
+  if (!apellidos && !TIPOS_CON_FAMILIA.includes(r.tipoUsuario)) return null;
+  return (
+    <DatoDeCotejo etiqueta="Apellidos de la familia" valor={apellidos}
+      faltante="Los expedientes de padres, alumnos y otros familiares llevan los apellidos de la familia, y este no los trae: sin ellos no se puede cotejar contra el padrón escolar antes de instalar el TAG." />
+  );
+}
+
+// Parentesco del tipo 'otro' (tio del alumno, abuela). Mismo trato que los
+// apellidos, chip incluido: un 'otro' sin parentesco es justo el expediente que
+// no se puede cotejar. A los demas tipos no les corresponde.
+function ParentescoOtro({ r }: { r: Registro }) {
+  if (r.tipoUsuario !== "otro") return null;
+  return (
+    <DatoDeCotejo etiqueta="Parentesco con la familia" valor={r.parentescoOtro?.trim()}
+      faltante="Este expediente es de otro familiar y no dice qué parentesco tiene con la familia: sin él no se puede cotejar antes de instalar el TAG." />
+  );
+}
+
+// Reusa el estilo de .apellidos-familia para que los dos datos de cotejo se
+// busquen igual de un vistazo.
+function DatoDeCotejo({ etiqueta, valor, faltante }: { etiqueta: string; valor: string | undefined; faltante: string }) {
   return (
     <div className="apellidos-familia">
-      <div className="k">Apellidos de la familia</div>
+      <div className="k">{etiqueta}</div>
       <div className="v">
-        {apellidos ? apellidos : (
-          <span className="motivo-chip motivo-chip--warn"
-            title="Este expediente es de un padre de familia y no trae los apellidos de la familia: sin ellos no se puede cotejar contra el padrón escolar antes de instalar el TAG.">
+        {valor ? valor : (
+          <span className="motivo-chip motivo-chip--warn" title={faltante}>
             Sin capturar
           </span>
         )}
