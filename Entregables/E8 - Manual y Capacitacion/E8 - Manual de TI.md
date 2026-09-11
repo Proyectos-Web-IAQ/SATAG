@@ -86,7 +86,7 @@ Es el procedimiento principal de TI y el que se realiza en el estacionamiento, j
 8. **Solo si marcó esa casilla**, puede capturar el **"No. del TAG apartado (opcional, 6–11 dígitos)"** con el número del TAG de la escuela que queda reservado. La pantalla lo explica: **"Queda reservado, sin instalar, para una reposición futura."**. El campo es opcional; puede dejarlo vacío.
 9. Revise **"Instalado por"**. Llega prellenado con el nombre derivado del correo de la sesión y **es editable**: corríjalo si quien está instalando es otra persona.
 10. Pulse el botón grande. Dice **"Instalar y activar TAG {número}"** en cuanto el número es válido, y **"Instalar y activar"** mientras no lo es.
-11. Lea completo el diálogo **"Instalar y activar TAG"**. Repite el número, el vehículo, la persona y los estacionamientos: *"Se instalará el TAG {número} en el {marca} {modelo} {color} ({placas}) de {titular}, con acceso a {estacionamientos}, y el registro quedará activo."*, más **"Se apartará el TAG {número} de la escuela."** si aplica, más **"El TAG quedará marcado como escuela."** o **"El TAG quedará marcado como propio."** cuando la procedencia cambie respecto de lo que traía el expediente, y termina con **"Revise bien el número. ¿Continuar?"**.
+11. Lea completo el diálogo **"Instalar y activar TAG"**. Repite el número, el vehículo, la persona y los estacionamientos: *"Se instalará el TAG {número} en el {marca} {modelo} {color} ({placas}) de {titular}, con acceso a {estacionamientos}, y el registro quedará activo."*, más **"Se apartará el TAG {número} de la escuela."** si aplica, más **"El TAG quedará marcado como escuela."** o **"El TAG quedará marcado como propio."** cuando la procedencia cambie respecto de lo que traía el expediente, y termina con **"Compare el número de arriba con el impreso en el TAG. ¿Continuar?"**. El número sale grande, en su propio renglón, arriba del mensaje: **"TAG {número}"**.
 12. Pulse **"Instalar"** para ejecutar, o **"Cancelar"** para volver sin cambios.
 
 **Resultado:** el registro pasa a estado **"Activo"**, queda con su número de TAG y sus estacionamientos, sale de la cola de instalación y aparece el aviso verde **"TAG {número} instalado y activado ({folio})."** (seguido de **"TAG {número} apartado."** si se apartó uno). La pantalla se desplaza hasta el aviso para que usted lo lea.
@@ -101,7 +101,7 @@ Es el procedimiento principal de TI y el que se realiza en el estacionamiento, j
 
 > **Advertencia.** Un TAG sin acceso a ningún estacionamiento no le sirve de nada a la familia. Verifique los chips seleccionados **antes** de confirmar: después, corregirlos exige entrar de nuevo por **"Actualizar datos"**.
 
-> **Advertencia.** El número se teclea a mano y **el sistema no puede saber si usted leyó mal el dispositivo**. Por eso el diálogo insiste con **"Revise bien el número. ¿Continuar?"**. Compare el número en pantalla contra el TAG físico antes de pulsar **"Instalar"**.
+> **Advertencia.** El número se teclea a mano y **el sistema no puede saber si usted leyó mal el dispositivo**. Por eso el diálogo muestra el número grande, en su propio renglón arriba del mensaje (**"TAG {número}"**), y cierra con **"Compare el número de arriba con el impreso en el TAG. ¿Continuar?"**. Compárelo contra el TAG físico antes de pulsar **"Instalar"**.
 
 **Rechazos que puede devolver el sistema al confirmar:**
 
@@ -139,7 +139,7 @@ Sirve cuando la familia se presenta directamente y usted ya tiene su nombre o su
 2. Baje a la sección atenuada **"Esperando pago (N)"**, debajo de los registros que sí puede instalar.
 3. Abra la tarjeta si necesita revisar el expediente.
 4. Lea el aviso: **"Falta registrar el pago en Administración; el TAG se instala después del pago."**.
-5. **Aquí no hay formulario ni botón.** Avise a Administración para que registre el cobro. **La pantalla no se actualiza sola:** cuando Administración le confirme el cobro, recargue la página o vuelva a entrar a la cola. Entonces el registro dejará de estar en **"Esperando pago"** y pasará a la parte de arriba, entre los que sí puede instalar.
+5. **Aquí no hay formulario ni botón.** Avise a Administración para que registre el cobro. **La pantalla no se actualiza sola:** cuando Administración le confirme el cobro, toque **"Actualizar lista"**, arriba de la cola. Entonces el registro dejará de estar en **"Esperando pago"** y pasará a la parte de arriba, entre los que sí puede instalar.
 
 **Resultado:** el expediente está en la fila de instalación, pero el siguiente paso le corresponde a Administración.
 
@@ -350,7 +350,8 @@ Al final de cada expediente abierto —en las colas de TI, en el padrón y en la
 | **"No se pudieron cargar los registros."** | No se pudo leer el padrón o el buzón. Pulse **"Reintentar"**. No dé por hecho que no hay pendientes. |
 | **"Se requiere sesion con segundo factor (MFA)"** | La sesión no completó la verificación en dos pasos. Salga y vuelva a entrar capturando el código. |
 | **"La sesion expiro. Cierre sesion y vuelva a entrar."** | Su sesión caducó. Pulse **"Salir"** y entre de nuevo. |
-| **"Sin conexion con el servidor. Revise su red e intente de nuevo."** | Falla de red, frecuente en el estacionamiento. Acérquese a una zona con señal y repita la acción. |
+| **"Sin conexion con el servidor. Revise su red e intente de nuevo."** | Falla de red, frecuente en el estacionamiento. Acérquese a una zona con señal y, si aparece, pulse **"Reintentar"**. |
+| **"No hubo respuesta del servidor y la acción pudo haber quedado guardada. No la repita todavía: cuando la lista termine de actualizarse sin error (si no hay señal, toque «Actualizar lista» al recuperarla), revise si el cambio ya aparece, por ejemplo el TAG instalado en el expediente. Si ya aparece, sí quedó."** | Se cayó la red al instalar, actualizar o dar de baja, y la acción pudo haberse guardado aunque no llegó la respuesta. **No la repita** hasta que la lista se actualice y confirme que el cambio no quedó; si ya aparece, sí quedó. Repetirla a ciegas puede terminar en una reposición que deja inactivo el TAG recién instalado. |
 | **"Su usuario no tiene el rol requerido (ti)"** / **"Su usuario no tiene permiso para esta accion. Verifique su rol con el administrador."** | Su cuenta no tiene el perfil necesario. Solicite el ajuste al administrador del sistema. |
 | **"Elija al menos un estacionamiento."** | Al instalar es obligatorio marcar al menos un estacionamiento. |
 | **"Lleva {n} dígitos; deben ser de 6 a 11."** | El número de TAG está incompleto o mal capturado. |
@@ -421,10 +422,10 @@ Convienen tenerlas presentes para no buscarlas en pantalla ni prometérselas a u
 ## 17. Preguntas frecuentes
 
 **1. La familia ya está aquí con el coche, pero el registro aparece en "Esperando pago". ¿Puedo instalar y que paguen después?**
-No. Esa sección está atenuada y **no tiene formulario ni botón**: el sistema rechaza la instalación con **"El registro no tiene pago: el TAG se instala despues del pago"**. Avise a Administración para que registre el cobro; en cuanto exista el pago, **recargue la pantalla o vuelva a entrar a la cola** y el expediente aparecerá en la parte de arriba de **"Instalar TAG"**, listo para instalarlo.
+No. Esa sección está atenuada y **no tiene formulario ni botón**: el sistema rechaza la instalación con **"El registro no tiene pago: el TAG se instala despues del pago"**. Avise a Administración para que registre el cobro; en cuanto exista el pago, **toque "Actualizar lista"** y el expediente aparecerá en la parte de arriba de **"Instalar TAG"**, listo para instalarlo.
 
 **2. Me equivoqué al teclear el número de TAG y ya confirmé la instalación. ¿Cómo lo deshago?**
-No se deshace. **No existe ningún botón para revertir una instalación.** El camino es abrir el expediente en **"Actualizar datos"** y corregir el **"No. de TAG"**, pero tome en cuenta que **eso se registra como una reposición** y el número anterior queda inactivo de forma permanente. Por eso el diálogo insiste con **"Revise bien el número. ¿Continuar?"**: compare el número en pantalla contra el dispositivo físico antes de confirmar.
+No se deshace. **No existe ningún botón para revertir una instalación.** El camino es abrir el expediente en **"Actualizar datos"** y corregir el **"No. de TAG"**, pero tome en cuenta que **eso se registra como una reposición** y el número anterior queda inactivo de forma permanente. Por eso el diálogo muestra el número grande arriba (**"TAG {número}"**) y cierra con **"Compare el número de arriba con el impreso en el TAG. ¿Continuar?"**: compárelo contra el dispositivo físico antes de confirmar.
 
 **3. Di de baja el registro equivocado. ¿Hay forma de reactivarlo?**
 Desde el panel no. La tarjeta pierde todos sus chips de acción y solo muestra **"Registro dado de baja el {fecha} — {motivo}."**, y cualquier intento posterior se rechaza con **"El registro ya esta dado de baja"**. No hay **"Reactivar registro"** ni **"Quitar la baja"**. Reporte de inmediato el caso al responsable del sistema, con el folio a la mano.
