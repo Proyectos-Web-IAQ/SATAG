@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TagInventario, TramiteSolicitado } from "@/lib/mock/types";
-import { getMarcas, getColores } from "@/lib/supabase/api";
+import { getMarcas, getModelos, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
   listNotasSinExpediente,
@@ -890,11 +890,21 @@ type DatosVehiculo = {
   placas: string; setPlacas: (v: string) => void;
   sinPlacas: boolean; setSinPlacas: (v: boolean) => void;
   marca: string; setMarca: (v: string) => void;
+  marcaOtro: string; setMarcaOtro: (v: string) => void;
   modelo: string; setModelo: (v: string) => void;
+  modeloOtro: string; setModeloOtro: (v: string) => void;
   color: string; setColor: (v: string) => void;
+  colorOtro: string; setColorOtro: (v: string) => void;
+  // Modelos de la marca elegida. Tres estados, como estacionamientos en esta
+  // misma pantalla: undefined = cargando, null = no cargó (D-09), [] = ninguno.
+  modelos: string[] | null | undefined;
+  // Lo que de verdad se guarda: «Otro» ya sustituido por lo escrito.
+  marcaFinal: string; modeloFinal: string; colorFinal: string;
   // Sin placas y sin marcar «sin placas» la BD rechaza el trámite con el mismo
   // criterio (actualizar_registro): se avisa antes de gastar el viaje al RPC.
   placasValidas: boolean;
+  // Marca, modelo y color con un valor real: ningún «Otro» sin escribir.
+  vehiculoCompleto: boolean;
   // Lo que va al RPC y lo que se le muestra a quien atiende, en ese orden.
   cambios: CambiosRegistro;
   resumen: string[];
@@ -903,24 +913,65 @@ type DatosVehiculo = {
 function useDatosVehiculo(r: Registro): DatosVehiculo {
   const [placas, setPlacas] = useState(r.placas ?? "");
   const [sinPlacas, setSinPlacas] = useState(r.sinPlacas);
-  const [marca, setMarca] = useState(r.marca);
-  const [modelo, setModelo] = useState(r.modelo);
+  const [marca, setMarcaCruda] = useState(r.marca);
+  const [marcaOtro, setMarcaOtro] = useState("");
+  // Con marca «Otro» no hay catálogo del que cuelgue el modelo: se captura en
+  // modeloOtro, igual que en el alta.
+  const [modelo, setModelo] = useState(r.marca === "Otro" ? "Otro" : r.modelo);
+  const [modeloOtro, setModeloOtro] = useState(r.marca === "Otro" ? r.modelo : "");
   const [color, setColor] = useState(r.color);
+  const [colorOtro, setColorOtro] = useState("");
+  const [modelos, setModelos] = useState<string[] | null | undefined>(undefined);
+
+  // El modelo se limpia en el cambio de marca y no en el efecto: así abrir la
+  // pantalla nunca borra el modelo que ya trae el expediente.
+  const setMarca = (m: string) => {
+    setMarcaCruda(m);
+    setModelo(m === "Otro" ? "Otro" : "");
+    setModeloOtro("");
+  };
+
+  useEffect(() => {
+    if (marca === "" || marca === "Otro") { setModelos([]); return; }
+    // Con dos cambios de marca seguidos, la respuesta de la primera puede llegar
+    // al final y dejar sus modelos bajo la marca nueva: sólo cuenta la vigente.
+    let vigente = true;
+    setModelos(undefined);
+    getModelos(marca)
+      .then((ms) => { if (vigente) setModelos(ms); })
+      .catch(() => { if (vigente) setModelos(null); });
+    return () => { vigente = false; };
+  }, [marca]);
 
   // Las placas se guardan siempre en mayúsculas: es como las lee la caseta y
   // como las compara ZK. La cadena vacía es "no capturado", no "sin placas".
   const placasFinal = sinPlacas ? null : (placas.trim().toUpperCase() || null);
   const placasValidas = sinPlacas || placasFinal !== null;
 
+  // «Otro» es opción de la pantalla, nunca el dato: lo que va al RPC y lo que se
+  // le lee al titular en la confirmación es siempre lo escrito.
+  const marcaFinal = (marca === "Otro" ? marcaOtro : marca).trim();
+  const modeloFinal = (modelo === "Otro" ? modeloOtro : modelo).trim();
+  const colorFinal = (color === "Otro" ? colorOtro : color).trim();
+  const vehiculoCompleto = marcaFinal !== "" && modeloFinal !== "" && colorFinal !== "";
+
   const cambios: CambiosRegistro = {};
   const resumen: string[] = [];
   if (placasFinal !== r.placas || sinPlacas !== r.sinPlacas) { cambios.placas = placasFinal; cambios.sinPlacas = sinPlacas; resumen.push(`placas ${r.placas ?? "sin placas"} → ${placasFinal ?? "sin placas"}`); }
-  if (marca !== r.marca) { cambios.marca = marca; resumen.push(`marca ${r.marca} → ${marca}`); }
-  // Un modelo vacío no es un cambio: se ignora en vez de borrar lo capturado.
-  if (modelo.trim() && modelo.trim() !== r.modelo) { cambios.modelo = modelo.trim(); resumen.push(`modelo ${r.modelo} → ${modelo.trim()}`); }
-  if (color !== r.color) { cambios.color = color; resumen.push(`color ${r.color} → ${color}`); }
+  // Un dato vacío no es un cambio: se ignora en vez de borrar lo capturado. Los
+  // formularios, además, no dejan guardar un vehículo corregido a medias.
+  if (marcaFinal && marcaFinal !== r.marca) { cambios.marca = marcaFinal; resumen.push(`marca ${r.marca} → ${marcaFinal}`); }
+  if (modeloFinal && modeloFinal !== r.modelo) { cambios.modelo = modeloFinal; resumen.push(`modelo ${r.modelo} → ${modeloFinal}`); }
+  if (colorFinal && colorFinal !== r.color) { cambios.color = colorFinal; resumen.push(`color ${r.color} → ${colorFinal}`); }
 
-  return { placas, setPlacas, sinPlacas, setSinPlacas, marca, setMarca, modelo, setModelo, color, setColor, placasValidas, cambios, resumen };
+  return {
+    placas, setPlacas, sinPlacas, setSinPlacas,
+    marca, setMarca, marcaOtro, setMarcaOtro,
+    modelo, setModelo, modeloOtro, setModeloOtro,
+    color, setColor, colorOtro, setColorOtro,
+    modelos, marcaFinal, modeloFinal, colorFinal,
+    placasValidas, vehiculoCompleto, cambios, resumen,
+  };
 }
 
 // Los controles del vehículo. Los catálogos siempre incluyen el valor que trae
@@ -931,6 +982,15 @@ function useDatosVehiculo(r: Registro): DatosVehiculo {
 function CamposVehiculo({ v, r, marcas, colores, junto }: {
   v: DatosVehiculo; r: Registro; marcas: string[]; colores: string[]; junto?: ReactNode;
 }) {
+  const cargandoModelos = v.modelos === undefined;
+  const faltaMarca = v.marca === "Otro" && v.marcaFinal === "";
+  // Mientras el catálogo carga, el modelo vacío no es un error de quien atiende.
+  const faltaModelo = !cargandoModelos && v.modeloFinal === "";
+  const faltaColor = v.color === "Otro" && v.colorFinal === "";
+  // El modelo del expediente sólo se ofrece mientras la marca siga siendo la
+  // suya: un modelo de Nissan no tiene sentido bajo Honda. "Otro" va a mano
+  // para que exista aunque el catálogo no haya cargado.
+  const opcionesModelo = [...new Set(["", ...(v.marca === r.marca ? [r.modelo] : []), ...(v.modelos ?? []), "Otro"])];
   return (
     <>
       <div className="grid-2">
@@ -947,18 +1007,60 @@ function CamposVehiculo({ v, r, marcas, colores, junto }: {
       <div className="grid-2">
         <div className="field">
           <span>Marca</span>
-          <select className="select" value={v.marca} onChange={(e) => v.setMarca(e.target.value)}>
-            {[...new Set([r.marca, ...marcas])].map((m) => <option key={m} value={m}>{m}</option>)}
+          <select className={`select ${faltaMarca ? "invalid" : ""}`} value={v.marca} onChange={(e) => v.setMarca(e.target.value)}>
+            {[...new Set([r.marca, ...marcas, "Otro"])].map((m) => <option key={m} value={m}>{m || "Seleccione…"}</option>)}
           </select>
+          {v.marca === "Otro" && (
+            <input className={`input ${faltaMarca ? "invalid" : ""}`} value={v.marcaOtro}
+              onChange={(e) => v.setMarcaOtro(e.target.value)} placeholder="Especifique la marca" />
+          )}
+          {faltaMarca && <p className="field-error">Escriba la marca del vehículo.</p>}
         </div>
-        <div className="field"><span>Modelo</span><input className="input" value={v.modelo} onChange={(e) => v.setModelo(e.target.value)} /></div>
+        <div className="field">
+          <span>Modelo</span>
+          {v.marca === "Otro" ? (
+            <input className={`input ${faltaModelo ? "invalid" : ""}`} value={v.modeloOtro}
+              onChange={(e) => v.setModeloOtro(e.target.value)} placeholder="Escriba el modelo" />
+          ) : (
+            <>
+              <select className={`select ${faltaModelo ? "invalid" : ""}`} value={v.modelo}
+                onChange={(e) => v.setModelo(e.target.value)} disabled={cargandoModelos}>
+                {opcionesModelo.map((m) => (
+                  <option key={m} value={m}>
+                    {m || (cargandoModelos ? `Cargando los modelos de ${v.marca}…` : "Seleccione…")}
+                  </option>
+                ))}
+              </select>
+              {v.modelo === "Otro" && (
+                <input className={`input ${faltaModelo ? "invalid" : ""}`} value={v.modeloOtro}
+                  onChange={(e) => v.setModeloOtro(e.target.value)} placeholder="Especifique el modelo" />
+              )}
+            </>
+          )}
+          {v.modelos === null && (
+            // D-09: se dice tal cual que no cargó. No se bloquea: el modelo es
+            // texto libre en la BD y quien instala tiene a la familia enfrente.
+            <p className="field-error" role="alert">
+              No se pudieron cargar los modelos de {v.marca}.{" "}
+              {v.marca === r.marca
+                ? `Se conserva el que trae el expediente (${r.modelo}); si necesita otro, elija «Otro» y escríbalo, o recargue la página para volver a la lista.`
+                : "Elija «Otro» y escriba el modelo, o recargue la página para volver a la lista."}
+            </p>
+          )}
+          {faltaModelo && v.modelos !== null && <p className="field-error">Elija o escriba el modelo del vehículo.</p>}
+        </div>
       </div>
       <div className="grid-2">
         <div className="field">
           <span>Color</span>
-          <select className="select" value={v.color} onChange={(e) => v.setColor(e.target.value)}>
-            {[...new Set([r.color, ...colores])].map((c) => <option key={c} value={c}>{c}</option>)}
+          <select className={`select ${faltaColor ? "invalid" : ""}`} value={v.color} onChange={(e) => v.setColor(e.target.value)}>
+            {[...new Set([r.color, ...colores, "Otro"])].map((c) => <option key={c} value={c}>{c || "Seleccione…"}</option>)}
           </select>
+          {v.color === "Otro" && (
+            <input className={`input ${faltaColor ? "invalid" : ""}`} value={v.colorOtro}
+              onChange={(e) => v.setColorOtro(e.target.value)} placeholder="Especifique el color" />
+          )}
+          {faltaColor && <p className="field-error">Escriba el color del vehículo.</p>}
         </div>
         {junto}
       </div>
@@ -1002,8 +1104,14 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
     : null;
   // Sólo estorba la instalación cuando de verdad hay algo que corregir: un
   // expediente que ya venía sin placas ni «sin placas» se instala como siempre
-  // (ese faltante se atiende en «Expedientes incompletos», no aquí).
-  const correccionInvalida = hayCorreccion && !veh.placasValidas;
+  // (ese faltante se atiende en «Expedientes incompletos», no aquí). Lo mismo el
+  // vehículo: sólo bloquea si quien atiende lo tocó y lo dejó a medias; instalar
+  // sin corregir nada sigue funcionando para cualquier expediente.
+  const correccionInvalida = hayCorreccion && (!veh.placasValidas || !veh.vehiculoCompleto);
+  const vehiculoAMedias = hayCorreccion && !veh.vehiculoCompleto;
+  // Con la marca recién cambiada el modelo queda vacío hasta que llega su
+  // catálogo: eso es esperar, no un dato que le falte a quien atiende.
+  const esperandoModelos = veh.modelos === undefined && veh.modeloFinal === "";
   const toggle = (c: string) =>
     setClaves((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
   return (
@@ -1120,6 +1228,18 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
           )}
         </p>
       )}
+      {vehiculoAMedias && (esperandoModelos ? (
+        <p className="ti-hint" style={{ marginBottom: 12 }}>
+          Cargando los modelos de {veh.marca}… En cuanto aparezcan, elija el modelo para poder instalar.
+        </p>
+      ) : (
+        <p className="field-error" style={{ marginBottom: 12 }}>
+          La corrección dejó sin completar la marca, el modelo o el color. Complételos para poder instalar.
+          {!corrigiendo && (
+            <>{" "}<button type="button" className="link-action" onClick={() => setCorrigiendo(true)}>Completarlos</button></>
+          )}
+        </p>
+      ))}
       <button type="button" className="primary-action"
         disabled={busy || !valido || claves.length === 0 || !apartadoValido || correccionInvalida}
         onClick={() => onSubmit(tag, claves, propio, apartadoNo, correccion)}>
@@ -1227,7 +1347,7 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
       </div>
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action"
-        disabled={busy || !hayCambios || !tagValido || !veh.placasValidas || (r.tagApartado && procedencia === "escuela")}
+        disabled={busy || !hayCambios || !tagValido || !veh.placasValidas || (veh.resumen.length > 0 && !veh.vehiculoCompleto) || (r.tagApartado && procedencia === "escuela")}
         onClick={() => onSubmit(cambios, estCambia ? claves : null, resumen.join("; "), motivo)}>
         Guardar cambios
       </button>
