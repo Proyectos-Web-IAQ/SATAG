@@ -219,8 +219,4 @@ Se señalan para que Legal y Ana Barrón las tengan presentes; no se deciden aqu
 
 ---
 
-**Nota interna, no requiere decisión de Legal.** La documentación técnica de la base de datos todavía cita al "chofer de la familia" como ejemplo del tipo de usuario "otro", cuando la decisión vigente reserva ese tipo a los familiares. No es texto publicado ni lo ve la familia; queda anotado como tarea de mantenimiento del área de Sistemas para que nadie lo lea después como criterio vigente.
-
----
-
 **Trazabilidad.** La versión vigente del aviso es la **6**, publicada el 11 de septiembre de 2026, y es la que se muestra y se firma hoy. Si Legal pide cambios, no se corrige el texto en su lugar: se publica una versión nueva. Las versiones anteriores se conservan intactas y cada aceptación ya firmada sigue acreditando el texto exacto que se le mostró.
