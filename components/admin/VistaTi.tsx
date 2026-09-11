@@ -37,6 +37,8 @@ type CorreccionVehiculo = { cambios: CambiosRegistro; resumen: string; motivo: s
 
 type ConfirmCfg = {
   title: string; message: string; confirmLabel: string; danger: boolean;
+  // Lo que se coteja contra lo físico (el No. de TAG); el diálogo lo pinta grande.
+  dato?: string;
   action: () => Promise<AccionResultado>;
   // Texto del aviso de exito; como funcion cuando necesita datos de la respuesta
   // (p.ej. el folio recien asignado).
@@ -55,6 +57,27 @@ const TAG_RE = /^[0-9]{6,11}$/;
 const TRAMITES_TI: TramiteSolicitado[] = ["actualizacion", "baja"];
 // Semáforo de los contadores: verde (0), amarillo (pocos), rojo (muchos).
 const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
+
+// Mensaje con el que apiPanel (traducirError) reporta una falla de red.
+const SIN_CONEXION = "Sin conexion";
+
+const normalizar = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const sinSeparadores = (s: string) => s.replace(/[\s-]+/g, "");
+
+// Buscador de todas las colas. Sin un falso «Sin resultados»: «perez» encuentra
+// «Pérez», el orden de las palabras no importa, los apellidos de la familia
+// cuentan (así llega la gente: «vengo por lo de los Pérez») y «UAB-1234»
+// encuentra «UAB1234», que es como se guardan las placas.
+const coincideBusqueda = (r: Registro, consulta: string): boolean => {
+  const c = normalizar(consulta.trim());
+  if (!c) return true;
+  const texto = normalizar(
+    [r.usuarioNombre, r.gestionanteNombre ?? "", r.apellidosFamilia ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
+      .join(" "));
+  if (c.split(/\s+/).every((p) => texto.includes(p))) return true;
+  const compacta = sinSeparadores(c);
+  return compacta !== "" && sinSeparadores(normalizar(r.placas ?? "")).includes(compacta);
+};
 
 // ¿El registro tiene una peticion pendiente de este tramite? Cuenta la solicitud
 // de folio de ese tipo (actualizacion/baja) Y una nota vinculada (SC-003) cuyo
@@ -147,6 +170,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const [accionPadron, setAccionPadron] = useState<Accion | null>(null);
 
   const [busy, setBusy] = useState(false);
+  // busy es uno para toda la vista (también descartar una nota lo prende): el
+  // botón que dice «Instalando el TAG X…» sale de aquí, del expediente y del
+  // número que de verdad se mandaron, no del chip que esté marcado en ese momento.
+  const [enCurso, setEnCurso] = useState<{ id: string; accion: Accion; tag?: string } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -159,7 +186,12 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   // acción al usuario que inició sesión anteriormente.
   const [tiNombre, setTiNombre] = useState(nombreSesion ?? "");
 
+  // Con «Actualizar lista», entrar a una cola y el refresco tras cada acción, dos
+  // lecturas pueden cruzarse: sólo pinta la última que se pidió, para que una
+  // respuesta lenta anterior a una instalación no regrese el expediente a la fila.
+  const refreshSeq = useRef(0);
   async function refresh() {
+    const seq = ++refreshSeq.current;
     setLoading(true);
     try {
       const [list, notasList, incompletosList, inventarioRes, mapaRes] = await Promise.all([
@@ -175,6 +207,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
           (e: unknown) => ({ ok: false as const, e }),
         ),
       ]);
+      if (seq !== refreshSeq.current) return;
       setRegistros(list);
       setNotas(notasList);
       setIncompletos(incompletosList);
@@ -198,10 +231,27 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       }
       setLoadError(null);
     } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los registros.");
+      if (seq === refreshSeq.current) setLoadError(e instanceof Error ? e.message : "No se pudieron cargar los registros.");
     } finally {
-      setLoading(false);
+      if (seq === refreshSeq.current) setLoading(false);
     }
+  }
+  // Estacionamientos NO lleva respaldo inventado (D-09): null significa "no
+  // cargó" y los formularios lo dicen tal cual. Unas claves de relleno
+  // parecerían el catálogo real y llevarían a asignar un acceso inválido.
+  function cargarEstacionamientos() {
+    setEstacionamientos(undefined);
+    getEstacionamientos()
+      .then((es) => setEstacionamientos(es.map((e) => e.clave)))
+      .catch(() => setEstacionamientos(null));
+  }
+  // Lo que la familia vio pasar en caja (el pago) o lo que otra persona de TI
+  // ya instaló no llega solo a este celular: la vista lee la base al abrirse y
+  // tras una acción propia. Aquí se vuelve a leer a petición, y el catálogo de
+  // estacionamientos se reintenta si no cargó (los avisos D-09 remiten aquí).
+  function actualizarLista() {
+    refresh();
+    if (estacionamientos === null) cargarEstacionamientos();
   }
   useEffect(() => {
     refresh();
@@ -209,12 +259,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     // registro ya trae; la BD valida las claves reales al asignar.
     getMarcas().then(setMarcas).catch(() => {});
     getColores().then(setColores).catch(() => {});
-    // Estacionamientos NO lleva respaldo inventado (D-09): null significa "no
-    // cargó" y los formularios lo dicen tal cual. Unas claves de relleno
-    // parecerían el catálogo real y llevarían a asignar un acceso inválido.
-    getEstacionamientos()
-      .then((es) => setEstacionamientos(es.map((e) => e.clave)))
-      .catch(() => setEstacionamientos(null));
+    cargarEstacionamientos();
   }, []);
 
   // Alineado con el RPC instalar_tag: solo registros PENDIENTES sin TAG y con
@@ -263,9 +308,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     && (todoPadronZk || !desdeZk || (r.fechaInstalacion ?? "") >= desdeZk));
 
   const q = query.trim().toLowerCase();
-  const coincide = (r: Registro) =>
-    [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
-      .join(" ").toLowerCase().includes(q);
+  const coincide = (r: Registro) => coincideBusqueda(r, query);
   // sort() es estable: dentro de cada grupo se conserva el orden de listRegistros
   // (nuevos primero).
   const padron = [...(q ? registros.filter(coincide) : registros)]
@@ -277,6 +320,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   const resultadosAccion = (modo === "actualizar" || modo === "baja") && q
     ? registros.filter((r) => r.estado !== "baja" && !listaSolicitudes.includes(r) && coincide(r))
     : [];
+  // «Instalar TAG» va ordenada por el pago más antiguo, no por el orden en que
+  // llegan los coches: con la familia enfrente se busca, no se recorre a ojo.
+  const filaInstalar = q ? porInstalar.filter(coincide) : porInstalar;
+  const filaSinPago = q ? instalarSinPago.filter(coincide) : instalarSinPago;
 
   async function run(fn: () => Promise<AccionResultado>, ok: ConfirmCfg["ok"], after?: () => void) {
     if (busy) return;
@@ -288,9 +335,23 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       setFeedback(typeof ok === "function" ? ok(res) : ok);
       after?.();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Error");
+      const mensaje = e instanceof Error ? e.message : "Error";
+      if (mensaje.startsWith(SIN_CONEXION)) {
+        // La respuesta pudo perderse DESPUÉS de guardar. Repetir a ciegas lleva
+        // a «ya tiene el TAG X instalado» y de ahí a una reposición que deja
+        // inactivo el TAG recién pegado: primero hay que ver cómo quedó.
+        // La prueba es cómo quedó el expediente tras una lectura que SÍ llegó, no
+        // su lugar en la fila: en el padrón sigue ahí aunque ya esté instalado.
+        setError("No hubo respuesta del servidor y la acción pudo haber quedado guardada. No la repita todavía: cuando la lista termine de actualizarse sin error (si no hay señal, toque «Actualizar lista» al recuperarla), revise si el cambio ya aparece, por ejemplo el TAG instalado en el expediente. Si ya aparece, sí quedó.");
+        // Sin esto, en el padrón quedaría abierto «Instalar y activar» sobre un
+        // expediente que quizá ya está activo.
+        setAccionPadron(null);
+        refresh();
+      } else {
+        setError(mensaje);
+      }
     } finally {
-      setBusy(false);
+      setBusy(false); setEnCurso(null);
       // Éxito o error, el aviso queda a la vista: los formularios pueden estar
       // muy abajo en el padrón móvil y una acción sin reacción visible se
       // siente como que no pasó nada.
@@ -301,6 +362,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   function irA(m: Modo) {
     setModo(m); setSelId(null); setAccionPadron(null); setQuery("");
     setFeedback(null); setError(null);
+    if (m !== "inicio") refresh();
   }
   function toggleSel(id: string) {
     setSelId((cur) => (cur === id ? null : id));
@@ -323,11 +385,12 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     const vehiculo = `${c?.marca ?? r.marca} ${c?.modelo ?? r.modelo} ${c?.color ?? r.color} (${placas ?? "sin placas"})`;
     setConfirm({
       title: correccion ? "Corregir datos e instalar TAG" : "Instalar y activar TAG",
+      dato: `TAG ${tag}`,
       message: (correccion ? `Primero se corregirán los datos del vehículo: ${correccion.resumen}. ` : "")
         + `Se instalará el TAG ${tag} en el ${vehiculo} de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo.`
         + (apartado ? ` Se apartará el TAG ${apartado} de la escuela.` : "")
         + (cambiaProcedencia ? ` El TAG quedará marcado como ${procedencia}.` : "")
-        + " Revise bien el número. ¿Continuar?",
+        + " Compare el número de arriba con el impreso en el TAG. ¿Continuar?",
       confirmLabel: correccion ? "Corregir e instalar" : "Instalar", danger: false,
       // Dos llamadas EN ORDEN, no una transacción: la corrección primero y, sólo
       // si guardó, la instalación. Si la corrección falla, el await corta aquí
@@ -336,6 +399,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       // pospuesta. El estacionamiento va en null (no cambia): lo asigna el RPC
       // de instalación en la misma transacción de siempre.
       action: async () => {
+        setEnCurso({ id: r.id, accion: "instalar", tag });
         if (!correccion) {
           return instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia });
         }
@@ -355,15 +419,23 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       },
       ok: (correccion ? "Datos del vehículo corregidos. " : "")
         + `TAG ${tag} instalado y activado (${r.folio}).` + (apartado ? ` TAG ${apartado} apartado.` : ""),
+      // En la fila de instalación el buscador queda vacío para la placa del
+      // siguiente coche; en el padrón se conserva, y el expediente recién
+      // activado sigue a la vista para comprobarlo.
+      after: () => { if (modo === "instalar") setQuery(""); },
     });
   }
   // claves null = el estacionamiento no cambió (no se llama a su RPC).
   function confirmarActualizar(r: Registro, cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) {
     setConfirm({
       title: "Actualizar registro",
+      dato: cambios.noDispositivo ? `TAG ${cambios.noDispositivo}` : undefined,
       message: `Cambios en ${r.folio} (${r.usuarioNombre}): ${resumen}. ¿Guardar?`,
       confirmLabel: "Guardar cambios", danger: false,
-      action: () => actualizarRegistroConEstacionamiento(r.id, cambios, claves, motivo, tiNombre),
+      action: () => {
+        setEnCurso({ id: r.id, accion: "actualizar" });
+        return actualizarRegistroConEstacionamiento(r.id, cambios, claves, motivo, tiNombre);
+      },
       ok: `Registro ${r.folio} actualizado.`,
     });
   }
@@ -372,7 +444,10 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       title: "Dar de baja",
       message: `Se dará de baja el registro ${r.folio} (${r.usuarioNombre}) y su TAG quedará inactivo. ¿Continuar?`,
       confirmLabel: "Dar de baja", danger: true,
-      action: () => darBaja(r.id, motivo, tiNombre),
+      action: () => {
+        setEnCurso({ id: r.id, accion: "baja" });
+        return darBaja(r.id, motivo, tiNombre);
+      },
       ok: `Registro ${r.folio} dado de baja.`,
     });
   }
@@ -381,6 +456,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
   function confirmarUsarApartado(r: Registro) {
     setConfirm({
       title: "Usar el TAG apartado",
+      dato: `TAG ${r.tagApartadoNo}`,
       message: `Se activará el TAG apartado ${r.tagApartadoNo} en ${r.folio} (${r.usuarioNombre}). El TAG actual ${r.noDispositivo ?? "—"} quedará inactivo y la procedencia pasará a escuela. ¿Continuar?`,
       confirmLabel: "Usar TAG apartado", danger: false,
       action: () => usarTagApartado(r.id, tiNombre),
@@ -516,16 +592,22 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
     </div>
   );
 
+  const botonActualizar = (
+    <button type="button" className="ghost-action ti-refresh" disabled={loading} onClick={actualizarLista}>
+      {loading ? "Actualizando…" : "Actualizar lista"}
+    </button>
+  );
+
   function formPara(accion: Accion, r: Registro) {
     if (accion === "instalar") {
       // El TAG reservado desde la captura (SC-026) va primero y prellenado.
       const reservado = tagReservadoDe.get(r.id) ?? null;
       const chips = [...(reservado ? [reservado] : []), ...tagsDisponibles.map((t) => t.noDispositivo)];
-      return <FormInstalar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} disponibles={chips} tagReservado={reservado} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo, correccion) => confirmarInstalar(r, tag, claves, propio, apartadoNo, correccion)} />;
+      return <FormInstalar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} disponibles={chips} tagReservado={reservado} busy={busy} instalando={enCurso?.accion === "instalar" && enCurso.id === r.id ? enCurso.tag ?? null : null} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo, correccion) => confirmarInstalar(r, tag, claves, propio, apartadoNo, correccion)} />;
     }
     if (accion === "actualizar")
-      return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onUsarApartado={() => confirmarUsarApartado(r)} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
-    return <FormBaja r={r} busy={busy} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(m) => confirmarBaja(r, m)} />;
+      return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} guardando={enCurso?.accion === "actualizar" && enCurso.id === r.id} tiNombre={tiNombre} onTiNombre={setTiNombre} onUsarApartado={() => confirmarUsarApartado(r)} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
+    return <FormBaja r={r} busy={busy} guardando={enCurso?.accion === "baja" && enCurso.id === r.id} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(m) => confirmarBaja(r, m)} />;
   }
 
   if (loading && registros.length === 0) return <Loader label="Cargando registros…" />;
@@ -587,8 +669,11 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
           </div>
 
           <div className="panel">
-            <p className="panel-title">Padrón completo ({padron.length})</p>
-            <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
+            <div className="ti-topbar">
+              <p className="panel-title">Padrón completo ({padron.length})</p>
+              {botonActualizar}
+            </div>
+            <input className="input search" type="search" placeholder="Buscar por nombre, apellidos, placa, No. de TAG o folio…"
               value={query} onChange={(e) => { setQuery(e.target.value); setMostrarTi(25); }} style={{ marginBottom: 10 }} />
             <div className="chip-row" style={{ marginBottom: 12 }}>
               {([["todos", "Todos"], ["pendiente", "Pendientes"], ["activo", "Activos"], ["baja", "Baja"]] as const).map(([k, label]) => (
@@ -616,7 +701,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                           onClick={() => setAccionPadron((a) => (a === "baja" ? null : "baja"))}>Dar de baja</button>
                       </div>
                       {!r.noDispositivo && r.pagos.length === 0 && (
-                        <p className="ti-hint">Sin pago registrado: el TAG se instala después del pago (Administración).</p>
+                        <p className="ti-hint">Falta registrar el pago en Administración. Si la familia ya pagó, toque «Actualizar lista».</p>
                       )}
                       {accionPadron && formPara(accionPadron, r)}
                     </>
@@ -643,17 +728,29 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
           <div className="ti-topbar">
             <button type="button" className="ti-back" onClick={() => irA("inicio")}>← Inicio</button>
             <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : modo === "incompletos" ? "Expedientes incompletos" : modo === "tags" ? "TAGs de la escuela" : "Dar de baja"}</h2>
+            {botonActualizar}
           </div>
           {banners}
 
           {modo === "instalar" && (
-            porInstalar.length === 0 && instalarSinPago.length === 0
+            <input className="input search" type="search" placeholder="Placas, apellidos de la familia o nombre…"
+              value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
+          )}
+          {modo === "instalar" && (
+            porInstalar.length === 0 && instalarSinPago.length === 0 && !q
               ? <p className="ti-empty">✓ No hay TAGs pendientes de instalar. Todo al día.</p>
+              : filaInstalar.length === 0 && filaSinPago.length === 0
+              ? (
+                <p className="ti-hint">
+                  No está en la fila de instalación. Toque «Actualizar lista»; si sigue sin aparecer, búsquelo en
+                  el «Padrón completo» (← Inicio): puede que ya tenga TAG o que no se haya registrado.
+                </p>
+              )
               : (
                 <>
-                  {porInstalar.length > 0 && (
+                  {filaInstalar.length > 0 && (
                     <div className="ti-cards">
-                      {porInstalar.map((r) => (
+                      {filaInstalar.map((r) => (
                         <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                           <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                           {formPara("instalar", r)}
@@ -662,16 +759,16 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                       ))}
                     </div>
                   )}
-                  {instalarSinPago.length > 0 && (
+                  {filaSinPago.length > 0 && (
                     <>
-                      <p className="ti-section-title" style={{ marginTop: porInstalar.length > 0 ? 18 : 0 }}>
-                        Esperando pago ({instalarSinPago.length})
+                      <p className="ti-section-title" style={{ marginTop: filaInstalar.length > 0 ? 18 : 0 }}>
+                        Esperando pago ({filaSinPago.length})
                       </p>
                       <div className="ti-cards ti-cards--muted">
-                        {instalarSinPago.map((r) => (
+                        {filaSinPago.map((r) => (
                           <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                             <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
-                            <p className="ti-hint">Falta registrar el pago en Administración; el TAG se instala después del pago.</p>
+                            <p className="ti-hint">Falta registrar el pago en Administración. Si la familia ya pagó, toque «Actualizar lista».</p>
                             <EvidenciaFirmaPanel registroId={r.id} />
                           </TarjetaRegistro>
                         ))}
@@ -700,7 +797,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                 </>
               )}
               <p className="ti-section-title">Atender a alguien más</p>
-              <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
+              <input className="input search" type="search" placeholder="Buscar por nombre, apellidos, placa, No. de TAG o folio…"
                 value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
               {q === "" ? (
                 <p className="ti-hint">Busque el registro de la persona para {modo === "actualizar" ? "actualizar sus datos" : "darla de baja"}.</p>
@@ -870,6 +967,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         <ConfirmDialog
           title={confirm.title}
           message={confirm.message}
+          dato={confirm.dato}
           confirmLabel={confirm.confirmLabel}
           danger={confirm.danger}
           onCancel={() => setConfirm(null)}
@@ -1069,10 +1167,11 @@ function CamposVehiculo({ v, r, marcas, colores, junto }: {
 }
 
 // ---- Formularios de acción ----
-function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagReservado, busy, tiNombre, onTiNombre, onSubmit }: {
+function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagReservado, busy, instalando, tiNombre, onTiNombre, onSubmit }: {
   r: Registro; marcas: string[]; colores: string[];
   estacionamientos: string[] | null | undefined; disponibles: string[]; tagReservado: string | null;
-  busy: boolean; tiNombre: string;
+  // busy sólo deshabilita; instalando es el No. de TAG que se está guardando en ESTE expediente.
+  busy: boolean; instalando: string | null; tiNombre: string;
   onTiNombre: (v: string) => void;
   onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string, correccion: CorreccionVehiculo | null) => void;
 }) {
@@ -1148,12 +1247,12 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
           claves.length > 0 ? (
             <p className="field-error" role="alert">
               No se pudo cargar el catálogo de estacionamientos. Se instalará con la asignación que
-              ya tiene el expediente ({claves.join(" + ")}); recargue la página si necesita cambiarla.
+              ya tiene el expediente ({claves.join(" + ")}); toque «Actualizar lista» si necesita cambiarla.
             </p>
           ) : (
             <p className="field-error" role="alert">
               No se pudo cargar el catálogo de estacionamientos y este expediente no tiene ninguno
-              asignado. Recargue la página para poder asignar el acceso.
+              asignado. Toque «Actualizar lista» para poder asignar el acceso.
             </p>
           )
         ) : (
@@ -1243,7 +1342,9 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
       <button type="button" className="primary-action"
         disabled={busy || !valido || claves.length === 0 || !apartadoValido || correccionInvalida}
         onClick={() => onSubmit(tag, claves, propio, apartadoNo, correccion)}>
-        {hayCorreccion
+        {instalando
+          ? `Instalando el TAG ${instalando}… no cierre esta pantalla`
+          : hayCorreccion
           ? (valido ? `Corregir datos e instalar el TAG ${tag}` : "Corregir datos e instalar")
           : (valido ? `Instalar y activar TAG ${tag}` : "Instalar y activar")}
       </button>
@@ -1251,8 +1352,8 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
   );
 }
 
-function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, onTiNombre, onUsarApartado, onSubmit }: {
-  r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[] | null | undefined; busy: boolean;
+function FormActualizar({ r, marcas, colores, estacionamientos, busy, guardando, tiNombre, onTiNombre, onUsarApartado, onSubmit }: {
+  r: Registro; marcas: string[]; colores: string[]; estacionamientos: string[] | null | undefined; busy: boolean; guardando: boolean;
   tiNombre: string; onTiNombre: (v: string) => void;
   onUsarApartado: () => void;
   onSubmit: (cambios: CambiosRegistro, claves: string[] | null, resumen: string, motivo: string) => void;
@@ -1335,7 +1436,7 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
           // (que viene del registro, no del catálogo) se conserva tal cual.
           <p className="field-error" role="alert">
             No se pudo cargar el catálogo de estacionamientos. Se conserva la asignación actual
-            ({r.estacionamientos.join(" + ") || "sin asignar"}); recargue la página para poder cambiarla.
+            ({r.estacionamientos.join(" + ") || "sin asignar"}); toque «Actualizar lista» para poder cambiarla.
           </p>
         ) : (
           <div className="chip-row">
@@ -1349,15 +1450,15 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, tiNombre, 
       <button type="button" className="primary-action"
         disabled={busy || !hayCambios || !tagValido || !veh.placasValidas || (veh.resumen.length > 0 && !veh.vehiculoCompleto) || (r.tagApartado && procedencia === "escuela")}
         onClick={() => onSubmit(cambios, estCambia ? claves : null, resumen.join("; "), motivo)}>
-        Guardar cambios
+        {guardando ? "Guardando…" : "Guardar cambios"}
       </button>
       {!hayCambios && <p className="hint" style={{ marginTop: 8 }}>Modifique algún dato para poder guardar.</p>}
     </div>
   );
 }
 
-function FormBaja({ r, busy, tiNombre, onTiNombre, onSubmit }: {
-  r: Registro; busy: boolean; tiNombre: string; onTiNombre: (v: string) => void; onSubmit: (motivo: string) => void;
+function FormBaja({ r, busy, guardando, tiNombre, onTiNombre, onSubmit }: {
+  r: Registro; busy: boolean; guardando: boolean; tiNombre: string; onTiNombre: (v: string) => void; onSubmit: (motivo: string) => void;
 }) {
   // Si hay una peticion de baja pendiente (solicitud de folio o nota vinculada
   // que pidio baja), su detalle prellena el motivo.
@@ -1369,7 +1470,7 @@ function FormBaja({ r, busy, tiNombre, onTiNombre, onSubmit }: {
       <div className="field"><span>Motivo de baja</span><input className="input" value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. egreso, cambio de vehículo" /></div>
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action btn-danger" disabled={busy || !motivo.trim()} onClick={() => onSubmit(motivo)}>
-        Dar de baja
+        {guardando ? "Dando de baja…" : "Dar de baja"}
       </button>
     </div>
   );
@@ -1443,9 +1544,7 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
   // No se puede vincular a un registro dado de baja. Tope de 8 para no volcar
   // el padron entero dentro de la tarjeta.
   const resultados = query
-    ? registros.filter((r) => r.estado !== "baja" &&
-        [r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.folio, r.marca, r.modelo]
-          .join(" ").toLowerCase().includes(query)).slice(0, 8)
+    ? registros.filter((r) => r.estado !== "baja" && coincideBusqueda(r, q)).slice(0, 8)
     : [];
   function elegir(r: Registro) {
     setElegido(r);
@@ -1477,7 +1576,7 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
             <div className="field">
               <span>Busque el expediente por nombre, placa o folio</span>
               <input className="input search" type="search" value={q} onChange={(e) => setQ(e.target.value)}
-                placeholder="Nombre del alumno o del titular…" />
+                placeholder="Apellidos de la familia, titular o placas…" />
             </div>
             {query === "" ? (
               <p className="ti-hint">Escriba para buscar el expediente al que corresponde esta nota.</p>

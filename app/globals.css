@@ -208,7 +208,9 @@ a { color: var(--primary-strong); }
 /* =====================================================================
    Panel administrativo (Administración + TI)
    ===================================================================== */
-.admin-shell { display: flex; justify-content: center; min-height: calc(100dvh - var(--header-h)); padding: 16px 24px 40px; }
+/* Raleway trae por defecto cifras de estilo antiguo (el 1 y el 0 parecen
+   minúsculas): en placas, TAGs y folios se leen disparejas. */
+.admin-shell { display: flex; font-variant-numeric: lining-nums; justify-content: center; min-height: calc(100dvh - var(--header-h)); padding: 16px 24px 40px; }
 .admin-panel { max-width: 1200px; width: min(100%, 1200px); }
 
 .admin-header {
@@ -325,8 +327,10 @@ a { color: var(--primary-strong); }
 .ti-action__count--warn { background: #fdf0e1; color: #9a5a1a; }
 .ti-action__count--alert { background: #fdecec; color: #b3271e; }
 
-.ti-topbar { align-items: center; display: flex; gap: 12px; margin-bottom: 14px; }
+.ti-topbar { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
 .ti-topbar h2 { color: var(--ink); font-size: 1.15rem; margin: 0; }
+.ti-topbar .panel-title { margin: 0; }
+.ti-refresh { margin-left: auto; }
 .ti-back {
   background: transparent; border: 1px solid var(--line); border-radius: var(--radius);
   color: var(--primary-strong); cursor: pointer; font-weight: 700; min-height: 44px; padding: 0 14px;
@@ -499,7 +503,13 @@ a { color: var(--primary-strong); }
   max-height: 85vh; max-height: 85dvh; overflow-y: auto;
 }
 .modal h2 { margin: 0 0 8px; font-size: 1.1rem; color: var(--ink); }
-.modal p { margin: 0 0 18px; color: var(--muted); }
+.modal p { margin: 0 0 18px; color: var(--ink); }
+/* El No. de TAG que se coteja contra el físico: los lotes son consecutivos y
+   difieren en el último dígito, así que va grande y con cifras parejas. */
+.modal .modal__dato {
+  color: var(--ink); font-size: 1.6rem; font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 800; letter-spacing: .06em; margin: 0 0 10px; overflow-wrap: anywhere;
+}
 .modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
 .btn-danger { background: var(--rose) !important; }
 
