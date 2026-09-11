@@ -480,7 +480,7 @@ export default function RegistroWizard() {
                 <option value="maestro">Maestro</option>
                 <option value="alumno">Alumno</option>
                 <option value="admin">Administración</option>
-                <option value="otro">Otro familiar (tío, abuelo…)</option>
+                <option value="otro">Otro familiar</option>
               </select>
               {esMenor && <p className="hint" style={{ margin: "6px 0 0" }}>Un conductor menor de edad se registra como alumno.</p>}
             </div>
