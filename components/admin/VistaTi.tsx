@@ -515,10 +515,17 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         const familia = conFila.filter((r) => r.tipoUsuario === "padres" || r.tipoUsuario === "otro").length;
         const ajustar = conFila.filter((r) => r.tipoUsuario !== "padres" && r.tipoUsuario !== "otro")
           .map((r) => `TAG ${r.noDispositivo} (${TIPO_USUARIO_LABEL[r.tipoUsuario].toLowerCase()})`);
+        // Un TAG propio de la familia no paso por el stock: nace en ZK sin
+        // niveles, y se activa volviendo a aplicar los del departamento.
+        const propios = conFila.filter((r) => (r.tipoUsuario === "padres" || r.tipoUsuario === "otro") && r.procedenciaTag === "propio")
+          .map((r) => `TAG ${r.noDispositivo}`);
         setFeedback(`${nombre}: ${filas.length} fila${filas.length === 1 ? "" : "s"} (${familia} de familia). ${importar}`
           + (ajustar.length
             ? ` Ajuste los niveles en ZK a ${ajustar.length}: ${ajustar.join(", ")}.`
-            : " Todos son de familia: no hay niveles que ajustar."));
+            : " Todos son de familia: no hay niveles que ajustar.")
+          + (propios.length
+            ? ` ${propios.length} TAG${propios.length === 1 ? "" : "s"} propio${propios.length === 1 ? "" : "s"} de familia sin niveles (${propios.join(", ")}): quite y vuelva a poner los niveles de Padres de familia.`
+            : ""));
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo generar el archivo.");
@@ -968,8 +975,8 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                   padrón mueve la misma tarjeta a su departamento real con la persona y su placa (en Celular). El importador
                   de ZK nunca asigna niveles de acceso: después de importar el stock, en ZK quite y vuelva a poner los dos
                   estacionamientos del departamento STOCK SATAG, y todo el stock queda activo. Al importar el padrón, ajuste
-                  a mano solo los TAGs que el aviso de descarga le liste (alumnos, administrativos, maestros). Respaldo en el
-                  formato de export de ZK:{" "}
+                  a mano solo los TAGs que el aviso de descarga le liste (alumnos, administrativos, maestros y TAGs propios).
+                  Respaldo en el formato de export de ZK:{" "}
                   <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("stock", "csv")}>disponibles .csv</button>
                   {" · "}
                   <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("padron", "csv")}>padrón .csv</button>
