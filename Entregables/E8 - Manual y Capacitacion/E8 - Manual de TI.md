@@ -442,7 +442,7 @@ La pluma la controla ZKBioSecurity, no SATAG. Desde la vista **"TAGs de la escue
 
 1. En **"Padrón: instalados desde"** deje la fecha de hoy (o la de la última exportación) y pulse **"Descargar padrón instalado para ZK (N)"**. El aviso de descarga indica cuántos son de familia y lista los TAGs de otro tipo (alumno, administrativo, maestro) y los TAGs propios.
 2. Importe en ZK con las mismas opciones del paso anterior. Cada persona pasa a su departamento real con nombre, apellidos y placa (en **Celular**) y conserva los niveles que ya tenía.
-3. Ajustes que quedan a mano, con la lista del aviso: los **TAGs propios** de las familias no pasaron por el stock y nacen sin niveles, así que quite y vuelva a poner los niveles de **Padres de familia**. Los **alumnos** deben quedar solo con ESTACIONAMIENTO 1 y los **administrativos** solo con ESTACIONAMIENTO 2: quíteles el otro. Maestros: según el criterio de la Dirección de TI.
+3. Ajustes que quedan a mano, con la lista del aviso: los **TAGs propios** de las familias no pasaron por el stock y nacen sin niveles, así que quite y vuelva a poner los niveles de **Padres de familia**. Los **alumnos** deben quedar solo con ESTACIONAMIENTO 1; los **administrativos** y los **maestros de preescolar y primaria** solo con ESTACIONAMIENTO 2; los **maestros de secundaria y preparatoria** solo con ESTACIONAMIENTO 1. Quíteles el otro.
 4. Una **baja** en SATAG no llega a ZK: mueva la persona al departamento **BAJAS** y quítele los niveles.
 
 ### 17.4. Si ZK rechaza tarjetas con "el número de tarjeta ya existe"

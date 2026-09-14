@@ -136,8 +136,9 @@ resumen sean los de la persona que tiene enfrente.
    instalar; arriba del botón verá «Antes de instalar se corregirá: …».
 4. «Estacionamiento (acceso del TAG)»: toque «E1», «E2» o los dos; el que ya está en color se desmarca si
    lo vuelve a tocar.
-   - Alumno: solo «E1». Administrativo: solo «E2». Empleado que también es padre o madre: los de su puesto.
-   - Padre o madre, maestro u otro familiar: **[PENDIENTE: criterio de Miguel]**.
+   - Padre o madre u otro familiar: «E1» y «E2». Alumno: solo «E1». Administrativo: solo «E2».
+   - Maestro: según su sección; preescolar y primaria «E2», secundaria y preparatoria «E1». Pregúntesela:
+     el alta todavía no la captura. Empleado que también es padre o madre: los de su puesto.
 5. «No. de TAG (6–11 dígitos)». Si la familia trae su propio TAG, marque **primero** «La familia trae su
    propio TAG (se aparta el de la escuela)», abajo, y escriba el número de ese TAG; «No. del TAG apartado»
    es opcional. Si el TAG es de la escuela, toque el número que coincide con el que tiene en la mano, o
@@ -192,7 +193,8 @@ niveles en la pantalla de acceso por departamento de ZK (guardar sin cambiar nad
    placa (en Celular) y conserva los niveles que ya tenía.
 3. Ajustes a mano, con la lista del aviso: si hubo TAGs propios de familias (no pasaron por el stock),
    quite y vuelva a poner los niveles de Padres de familia. Alumno: solo ESTACIONAMIENTO 1;
-   administrativo: solo ESTACIONAMIENTO 2; quíteles el otro. Maestros: **[PENDIENTE: criterio de Miguel]**.
+   administrativo: solo ESTACIONAMIENTO 2; maestro de preescolar o primaria: solo ESTACIONAMIENTO 2; maestro de
+   secundaria o preparatoria: solo ESTACIONAMIENTO 1. Quíteles el otro.
 
 Si ZK rechaza tarjetas con «el número de tarjeta ya existe» (alguien las dio de alta a mano en ZK):
 exporte de ZK Usuarios_….csv (Personal → Usuarios → Exportar → CSV), súbalo en «Mapa de IDs de ZK

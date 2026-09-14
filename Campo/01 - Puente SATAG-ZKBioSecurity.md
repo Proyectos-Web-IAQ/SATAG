@@ -58,8 +58,9 @@ Con eso, el proceso vigente es:
    poner los niveles del departamento que corresponda (Padres de familia para
    padres y otros familiares) los activa. Los TAGs de alumno (solo E1) y de
    administrativo (solo E2) conservan el nivel sobrante del stock: se ajustan a
-   mano, con la lista que da el aviso de descarga. Maestros: criterio pendiente
-   de Miguel.
+   mano, con la lista que da el aviso de descarga. Maestros, por sección
+   (criterio confirmado el 14-sep): preescolar y primaria solo E2; secundaria y
+   preparatoria solo E1. Por eso el alta pedirá la sección del maestro (SC-029).
 4. **Bajas.** SATAG no llega a ZK: mover a BAJAS (10) y quitar niveles.
 
 ## Las piezas por línea de comandos (en `Campo/herramientas/`)
