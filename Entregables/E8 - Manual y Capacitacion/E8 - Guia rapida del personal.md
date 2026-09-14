@@ -151,8 +151,10 @@ resumen sean los de la persona que tiene enfrente.
    - Si se cae la señal (mensaje «No hubo respuesta del servidor…», abajo): **no repita la acción hasta
      que la lista se actualice y vea si el cambio ya quedó.**
 
-**La pluma la controla ZK, no SATAG.** La instalación llega a ZK solo cuando se exporta e importa (abajo).
-Lo hace **[PENDIENTE: quién]**, **[PENDIENTE: cuándo]**; a la familia dígale **[PENDIENTE]**.
+**La pluma la controla ZK, no SATAG.** Los TAGs de la escuela ya están activos en ZK desde que TI los dio
+de alta en el stock (abajo): funcionan desde que se pegan, y a la familia se le dice que ya puede entrar.
+Un TAG propio de la familia no está en ZK: se activa con la exportación del padrón de ese día (abajo).
+Nombre, placa y departamento llegan a ZK con esa misma exportación, al final de cada día de instalación.
 
 ### Otras acciones
 
@@ -165,22 +167,36 @@ Lo hace **[PENDIENTE: quién]**, **[PENDIENTE: cuándo]**; a la familia dígale 
   el panel y **no llega a ZK**: ahí, quítela de los niveles de acceso y muévala al departamento BAJAS.
 - **Notas del buzón:** «Notas sin expediente» → «Vincular a un expediente» o «Descartar» con su motivo.
 
-### Exportar a ZKBioSecurity
+### ZKBioSecurity: activar el stock y actualizar el padrón
 
-En ZK no se captura nada a mano: primero se exporta desde SATAG y ese archivo se importa en ZK.
+En ZK no se captura nada a mano: todo entra por archivo desde SATAG. El importador de ZK **nunca asigna
+niveles de acceso**; lo que activa a todos los de un departamento es **quitar y volver a poner** sus
+niveles en la pantalla de acceso por departamento de ZK (guardar sin cambiar nada no sirve).
 
-1. En «TAGs de la escuela», sección «Exportar a ZKBioSecurity», en «Padrón: instalados desde» ponga la
-   fecha de la última exportación (viene con la de hoy) y toque «Descargar padrón instalado para ZK (…)».
+**A. Cada vez que se dan de alta TAGs nuevos en el inventario (stock):**
+
+1. En «TAGs de la escuela» → «Exportar a ZKBioSecurity», toque «Descargar plantilla ZK (TAGs disponibles:
+   N)».
 2. En ZK: Personal → Usuarios → Importar, con «Fila de Inicio» 2 y «Actualizar el ID de usuario
-   existente» = Sí.
-3. Después, en ZK, asigne los niveles de acceso por departamento (Acceso → Niveles de acceso →
-   ESTACIONAMIENTO 1 o 2 → Agregar personal): «Alumnos», solo en ESTACIONAMIENTO 1; «Administración», solo
-   en ESTACIONAMIENTO 2; «Padres de familia» (ahí van también los otros familiares) y «Maestros»:
-   **[PENDIENTE: criterio de Miguel]**. En ZK el acceso sale del departamento, no de lo marcado en SATAG.
+   existente» = Sí. Los TAGs entran como DISPONIBLE / STOCK SATAG en el departamento STOCK SATAG.
+3. En ZK, en el acceso por departamento de STOCK SATAG, quite ESTACIONAMIENTO 1 y 2 y vuélvalos a poner.
+   Todo el stock queda activo con los dos estacionamientos, y solo el stock. Desde ese momento el TAG abre
+   la pluma aunque siga en el cajón: cuide la custodia.
+
+**B. Al final de cada día en que se instaló (padrón):**
+
+1. En «Padrón: instalados desde» deje la fecha de hoy (o la de la última exportación) y toque «Descargar
+   padrón instalado para ZK (N)». Lea el aviso: dice cuántos son de familia y lista los TAGs de otro tipo
+   y los TAGs propios.
+2. Importe en ZK con las mismas opciones. Cada persona pasa a su departamento real con su nombre y su
+   placa (en Celular) y conserva los niveles que ya tenía.
+3. Ajustes a mano, con la lista del aviso: si hubo TAGs propios de familias (no pasaron por el stock),
+   quite y vuelva a poner los niveles de Padres de familia. Alumno: solo ESTACIONAMIENTO 1;
+   administrativo: solo ESTACIONAMIENTO 2; quíteles el otro. Maestros: **[PENDIENTE: criterio de Miguel]**.
 
 Si ZK rechaza tarjetas con «el número de tarjeta ya existe» (alguien las dio de alta a mano en ZK):
-exporte de ZK Usuarios_….csv (Personal → Usuarios → Exportar → CSV), súbalo en «Mapa de IDs de ZK» y
-vuelva a descargar el padrón.
+exporte de ZK Usuarios_….csv (Personal → Usuarios → Exportar → CSV), súbalo en «Mapa de IDs de ZK
+(guardado para todas las sesiones y computadoras)» y vuelva a descargar el archivo.
 
 | Mensaje | Qué hacer |
 |---|---|

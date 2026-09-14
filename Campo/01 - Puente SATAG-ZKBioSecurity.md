@@ -16,9 +16,12 @@ directo en el navegador (`lib/zk/plantillaZk.ts`), sin sheet ni línea de
 comandos:
 
 - **Descargar plantilla ZK (TAGs disponibles)**: pre-alta de las tarjetas en
-  ZK como `DISPONIBLE / STOCK SATAG`, depto Padres de familia, ID = No. de TAG.
+  ZK como `DISPONIBLE / STOCK SATAG`, depto **3 STOCK SATAG** (hasta el 14-sep
+  iban a Padres de familia), ID = No. de TAG.
 - **Descargar padrón instalado para ZK**: los expedientes activos con TAG;
-  actualiza la misma tarjeta con nombre, apellidos, depto y placa (en Celular).
+  actualiza la misma tarjeta con nombre, apellidos, depto real y placa (en
+  Celular). El aviso de descarga cuenta los de familia y lista los TAGs de
+  otro tipo (alumno, administrativo, maestro) para ajustarles niveles en ZK.
 - Opcional: cargar el export de ZK (`Usuarios_….csv`) para conservar el ID que
   ZK ya tiene cuando las tarjetas se dieron de alta a mano (evita duplicados).
 
@@ -27,8 +30,37 @@ en `public/zk/plantilla-importacion-personal.xls`: SheetJS conserva las
 anotaciones en xlsx y las **pierde en xls** (probado el 8-sep). Si el
 importador de ZK rechazara el .xlsx, el respaldo `.csv` (formato del export de
 ZK) se convierte con `convertir-zk-a-xls.ps1`. La plantilla NO carga niveles de
-acceso: no existe columna para ello; ZK los asigna por departamento/nivel como
-ya ocurre con las tarjetas pre-dadas de alta.
+acceso: no existe columna para ello.
+
+## Niveles de acceso: lo que ZK hace y lo que no (probado el 14-sep-2026)
+
+El importador de ZK **nunca asigna niveles**: ni al crear la persona ni al
+cambiarla de departamento (se probó con el TAG 13078155 moviéndolo de General
+a Padres de familia por importación: llegó sin niveles). Lo único que aplica
+los niveles a **todos los miembros actuales** de un departamento es, en la
+pantalla de acceso por departamento de ZK, **quitar y volver a poner** sus
+niveles (guardar sin cambiar nada no basta). Editar la persona a mano también
+los aplica, pero es uno por uno.
+
+Con eso, el proceso vigente es:
+
+1. **Stock.** Los DISPONIBLE entran al departamento 3 STOCK SATAG. Después de
+   importarlos, se quitan y se vuelven a poner ESTACIONAMIENTO 1 y 2 de ese
+   departamento: todo el stock queda activo, y solo el stock (ahí no hay nadie
+   más). Consecuencia aceptada: un TAG de la escuela ya abre la pluma desde que
+   está en el cajón; la custodia es de TI.
+2. **Instalación.** Nada en ZK: el TAG de la escuela funciona desde que se pega.
+   Un **TAG propio** de la familia no pasó por el stock y no existe en ZK hasta
+   la exportación del padrón.
+3. **Padrón, al final de cada día de instalación.** La importación mueve a cada
+   persona a su departamento real y **conserva** los niveles que ya tenía. Los
+   TAGs propios nacen aquí sin niveles: después de importar, quitar y volver a
+   poner los niveles del departamento que corresponda (Padres de familia para
+   padres y otros familiares) los activa. Los TAGs de alumno (solo E1) y de
+   administrativo (solo E2) conservan el nivel sobrante del stock: se ajustan a
+   mano, con la lista que da el aviso de descarga. Maestros: criterio pendiente
+   de Miguel.
+4. **Bajas.** SATAG no llega a ZK: mover a BAJAS (10) y quitar niveles.
 
 ## Las piezas por línea de comandos (en `Campo/herramientas/`)
 
@@ -79,9 +111,10 @@ Ambos generadores necesitan además el export más reciente de ZK
 | 14 | Código de Auto Gestión | `selfPwd` | `123456`, convención IAQ |
 | 15 | Celular | `mobilePhone` | **aquí va la placa**, convención IAQ |
 
-Departamentos: 1 General · 2 Administración · 5 Alumnos · 6 Maestros ·
+Departamentos: 1 General · 2 Administración · 3 STOCK SATAG (creado el
+14-sep-2026 bajo General, para los DISPONIBLE) · 5 Alumnos · 6 Maestros ·
 7 Padres de familia · 10 BAJAS. Desde SATAG, `tipo_usuario` se mapea
-padres→7, maestro→6, alumno→5, admin→2.
+padres→7, otro→7, maestro→6, alumno→5, admin→2; el stock→3.
 
 ## Procedimiento completo (fuente SATAG)
 

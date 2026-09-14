@@ -395,7 +395,7 @@ Los siguientes asuntos **no se resuelven con ningún botón de las pantallas de 
 | Registrar o consultar un cobro | Administración. En el expediente, el apartado **"Pagos"** es de **solo lectura** para TI. |
 | Dar de alta un registro nuevo | El alta la genera el formulario público. TI instala y mantiene, no da de alta. |
 | Consultar la **"Bitácora"** de movimientos de un expediente | Administración, Consulta o Super, desde la pestaña **"Consulta"**. |
-| Obtener una lista, un concentrado o un reporte del padrón | Administración o Dirección. TI no cuenta con exportación ni con reportes. |
+| Obtener una lista, un concentrado o un reporte del padrón | Administración o Dirección. TI no cuenta con reportes; la única exportación es la de ZKBioSecurity (sección 17). |
 | Alta, cambio o desactivación de estacionamientos, marcas o colores | El responsable del catálogo del sistema. No se administran desde ninguna pantalla del panel. |
 | Reactivar un registro dado de baja, revertir una instalación o anular una reposición | No existe esa acción en el panel. Reporte el caso al responsable del sistema. |
 | Bloquear o desbloquear un registro | No existe esa pantalla. El estado **"Bloqueado"** se muestra si el registro ya lo trae, pero el panel no lo produce. |
@@ -408,7 +408,7 @@ Los siguientes asuntos **no se resuelven con ningún botón de las pantallas de 
 
 Convienen tenerlas presentes para no buscarlas en pantalla ni prometérselas a una familia:
 
-- **No hay exportación ni impresión**: ni a hoja de cálculo, ni a PDF, ni comprobante, etiqueta, credencial o acuse. Lo que se necesite entregar por escrito se elabora fuera del sistema.
+- **No hay impresión ni reportes**: ni a PDF, ni comprobante, etiqueta, credencial o acuse. La única exportación es el archivo para ZKBioSecurity (sección 17). Lo demás que se necesite entregar por escrito se elabora fuera del sistema.
 - **No hay avisos automáticos** a la familia al instalar, actualizar, dar de baja, vincular o descartar. Avisar es responsabilidad del personal.
 - **No hay lector de código de barras ni escáner**: el número de TAG se teclea a mano, dígito por dígito.
 - **No hay acciones en lote ni selección múltiple**: cada expediente se atiende de uno en uno.
@@ -419,7 +419,39 @@ Convienen tenerlas presentes para no buscarlas en pantalla ni prometérselas a u
 
 ---
 
-## 17. Preguntas frecuentes
+## 17. TAGs de la escuela y ZKBioSecurity
+
+> Sección agregada el 14-sep-2026. La vista **"TAGs de la escuela"** existe desde el 8-sep-2026 y el proceso de niveles de acceso se fijó el 14-sep-2026, con el sistema ya en producción.
+
+La pluma la controla ZKBioSecurity, no SATAG. Desde la vista **"TAGs de la escuela"** (leyenda **"Inventario, alta anticipada y export a ZK"**) TI da de alta los TAGs nuevos en el inventario y genera los archivos que ZK importa. En ZK no se captura nada a mano.
+
+### 17.1. Dar de alta TAGs en el inventario
+
+1. En **"Dar de alta N TAGs al inventario"** escriba los números en **"Números de TAG (uno por línea…)"**, uno por renglón, revise **"Dado de alta por"** y confirme. Aparecen en **"Disponibles (N)"**; los que ya se instalaron pasan a **"Ya asignados (N)"**.
+2. Los TAGs disponibles son los que **"Instalar TAG"** ofrece para tocar en lugar de teclear el número.
+
+### 17.2. Activar el stock en ZK (cada vez que hay TAGs nuevos)
+
+1. En **"Exportar a ZKBioSecurity"** pulse **"Descargar plantilla ZK (TAGs disponibles: N)"**. Los TAGs salen como **DISPONIBLE / STOCK SATAG** en el departamento **STOCK SATAG**.
+2. En ZK: Personal → Usuarios → Importar → **"Fila de Inicio"** 2 → **"Actualizar el ID de usuario existente"** = Sí.
+3. En ZK, en la pantalla de acceso por departamento de **STOCK SATAG**, **quite ESTACIONAMIENTO 1 y 2 y vuélvalos a poner**. El importador de ZK nunca asigna niveles de acceso; ese gesto los aplica a todos los miembros del departamento, y en STOCK SATAG solo están los disponibles. Desde ese momento el TAG abre la pluma aunque siga guardado: la custodia es de TI.
+
+**Resultado:** el TAG de la escuela funciona desde el momento en que se pega en el vehículo. A la familia se le dice que ya puede entrar.
+
+### 17.3. Actualizar el padrón en ZK (al final de cada día de instalación)
+
+1. En **"Padrón: instalados desde"** deje la fecha de hoy (o la de la última exportación) y pulse **"Descargar padrón instalado para ZK (N)"**. El aviso de descarga indica cuántos son de familia y lista los TAGs de otro tipo (alumno, administrativo, maestro) y los TAGs propios.
+2. Importe en ZK con las mismas opciones del paso anterior. Cada persona pasa a su departamento real con nombre, apellidos y placa (en **Celular**) y conserva los niveles que ya tenía.
+3. Ajustes que quedan a mano, con la lista del aviso: los **TAGs propios** de las familias no pasaron por el stock y nacen sin niveles, así que quite y vuelva a poner los niveles de **Padres de familia**. Los **alumnos** deben quedar solo con ESTACIONAMIENTO 1 y los **administrativos** solo con ESTACIONAMIENTO 2: quíteles el otro. Maestros: según el criterio de la Dirección de TI.
+4. Una **baja** en SATAG no llega a ZK: mueva la persona al departamento **BAJAS** y quítele los niveles.
+
+### 17.4. Si ZK rechaza tarjetas con "el número de tarjeta ya existe"
+
+Alguien las dio de alta a mano en ZK con otro ID. Exporte de ZK **Usuarios_….csv** (Personal → Usuarios → Exportar → CSV), súbalo en **"Mapa de IDs de ZK (guardado para todas las sesiones y computadoras)"** y vuelva a descargar el archivo: SATAG usará el ID que ZK ya tiene y ZK actualizará a la persona en lugar de rechazarla.
+
+---
+
+## 18. Preguntas frecuentes
 
 **1. La familia ya está aquí con el coche, pero el registro aparece en "Esperando pago". ¿Puedo instalar y que paguen después?**
 No. Esa sección está atenuada y **no tiene formulario ni botón**: el sistema rechaza la instalación con **"El registro no tiene pago: el TAG se instala despues del pago"**. Avise a Administración para que registre el cobro; en cuanto exista el pago, **toque "Actualizar lista"** y el expediente aparecerá en la parte de arriba de **"Instalar TAG"**, listo para instalarlo.
