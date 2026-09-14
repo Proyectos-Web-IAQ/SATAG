@@ -412,11 +412,15 @@ select t.tablename as tabla_sin_clasificar,
 --
 -- y ejecute las dos cosas juntas. Sin la frase exacta aborta sin tocar nada.
 --
--- ANTES DE EJECUTAR, TECLEE LOS DOS DATOS marcados con >>> en el declare:
+-- ANTES DE EJECUTAR, TECLEE LOS TRES DATOS marcados con >>> en el declare:
 --   c_corte        el instante en que el equipo DEJO DE PROBAR (hora local),
 --                  el mismo que puso en la consulta 0.7.
 --   c_expedientes  cuantos expedientes le salieron en la lista del PASO 0.5.
--- Los dos vienen sin valor a proposito: son la unica red automatica contra
+--   c_apertura     el instante en que el sistema queda ABIERTO a las familias
+--                  (cuando se pega el cartel o se empieza a atender). El corte
+--                  tiene que ser ANTERIOR: lo que entre despues de esa apertura
+--                  ya es real y este script no debe borrarlo nunca.
+-- Los tres vienen sin valor a proposito: son la unica red automatica contra
 -- borrar a una familia que se haya dado de alta sola por el formulario
 -- publico. Sin ellos el bloque aborta sin tocar nada.
 --
@@ -441,9 +445,12 @@ declare
     -- >>> este borrado y el bloque aborta. En -1 aborta pidiendo el dato.
     c_expedientes constant integer := -1;
 
-    -- Tope de cordura: el corte tiene que ser anterior al lunes 14-sep, que es
-    -- cuando el personal empieza a operar con familias reales.
-    c_lunes   constant timestamptz := ('2026-09-14 00:00:00'::timestamp at time zone 'America/Mexico_City');
+    -- >>> TECLEE AQUI el instante en que el sistema queda ABIERTO a las
+    -- >>> familias (cuando se pega el cartel o empieza la atencion). Es el tope
+    -- >>> de cordura: el corte tiene que ser ANTERIOR. Antes traia fijo el lunes
+    -- >>> 14-sep a las 00:00, que impedia limpiar el mismo lunes por la manana,
+    -- >>> antes de abrir. Dejelo en null y el bloque aborta.
+    c_apertura constant timestamptz := null;  -- ejemplo: ('2026-09-14 08:30:00'::timestamp at time zone 'America/Mexico_City')
     c_borrar  constant text[] := array['registros','aceptaciones','movimientos','pagos',
                                        'registro_estacionamientos','solicitudes','cortes_caja',
                                        'intentos_publicos'];
@@ -492,8 +499,11 @@ begin
     if c_corte > now() then
         raise exception 'Borrado cancelado: c_corte (%) esta en el futuro. Tiene que ser el instante en que YA se dejo de probar. No se borro nada.', c_corte at time zone 'America/Mexico_City';
     end if;
-    if c_corte > c_lunes then
-        raise exception 'Borrado cancelado: c_corte (%) cae en el lunes 14-sep o despues, cuando el sistema ya opera con familias reales. No se borro nada; consulte a Gerardo.', c_corte at time zone 'America/Mexico_City';
+    if c_apertura is null then
+        raise exception 'Borrado cancelado: falta c_apertura. Teclee en el declare el instante en que el sistema queda abierto a las familias (cuando se pega el cartel o empieza la atencion). No se borro nada.';
+    end if;
+    if c_corte > c_apertura then
+        raise exception 'Borrado cancelado: el corte (%) es posterior a la apertura al publico (%). Lo que entro despues de abrir ya es real y no se borra. No se borro nada; consulte a Gerardo.', c_corte at time zone 'America/Mexico_City', c_apertura at time zone 'America/Mexico_City';
     end if;
     if c_expedientes < 0 then
         raise exception 'Borrado cancelado: falta c_expedientes. Teclee en el declare cuantos expedientes le salieron en la lista del PASO 0.5. No se borro nada.';
