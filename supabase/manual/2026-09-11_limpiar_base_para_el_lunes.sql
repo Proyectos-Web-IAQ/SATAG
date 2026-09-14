@@ -438,12 +438,12 @@ declare
     -- >>> ese instante detiene el borrado: puede ser una familia real que se
     -- >>> dio de alta sola por el formulario publico. Dejelo en null y el
     -- >>> bloque aborta.
-    c_corte   constant timestamptz := ('2026-09-11 20:00:00'::timestamp at time zone 'America/Mexico_City');  -- fin de las pruebas del viernes; verificado el 14-sep: nada entro despues
+    c_corte   constant timestamptz := ('2026-09-14 08:00:00'::timestamp at time zone 'America/Mexico_City');  -- despues de la ultima prueba de Sistemas (SATAG-000009, 07:57 del 14-sep); lo que entre despues detiene el borrado
 
     -- >>> TECLEE AQUI cuantos expedientes conto en la lista del PASO 0.5. Si
     -- >>> el padron trae otro numero, algo entro o salio entre su lectura y
     -- >>> este borrado y el bloque aborta. En -1 aborta pidiendo el dato.
-    c_expedientes constant integer := 7;  -- contados en la lista del PASO 0.5 el 14-sep: todos del equipo
+    c_expedientes constant integer := 8;  -- 14-sep: los 7 del viernes mas SATAG-000009, prueba de Sistemas de las 07:57. Todos del equipo
 
     -- >>> TECLEE AQUI el instante en que el sistema queda ABIERTO a las
     -- >>> familias (cuando se pega el cartel o empieza la atencion). Es el tope
