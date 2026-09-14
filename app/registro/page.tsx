@@ -479,7 +479,7 @@ export default function RegistroWizard() {
                 <option value="padres">Padre / Madre / Tutor</option>
                 <option value="maestro">Maestro</option>
                 <option value="alumno">Alumno</option>
-                <option value="admin">Administración</option>
+                <option value="admin">Administrativo</option>
                 <option value="otro">Otro familiar</option>
               </select>
               {esMenor && <p className="hint" style={{ margin: "6px 0 0" }}>Un conductor menor de edad se registra como alumno.</p>}
@@ -696,8 +696,8 @@ export default function RegistroWizard() {
             <p className="lead">Su folio de seguimiento es:</p>
             <div className="folio">{resultado.folio}</div>
             <p style={{ marginTop: 16, color: "var(--ink)" }}>
-              Preséntese en Administración para <strong>asignación de estacionamiento</strong> y el
-              <strong> pago del TAG ($100, efectivo)</strong>. Sistemas instalará y activará su TAG.
+              Preséntese en Administración para el <strong>pago del TAG ($100, efectivo)</strong>.
+              Sistemas instalará y activará su TAG y le asignará el estacionamiento.
             </p>
             {/* ----- Copia para el titular -----
                 En el trámite de papel se llenan dos ejemplares y la familia se lleva

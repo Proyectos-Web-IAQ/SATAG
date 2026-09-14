@@ -25,7 +25,7 @@ import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
-import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, TIPO_USUARIO_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
 type Accion = "instalar" | "actualizar" | "baja";
@@ -503,7 +503,23 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       const nombre = `zk-${tipo}-satag-${fechaArchivo()}.${formato}`;
       const blob = formato === "xlsx" ? await generarXlsxZk(filas) : generarCsvZk(filas);
       descargarArchivo(blob, nombre);
-      setFeedback(`${nombre}: ${filas.length} fila${filas.length === 1 ? "" : "s"}. En ZK: Importar → Fila de Inicio 2 → «Actualizar el ID de usuario existente» = Sí.`);
+      const importar = "En ZK: Importar → Fila de Inicio 2 → «Actualizar el ID de usuario existente» = Sí.";
+      if (tipo === "stock") {
+        setFeedback(`${nombre}: ${filas.length} TAG${filas.length === 1 ? "" : "s"} al departamento STOCK SATAG. ${importar} Después, quite y vuelva a poner los dos estacionamientos del departamento STOCK SATAG para activarlos.`);
+      } else {
+        // El stock entra a ZK con los dos estacionamientos. Al instalarse, la
+        // persona conserva esos niveles, que solo son correctos para padres y
+        // otros familiares: aqui se listan los demas para ajustarlos en ZK sin
+        // revisar uno por uno.
+        const conFila = padronZk.filter((r) => r.noDispositivo && filaPadron(r, mapaZk.get(r.noDispositivo)) !== null);
+        const familia = conFila.filter((r) => r.tipoUsuario === "padres" || r.tipoUsuario === "otro").length;
+        const ajustar = conFila.filter((r) => r.tipoUsuario !== "padres" && r.tipoUsuario !== "otro")
+          .map((r) => `TAG ${r.noDispositivo} (${TIPO_USUARIO_LABEL[r.tipoUsuario].toLowerCase()})`);
+        setFeedback(`${nombre}: ${filas.length} fila${filas.length === 1 ? "" : "s"} (${familia} de familia). ${importar}`
+          + (ajustar.length
+            ? ` Ajuste los niveles en ZK a ${ajustar.length}: ${ajustar.join(", ")}.`
+            : " Todos son de familia: no hay niveles que ajustar."));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo generar el archivo.");
     } finally {
@@ -948,10 +964,12 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                   </button>
                 </div>
                 <p className="ti-hint">
-                  Los TAGs disponibles salen como «DISPONIBLE / STOCK SATAG» en Padres de familia; al instalarse, el padrón
-                  actualiza la misma tarjeta con la persona y su placa (en Celular). La plantilla de ZK no lleva niveles de
-                  acceso: después de importar, asígnelos en ZK por departamento (Acceso → Niveles de acceso → ESTACIONAMIENTO 1 y 2
-                  → Agregar personal → Padres de familia). Respaldo en el formato de export de ZK:{" "}
+                  Los TAGs disponibles salen como «DISPONIBLE / STOCK SATAG» en el departamento STOCK SATAG; al instalarse, el
+                  padrón mueve la misma tarjeta a su departamento real con la persona y su placa (en Celular). El importador
+                  de ZK nunca asigna niveles de acceso: después de importar el stock, en ZK quite y vuelva a poner los dos
+                  estacionamientos del departamento STOCK SATAG, y todo el stock queda activo. Al importar el padrón, ajuste
+                  a mano solo los TAGs que el aviso de descarga le liste (alumnos, administrativos, maestros). Respaldo en el
+                  formato de export de ZK:{" "}
                   <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("stock", "csv")}>disponibles .csv</button>
                   {" · "}
                   <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("padron", "csv")}>padrón .csv</button>

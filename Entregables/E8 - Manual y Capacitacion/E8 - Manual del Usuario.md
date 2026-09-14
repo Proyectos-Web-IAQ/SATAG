@@ -53,7 +53,7 @@ Use este procedimiento cuando **el propio conductor es mayor de edad y es quien 
 2. Llene **"Apellido paterno del conductor"** y **"Apellido materno del conductor"**. **Ambos son obligatorios** en esta pantalla.
 3. Deje **sin marcar** la casilla **"El conductor es menor de edad."**.
 4. Deje **sin marcar** la casilla **"El pago y la firma los hace otra persona (padre/madre/tutor/cónyuge)."**.
-5. En **"Tipo de usuario"** elija la opción que corresponda: **"Padre / Madre / Tutor"**, **"Maestro"**, **"Alumno"** o **"Administración"**. La pantalla inicia con **"Padre / Madre / Tutor"** seleccionado.
+5. En **"Tipo de usuario"** elija la opción que corresponda: **"Padre / Madre / Tutor"**, **"Maestro"**, **"Alumno"**, **"Administrativo"** u **"Otro familiar"**. La pantalla inicia con **"Padre / Madre / Tutor"** seleccionado.
 6. Pulse **"Siguiente"**.
 
 **Resultado:** se avanza a **"Datos del vehículo"** (**"Paso 2 de 6"**).
@@ -185,7 +185,7 @@ Si el aviso cabe completo en la pantalla sin necesidad de desplazamiento, la cas
 
 1. Verifique el encabezado **"¡Registro recibido!"** y la etiqueta de estado **"Pendiente"**.
 2. **Anote el folio** que aparece bajo el texto **"Su folio de seguimiento es:"**. Tiene el formato **SATAG-000123**.
-3. Lea la instrucción: **"Preséntese en Administración para asignación de estacionamiento y el pago del TAG ($100, efectivo). Sistemas instalará y activará su TAG."**.
+3. Lea la instrucción: **"Preséntese en Administración para el pago del TAG ($100, efectivo). Sistemas instalará y activará su TAG y le asignará el estacionamiento."**.
 4. Debajo aparece el apartado **"Su copia del trámite"**, con la nota **"Guarde este comprobante: incluye los datos que registró y el texto completo del reglamento y del aviso de privacidad que aceptó. Con «Imprimir / Descargar» puede conservarlo en papel o como PDF."**. Es el equivalente del ejemplar que la familia se llevaba en papel y contiene:
    - Los datos registrados: **"Folio"**, **"Fecha de envío"**, **"Conductor"**, **"Firmó"** (solo cuando firmó otra persona por el conductor; entre paréntesis, su relación), **"Vehículo"**, **"Placas"** (o **"Sin placas (vehículo nuevo o con permiso)"**) y **"TAG"** (**"Se compra a la escuela"** o **"Propio (lo trae la familia)"**).
    - Dos apartados plegados: **"Reglamento de acceso vehicular (v2) — el que aceptó"** y **"Aviso de privacidad (v2)"**. En pantalla se abren al tocarlos; al imprimir se despliegan solos y salen completos.
@@ -350,7 +350,7 @@ En ningún lado del sitio: no existe pantalla pública de consulta de estado. Su
 Desde el sitio no se puede editar ni cancelar un registro enviado. Entre a **"Solicitar actualización o baja →"**, elija **"Actualizar mis datos"** y describa la corrección. Tenga presente que esa solicitud **no cambia nada en línea**: únicamente avisa a Sistemas, que hará la corrección con usted presente.
 
 **4. ¿Puedo pagar los $100 con tarjeta o por transferencia?**
-No. El sitio no cobra ni genera referencias bancarias. El pago es **exclusivamente en efectivo y en persona**, en Administración, tal como lo indica su propio comprobante: **"Preséntese en Administración para asignación de estacionamiento y el pago del TAG ($100, efectivo). Sistemas instalará y activará su TAG."**. Traer su propio TAG tampoco lo exime: cuesta lo mismo y debe llevarlo el día de la instalación.
+No. El sitio no cobra ni genera referencias bancarias. El pago es **exclusivamente en efectivo y en persona**, en Administración, tal como lo indica su propio comprobante: **"Preséntese en Administración para el pago del TAG ($100, efectivo). Sistemas instalará y activará su TAG y le asignará el estacionamiento."**. Traer su propio TAG tampoco lo exime: cuesta lo mismo y debe llevarlo el día de la instalación.
 
 **5. Mi hijo es quien maneja, pero es menor de edad. ¿Puede él hacer el trámite y firmar?**
 El menor puede quedar registrado como usuario del beneficio, pero **no puede firmar**. Al marcar **"El conductor es menor de edad."**, el sistema exige los datos del padre, madre o tutor y es esa persona quien acepta el aviso, acepta el reglamento y traza la firma en el Paso 5. El tipo de usuario queda fijo en **"Alumno"**.
