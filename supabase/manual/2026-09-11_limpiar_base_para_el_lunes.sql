@@ -438,19 +438,19 @@ declare
     -- >>> ese instante detiene el borrado: puede ser una familia real que se
     -- >>> dio de alta sola por el formulario publico. Dejelo en null y el
     -- >>> bloque aborta.
-    c_corte   constant timestamptz := ('2026-09-14 08:00:00'::timestamp at time zone 'America/Mexico_City');  -- despues de la ultima prueba de Sistemas (SATAG-000009, 07:57 del 14-sep); lo que entre despues detiene el borrado
+    c_corte   constant timestamptz := now();  -- 14-sep, SEGUNDA PASADA: el borrado completo ya se hizo; solo queda la ultima prueba de una companiera, que entro despues. Aqui la red es c_expedientes, no la fecha
 
     -- >>> TECLEE AQUI cuantos expedientes conto en la lista del PASO 0.5. Si
     -- >>> el padron trae otro numero, algo entro o salio entre su lectura y
     -- >>> este borrado y el bloque aborta. En -1 aborta pidiendo el dato.
-    c_expedientes constant integer := 8;  -- 14-sep: los 7 del viernes mas SATAG-000009, prueba de Sistemas de las 07:57. Todos del equipo
+    c_expedientes constant integer := 1;  -- 14-sep, segunda pasada: SOLO el expediente de prueba de la companiera. Si aparece otro (una familia real), el bloque aborta
 
     -- >>> TECLEE AQUI el instante en que el sistema queda ABIERTO a las
     -- >>> familias (cuando se pega el cartel o empieza la atencion). Es el tope
     -- >>> de cordura: el corte tiene que ser ANTERIOR. Antes traia fijo el lunes
     -- >>> 14-sep a las 00:00, que impedia limpiar el mismo lunes por la manana,
     -- >>> antes de abrir. Dejelo en null y el bloque aborta.
-    c_apertura constant timestamptz := ('2026-09-14 09:00:00'::timestamp at time zone 'America/Mexico_City');  -- apertura al publico del lunes; cambiela si abren a otra hora
+    c_apertura constant timestamptz := now();  -- se abre al publico en cuanto termine esta limpieza
     c_borrar  constant text[] := array['registros','aceptaciones','movimientos','pagos',
                                        'registro_estacionamientos','solicitudes','cortes_caja',
                                        'intentos_publicos'];
