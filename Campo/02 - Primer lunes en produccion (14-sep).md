@@ -123,5 +123,5 @@ y ZK.
     antes de abrir).
 
   Ninguna es posterior a la apertura. Las del 10 y 11-sep coinciden con los días de los incidentes
-  del alta: pueden ser pruebas o altas rechazadas. Se anotan en la sección 9 del go/no-go y después
-  se borran a mano, porque no tienen expediente ni finalidad.
+  del alta: pueden ser pruebas o altas rechazadas. Quedaron anotadas en la sección 9 del go/no-go y
+  se borraron a mano el 15-sep, porque no tenían expediente ni finalidad.
