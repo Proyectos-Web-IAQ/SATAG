@@ -42,12 +42,27 @@
 -- Pegar el archivo COMPLETO en UNA sola ejecucion: si la guardia aborta, no
 -- se aplica nada.
 --
--- Hueco conocido: un expediente corregido a maestro en la caja
--- (registrar_pago) queda sin seccion; ninguna pantalla la captura todavia.
+-- Huecos conocidos de la correccion del tipo en la caja (registrar_pago no
+-- toca la seccion): un expediente corregido A maestro queda sin seccion, y
+-- uno corregido DE maestro a otro tipo la conserva. Lo segundo no estorba:
+-- ficha, instalacion y exportacion solo la leen cuando el tipo es maestro.
+--
+-- DESPUES DE ESTE BLOQUE NO SE REEJECUTA
+-- supabase/manual/2026-09-11_URGENTE_alumno_sin_apellidos_familia.sql: su
+-- `create or replace` de 28 parametros crearia una segunda forma de
+-- crear_registro junto a la de 29 (la trampa PostgREST).
 --
 -- Depende de: 65 (crear_registro de 28 parametros) y 69 (aviso v7).
 -- =====================================================================
 
+
+-- Tope de espera (revision del 15-sep): el ALTER TABLE del paso 1 toma un
+-- candado exclusivo sobre registros. Si una transaccion la tuviera tomada,
+-- el ALTER esperaria en fila y DETRAS de el se formarian todas las lecturas
+-- y altas del sitio. Con el tope, pasados 5 segundos aborta y no se aplica
+-- nada; se vuelve a intentar en otro momento. SET LOCAL vale para toda la
+-- ejecucion, que el SQL Editor corre como una sola transaccion.
+set local lock_timeout = '5s';
 
 -- ---------------------------------------------------------------------
 -- 0. GUARDIA. Va primero: si aborta, no se aplico nada.

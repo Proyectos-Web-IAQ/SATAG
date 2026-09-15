@@ -60,10 +60,13 @@ create temp table _aviso_v7_cambios (
 insert into _aviso_v7_cambios (orden, campo, de, a) values
 (1, 'contenido',
  'junto con la corrección que el Instituto registra cuando lo comprueba; el nombre de quien gestiona el trámite',
- 'junto con la corrección que el Instituto registra cuando lo comprueba; la sección en la que trabaja el personal docente que solicita el TAG, es decir, preescolar, primaria, secundaria o preparatoria, que determina el estacionamiento al que da acceso su dispositivo; el nombre de quien gestiona el trámite'),
+ 'junto con la corrección que el Instituto registra cuando lo comprueba; la sección en la que trabaja el personal docente que solicita el TAG, es decir, preescolar, primaria, secundaria o preparatoria, dato del que depende el estacionamiento al que da acceso su dispositivo; el nombre de quien gestiona el trámite'),
+-- El cambio 2 va DESPUES de "No se utilizan para ninguna otra finalidad...":
+-- ese plural habla de los apellidos, y metida antes, la frase de la seccion
+-- lo volvia ambiguo (revision del 15-sep).
 (2, 'contenido',
- 'de modo que a ellos no se les piden.',
- 'de modo que a ellos no se les piden. Al personal docente, en cambio, se le pide la sección en la que trabaja, es decir, preescolar, primaria, secundaria o preparatoria, porque de ella depende el estacionamiento al que da acceso su TAG.'),
+ 'de modo que a ellos no se les piden. No se utilizan para ninguna otra finalidad ni se comunican a nadie fuera del personal del Instituto expresamente autorizado.',
+ 'de modo que a ellos no se les piden. No se utilizan para ninguna otra finalidad ni se comunican a nadie fuera del personal del Instituto expresamente autorizado. Al personal docente, en cambio, se le pide la sección en la que trabaja, es decir, preescolar, primaria, secundaria o preparatoria, porque de ella depende el estacionamiento al que da acceso su TAG.'),
 (3, 'simplificado',
  'el parentesco con la familia cuando quien lo solicita es otro familiar, los datos del vehículo',
  'el parentesco con la familia cuando quien lo solicita es otro familiar, la sección en la que trabaja cuando quien lo solicita es maestro, los datos del vehículo');
@@ -91,6 +94,11 @@ begin
      where version = 6;
     if v6.id is null then
         raise exception 'Bloque 69 cancelado: no existe la version 6 del aviso (bloque 64). No se aplico nada.';
+    end if;
+    -- Reejecutarlo con una version posterior publicada le quitaria la
+    -- vigencia (revision del 15-sep).
+    if exists (select 1 from aviso_versiones where version > 7) then
+        raise exception 'Bloque 69 cancelado: ya existe una version del aviso posterior a la 7. No se aplico nada.';
     end if;
 
     v_txt  := v6.contenido;
@@ -202,7 +210,10 @@ select v7.version                                                             as
 -- formulario que pide la seccion NO esta publicado (con el publicado, el
 -- aviso vigente tiene que seguir diciendo que se pide):
 --
---   update aviso_versiones set vigente = (version = 6) where version in (6, 7);
+--   -- En DOS updates y en este orden: el indice unico de la vigente no es
+--   -- diferible, y uno solo podria dejar dos vigentes a media sentencia.
+--   update aviso_versiones set vigente = false where version = 7;
+--   update aviso_versiones set vigente = true  where version = 6;
 --   delete from aviso_versiones v
 --    where v.version = 7
 --      and not exists (select 1 from aceptaciones a where a.aviso_version_id = v.id);

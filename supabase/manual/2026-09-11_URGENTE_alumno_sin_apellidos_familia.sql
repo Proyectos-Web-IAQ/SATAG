@@ -1,6 +1,11 @@
 -- =====================================================================
 -- URGENTE · 11-sep-2026 · El alta de ALUMNO quedo rota por el bloque 63
 --
+-- *** NO REEJECUTAR DESPUES DEL BLOQUE 70 (15-sep). Su `create or replace`
+-- de 28 parametros crearia una SEGUNDA forma de crear_registro junto a la de
+-- 29 (la trampa PostgREST). Es historico: el problema lo cerraron el 63
+-- completo y el 65. ***
+--
 -- QUE PASO. El bloque 63 se aplico en su version previa a la revision
 -- adversarial. Esa version exige los apellidos de la familia a los tipos
 -- 'padres', 'alumno' y 'otro'. Pero el cliente PUBLICADO hoy en
