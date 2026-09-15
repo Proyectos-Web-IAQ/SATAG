@@ -477,7 +477,7 @@ El número es el **total** de la cola **"Instalar TAG"** en ese momento, no solo
 **Si dejan de llegar:**
 
 1. Mientras se resuelve, TI revisa la cola con **"Actualizar lista"** y Administración vuelve a avisar por teléfono.
-2. Sistemas confirma que el interruptor esté prendido: `select valor from public.parametros where clave = 'aviso_chat_ti';` debe decir `activo`.
+2. Sistemas revisa el interruptor y el último error: `select clave, valor, actualizado_en from public.parametros;`. La fila `aviso_chat_ti` debe decir `activo`. Si aparece `aviso_chat_ti_ultimo_error`, trae el último error que impidió mandar un aviso, con su fecha.
 3. Sistemas corre `supabase/manual/2026-09-15_verificar_bloque66_chat.sql`: el PASO 1 debe salir todo en `true`, el PASO 2 manda un mensaje de prueba al espacio y el PASO 3 muestra la respuesta de Google, que debe ser **200**.
 4. Si Google responde **403** o **404**, el webhook del espacio se borró o cambió. Cree uno nuevo en el espacio (nombre del espacio → Apps e integraciones → Webhooks) y reemplace el secreto `chat_webhook_satag_ti` en Vault (el comando está en `supabase/README.md`). La dirección del webhook no se escribe en ningún documento ni se comparte por chat.
 

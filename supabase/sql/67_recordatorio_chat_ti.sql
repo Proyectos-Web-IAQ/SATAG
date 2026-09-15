@@ -64,6 +64,7 @@ set search_path = ''
 as $$
 declare
     v_total int;
+    v_error text;
 begin
     begin
         select count(*)
@@ -81,7 +82,17 @@ begin
             );
         end if;
     exception when others then
-        raise warning 'SATAG recordatorio a Chat: fallo (% %).', sqlstate, sqlerrm;
+        -- Mismo criterio del 66: el error queda a la vista en parametros.
+        v_error := left(sqlstate || ' ' || sqlerrm, 300);
+        raise warning 'SATAG recordatorio a Chat: fallo (%).', v_error;
+        begin
+            insert into public.parametros (clave, valor, actualizado_en)
+            values ('aviso_chat_ti_ultimo_error', 'recordatorio: ' || v_error, now())
+            on conflict (clave) do update
+               set valor = excluded.valor, actualizado_en = excluded.actualizado_en;
+        exception when others then
+            null;
+        end;
     end;
 end;
 $$;

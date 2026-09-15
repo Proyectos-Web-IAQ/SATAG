@@ -194,8 +194,10 @@ esquema de las tablas del padron:
   Google quedan unas horas en `net._http_response` (200 = llego; 403/404 = el webhook ya no
   existe).
 - **`public.parametros`** son interruptores de operacion. RLS encendida y **sin politicas**:
-  no se alcanza desde la API, solo desde el SQL Editor y las funciones del bloque. Hoy tiene
-  una fila:
+  no se alcanza desde la API, solo desde el SQL Editor y las funciones del bloque. La fila
+  `aviso_chat_ti_ultimo_error`, si existe, trae el ultimo error que atraparon las funciones
+  del aviso, con su fecha (el SQL Editor no muestra los warnings, asi que es la unica huella
+  de un aviso que no salio). El interruptor:
   - apagar el aviso (pruebas): `update public.parametros set valor = 'inactivo', actualizado_en = now() where clave = 'aviso_chat_ti';`
   - prenderlo: el mismo update con `'activo'`. Cualquier valor distinto de `'activo'` lo
     apaga, asi que despues de probar hay que volver a prenderlo.

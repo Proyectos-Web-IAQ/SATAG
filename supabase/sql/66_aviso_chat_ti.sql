@@ -68,6 +68,20 @@
 -- puede volver a correr completo sin dano, y no reescribe el valor del
 -- interruptor si ya existe.
 --
+-- ERRORES A LA VISTA. El SQL Editor de Supabase no muestra los warnings:
+-- un aviso que falla sin dejar rastro es un aviso que nadie sabe que no
+-- llega. Por eso, ademas del warning, el ultimo error queda en
+-- `parametros` (clave 'aviso_chat_ti_ultimo_error', con su fecha) y la
+-- verificacion lo muestra. La URL del webhook nunca va en ese texto.
+--
+-- HISTORIA. Primera aplicacion, 15-sep: mandaba el encabezado
+-- Content-Type 'application/json; charset=UTF-8', y net.http_post rechaza
+-- cualquier valor distinto de 'application/json' exacto ("Content-Type
+-- header must be "application/json""). El exception when others lo volvio
+-- un warning invisible: la prueba no llego y no quedo nada ni en la cola ni
+-- en las respuestas. Corregido aqui; se reaplica el archivo completo
+-- encima (idempotente).
+--
 -- Depende de: 12 (registros) y 24 (pagos). No depende del sitio.
 -- =====================================================================
 
@@ -146,6 +160,7 @@ as $$
 declare
     v_estado text;
     v_url    text;
+    v_error  text;
 begin
     begin
         if coalesce(btrim(p_texto), '') = '' then
@@ -167,18 +182,31 @@ begin
          order by created_at desc
          limit 1;
         if v_url is null or v_url not like 'https://chat.googleapis.com/v1/spaces/%' then
-            raise warning 'SATAG aviso a Chat: falta el secreto chat_webhook_satag_ti en Vault o no es un webhook de Google Chat; no se envio nada.';
-            return;
+            raise exception 'falta el secreto chat_webhook_satag_ti en Vault o no es un webhook de Google Chat';
         end if;
 
+        -- Content-Type EXACTO 'application/json': net.http_post rechaza
+        -- cualquier otro valor, incluido 'application/json; charset=UTF-8'
+        -- (ver HISTORIA en el encabezado). JSON ya viaja en UTF-8.
         perform net.http_post(
             url                  := v_url,
             body                 := jsonb_build_object('text', p_texto),
-            headers              := jsonb_build_object('Content-Type', 'application/json; charset=UTF-8'),
+            headers              := jsonb_build_object('Content-Type', 'application/json'),
             timeout_milliseconds := 5000
         );
     exception when others then
-        raise warning 'SATAG aviso a Chat: no se pudo encolar el aviso (% %).', sqlstate, sqlerrm;
+        v_error := left(sqlstate || ' ' || sqlerrm, 300);
+        raise warning 'SATAG aviso a Chat: no se pudo encolar el aviso (%).', v_error;
+        -- A la vista (ver encabezado). Si hasta esto falla, se calla: el aviso
+        -- nunca tumba un cobro.
+        begin
+            insert into public.parametros (clave, valor, actualizado_en)
+            values ('aviso_chat_ti_ultimo_error', v_error, now())
+            on conflict (clave) do update
+               set valor = excluded.valor, actualizado_en = excluded.actualizado_en;
+        exception when others then
+            null;
+        end;
     end;
 end;
 $$;
@@ -204,6 +232,7 @@ declare
     v_estado text;
     v_tag    text;
     v_total  int;
+    v_error  text;
 begin
     begin
         select r.estado, r.no_dispositivo
@@ -232,7 +261,16 @@ begin
             );
         end if;
     exception when others then
-        raise warning 'SATAG aviso a Chat: fallo el disparador (% %). El cobro no se afecta.', sqlstate, sqlerrm;
+        v_error := left(sqlstate || ' ' || sqlerrm, 300);
+        raise warning 'SATAG aviso a Chat: fallo el disparador (%). El cobro no se afecta.', v_error;
+        begin
+            insert into public.parametros (clave, valor, actualizado_en)
+            values ('aviso_chat_ti_ultimo_error', 'disparador: ' || v_error, now())
+            on conflict (clave) do update
+               set valor = excluded.valor, actualizado_en = excluded.actualizado_en;
+        exception when others then
+            null;
+        end;
     end;
     return new;
 end;
@@ -261,6 +299,9 @@ create trigger pagos_avisar_chat_ti
 --
 --    6b. Unos segundos despues (debe salir status_code 200):
 --        select id, status_code, content from net._http_response order by id desc limit 3;
+--
+--    6c. Si no llego nada, el ultimo error que atraparon las funciones:
+--        select valor, actualizado_en from public.parametros where clave = 'aviso_chat_ti_ultimo_error';
 -- ---------------------------------------------------------------------
 
 

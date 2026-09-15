@@ -90,6 +90,14 @@ select 14, 'crear_registro sigue con una sola forma',
          where n.nspname = 'public' and p.proname = 'crear_registro'),
        (select count(*) = 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname = 'public' and p.proname = 'crear_registro')
+union all
+-- Informativa (ok siempre true): el ultimo error que atraparon las
+-- funciones del aviso, con su fecha. Si es anterior a la ultima prueba que
+-- si llego, ya no aplica.
+select 15, 'ultimo error del aviso (informativo)',
+       coalesce((select valor || ' · ' || to_char(actualizado_en at time zone 'America/Mexico_City', 'DD-Mon HH24:MI')
+                   from public.parametros where clave = 'aviso_chat_ti_ultimo_error'), '(ninguno)'),
+       true
 order by orden;
 
 
