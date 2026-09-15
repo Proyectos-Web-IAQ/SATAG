@@ -22,8 +22,10 @@
 --   and existe un pago del registro.
 --
 -- EL MENSAJE NO LLEVA DATOS PERSONALES: ni nombres, ni placas, ni folios.
--- Solo el conteo y el enlace al panel:
---   *SATAG:* hay 3 TAGs por instalar. <https://satag.asuncionqro.edu.mx/admin/|Abra el panel>
+-- Solo el conteo, la instruccion para reclamar la instalacion en el hilo
+-- y el enlace al panel:
+--   *SATAG:* se registró un pago. Hay 3 TAGs por instalar. Quien vaya a
+--   instalar, responda *Voy yo* en este hilo. <https://satag.asuncionqro.edu.mx/admin/|Abra el panel>
 --
 -- EL AVISO NUNCA TUMBA UN COBRO. El disparador corre dentro de la misma
 -- transaccion que registrar_pago: un error sin control revertiria el
@@ -254,9 +256,14 @@ begin
            and exists (select 1 from public.pagos p where p.registro_id = r.id);
 
         if v_total > 0 then
+            -- Cada mensaje del webhook abre su propio hilo en el espacio: quien
+            -- vaya a instalar lo reclama respondiendo en ese hilo (pedido de
+            -- Gerardo, 15-sep). Un webhook no puede crear tareas del espacio
+            -- ni botones que anoten quien va; eso exigiria una app de Chat.
             perform public.avisar_chat_ti(
-                '*SATAG:* hay ' || v_total
+                '*SATAG:* se registró un pago. Hay ' || v_total
                 || case when v_total = 1 then ' TAG por instalar.' else ' TAGs por instalar.' end
+                || ' Quien vaya a instalar, responda *Voy yo* en este hilo.'
                 || ' <https://satag.asuncionqro.edu.mx/admin/|Abra el panel>'
             );
         end if;

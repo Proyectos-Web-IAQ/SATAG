@@ -455,9 +455,11 @@ Alguien las dio de alta a mano en ZK con otro ID. Exporte de ZK **Usuarios_….c
 
 **Qué llega.** Cada vez que Administración registra un cobro y ese TAG queda por instalar, el espacio de Google Chat **"SATAG - TI"** recibe un mensaje de la app **SATAG**, por ejemplo:
 
-> **SATAG:** hay 3 TAGs por instalar. Abra el panel
+> **SATAG:** se registró un pago. Hay 3 TAGs por instalar. Quien vaya a instalar, responda **Voy yo** en este hilo. Abra el panel
 
 El número es el **total** de la cola **"Instalar TAG"** en ese momento, no solo el cobro que acaba de pasar. **"Abra el panel"** lleva a la dirección del sistema. Si Sistemas aplicó también el recordatorio (bloque 67), de lunes a viernes a las 08:00 llega **"Buenos días: hay N TAGs por instalar"**, solo cuando queda alguno pendiente.
+
+**Quién va.** Cada aviso llega en **su propio hilo**. Quien vaya a instalar responde **Voy yo** en ese hilo, antes de salir, para que nadie más vaya al mismo coche. Si ya alguien respondió, no vaya. Si quien respondió no puede llegar, lo dice en el mismo hilo para que otro lo tome. El aviso no puede asignar la instalación por sí solo: el acuerdo queda en el hilo.
 
 **Qué no trae.** Ningún dato personal: ni nombres, ni placas, ni folios. Para saber a quién le toca, abra **"Instalar TAG"** en el panel y toque **"Actualizar lista"**.
 
