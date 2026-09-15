@@ -74,6 +74,18 @@ Su cuenta llega por correo. La invitación **es de un solo uso y caduca**.
 
 Al pie de la pantalla, a la derecha, está el enlace **"← Volver al inicio"** para regresar al sitio público.
 
+### 3.1. Instalar el panel en su celular o computadora
+
+> Sección agregada el 15-sep-2026.
+
+El panel se puede instalar como app: queda con el monograma del Instituto en la pantalla de inicio o en el escritorio y se abre en su propia ventana, sin barra de direcciones. Es el mismo panel de la dirección del sistema, no una app de tienda: no se descarga nada y siempre abre la versión vigente. Solo el panel se instala; el registro público y el buzón siguen abriéndose en el navegador.
+
+- **Android (Chrome):** abra la dirección del sistema, toque el menú de tres puntos y elija **"Instalar app"**. Chrome también puede ofrecerlo por su cuenta con un aviso en la parte de abajo de la pantalla.
+- **Windows o Mac (Chrome o Edge):** abra la dirección del sistema y pulse el **ícono de instalación** que aparece en la barra de direcciones, a la derecha; confirme con **"Instalar"**.
+- **iPhone (Safari):** abra la dirección del sistema **en Safari**, toque el botón **Compartir** y elija **"Agregar a inicio"**. En iPhone **nunca aparece un aviso automático**: siempre se hace a mano.
+
+**Su sesión.** En Android y en la computadora, la app instalada usa la misma sesión que el navegador: si ya había entrado con su segundo factor, la app abre el panel directamente, y **"Salir"** cierra la sesión en los dos. En iPhone la app guarda su sesión aparte de Safari: la primera vez que la abra le pedirá correo, contraseña y el código de 6 dígitos, y después la conserva.
+
 ---
 
 ## 4. Dar de alta el segundo factor (solo la primera vez)

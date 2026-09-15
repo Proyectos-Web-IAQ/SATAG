@@ -1,0 +1,19 @@
+{
+  "name": "SATAG — Panel",
+  "short_name": "SATAG",
+  "id": "/admin/",
+  "start_url": "/admin/",
+  "scope": "/admin/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#002E6C",
+  "lang": "es-MX",
+  "icons": [
+    {
+      "src": "/monograma-asuncion.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
