@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase/api";
 import type { AvisoVigente } from "@/lib/supabase/api";
 import type { TipoUsuario, GestionanteRelacion, CrearRegistroResultado, NombrePersona, ProcedenciaTag, ReglamentoVersion } from "@/lib/mock/types";
+import { SECCIONES_MAESTRO, SECCION_MAESTRO_LABEL, type SeccionMaestro } from "@/lib/secciones";
 
 const STEPS = ["Datos", "Vehículo", "Aviso", "Reglamento", "Firma", "Listo"];
 
@@ -87,6 +88,9 @@ export default function RegistroWizard() {
   // propósito: nadie sabe todavía qué casos llegan, y una lista cerrada mal
   // adivinada obliga a la familia a elegir una opción falsa.
   const [parentescoOtro, setParentescoOtro] = useState("");
+  // Sección del maestro (L2-09): decide el estacionamiento al que da acceso su
+  // TAG. Solo se pide a maestro y se sella en la firma (bloque 70).
+  const [seccionMaestro, setSeccionMaestro] = useState<SeccionMaestro | "">("");
   const [marca, setMarca] = useState("");
   const [marcaOtro, setMarcaOtro] = useState("");
   const [modelos, setModelos] = useState<string[]>([]);
@@ -171,6 +175,7 @@ export default function RegistroWizard() {
   // 'otro' y se limpia al salir de ese tipo.
   useEffect(() => {
     if (tipoUsuario !== "otro") setParentescoOtro("");
+    if (tipoUsuario !== "maestro") setSeccionMaestro("");
     if (tipoUsuario === "" || !TIPOS_CON_FAMILIA.includes(tipoUsuario)) setApellidosFamilia("");
   }, [tipoUsuario]);
 
@@ -251,6 +256,9 @@ export default function RegistroWizard() {
       if (tipoUsuario === "otro" && !parentescoOtro.trim()) {
         e.parentescoOtro = "Escriba su parentesco con la familia.";
       }
+      if (tipoUsuario === "maestro" && !seccionMaestro) {
+        e.seccionMaestro = "Seleccione la sección en la que trabaja.";
+      }
     }
     if (s === 1) {
       if (!marcaFinal.trim()) e.marca = "Seleccione o escriba la marca.";
@@ -322,6 +330,7 @@ export default function RegistroWizard() {
         // porque este es el punto donde el dato deja de ser editable.
         apellidosFamilia: tipoConFamilia ? apellidosFamilia.trim() : null,
         parentescoOtro: tipoUsuario === "otro" ? parentescoOtro.trim() : null,
+        seccionMaestro: tipoUsuario === "maestro" && seccionMaestro ? seccionMaestro : null,
         marca: marcaFinal, modelo: modeloFinal, color: colorFinal,
         placas: sinPlacas ? null : placas, sinPlacas,
         procedenciaTag, observaciones: null,
@@ -513,6 +522,23 @@ export default function RegistroWizard() {
                   familia de la comunidad.
                 </p>
                 {errores.parentescoOtro && <p className="field-error">{errores.parentescoOtro}</p>}
+              </div>
+            )}
+            {/* L2-09: la sección decide a qué estacionamiento da acceso el TAG
+                del maestro (preescolar y primaria E2; secundaria y preparatoria
+                E1). Solo aparece para maestro y se sella en la firma. */}
+            {tipoUsuario === "maestro" && (
+              <div className="field">
+                <span>Sección en la que trabaja</span>
+                <select className={`select ${errores.seccionMaestro ? "invalid" : ""}`} value={seccionMaestro}
+                  onChange={(e) => setSeccionMaestro(e.target.value as SeccionMaestro | "")}>
+                  <option value="">Seleccione…</option>
+                  {SECCIONES_MAESTRO.map((s) => (
+                    <option key={s} value={s}>{SECCION_MAESTRO_LABEL[s]}</option>
+                  ))}
+                </select>
+                <p className="hint" style={{ margin: 0 }}>Determina el estacionamiento al que da acceso su TAG.</p>
+                {errores.seccionMaestro && <p className="field-error">{errores.seccionMaestro}</p>}
               </div>
             )}
             {/* Solo a quien pertenece a una familia de la comunidad: es el dato
@@ -743,6 +769,9 @@ export default function RegistroWizard() {
                 )}
                 {parentescoOtro.trim() !== "" && (
                   <div><dt>Parentesco</dt><dd>{parentescoOtro.trim()}</dd></div>
+                )}
+                {seccionMaestro !== "" && (
+                  <div><dt>Sección</dt><dd>{SECCION_MAESTRO_LABEL[seccionMaestro]}</dd></div>
                 )}
                 {hayGestionante && (
                   <div>

@@ -118,6 +118,7 @@ interface RegistroRow {
   usuario_es_menor: boolean;
   apellidos_familia: string | null;
   parentesco_otro: string | null;
+  seccion_maestro: string | null;
   marca: string;
   modelo: string;
   color: string;
@@ -145,7 +146,7 @@ interface RegistroRow {
 const SELECT_REGISTRO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
   tipo_validado, tipo_validado_por, tipo_validado_en, usuario_es_menor,
-  apellidos_familia, parentesco_otro,
+  apellidos_familia, parentesco_otro, seccion_maestro,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
   tag_apartado, tag_apartado_no, estado,
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por, instalado_en,
@@ -228,6 +229,7 @@ function mapRegistro(r: RegistroRow): Registro {
     usuarioEsMenor: r.usuario_es_menor,
     apellidosFamilia: r.apellidos_familia,
     parentescoOtro: r.parentesco_otro,
+    seccionMaestro: r.seccion_maestro,
     marca: r.marca,
     modelo: r.modelo,
     color: r.color,

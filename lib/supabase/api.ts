@@ -120,6 +120,9 @@ export interface CrearRegistroInput {
   // Parentesco en texto libre del tipo 'otro' (tio, abuelo...). null en los
   // demas tipos.
   parentescoOtro: string | null;
+  // Seccion del maestro (L2-09, bloque 70): preescolar, primaria, secundaria o
+  // preparatoria. null en los demas tipos.
+  seccionMaestro: string | null;
   marca: string;
   modelo: string;
   color: string;
@@ -197,6 +200,8 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     // base, luego el deploy.
     p_apellidos_familia: input.apellidosFamilia?.trim() || null,
     p_parentesco_otro: input.parentescoOtro?.trim() || null,
+    // Parametro 29 (bloque 70). Mismo orden de salida: primero la base.
+    p_seccion_maestro: input.seccionMaestro || null,
   });
 
   if (error) throw new Error(error.message);

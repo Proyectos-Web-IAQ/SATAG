@@ -21,6 +21,7 @@ import {
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
 import { filaStock, filaPadron, generarXlsxZk, generarCsvZk, leerExportZk, descargarArchivo, fechaArchivo, type FilaZk } from "@/lib/zk/plantillaZk";
+import { estacionamientosSugeridos, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
@@ -517,8 +518,14 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
         // revisar uno por uno.
         const conFila = padronZk.filter((r) => r.noDispositivo && filaPadron(r, mapaZk.get(r.noDispositivo)) !== null);
         const familia = conFila.filter((r) => r.tipoUsuario === "padres" || r.tipoUsuario === "otro").length;
+        // L2-09: con la sección del maestro y los estacionamientos que TI
+        // asignó al instalar, el aviso dice qué nivel dejar en ZK sin abrir
+        // cada expediente.
         const ajustar = conFila.filter((r) => r.tipoUsuario !== "padres" && r.tipoUsuario !== "otro")
-          .map((r) => `TAG ${r.noDispositivo} (${TIPO_USUARIO_LABEL[r.tipoUsuario].toLowerCase()})`);
+          .map((r) => `TAG ${r.noDispositivo} (${TIPO_USUARIO_LABEL[r.tipoUsuario].toLowerCase()}`
+            + (r.tipoUsuario === "maestro" && esSeccionMaestro(r.seccionMaestro) ? ` de ${SECCION_MAESTRO_LABEL[r.seccionMaestro].toLowerCase()}` : "")
+            + (r.estacionamientos.length ? `: deje solo ${r.estacionamientos.join(" + ")}` : "")
+            + ")");
         // Un TAG propio de la familia no paso por el stock: nace en ZK sin
         // niveles, y se activa volviendo a aplicar los del departamento.
         const propios = conFila.filter((r) => (r.tipoUsuario === "padres" || r.tipoUsuario === "otro") && r.procedenciaTag === "propio")
@@ -1209,7 +1216,15 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
   const [tag, setTag] = useState(tagReservado ?? "");
   // TI define el estacionamiento al instalar (SC-002); al menos uno: un TAG
   // sin acceso a ningún estacionamiento no sirve de nada.
-  const [claves, setClaves] = useState<string[]>(r.estacionamientos);
+  // L2-09: si el expediente todavía no tiene estacionamiento, se sugiere el
+  // que corresponde por tipo y, para maestro, por sección. Solo sugiere: TI lo
+  // confirma o lo cambia antes de instalar. Si el catálogo ya cargó, solo se
+  // sugieren claves que existen en él.
+  const [claves, setClaves] = useState<string[]>(() => {
+    if (r.estacionamientos.length) return r.estacionamientos;
+    const sugeridos = estacionamientosSugeridos(r.tipoUsuario, esSeccionMaestro(r.seccionMaestro) ? r.seccionMaestro : null) ?? [];
+    return estacionamientos ? sugeridos.filter((c) => estacionamientos.includes(c)) : sugeridos;
+  });
   // CC-01: si la familia trae su propio TAG, el que se instala es el propio y la
   // escuela aparta el suyo. El número apartado es opcional en el momento.
   const [propio, setPropio] = useState(r.procedenciaTag === "propio");

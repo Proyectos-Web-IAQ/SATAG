@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Registro, Solicitud, TipoUsuario, TramiteSolicitado } from "@/lib/mock/types";
 import EstadoChip from "@/components/admin/EstadoChip";
 import { nombreDesdeEmail } from "@/lib/supabase/apiPanel";
+import { esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
 
 // Rol de quien deja una nota del buzon (SC-003), en texto legible.
 // El buzon publico NO ofrece 'otro' (ni 'alumno'); la entrada esta aqui porque
@@ -176,6 +177,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
         <div><div className="k">El conductor es</div><div className="v"><TipoUsuarioValidado r={r} /></div></div>
         <ApellidosFamilia r={r} />
         <ParentescoOtro r={r} />
+        <SeccionMaestroDato r={r} />
         <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>
         {r.tagApartado && <div><div className="k">TAG apartado</div><div className="v">{r.tagApartadoNo}</div></div>}
         <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
@@ -257,6 +259,19 @@ function ParentescoOtro({ r }: { r: Registro }) {
   return (
     <DatoDeCotejo etiqueta="Parentesco con la familia" valor={r.parentescoOtro?.trim()}
       faltante="Este expediente es de otro familiar y no dice qué parentesco tiene con la familia: sin él no se puede cotejar antes de instalar el TAG." />
+  );
+}
+
+// Sección del maestro (L2-09, bloque 70): decide el estacionamiento. Mismo
+// trato que el parentesco: a maestro se le muestra SIEMPRE, con chip si falta
+// (los dados de alta antes del bloque 70, o corregidos a maestro en la caja,
+// no la traen). A los demás tipos no les corresponde.
+function SeccionMaestroDato({ r }: { r: Registro }) {
+  if (r.tipoUsuario !== "maestro") return null;
+  const seccion = r.seccionMaestro;
+  return (
+    <DatoDeCotejo etiqueta="Sección del maestro" valor={esSeccionMaestro(seccion) ? SECCION_MAESTRO_LABEL[seccion] : undefined}
+      faltante="Este expediente es de un maestro y no dice su sección: pregúntesela para darle el estacionamiento correcto (preescolar y primaria E2; secundaria y preparatoria E1)." />
   );
 }
 

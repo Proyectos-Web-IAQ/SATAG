@@ -134,6 +134,10 @@ export interface Registro {
   // cobrar. `string | null` con el mismo criterio que los apellidos: solo lo
   // lleva 'otro', y los expedientes anteriores a la columna no lo traen.
   parentescoOtro: string | null;
+  // Sección del maestro (L2-09, bloque 70): preescolar, primaria, secundaria o
+  // preparatoria. Texto tal como viene de la base; se valida con
+  // esSeccionMaestro (lib/secciones). Nula en los demás tipos y en lo anterior.
+  seccionMaestro?: string | null;
   // Vehículo (aplanado)
   marca: string;
   modelo: string;
@@ -196,6 +200,8 @@ export interface CrearRegistroInput {
   // familia, así que viaja con el mismo criterio que los apellidos: null en los
   // demás tipos, nunca omitido.
   parentescoOtro: string | null;
+  // Sección del maestro (L2-09). null en los demás tipos.
+  seccionMaestro?: string | null;
   marca: string;
   modelo: string;
   color: string;
