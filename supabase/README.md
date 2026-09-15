@@ -202,8 +202,8 @@ esquema de las tablas del padron:
   - prenderlo: el mismo update con `'activo'`. Cualquier valor distinto de `'activo'` lo
     apaga, asi que despues de probar hay que volver a prenderlo.
 - **`pg_cron`**, solo si se aplica el bloque 67 (opcional): trabajo `satag-recordatorio-ti`,
-  lunes a viernes a las 14:00 UTC (08:00 en Queretaro). Se ve en `cron.job` y sus corridas en
-  `cron.job_run_details`.
+  los lunes a las 13:30 UTC (07:30 en Queretaro), con los TAGs disponibles y los cobrados por
+  instalar. Se ve en `cron.job` y sus corridas en `cron.job_run_details`.
 - Con **"Automatically expose new tables"** encendido (arriba), `parametros` nace con grants
   para `anon` y `authenticated`; el bloque 66 los revoca en el mismo archivo. Cualquier tabla
   nueva de este tipo debe hacer lo mismo.
