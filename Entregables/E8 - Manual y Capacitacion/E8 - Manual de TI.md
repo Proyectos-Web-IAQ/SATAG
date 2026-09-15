@@ -449,6 +449,38 @@ La pluma la controla ZKBioSecurity, no SATAG. Desde la vista **"TAGs de la escue
 
 Alguien las dio de alta a mano en ZK con otro ID. Exporte de ZK **Usuarios_….csv** (Personal → Usuarios → Exportar → CSV), súbalo en **"Mapa de IDs de ZK (guardado para todas las sesiones y computadoras)"** y vuelva a descargar el archivo: SATAG usará el ID que ZK ya tiene y ZK actualizará a la persona en lugar de rechazarla.
 
+### 17.5. Avisos en Google Chat
+
+> Sección agregada el 15-sep-2026 (bloque 66). El primer día en producción, Administración avisaba a TI por teléfono después de cada cobro; este aviso lo sustituye.
+
+**Qué llega.** Cada vez que Administración registra un cobro y ese TAG queda por instalar, el espacio de Google Chat **"SATAG - TI"** recibe un mensaje de la app **SATAG**, por ejemplo:
+
+> **SATAG:** hay 3 TAGs por instalar. Abra el panel
+
+El número es el **total** de la cola **"Instalar TAG"** en ese momento, no solo el cobro que acaba de pasar. **"Abra el panel"** lleva a la dirección del sistema. Si Sistemas aplicó también el recordatorio (bloque 67), de lunes a viernes a las 08:00 llega **"Buenos días: hay N TAGs por instalar"**, solo cuando queda alguno pendiente.
+
+**Qué no trae.** Ningún dato personal: ni nombres, ni placas, ni folios. Para saber a quién le toca, abra **"Instalar TAG"** en el panel y toque **"Actualizar lista"**.
+
+**Para que le llegue al celular.** En el espacio **"SATAG - TI"**, ponga las notificaciones en **"Todos los mensajes"** en la app de Google Chat del celular y también en el navegador de la computadora, y acepte el permiso de notificaciones cuando el navegador lo pida.
+
+**Cuándo no llega, y es normal:**
+
+- Si el cobro falló: sin cobro no hay aviso.
+- Si el expediente ya tenía TAG cuando se registró el pago.
+- Si Sistemas apagó el aviso para hacer pruebas (abajo).
+
+**Apagarlo para pruebas (Sistemas, desde el SQL Editor de Supabase).** Mientras esté apagado **no llega ningún aviso real**, así que vuelva a prenderlo en cuanto termine la prueba:
+
+- Apagar: `update public.parametros set valor = 'inactivo', actualizado_en = now() where clave = 'aviso_chat_ti';`
+- Prender: el mismo, con `'activo'`.
+
+**Si dejan de llegar:**
+
+1. Mientras se resuelve, TI revisa la cola con **"Actualizar lista"** y Administración vuelve a avisar por teléfono.
+2. Sistemas confirma que el interruptor esté prendido: `select valor from public.parametros where clave = 'aviso_chat_ti';` debe decir `activo`.
+3. Sistemas corre `supabase/manual/2026-09-15_verificar_bloque66_chat.sql`: el PASO 1 debe salir todo en `true`, el PASO 2 manda un mensaje de prueba al espacio y el PASO 3 muestra la respuesta de Google, que debe ser **200**.
+4. Si Google responde **403** o **404**, el webhook del espacio se borró o cambió. Cree uno nuevo en el espacio (nombre del espacio → Apps e integraciones → Webhooks) y reemplace el secreto `chat_webhook_satag_ti` en Vault (el comando está en `supabase/README.md`). La dirección del webhook no se escribe en ningún documento ni se comparte por chat.
+
 ---
 
 ## 18. Preguntas frecuentes

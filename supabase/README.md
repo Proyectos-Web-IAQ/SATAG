@@ -178,6 +178,36 @@ que alguien ya acoto a mano; dejarlo encendido deshara ese trabajo en cuanto un 
 cree objetos. Apagarlo **no** cierra lo ya expuesto: solo cambia el comportamiento de lo que
 venga. Revisar que quedaria fuera antes de tocarlo.
 
+### Vault, `pg_net` y el interruptor `parametros` (bloque 66, 15-sep-2026)
+
+El aviso al espacio de Google Chat "SATAG - TI" depende de piezas que no se ven en el
+esquema de las tablas del padron:
+
+- **Vault** (Integrations -> Vault) guarda la URL del webhook entrante del espacio con el
+  nombre `chat_webhook_satag_ti`. **Nunca va en el repo ni en un comentario:** quien tiene
+  la URL puede escribir en el espacio. El bloque 66 no se aplica sin ese secreto.
+  - Crearlo (una vez, antes del bloque 66):
+    `select vault.create_secret('<URL>', 'chat_webhook_satag_ti', 'Webhook entrante del espacio de Google Chat SATAG - TI');`
+  - Reemplazarlo si se borra o se cambia el webhook:
+    `select vault.update_secret((select id from vault.secrets where name = 'chat_webhook_satag_ti'), '<URL nueva>');`
+- **`pg_net`** manda el POST de forma asincrona, despues del commit. Las respuestas de
+  Google quedan unas horas en `net._http_response` (200 = llego; 403/404 = el webhook ya no
+  existe).
+- **`public.parametros`** son interruptores de operacion. RLS encendida y **sin politicas**:
+  no se alcanza desde la API, solo desde el SQL Editor y las funciones del bloque. Hoy tiene
+  una fila:
+  - apagar el aviso (pruebas): `update public.parametros set valor = 'inactivo', actualizado_en = now() where clave = 'aviso_chat_ti';`
+  - prenderlo: el mismo update con `'activo'`. Cualquier valor distinto de `'activo'` lo
+    apaga, asi que despues de probar hay que volver a prenderlo.
+- **`pg_cron`**, solo si se aplica el bloque 67 (opcional): trabajo `satag-recordatorio-ti`,
+  lunes a viernes a las 14:00 UTC (08:00 en Queretaro). Se ve en `cron.job` y sus corridas en
+  `cron.job_run_details`.
+- Con **"Automatically expose new tables"** encendido (arriba), `parametros` nace con grants
+  para `anon` y `authenticated`; el bloque 66 los revoca en el mismo archivo. Cualquier tabla
+  nueva de este tipo debe hacer lo mismo.
+
+Diagnostico completo: `supabase/manual/2026-09-15_verificar_bloque66_chat.sql`.
+
 ## Auth del panel administrativo
 
 El panel (`/admin`) usa **Supabase Auth** (correo + contrasena). Al iniciar sesion el
