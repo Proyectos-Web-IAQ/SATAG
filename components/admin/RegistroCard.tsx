@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Registro, Solicitud, TipoUsuario, TramiteSolicitado } from "@/lib/mock/types";
 import EstadoChip from "@/components/admin/EstadoChip";
 import { nombreDesdeEmail } from "@/lib/supabase/apiPanel";
-import { esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
+import { CRITERIO_ESTACIONAMIENTO_MAESTRO, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
 
 // Rol de quien deja una nota del buzon (SC-003), en texto legible.
 // El buzon publico NO ofrece 'otro' (ni 'alumno'); la entrada esta aqui porque
@@ -271,7 +271,7 @@ function SeccionMaestroDato({ r }: { r: Registro }) {
   const seccion = r.seccionMaestro;
   return (
     <DatoDeCotejo etiqueta="Sección del maestro" valor={esSeccionMaestro(seccion) ? SECCION_MAESTRO_LABEL[seccion] : undefined}
-      faltante="Este expediente es de un maestro y no dice su sección: pregúntesela para darle el estacionamiento correcto (preescolar y primaria E2; secundaria y preparatoria E1)." />
+      faltante={`Este expediente es de un maestro y no dice su sección: pregúntesela para darle el estacionamiento correcto (${CRITERIO_ESTACIONAMIENTO_MAESTRO}).`} />
   );
 }
 

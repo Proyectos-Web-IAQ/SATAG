@@ -1203,6 +1203,17 @@ function CamposVehiculo({ v, r, marcas, colores, junto }: {
 }
 
 // ---- Formularios de acción ----
+
+// L2-09: estacionamientos que corresponden por tipo y, para maestro, por
+// sección. Solo con el catálogo cargado y filtrados contra él: si el catálogo
+// no cargó (D-09) no se inventa una asignación que el aviso del formulario
+// daría por existente («Se instalará con la asignación que ya tiene…»).
+function clavesSugeridas(r: Registro, catalogo: string[] | null | undefined): string[] {
+  if (!Array.isArray(catalogo)) return [];
+  const sugeridos = estacionamientosSugeridos(r.tipoUsuario, esSeccionMaestro(r.seccionMaestro) ? r.seccionMaestro : null) ?? [];
+  return sugeridos.filter((c) => catalogo.includes(c));
+}
+
 function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagReservado, busy, instalando, instaladoPor, onSubmit }: {
   r: Registro; marcas: string[]; colores: string[];
   estacionamientos: string[] | null | undefined; disponibles: string[]; tagReservado: string | null;
@@ -1217,14 +1228,17 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
   // TI define el estacionamiento al instalar (SC-002); al menos uno: un TAG
   // sin acceso a ningún estacionamiento no sirve de nada.
   // L2-09: si el expediente todavía no tiene estacionamiento, se sugiere el
-  // que corresponde por tipo y, para maestro, por sección. Solo sugiere: TI lo
-  // confirma o lo cambia antes de instalar. Si el catálogo ya cargó, solo se
-  // sugieren claves que existen en él.
-  const [claves, setClaves] = useState<string[]>(() => {
-    if (r.estacionamientos.length) return r.estacionamientos;
-    const sugeridos = estacionamientosSugeridos(r.tipoUsuario, esSeccionMaestro(r.seccionMaestro) ? r.seccionMaestro : null) ?? [];
-    return estacionamientos ? sugeridos.filter((c) => estacionamientos.includes(c)) : sugeridos;
-  });
+  // que corresponde por tipo y, para maestro, por sección (clavesSugeridas).
+  // Solo sugiere: TI lo confirma o lo cambia antes de instalar.
+  const [claves, setClaves] = useState<string[]>(() =>
+    r.estacionamientos.length ? r.estacionamientos : clavesSugeridas(r, estacionamientos));
+  // Si el catálogo llega después de abrir el formulario, se sugiere en ese
+  // momento, salvo que TI ya haya tocado los chips.
+  const [tocoClaves, setTocoClaves] = useState(false);
+  useEffect(() => {
+    if (tocoClaves || r.estacionamientos.length) return;
+    setClaves(clavesSugeridas(r, estacionamientos));
+  }, [r, estacionamientos, tocoClaves]);
   // CC-01: si la familia trae su propio TAG, el que se instala es el propio y la
   // escuela aparta el suyo. El número apartado es opcional en el momento.
   const [propio, setPropio] = useState(r.procedenciaTag === "propio");
@@ -1256,8 +1270,10 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
   // Con la marca recién cambiada el modelo queda vacío hasta que llega su
   // catálogo: eso es esperar, no un dato que le falte a quien atiende.
   const esperandoModelos = veh.modelos === undefined && veh.modeloFinal === "";
-  const toggle = (c: string) =>
+  const toggle = (c: string) => {
+    setTocoClaves(true);
     setClaves((s) => (s.includes(c) ? s.filter((x) => x !== c) : [...s, c]));
+  };
   return (
     <div className="ti-form">
       {/* Sólo el vehículo. El nombre del titular, el tipo de usuario y la firma
@@ -1308,6 +1324,11 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
               ))}
             </div>
             {claves.length === 0 && <p className="field-error">Elija al menos un estacionamiento.</p>}
+            {!tocoClaves && r.estacionamientos.length === 0 && claves.length > 0 && (
+              <p className="ti-hint">
+                Sugerido por el tipo{r.tipoUsuario === "maestro" ? " y la sección" : ""}: confírmelo con la persona antes de instalar.
+              </p>
+            )}
           </>
         )}
       </div>

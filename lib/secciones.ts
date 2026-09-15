@@ -18,6 +18,10 @@ export const SECCION_MAESTRO_LABEL: Record<SeccionMaestro, string> = {
   preparatoria: "Preparatoria",
 };
 
+// El criterio en palabras, para los textos de ayuda. Si cambia el criterio,
+// cambia aquí y en estacionamientosSugeridos, juntos.
+export const CRITERIO_ESTACIONAMIENTO_MAESTRO = "preescolar y primaria E2; secundaria y preparatoria E1";
+
 // La base guarda la sección como texto (bloque 70); esto la valida al leerla.
 export function esSeccionMaestro(valor: unknown): valor is SeccionMaestro {
   return typeof valor === "string" && (SECCIONES_MAESTRO as string[]).includes(valor);
