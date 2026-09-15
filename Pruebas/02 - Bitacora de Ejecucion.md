@@ -56,6 +56,14 @@
 > Reasignaciones de folio aplicadas y llevadas a la matriz: F-29 absorbe F-09; F-11 → `…103`;
 > F-12 → `…104`.
 
+> **Primer día en producción, 14-sep-2026, sobre el sitio publicado con `a464c4a`** (último cambio
+> de cliente antes de las instalaciones; el siguiente, `de888d1`, entró a las 14:53, después). Siete
+> familias reales completaron alta → cobro → instalación (`SATAG-000001` a `…000007`). Administración
+> cobró con su propia cuenta y la instalación estuvo a cargo de dos perfiles `super`. Cierra **F-01**
+> con observación de rol y deja resultados para **U-01, U-02 y U-04**. Las cifras salen de una
+> consulta de solo lectura contra producción (`supabase/manual/2026-09-15_lectura_primer_lunes.sql`);
+> el detalle, en `Campo/02 - Primer lunes en produccion (14-sep).md`.
+
 **Resultado:** ✅ Aprobado · ❌ Fallido · ⚠️ Aprobado con observación · ⏭️ No ejecutado
 
 ---
@@ -125,10 +133,10 @@ que se conserva aparte como evidencia del defecto.
 
 | Caso | Fecha | Resultado | Evidencia / observación |
 |---|---|---|---|
-| F-01 | 18-ago-2026 | | **Parcial — el recorrido real va a medio camino.** Alta hecha por el formulario público **en producción** con datos reales (prueba de campo): salió `SATAG-000001` al primer intento tras vaciar el padrón de QA y reiniciar contadores. Comprobante «Registro recibido» con folio e indicaciones, resguardado en `SATAG - Evidencia de pruebas/2026-08-18/comprobante-SATAG-000001.pdf`. El consentimiento se capturó con **aviso v2 y reglamento v2** —el cerrojo de D-01 trabajando en producción, contraste exacto del `SATAG-000302` rescatado— y la firma PNG entró al bucket en el mismo segundo del alta (16:58:38 UTC). **Faltan** el cobro (rol `admin`) y la instalación con estacionamiento (rol `ti`), que ejecuta el personal con sus roles reales de forma asíncrona; al caer la última pieza se cierra el caso. |
+| F-01 | 14-sep-2026 | ⚠️ | **Cerrado en producción con siete familias reales, con una observación de rol.** El recorrido completo salió siete de siete el primer lunes (`SATAG-000001` a `SATAG-000007`): alta por el formulario público; cobro de Administración con su propia cuenta (rol `admin`; recibos `SATAG-2026-000001` a `…000007`; tipo confirmado en caja en los siete); instalación con TAG de la escuela y acceso asignado. Del envío al cobro, 1–2 min; del cobro a la instalación, 3–7 min (hora aproximada: la base todavía no guarda la hora de instalación, L2-04). **Observación:** las siete instalaciones las hicieron dos perfiles `super`, no una cuenta `ti`. Como `super` se salta la revisión de rol, **la instalación con rol `ti` sigue sin probarse en producción**; se cierra con la primera que haga el personal de TI con su cuenta. El alta del 18-ago que abrió este caso se borró en la limpieza del 14-sep y su comprobante sigue resguardado en `SATAG - Evidencia de pruebas/2026-08-18/`. Consulta: `supabase/manual/2026-09-15_lectura_primer_lunes.sql`; detalle en `Campo/02`. |
 | F-02 | 03-ago-2026 | ⚠️ | **Cerrado con observación.** La mitad del reglamento, que faltaba, quedó verificada el 03-ago: la casilla llega **deshabilitada**, el recuadro trae **22 cláusulas** y la etiqueta dice «(v2)»; al desplazarse al final la casilla se habilita. Igual en el aviso. Observación de redacción del caso: el esperado dice "el botón permanece deshabilitado", pero lo que se deshabilita es **la casilla** (`registro/page.tsx:454`, `disabled={!avisoLeido}`), y el botón muestra "Debe aceptar el aviso de privacidad para continuar". El propósito —no se puede aceptar sin llegar al final— se cumple. |
 | F-03 | 31-jul-2026 | ✅ | La casilla llega **desmarcada y deshabilitada**; se habilita al desplazarse al final (tolerancia de 8 px, `alFinal`). El aviso que dice "Desplácese hasta el final para poder aceptar" desaparece al cumplirse. Es obligatoria: sin ella `validarPaso` bloquea el avance (`:159`). |
-| F-04 | 03-ago-2026 | | **Parcial: la parte de pantalla queda cerrada.** Con «menor de edad» marcado, el desplegable trae exactamente `["Seleccione…","Padre","Madre","Tutor"]` — **sin «Otro»**; la casilla de gestionante llega **marcada y deshabilitada** (no se puede desmarcar); «Tipo de usuario» queda en `alumno` y bloqueado. Verificado por recorrido automatizado en escritorio (1280) y celular (390). **Falta** la tercera pata del esperado —que la firma sea del gestionante—, que se comprueba con el alta real junto con E-06. |
+| F-04 | 03-ago-2026 | | **Parcial: la parte de pantalla queda cerrada.** Con «menor de edad» marcado, el desplegable trae exactamente `["Seleccione…","Padre","Madre","Tutor"]` — **sin «Otro»**; la casilla de gestionante llega **marcada y deshabilitada** (no se puede desmarcar); «Tipo de usuario» queda en `alumno` y bloqueado. Verificado por recorrido automatizado en escritorio (1280) y celular (390). **Falta** la tercera pata del esperado —que la firma sea del gestionante—, que se comprueba con el alta real junto con E-06. *(14-sep: ningún conductor menor de edad entre las siete altas del primer día; sigue abierta.)* |
 | F-05 | 31-jul-2026 | ✅ | Seat → Arona, Ateca, Ibiza, Leon, Tarraco, Toledo, Otro: los modelos corresponden a la marca. Marca «Otro» abre captura libre de marca y de modelo. La rama modelo = «Otro» se verificó en el código, no en pantalla. Observación menor: «Leon» debería llevar acento en el catálogo. |
 | F-06 | 03-ago-2026 | ✅ | Con el paso vacío salen **los cuatro** mensajes, uno por campo: «Seleccione o escriba la marca.», «…el modelo.», «…el color.» y «Capture las placas o marque «sin placas».». Con placa mal formada (`AB1`) sale «Formato de placa no válido (5–8 letras o números).». En ambos casos el asistente **no avanza** y nada se guarda: el envío ni siquiera se intenta, la validación es previa (`validarPaso`). Verificado en escritorio y celular. |
 | F-07 | 18-ago-2026 | ✅ | **Cerrado con el alta real.** La mitad del 03-ago: el chip «Ya tengo TAG propio» activa y muestra el aviso "El registro y la activación de un TAG propio tienen el mismo costo ($100); llévelo el día de la instalación", la prueba en pantalla del acuerdo de CC-01. La mitad que faltaba, hoy: `SATAG-000001` se dio de alta con TAG **de la escuela** y en base quedó `procedencia_tag = 'escuela'` (verificado por consulta sobre `registros` + `aceptaciones`). El contraste con la procedencia «propio» consta en el `SATAG-000303` rescatado antes de vaciar el padrón (`SATAG - Evidencia de pruebas/2026-08-18/rescate-evidencia-301-302-303.json`, `procedencia_tag: 'propio'`): ambas ramas del chip están documentadas en la base. |
@@ -182,11 +190,11 @@ que se conserva aparte como evidencia del defecto.
 
 | Caso | Fecha | Participante (rol, no nombre completo) | Resultado | Observación |
 |---|---|---|---|---|
-| U-01 | | | | |
-| U-02 | | | | |
-| U-03 | | | | |
-| U-04 | | | | |
-| U-05 | | | | |
+| U-01 | 14-sep-2026 | Padres de familia (7 altas; 2 consultados) | ⚠️ | Siete de siete altas completas y cobradas, y ninguna abandonada: no hay firmas sin expediente después de abrir. Los dos padres consultados al instalar dijeron que el trámite fue más rápido y fácil de llenar. **No se registró si alguno pidió ayuda para llenarlo**, que es lo que el caso exige. |
+| U-02 | 14-sep-2026 | Administración (su propia cuenta) | ✅ | Siete cobros, cada uno 1–2 min después de que la familia envió el formulario; ese tiempo incluye su llegada a caja, así que el cobro tomó menos. Tipo confirmado en caja en los siete. Tuvo a la mano la guía rápida del personal, no el manual. **Observación de operación:** avisaba a TI por teléfono después de cada cobro y le incomodaba llamar tanto; de ahí el aviso en Google Chat (bloque 66). |
+| U-03 | | | ⏭️ | No se corta caja hasta que exista el rol contador (L2-02). |
+| U-04 | 14-sep-2026 | Sistemas (perfil super) | ⚠️ | Siete instalaciones, 3–7 min después del cobro, y en un expediente se corrigieron las placas con «¿Los datos del vehículo no coinciden?» antes de instalar. **Las hizo personal de Sistemas con perfil super, no el personal de TI** al que va dirigido el caso: queda abierto para su primera instalación con cuenta propia. |
+| U-05 | | | ⏭️ | No se midió el tiempo de búsqueda. |
 
 ---
 

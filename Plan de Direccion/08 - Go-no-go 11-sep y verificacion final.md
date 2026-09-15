@@ -183,10 +183,10 @@ Los otros dos riesgos conocidos (sin entorno de pruebas y cuenta gratuita de Sup
 
 | | |
 |---|---|
-| **Pruebas hechas** (fecha, quién, folios de prueba, hallazgos) | |
-| **Copia previa** (respaldo de Supabase revisado; JSON guardado en Campo/datos/) | |
-| **Limpieza hecha** (fecha y hora, quién, TAGs disponibles antes y después) | |
-| **Firmas borradas** (cuántas imágenes había y a qué horas se subieron) | |
-| **Decisión con Miguel** (salida el lunes 14-sep: sí o no; acepta los riesgos de la sección 8) | |
-| **Comunicada a** (Zairet, Lidia, Ángel y CP Vicente; cuándo) | |
-| **Observaciones** | |
+| **Pruebas hechas** (fecha, quién, folios de prueba, hallazgos) | Pruebas del equipo con datos inventados desde el viernes 11 hasta el lunes 14 a las 08:05; sus folios se borraron en la limpieza. La última alta de prueba entró durante la limpieza y obligó a una pasada más. **Los resultados por bloque (A a E) no se anotaron en esta sección.** |
+| **Copia previa** (respaldo de Supabase revisado; JSON guardado en Campo/datos/) | **Por confirmar:** en `Campo/datos/` no hay JSON del PASO 1. |
+| **Limpieza hecha** (fecha y hora, quién, TAGs disponibles antes y después) | Lunes 14 por la mañana, antes de abrir, por Gerardo (los ajustes del script quedaron en commits de 07:48 a 08:09). Hizo falta **tres pasadas**: las dos primeras las detuvieron sus propias guardias porque entraron pruebas del equipo entre la lectura y el borrado. Resultado: padrón, pagos, firmas registradas, movimientos, solicitudes y bitácora en cero; folios reiniciados; inventario conservado (11 TAGs, todos disponibles). |
+| **Firmas borradas** (cuántas imágenes había y a qué horas se subieron) | **No se vació el almacenamiento.** Al 15-sep hay 18 imágenes: 7 de las familias del lunes y 11 sin expediente — 1 del 18-ago (10:17), 5 del 10-sep (13:34, 14:29, 14:43, 15:04 y 15:22), 3 del 11-sep (14:04, 15:47 y 15:50) y 2 del 14-sep (07:57 y 08:05, pruebas antes de abrir). Las del 10 y 11-sep coinciden con los incidentes del alta: pueden ser pruebas o altas rechazadas. **Ninguna es posterior a la apertura.** Pendiente: borrar las 11 a mano desde el tablero. |
+| **Decisión con Miguel** (salida el lunes 14-sep: sí o no; acepta los riesgos de la sección 8) | **Salida el lunes 14: sí.** SATAG operó ese día con familias reales y Miguel instaló uno de los TAGs. La aceptación de los riesgos de la sección 8 no quedó por escrito. |
+| **Comunicada a** (Zairet, Lidia, Ángel y CP Vicente; cuándo) | Zairet cobró los siete TAGs del día. **Por confirmar** cuándo se avisó a Lidia, Ángel y el CP Vicente. |
+| **Observaciones** | **Primer día:** 7 altas por SATAG entre 11:15 y 13:57 (6 padres y 1 maestro), 7 cobros y 7 instalaciones, sin ningún trámite a medias; ese mismo día se instalaron otros 8 TAGs con el proceso en papel. Del envío del formulario al TAG instalado, mediana de 8 minutos. **Hallazgos:** (1) ZK no activaba los TAGs precargados en el departamento Padres de familia; se corrigió con el departamento STOCK SATAG. (2) Administración llamaba a TI después de cada cobro; de ahí el aviso en Google Chat. (3) Las siete instalaciones las hizo Sistemas con perfil super: falta la primera con una cuenta de TI. (4) Miguel pidió cuatro ajustes del alta (SC-029). Detalle y cifras: `Campo/02 - Primer lunes en produccion (14-sep).md`. |
