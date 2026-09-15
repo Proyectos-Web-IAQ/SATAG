@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Registro, Solicitud, TipoUsuario, TramiteSolicitado } from "@/lib/mock/types";
 import EstadoChip from "@/components/admin/EstadoChip";
+import { nombreDesdeEmail } from "@/lib/supabase/apiPanel";
 
 // Rol de quien deja una nota del buzon (SC-003), en texto legible.
 // El buzon publico NO ofrece 'otro' (ni 'alumno'); la entrada esta aqui porque
@@ -86,6 +87,18 @@ function fechaLegible(iso: string | null): string {
   return Number.isNaN(fecha.getTime()) ? iso : FORMATO_FECHA.format(fecha);
 }
 
+// L2-04: la instalación guarda la hora real desde el bloque 68.
+const FORMATO_FECHA_HORA = new Intl.DateTimeFormat("es-MX", {
+  timeZone: "America/Mexico_City",
+  dateStyle: "medium",
+  timeStyle: "short",
+});
+
+function fechaHoraLegible(iso: string): string {
+  const fecha = new Date(iso);
+  return Number.isNaN(fecha.getTime()) ? iso : FORMATO_FECHA_HORA.format(fecha);
+}
+
 // Scroll suave salvo que el sistema pida movimiento reducido.
 export const scrollBehavior = (): ScrollBehavior =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
@@ -167,7 +180,10 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
         {r.tagApartado && <div><div className="k">TAG apartado</div><div className="v">{r.tagApartadoNo}</div></div>}
         <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
         <div><div className="k">Estacionamiento</div><div className="v">{r.estacionamientos.join(" + ") || "Sin asignar"}</div></div>
-        {r.fechaInstalacion && <div><div className="k">Instalado</div><div className="v">{r.fechaInstalacion}{r.instaladoPor ? ` · ${r.instaladoPor}` : ""}</div></div>}
+        {/* Desde el bloque 68 (L2-04) la instalación trae hora real y el correo
+            de la sesión; lo instalado antes solo tiene la fecha y el nombre
+            tecleado. */}
+        {r.fechaInstalacion && <div><div className="k">Instalado</div><div className="v">{r.instaladoEn ? fechaHoraLegible(r.instaladoEn) : r.fechaInstalacion}{r.instaladoPor ? ` · ${r.instaladoPor.includes("@") ? nombreDesdeEmail(r.instaladoPor) : r.instaladoPor}` : ""}</div></div>}
         {r.observaciones && <div style={{ gridColumn: "1 / -1" }}><div className="k">Observaciones</div><div className="v">{r.observaciones}</div></div>}
       </div>
       {onDescartar && pendientes.map((s) => (

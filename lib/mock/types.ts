@@ -153,6 +153,8 @@ export interface Registro {
   fechaAdquisicion: string | null;
   fechaInstalacion: string | null;
   instaladoPor: string | null;
+  // Hora real de la instalación (bloque 68, L2-04); nula en lo instalado antes.
+  instaladoEn?: string | null;
   motivoBaja: string | null;
   fechaBaja: string | null;
   observaciones: string | null;

@@ -133,6 +133,7 @@ interface RegistroRow {
   fecha_adquisicion: string | null;
   fecha_instalacion: string | null;
   instalado_por: string | null;
+  instalado_en: string | null;
   observaciones: string | null;
   created_at: string;
   pagos: PagoRow[];
@@ -147,7 +148,7 @@ const SELECT_REGISTRO = `
   apellidos_familia, parentesco_otro,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
   tag_apartado, tag_apartado_no, estado,
-  motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por,
+  motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por, instalado_en,
   observaciones, created_at,
   pagos ( monto, metodo, cobrado_por, folio_recibo, fecha, created_at ),
   registro_estacionamientos ( estacionamiento_clave ),
@@ -241,6 +242,7 @@ function mapRegistro(r: RegistroRow): Registro {
     fechaAdquisicion: r.fecha_adquisicion,
     fechaInstalacion: r.fecha_instalacion,
     instaladoPor: r.instalado_por,
+    instaladoEn: r.instalado_en,
     motivoBaja: r.motivo_baja,
     fechaBaja: r.fecha_baja,
     observaciones: r.observaciones,

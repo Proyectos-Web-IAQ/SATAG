@@ -400,12 +400,16 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       // de instalación en la misma transacción de siempre.
       action: async () => {
         setEnCurso({ id: r.id, accion: "instalar", tag });
+        // L2-04: quien instala es la sesión, no el nombre editable de «Atendido
+        // por». El RPC la sella desde el JWT (bloque 68); esto solo la manda
+        // por compatibilidad.
+        const quienInstala = nombreSesion ?? "";
         if (!correccion) {
-          return instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia });
+          return instalarTagConEstacionamiento(r.id, tag, claves, quienInstala, { tagApartadoNo: apartado, procedenciaTag: procedencia });
         }
-        await actualizarRegistroConEstacionamiento(r.id, correccion.cambios, null, correccion.motivo, tiNombre);
+        await actualizarRegistroConEstacionamiento(r.id, correccion.cambios, null, correccion.motivo, quienInstala);
         try {
-          return await instalarTagConEstacionamiento(r.id, tag, claves, tiNombre, { tagApartadoNo: apartado, procedenciaTag: procedencia });
+          return await instalarTagConEstacionamiento(r.id, tag, claves, quienInstala, { tagApartadoNo: apartado, procedenciaTag: procedencia });
         } catch (e) {
           // La corrección YA quedó guardada y run() no refresca cuando algo
           // falla: sin esto, el segundo intento volvería a mandar los mismos
@@ -626,7 +630,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
       // El TAG reservado desde la captura (SC-026) va primero y prellenado.
       const reservado = tagReservadoDe.get(r.id) ?? null;
       const chips = [...(reservado ? [reservado] : []), ...tagsDisponibles.map((t) => t.noDispositivo)];
-      return <FormInstalar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} disponibles={chips} tagReservado={reservado} busy={busy} instalando={enCurso?.accion === "instalar" && enCurso.id === r.id ? enCurso.tag ?? null : null} tiNombre={tiNombre} onTiNombre={setTiNombre} onSubmit={(tag, claves, propio, apartadoNo, correccion) => confirmarInstalar(r, tag, claves, propio, apartadoNo, correccion)} />;
+      return <FormInstalar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} disponibles={chips} tagReservado={reservado} busy={busy} instalando={enCurso?.accion === "instalar" && enCurso.id === r.id ? enCurso.tag ?? null : null} instaladoPor={nombreSesion ?? ""} onSubmit={(tag, claves, propio, apartadoNo, correccion) => confirmarInstalar(r, tag, claves, propio, apartadoNo, correccion)} />;
     }
     if (accion === "actualizar")
       return <FormActualizar r={r} marcas={marcas} colores={colores} estacionamientos={estacionamientos} busy={busy} guardando={enCurso?.accion === "actualizar" && enCurso.id === r.id} tiNombre={tiNombre} onTiNombre={setTiNombre} onUsarApartado={() => confirmarUsarApartado(r)} onSubmit={(c, claves, res, mot) => confirmarActualizar(r, c, claves, res, mot)} />;
@@ -1192,12 +1196,13 @@ function CamposVehiculo({ v, r, marcas, colores, junto }: {
 }
 
 // ---- Formularios de acción ----
-function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagReservado, busy, instalando, tiNombre, onTiNombre, onSubmit }: {
+function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagReservado, busy, instalando, instaladoPor, onSubmit }: {
   r: Registro; marcas: string[]; colores: string[];
   estacionamientos: string[] | null | undefined; disponibles: string[]; tagReservado: string | null;
   // busy sólo deshabilita; instalando es el No. de TAG que se está guardando en ESTE expediente.
-  busy: boolean; instalando: string | null; tiNombre: string;
-  onTiNombre: (v: string) => void;
+  busy: boolean; instalando: string | null;
+  // L2-04: el usuario de la sesión, solo para mostrarlo; no se edita.
+  instaladoPor: string;
   onSubmit: (tag: string, claves: string[], propio: boolean, apartadoNo: string, correccion: CorreccionVehiculo | null) => void;
 }) {
   // SC-026: si la captura dejo un TAG reservado, viene prellenado.
@@ -1340,7 +1345,13 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
           <p className="ti-hint">Queda reservado, sin instalar, para una reposición futura.</p>
         </div>
       )}
-      <div className="field"><span>Instalado por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
+      <div className="field">
+        <span>Instalado por</span>
+        {/* L2-04: la sesión, no texto libre. El RPC la sella desde el JWT con la
+            fecha y la hora exactas (bloque 68), igual que «Cobrado por» en
+            Administración. Si va a instalar otra persona, entra con su cuenta. */}
+        <p className="monto-fijo">{instaladoPor || "Su usuario"} <span className="monto-fijo__nota">usuario de esta sesión</span></p>
+      </div>
       {/* El resumen vive FUERA de la sección plegable: si se corrige y luego se
           pliega, lo corregido no puede quedar escondido. Nadie debe corregir un
           expediente sin darse cuenta. */}
