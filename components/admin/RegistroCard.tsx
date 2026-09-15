@@ -160,7 +160,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
     <>
       <div className="detail-grid" style={{ marginBottom: 12 }}>
         <div><div className="k">Gestionante (paga y firma)</div><div className="v">{r.gestionanteNombre ?? "El mismo conductor"}</div></div>
-        <div><div className="k">Tipo de usuario</div><div className="v"><TipoUsuarioValidado r={r} /></div></div>
+        <div><div className="k">El conductor es</div><div className="v"><TipoUsuarioValidado r={r} /></div></div>
         <ApellidosFamilia r={r} />
         <ParentescoOtro r={r} />
         <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>

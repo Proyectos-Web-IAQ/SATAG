@@ -158,7 +158,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
       title: "Registrar pago",
       message: `Se registrará un pago en efectivo de ${dinero.format(pago.monto)} para ${r.folio}, ${r.usuarioNombre} (${r.placas ?? "sin placas"}). El sistema generará el folio del recibo. Cobrado por ${pago.cobradoPor}.`
         + (corrige
-          ? ` El tipo de usuario quedará corregido de ${TIPO_USUARIO_LABEL[r.tipoUsuario]} a ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}, y el cambio se anotará en la bitácora.`
+          ? ` Quien conduce quedará corregido de ${TIPO_USUARIO_LABEL[r.tipoUsuario]} a ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}, y el cambio se anotará en la bitácora.`
           : ` Queda validado como ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`)
         + parentesco
         + " ¿Continuar?",
@@ -166,8 +166,8 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
       action: () => registrarPago(r.id, pago),
       ok: (resultado) => `Pago de ${dinero.format(pago.monto)} registrado · recibo ${resultado.folioRecibo ?? "generado"} (${r.folio}).`
         + (resultado.tipoCorregido && resultado.tipoAnterior
-          ? ` Tipo de usuario corregido: ${TIPO_USUARIO_LABEL[resultado.tipoAnterior]} → ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`
-          : ` Tipo de usuario validado: ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`),
+          ? ` Quien conduce, corregido: ${TIPO_USUARIO_LABEL[resultado.tipoAnterior]} → ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`
+          : ` Quien conduce, validado: ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`),
     });
   }
 
@@ -342,7 +342,7 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
         </p>
       </div>
       <div className="field">
-        <span>Confirme el tipo de usuario</span>
+        <span>Confirme quién conduce el vehículo</span>
         <p className="ti-hint" style={{ margin: "0 0 6px" }}>
           {tipoFijo
             ? "El titular es menor de edad: su tipo queda fijo en alumno y firma su padre, madre o tutor."

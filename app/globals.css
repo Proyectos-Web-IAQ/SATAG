@@ -735,8 +735,6 @@ a { color: var(--primary-strong); }
 
    - .hint, que sirve lo mismo para un párrafo de cuatro renglones que para el
      contador «215/500» o un «Cargando el aviso…»;
-   - .aviso-burbuja__texto, que vive en 420px a 0.8rem: ahí el justificado abre
-     ríos de espacio en vez de cerrarlos;
    - .lead, que son instrucciones de una línea;
    - .comprobante, centrado por diseño alrededor del folio;
    - todo el panel (.admin-*, .ti-*), que es tabla y dato, no lectura.
@@ -748,7 +746,14 @@ a { color: var(--primary-strong); }
    partir palabras deja renglones con huecos enormes; el <html lang="es"> de
    app/layout.tsx es lo que le da al navegador el diccionario para partirlas.
    hyphenate-limit-chars evita partir palabras cortas (donde no está soportado,
-   degrada solo y no rompe nada). */
+   degrada solo y no rompe nada).
+
+   .aviso-burbuja__texto estuvo fuera hasta el 15-sep, porque en 420px a 0.8rem
+   el justificado abre huecos. Miguel entró el 14-sep y pidió que la burbuja del
+   paso 1 fuera como el resto del aviso (SC-029, L2-10), y Gerardo decidió el
+   15-sep que el aviso vaya justificado también en teléfono: ver la regla de
+   abajo, que ya no lo regresa a bandera izquierda. */
+.aviso-burbuja__texto,
 .aviso-publico p,
 .reglamento > p,
 .reglamento li,
@@ -768,11 +773,12 @@ a { color: var(--primary-strong); }
    palabras que estirarlos deja el texto agujereado, que es justo lo contrario
    de lo que se pidió. Debajo de este ancho se vuelve a bandera izquierda; el
    guionizado se queda, porque ahí sí ayuda a que el renglón no termine medio
-   vacío. */
+   vacío.
+   El aviso de privacidad (burbuja, paso 3 y página pública) y el reglamento
+   del paso 4, que comparte su recuadro, quedan fuera de esta regla y se
+   justifican también en teléfono: decisión de Gerardo del 15-sep (SC-029,
+   L2-10). */
 @media (max-width: 480px) {
-  .aviso-publico p,
-  .reglamento > p,
-  .reglamento li,
   .copia-doc > p,
   .copia-doc > ol li,
   .copia-constancia,

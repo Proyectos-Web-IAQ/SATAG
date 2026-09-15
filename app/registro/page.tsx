@@ -73,7 +73,12 @@ export default function RegistroWizard() {
   const [gestionanteExtranjero, setGestionanteExtranjero] = useState(false);
   const [gestionanteRelacion, setGestionanteRelacion] = useState<GestionanteRelacion | "">("");
   const [esMenor, setEsMenor] = useState(false);
-  const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario>("padres");
+  // Quién conduce el vehículo. Arranca SIN valor (SC-029, L2-11): con
+  // «Padre / Madre / Tutor» preseleccionado, un maestro o un alumno podía
+  // enviar el alta sin haber mirado el campo, y el tipo decide qué se le pide
+  // y qué estacionamiento abre su TAG. El paso 1 no avanza sin elegirlo.
+  const [tipoUsuario, setTipoUsuario] = useState<TipoUsuario | "">("");
+  const tipoConFamilia = tipoUsuario !== "" && TIPOS_CON_FAMILIA.includes(tipoUsuario);
   // Apellidos con los que la escuela identifica a la familia. Se piden a los
   // tipos de TIPOS_CON_FAMILIA: es el dato que Administración coteja contra el
   // padrón escolar antes de instalar el TAG.
@@ -112,7 +117,7 @@ export default function RegistroWizard() {
   // Tipo de usuario que habia antes de marcar "menor de edad", para devolverlo
   // si la casilla se desmarca (D-02). Forzar "alumno" MIENTRAS esta marcada es
   // deliberado; que se quede pegado despues, no.
-  const tipoAntesDeMenor = useRef<TipoUsuario | null>(null);
+  const tipoAntesDeMenor = useRef<TipoUsuario | "" | null>(null);
 
   const avisoValido = Boolean(aviso?.parrafos && aviso.parrafos.length > 0);
   const reglamentoValido = Boolean(reglamento?.clausulas && reglamento.clausulas.length > 0);
@@ -166,7 +171,7 @@ export default function RegistroWizard() {
   // 'otro' y se limpia al salir de ese tipo.
   useEffect(() => {
     if (tipoUsuario !== "otro") setParentescoOtro("");
-    if (!TIPOS_CON_FAMILIA.includes(tipoUsuario)) setApellidosFamilia("");
+    if (tipoUsuario === "" || !TIPOS_CON_FAMILIA.includes(tipoUsuario)) setApellidosFamilia("");
   }, [tipoUsuario]);
 
   // Si el aviso/reglamento caben sin scroll, se consideran "leidos" al entrar (solo si el contenido cargo correctamente).
@@ -236,10 +241,11 @@ export default function RegistroWizard() {
             : "Indique la relación del gestionante.";
         }
       }
+      if (tipoUsuario === "") e.tipoUsuario = "Seleccione quién conduce el vehículo.";
       // Obligatorio en los tipos que se cotejan contra el padrón escolar. Sin
       // este dato no hay forma de saber si quien se registra pertenece a la
       // comunidad, que es justo lo que el cotejo impide que se cuele.
-      if (TIPOS_CON_FAMILIA.includes(tipoUsuario) && !apellidosFamilia.trim()) {
+      if (tipoConFamilia && !apellidosFamilia.trim()) {
         e.apellidosFamilia = "Escriba los apellidos de la familia.";
       }
       if (tipoUsuario === "otro" && !parentescoOtro.trim()) {
@@ -295,6 +301,13 @@ export default function RegistroWizard() {
       setStep(avisoValido ? 3 : 2);
       return;
     }
+    // El paso 1 ya no deja avanzar sin elegir quién conduce; se repite aquí
+    // porque es el último punto antes de que el dato se vuelva evidencia.
+    if (tipoUsuario === "") {
+      setMostrarErrores(true);
+      setStep(0);
+      return;
+    }
     setEnviando(true);
     setError(null);
     try {
@@ -307,7 +320,7 @@ export default function RegistroWizard() {
         tipoUsuario,
         // El estado ya se limpia al cambiar de tipo; el candado se repite aquí
         // porque este es el punto donde el dato deja de ser editable.
-        apellidosFamilia: TIPOS_CON_FAMILIA.includes(tipoUsuario) ? apellidosFamilia.trim() : null,
+        apellidosFamilia: tipoConFamilia ? apellidosFamilia.trim() : null,
         parentescoOtro: tipoUsuario === "otro" ? parentescoOtro.trim() : null,
         marca: marcaFinal, modelo: modeloFinal, color: colorFinal,
         placas: sinPlacas ? null : placas, sinPlacas,
@@ -473,9 +486,13 @@ export default function RegistroWizard() {
               </>
             )}
             <div className="field">
-              <span>Tipo de usuario</span>
-              <select className="select" value={tipoUsuario} disabled={esMenor}
-                onChange={(e) => setTipoUsuario(e.target.value as TipoUsuario)}>
+              {/* La etiqueta nombra al conductor (SC-029, L2-12): con «Tipo de
+                  usuario» quien gestiona para su hijo elegía lo que es él, no
+                  lo que es quien va a manejar. */}
+              <span>El conductor del vehículo es</span>
+              <select className={`select ${errores.tipoUsuario ? "invalid" : ""}`} value={tipoUsuario} disabled={esMenor}
+                onChange={(e) => setTipoUsuario(e.target.value as TipoUsuario | "")}>
+                <option value="">Seleccione…</option>
                 <option value="padres">Padre / Madre / Tutor</option>
                 <option value="maestro">Maestro</option>
                 <option value="alumno">Alumno</option>
@@ -483,6 +500,7 @@ export default function RegistroWizard() {
                 <option value="otro">Otro familiar</option>
               </select>
               {esMenor && <p className="hint" style={{ margin: "6px 0 0" }}>Un conductor menor de edad se registra como alumno.</p>}
+              {errores.tipoUsuario && <p className="field-error">{errores.tipoUsuario}</p>}
             </div>
             {tipoUsuario === "otro" && (
               <div className="field">
@@ -502,7 +520,7 @@ export default function RegistroWizard() {
                 Administración coteja antes de instalar. Pedírselo a un maestro
                 o a un administrativo no significa nada, por eso el campo
                 aparece y desaparece con el tipo de usuario. */}
-            {TIPOS_CON_FAMILIA.includes(tipoUsuario) && (
+            {tipoConFamilia && (
               <div className="field">
                 <span>Apellidos de la familia</span>
                 <input className={`input ${errores.apellidosFamilia ? "invalid" : ""}`} value={apellidosFamilia}
