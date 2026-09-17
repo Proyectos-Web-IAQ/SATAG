@@ -1,6 +1,6 @@
 # Matriz de Casos de Prueba — SATAG
 
-> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.3 · 30-jul-2026 · **77 casos**.
+> Complemento del [Plan de Pruebas](00%20-%20Plan%20de%20Pruebas.md) · v1.5 · 17-sep-2026 · **85 casos**.
 > Cada caso es ejecutable por un tercero. El resultado se anota en la
 > [bitácora de ejecución](02%20-%20Bitacora%20de%20Ejecucion.md), no en este archivo.
 >
@@ -21,6 +21,14 @@
 > sin pago) y **F-11 pasa a `…103`**, corriendo **F-12 a `…104`**. Se retira la nota obsoleta
 > de F-09 sobre B5: el bloque 46 está aplicado desde el 29-jul y el tipo es obligatorio al
 > cobrar.
+>
+> **v1.5 (17-sep):** entra el **Flujo 6**, con los ocho cambios de la semana del 14 al 17-sep
+> (F-40…F-47). Hasta esta versión la matriz era la v1.4 del 17-ago: el sistema cambió ocho veces
+> después —sección del maestro, etiqueta del conductor, firma solo para TI, hora e identidad de
+> instalación, semáforo de caja, stock a ZK filtrado, aviso a Chat y recordatorio de los lunes— y
+> ninguno tenía caso escrito. Se añaden para que la verificación final del viernes 18 deje
+> evidencia, en vez de cerrar declarando pruebas completas sobre un sistema que ya no es el que se
+> probó en agosto.
 >
 > **v1.3 (30-jul):** el banco de QA ahora siembra la evidencia de firma, que antes no tenía. Entra
 > **E-11**. Ojo con su matiz: el seed puede sembrar los datos probatorios pero **no la imagen** —
@@ -96,6 +104,25 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | **F-36** | Las bajas nunca aparecen | `…131`…`…134` (dados de baja) | Buscarlos en el reporte | **No** aparecen aunque les falte todo: un expediente cerrado ya no tiene que estar completo |
 | **F-37** | El umbral de 7 días funciona | Un alta hecha hoy, sin pago | Abrir el reporte | **No** aparece: es la cola normal de cobro de Administración, no un expediente atorado. Sólo entra a partir de los 7 días naturales |
 | **F-38** | El motivo dice quién lo resuelve | Reporte con datos | Leer las etiquetas de cada expediente | Cada motivo trae su etiqueta y el expediente indica si lo resuelve **Administración**, **TI** o ambos. `…226` debe decir "Administración y TI" |
+
+
+## F · Funcional — Flujo 6: Cambios de la semana del 14 al 17-sep (SC-028, SC-029)
+
+> Estos ocho casos son el guion de la **verificación final**. Se ejecutan sobre el sitio
+> **publicado** (`satag.asuncionqro.edu.mx`), con **cuentas reales del personal**, no con perfil
+> `super`: `super` pasa todas las guardias y ve todo, así que probar con él no prueba ninguno de
+> los permisos que estos casos verifican.
+
+| ID | Caso | Pre | Pasos | Esperado |
+|---|---|---|---|---|
+| **F-40** | La sección del maestro se pide, se guarda y se sella | Sesión anónima · bloques 69 y 70 aplicados | En `/registro/`, elegir conductor **Maestro** y comprobar que aparece «Sección»; intentar avanzar sin elegirla; elegir una y llegar al comprobante | El selector de sección **sólo** aparece con tipo *Maestro*; el paso no avanza sin elegirla; el comprobante muestra el renglón «Sección». En la base, el expediente guarda `seccion_maestro` y el paquete de la firma sella la etiqueta `satag.acceptance.v3` con la misma sección (consulta en `supabase/manual/2026-09-17_verificar_seccion_maestro.sql`) |
+| **F-41** | El conductor se elige a propósito y la etiqueta lo nombra | Sesión anónima | En el paso 1, pulsar «Continuar» sin elegir conductor; después marcar «El conductor es menor de edad» y desmarcarlo | La etiqueta dice **«El conductor del vehículo es»**; el selector arranca **sin valor** y el paso no avanza, con error por campo; al marcar menor el tipo queda fijo en *alumno* y al desmarcar **no** se queda pegado en alumno (D-02) |
+| **F-42** | La firma manuscrita sólo la abren TI y el contador | Bloque 71 aplicado · cuentas de `admin` y de `ti` | Abrir el **mismo** expediente con la cuenta de Administración y con una de TI, recargando la página en ambas | Con **Administración**: no hay botón «Ver la firma»; en su lugar, el texto que dice que la firma la consulta Sistemas. Con **TI**: el botón abre la imagen, con firmante, versiones, sello y hash. **No se prueba con `super`:** está en la lista de la política y la vería igual |
+| **F-43** | La instalación registra hora e identidad desde la sesión | Bloque 68 aplicado · cuenta de `ti` · un expediente cobrado | Instalar un TAG con la cuenta propia de TI y abrir después la ficha del expediente | «Instalado por» **no es capturable**: muestra el usuario de la sesión. La ficha muestra fecha **y hora local de Querétaro**. En la base, `instalado_por_email` es el correo de quien instaló y `instalado_en` la hora real |
+| **F-44** | El semáforo de la caja cuenta días naturales | Cobros sin cortar de más de un día · cuenta de `admin` | Abrir **Finanzas** y leer la tarjeta «En caja ahora» | La tarjeta **no** está en rojo por mezclar días de cobro: el color sale de los días naturales desde el primer cobro sin cortar (amarillo a 30, rojo a 35). La leyenda cuenta lo mismo que el color. El aviso de «esta caja mezcla cobros de N días», que obliga a explicar el corte, **sigue apareciendo**: es otra regla |
+| **F-45** | El archivo de stock para ZK sólo lleva el lote nuevo | Cuenta de `ti` · TAGs disponibles de días anteriores | Dar de alta un lote pequeño; descargar el stock con la fecha de hoy; después marcar «todos los disponibles» y descargar otra vez | Con la fecha de hoy, el botón dice cuántos van y el archivo trae **sólo los del lote nuevo**; el aviso de la descarga dice cuántos quedaron fuera. Con la casilla marcada, trae el inventario entero. El `.xlsx` conserva las anotaciones de la plantilla |
+| **F-46** | El cobro avisa a TI por Google Chat | Bloque 66 aplicado · interruptor `parametros.aviso_chat_ti` en `activo` | Registrar un cobro que deje un TAG por instalar y mirar el espacio «SATAG - TI» | Llega el aviso con **cuántos TAGs hay por instalar** y el enlace al panel, **sin ningún dato personal** (ni nombres, ni placas, ni folios). Cada mensaje abre su hilo, y quien va a instalar responde «Voy yo» ahí. *Si ese día no hay cobro real, se da por verificado con el aviso ya recibido y se anota así: el caso no justifica un cobro inventado en producción* |
+| **F-47** | El recordatorio de los lunes está programado | Bloque 67 aplicado | Consulta de solo lectura: `select jobname, schedule, active from cron.job;` | Aparece `satag-recordatorio-ti` con `'30 13 * * 1'` (07:30 de Querétaro) y `active` en true. **No se puede ejecutar en viernes:** el caso verifica que el trabajo existe y está activo; su disparo real se observa el lunes 21 |
 
 ---
 
@@ -180,3 +207,4 @@ Los folios corresponden al banco de QA (`supabase/sql/seed_tests_dev.sql`).
 | ARCO / cambio / baja | A-01…A-05 |
 | Sitio en subdominio con HTTPS y deploy automático | *Pendiente de la migración SC-012; se prueba al migrar* |
 | No expone datos ajenos; RPC, Storage privado y MFA | P-01…P-14 |
+| Cambios de la semana del 14 al 17-sep (SC-028, SC-029) | **F-40…F-47** |

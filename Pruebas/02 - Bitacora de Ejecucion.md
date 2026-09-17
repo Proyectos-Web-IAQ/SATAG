@@ -64,6 +64,15 @@
 > consulta de solo lectura contra producción (`supabase/manual/2026-09-15_lectura_primer_lunes.sql`);
 > el detalle, en `Campo/02 - Primer lunes en produccion (14-sep).md`.
 
+> **Guion de la verificación final, escrito el 17-sep-2026 para ejecutarse el viernes 18.** La
+> matriz iba en la v1.4 del 17-ago y el sistema cambió ocho veces después: sección del maestro,
+> etiqueta del conductor, firma sólo para TI, hora e identidad de instalación, semáforo de caja,
+> stock a ZK filtrado por fecha, aviso a Chat y recordatorio de los lunes. Entra el **Flujo 6**
+> (F-40…F-47) y su tanda de abajo, con los renglones en blanco, para que la verificación se
+> **ejecute y se anote**, no se declare. Se ejecuta sobre el sitio publicado y con **cuentas
+> reales del personal**: `super` pasa todas las guardias, así que probar con él no prueba ninguno
+> de los permisos que estos casos verifican.
+
 **Resultado:** ✅ Aprobado · ❌ Fallido · ⚠️ Aprobado con observación · ⏭️ No ejecutado
 
 ---
@@ -173,18 +182,34 @@ que se conserva aparte como evidencia del defecto.
 | F-38 | 17-ago-2026 | ✅ | *(automatizado)* Cada faltante trae su etiqueta y el expediente dice quién lo resuelve; `…226` dice literalmente «Lo resuelve: **Administración y TI**». |
 | F-39 | 31-jul-2026 | ✅ | Las tres patas. **Plegado:** se ven responsable, finalidades y el enlace al integral. **Desplegado:** aparecen los otros dos párrafos, el botón cambia a «Ocultar el aviso» y el enlace al integral no se pliega. **Paso 3:** no hay ningún enlace a la página pública; el texto íntegro está ahí mismo. Observación de usabilidad: «Leer el aviso completo» sólo se subraya en `:hover` y en celular no hay hover, así que no se lee como pulsable. |
 
+## Tanda V · Verificación final de la semana del 14 al 17-sep
+
+> Se llena el **viernes 18** durante la ejecución. Versión bajo prueba: la publicada ese día.
+> Cada renglón dice con qué cuenta se ejecutó, porque el rol es parte de lo que se verifica.
+
+| Caso | Fecha | Cuenta / rol | Resultado | Evidencia / observación |
+|---|---|---|---|---|
+| F-40 | | | | |
+| F-41 | | | | |
+| F-42 | | | | |
+| F-43 | | | | |
+| F-44 | | | | |
+| F-45 | | | | |
+| F-46 | | | | |
+| F-47 | | | | |
+
 ## Tanda A · ARCO y ciclo de vida
 
 | Caso | Fecha | Resultado | Evidencia / observación |
 |---|---|---|---|
-| A-01 | | | |
-| A-02 | | | |
-| A-03 | | | |
-| A-04 | | | |
-| A-05 | | | |
-| A-06 | | | |
-| A-07 | | | *(se espera hallazgo → SC-007)* |
-| A-08 | | | |
+| A-01 | 17-sep-2026 | ⏭️ | **No ejecutado, y es un pendiente reconocido, no un olvido.** No existe vía de exportación automática: hoy TI atiende la solicitud de acceso desde el panel, leyendo el expediente en pantalla. El propio caso lo anticipaba («no hay exportación automática — registrar como pendiente») y está registrado en **SC-011**. Queda así hasta que se implemente. |
+| A-02 | 17-sep-2026 | ⚠️ | **Cerrado por referencia cruzada con F-22, no por ejecución nueva.** F-22 (17-ago, ✅, automatizado) pidió la corrección de placas de `…141` por el canal con folio, el modal resumió el cambio antes de confirmar («placas ABC1241 → UAB9141»), la solicitud quedó atendida y se registró el movimiento en bitácora. Eso es exactamente lo que A-02 exige. Evidencia más débil que una ejecución propia; se anota como es. |
+| A-03 | 17-sep-2026 | ⚠️ | **Cerrado por referencia cruzada con F-27 y F-26, no por ejecución nueva.** F-27 (17-ago, ✅) vinculó una nota **sin folio** al expediente correcto buscando por nombre, con el trámite corroborado por TI; F-26 (17-ago, ✅) comprobó que al ejecutar el trámite la nota vinculada se cierra sola. Entre los dos cubren el camino completo de rectificación por el canal sin folio, que es lo que A-03 pide. |
+| A-04 | 17-sep-2026 | ⚠️ | **Cerrado por referencia cruzada con F-23, no por ejecución nueva.** F-23 (17-ago, ✅, automatizado) dio de baja `…151` con el motivo prellenado desde la solicitud («Egreso del alumno al terminar el ciclo») y el expediente salió de las colas activas. Coincide con A-04. |
+| A-05 | 17-sep-2026 | ⚠️ | **El caso está mal redactado en la matriz y se deja constancia en vez de aprobarlo de lado.** A-05 dice «revisar un registro dado de baja → conserva el estado `bloqueado`», pero en el esquema `baja` y `bloqueado` son **estados distintos** del mismo CHECK (`reg_estado_valido`, `12_registros.sql:121-122`): una baja queda en `baja`, nunca en `bloqueado`. Lo que sí se verificó leyendo el esquema: el estado `bloqueado` **existe** y tiene sus campos obligatorios propios (`estado <> 'bloqueado' or (bloqueado_en is not null and bloqueo_motivo is not null)`, `:134`). Lo que falta: **ninguna pantalla del panel produce ese estado**, así que el «bloqueo» de ARCO no tiene camino implementado. Pendiente de SC-011, junto con A-01 y A-06. **Reescribir el caso antes de la próxima tanda.** |
+| A-06 | 17-sep-2026 | ⚠️ | **Los campos existen; nadie los llena.** Verificado en `12_registros.sql`: `bloqueado_en` (`:72`) y `suprimir_despues_de` (`:74`) están declarados, y hay incluso índice sobre el segundo (`ix_registros_suprimir_despues`, `:156`), que es señal de que se pensó para barrerlos. Pero **ningún RPC ni pantalla los escribe** y **no hay proceso que ejecute la supresión**, tal como el propio caso advertía. Es un pendiente de SC-011, no un fallo del código que existe. |
+| A-07 | 17-sep-2026 | ⚠️ | **Cerrado por referencia cruzada con F-39 y con el aviso publicado.** F-39 (31-jul, ✅) verificó las tres patas del aviso simplificado en el paso 1 (responsable, finalidades y enlace al integral visibles sin desplegar, y el enlace nunca se pliega). La página pública `/aviso-de-privacidad/` existe, está enlazada desde la portada y el formulario, y su ruta **relativa** coincide con la `url_publica` que guarda la base (bloque 57, para que no se rompa en el dominio de respaldo). El hallazgo que el caso esperaba se atendió: **SC-007 cerrado por el bloque 44**, aplicado el 28-jul. Al 17-sep el aviso vigente es la **v7**. |
+| A-08 | 17-sep-2026 | ✅ | **Verificado contra el texto publicado.** El canal ARCO único y vigente es `aviso.privacidad@asuncionqro.edu.mx`, y aparece en el texto institucional que publican los bloques 60 (v4), 61 (v5) y 64 (v6). La **v7** de hoy se construyó sobre la v6 con tres reemplazos declarados, ninguno de los cuales toca ese apartado: su verificación dio `institucional_identico` y `solo_estos_cambios` en true, así que el canal y el domicilio del responsable siguen intactos por construcción. |
 
 ## Tanda U · Usabilidad
 

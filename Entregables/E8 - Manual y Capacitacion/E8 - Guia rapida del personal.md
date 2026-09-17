@@ -74,10 +74,17 @@ cuadra. Las dudas de caja, al CP Vicente.
 2. Toque la tarjeta («Por cobrar») y confirme con la persona el nombre, las placas y el «Gestionante (paga
    y firma)».
 3. «Monto en efectivo»: **$100.00**, precio único del TAG. No se escribe; solo se registra pago en efectivo.
-4. «Confirme el tipo de usuario»: pregunte y toque «Padre / madre / tutor», «Maestro», «Alumno»,
+4. «Confirme quién conduce el vehículo»: pregunte y toque «Padre / madre / tutor», «Maestro», «Alumno»,
    «Administrativo» u «Otro familiar». Viene marcado el que declaró la familia; si no corresponde,
    cámbielo. Si el titular es menor de edad, queda fijo en «Alumno». Empleado que también es padre o
-   madre: **[PENDIENTE: qué tipo se le confirma]**.
+   madre: confirme **el de su puesto** (Maestro o Administrativo), porque de él dependen los
+   estacionamientos que abre su TAG, igual que en el paso 4 de la instalación.
+<!-- 17-sep: este renglon tenia el marcador «[PENDIENTE: que tipo se le confirma]» desde antes del
+     14-sep, y la guia ya estuvo impresa asi. Se resuelve por coherencia con la regla de
+     estacionamientos que la propia guia da mas abajo («Empleado que tambien es padre o madre: los de
+     su puesto»). PENDIENTE DE CONFIRMAR CON GERARDO: si la decision es la contraria —que se le
+     confirme «Padre / madre / tutor» porque asi cotejan en GES—, hay que cambiar este renglon Y la
+     regla de estacionamientos del paso 4 de la instalacion, porque hoy dicen lo mismo. -->
 5. Si es «Otro familiar», revise «Parentesco con la familia»: confírmelo o corríjalo con las palabras de
    la persona (por ejemplo, tío del alumno). Sin parentesco no se puede cobrar.
 6. El «Folio de recibo» se genera solo al confirmar y «Cobrado por» es su usuario: no se escriben.
@@ -104,8 +111,19 @@ resumen sean los de la persona que tiene enfrente.
   botón que empiece con «Cerrar corte»; si aparece el aviso «Cerrar corte de caja», toque «Cancelar». Un
   corte cerrado ya no se puede modificar. El corte será mensual y lo hará el CP Vicente Hernández cuando
   exista su perfil de contador, que todavía no está listo.
-- En «Finanzas» sí puede consultar «En caja ahora» para saber cuánto efectivo debe haber. Que se ponga en
-  amarillo o rojo con «días sin cortar» es normal este mes.
+- En «Finanzas» sí puede consultar «En caja ahora» para saber cuánto efectivo debe haber. Desde el 17-sep
+  el color cuenta los **días naturales desde el primer cobro sin cortar**, no los días en que se cobró:
+  verde hasta 29 días, amarillo a los 30 y rojo a los 35. Antes se ponía en rojo casi a diario y ya no
+  avisaba de nada. Si se pone amarillo, **avise**: quiere decir que el corte se acerca y todavía no hay
+  quién lo haga.
+- El aviso de que «esta caja mezcla cobros de N días» **sigue apareciendo** y es otra cosa: es el que
+  obliga a explicar el corte en observaciones. No es el semáforo.
+
+### La firma manuscrita la consulta Sistemas
+
+Desde el 17-sep, «Ver la firma» **solo aparece con cuenta de TI**. Donde antes estaba el botón, ahora dice
+que la firma la consulta Sistemas. Es el acuerdo de la junta del 9-sep: una firma es un dato biométrico y
+la ve quien la necesita para cotejar. Si necesita cotejar una, **pídala a TI con el folio del expediente**.
 
 | Mensaje | Qué hacer |
 |---|---|
@@ -137,13 +155,17 @@ resumen sean los de la persona que tiene enfrente.
 4. «Estacionamiento (acceso del TAG)»: toque «E1», «E2» o los dos; el que ya está en color se desmarca si
    lo vuelve a tocar.
    - Padre o madre u otro familiar: «E1» y «E2». Alumno: solo «E1». Administrativo: solo «E2».
-   - Maestro: según su sección; preescolar y primaria «E2», secundaria y preparatoria «E1». Pregúntesela:
-     el alta todavía no la captura. Empleado que también es padre o madre: los de su puesto.
+   - Maestro: según su sección; preescolar y primaria «E2», secundaria y preparatoria «E1». Desde el
+     17-sep **la sección ya viene en el expediente** y los estacionamientos llegan **sugeridos**:
+     revíselos, no vuelva a preguntarla. Solo pregúntesela si el expediente no la trae, que pasa cuando
+     el tipo se corrigió a «Maestro» en la caja. Empleado que también es padre o madre: los de su puesto.
 5. «No. de TAG (6–11 dígitos)». Si la familia trae su propio TAG, marque **primero** «La familia trae su
    propio TAG (se aparta el de la escuela)», abajo, y escriba el número de ese TAG; «No. del TAG apartado»
    es opcional. Si el TAG es de la escuela, toque el número que coincide con el que tiene en la mano, o
    escríbalo.
-6. Revise que «Instalado por» diga su nombre.
+6. «Instalado por» **es su usuario: no se escribe**. Por eso cada quien instala con su propia cuenta; si
+   entra con la de otra persona, el expediente dirá que fue esa persona. En la ficha queda además la
+   **hora** de la instalación, no solo el día.
 7. Toque «Instalar y activar TAG …» (o «Corregir datos e instalar el TAG …»). En el aviso, el número sale
    grande en su propio renglón («TAG 1234567»): compárelo con el impreso en el TAG («Compare el número de
    arriba con el impreso en el TAG. ¿Continuar?») y toque «Instalar» (o «Corregir e instalar»).
@@ -176,8 +198,11 @@ niveles en la pantalla de acceso por departamento de ZK (guardar sin cambiar nad
 
 **A. Cada vez que se dan de alta TAGs nuevos en el inventario (stock):**
 
-1. En «TAGs de la escuela» → «Exportar a ZKBioSecurity», toque «Descargar plantilla ZK (TAGs disponibles:
-   N)».
+1. En «TAGs de la escuela» → «Exportar a ZKBioSecurity», deje **«Stock: dados de alta desde»** en la
+   fecha de hoy y toque «Descargar plantilla ZK (TAGs por dar de alta: N)». Desde el 17-sep el archivo
+   trae **solo** los dados de alta desde esa fecha: antes salían todos los disponibles, ZK reescribía los
+   que ya tenía y había que repetirles los niveles. El aviso de la descarga le dice cuántos quedaron
+   fuera. Si alguna vez hay que rehacer ZK desde cero, marque «Todos los disponibles».
 2. En ZK: Personal → Usuarios → Importar, con «Fila de Inicio» 2 y «Actualizar el ID de usuario
    existente» = Sí. Los TAGs entran como DISPONIBLE / STOCK SATAG en el departamento STOCK SATAG.
 3. En ZK, en el acceso por departamento de STOCK SATAG, quite ESTACIONAMIENTO 1 y 2 y vuélvalos a poner.
