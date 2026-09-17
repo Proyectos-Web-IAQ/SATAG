@@ -28,10 +28,40 @@ function diaCorto(dia: string): string {
 }
 
 // UMBRALES del semáforo de la caja (fuente de verdad para soporte / manual).
-// El criterio es DIAS DE COBRO DISTINTOS sin cortar, no días transcurridos: un
-// corte que mezcla varios días suele arrastrar efectivo ya entregado, y ese es
-// el origen de los faltantes falsos. 1 día (o 0 cobros) no tiene ambigüedad.
-const semDias = (n: number) => (n <= 1 ? "ok" : n === 2 ? "warn" : "alert");
+//
+// Hasta el 15-sep el criterio eran los DÍAS DE COBRO DISTINTOS sin cortar: con
+// tres o más, rojo. Con el corte MENSUAL que decidió la junta del 9-sep eso
+// dejó de avisar de nada, porque una caja normal junta cobros de muchos días y
+// la tarjeta amanecía en rojo todos los días del mes.
+//
+// Desde el 17-sep el criterio son los DÍAS NATURALES desde el primer cobro que
+// sigue en la caja: amarillo a los 30, rojo a los 35. Es un SUPUESTO de
+// trabajo mientras el CP no fije la fecha del corte (L2-02, semana del 28); si
+// el corte se fija en otro día del mes, aquí se mueven los dos números.
+//
+// La mezcla de varios días sigue vigilada aparte, en `multidia`: eso es lo que
+// obliga a explicar el corte y es una regla del servidor, no del color.
+const SEM_AMARILLO = 30;
+const SEM_ROJO = 35;
+const semDias = (n: number | null) =>
+  n === null ? "ok" : n >= SEM_ROJO ? "alert" : n >= SEM_AMARILLO ? "warn" : "ok";
+
+// Días naturales desde el primer cobro sin cortar, contados en fecha de
+// Querétaro. En UTC, después de las 18:00 la fecha ya es la de mañana y el
+// semáforo se adelantaría un día. 'en-CA' da AAAA-MM-DD.
+const FMT_DIA_QRO = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Mexico_City", dateStyle: "short",
+});
+
+function diasNaturalesDesde(iso: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  const desde = Date.parse(`${FMT_DIA_QRO.format(d)}T00:00:00Z`);
+  const hoy = Date.parse(`${FMT_DIA_QRO.format(new Date())}T00:00:00Z`);
+  if (Number.isNaN(desde) || Number.isNaN(hoy)) return null;
+  return Math.max(0, Math.round((hoy - desde) / 86400000));
+}
 
 // Clave especial para el detalle de cobros de la caja actual (aún sin cortar).
 const CLAVE_CAJA = "caja";
@@ -219,6 +249,9 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
   const totalEnCaja = estado?.totalEnCaja ?? 0;
   const pagosEnCaja = estado?.pagosEnCaja ?? 0;
   const dias = estado?.diasDeCobro ?? 0;
+  // El color y la leyenda miran los días naturales; `dias` se queda para la
+  // regla de la mezcla, que es otra cosa.
+  const diasSinCortar = diasNaturalesDesde(estado?.primerCobro ?? null);
 
   const contadoNum = Number(contado.replace(",", "."));
   const contadoValido = contado !== "" && Number.isFinite(contadoNum) && contadoNum >= 0;
@@ -268,11 +301,12 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
   return (
     <>
       <div className="metric-cards">
-        <div className={`metric-card metric-card--${semDias(dias)}`}>
+        <div className={`metric-card metric-card--${semDias(diasSinCortar)}`}>
           <span className="metric-label">En caja ahora</span>
           <span className="metric-value">{dinero.format(totalEnCaja)}</span>
           <span className="metric-label" style={{ fontWeight: 600 }}>
-            {pagosEnCaja} cobro(s){dias > 1 ? ` · ${dias} días sin cortar` : ""}
+            {pagosEnCaja} cobro(s)
+            {diasSinCortar !== null && diasSinCortar > 1 ? ` · ${diasSinCortar} días sin cortar` : ""}
           </span>
         </div>
         <div className="metric-card">
