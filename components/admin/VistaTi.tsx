@@ -22,6 +22,7 @@ import {
 } from "@/lib/supabase/apiPanel";
 import { filaStock, filaPadron, generarXlsxZk, generarCsvZk, leerExportZk, descargarArchivo, fechaArchivo, type FilaZk } from "@/lib/zk/plantillaZk";
 import { estacionamientosSugeridos, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
+import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
@@ -124,7 +125,7 @@ const grupoTi = (r: Registro): number => {
 // que abren un flujo enfocado, y abajo el padrón completo con las mismas acciones.
 // Lee de Supabase (lib/supabase/apiPanel); TI también define el estacionamiento
 // al instalar o actualizar (SC-002).
-export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
+export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; rol: RolPanel }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [notas, setNotas] = useState<Solicitud[]>([]);
   // CC-02: expedientes a los que les falta algo para operar. No es una cola de
@@ -742,7 +743,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                   )}
                   {/* SC-008: cotejo presencial de la firma. Va al final del
                       expediente y sólo se carga si TI la pide. */}
-                  <EvidenciaFirmaPanel registroId={r.id} />
+                  <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
                 </TarjetaRegistro>
               ))}
               {padron.length === 0 && (
@@ -788,7 +789,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                         <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                           <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                           {formPara("instalar", r)}
-                          <EvidenciaFirmaPanel registroId={r.id} />
+                          <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
                         </TarjetaRegistro>
                       ))}
                     </div>
@@ -803,7 +804,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                           <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} espera={fechaEsperaInstalar(r)}>
                             <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                             <p className="ti-hint">Falta registrar el pago en Administración. Si la familia ya pagó, toque «Actualizar lista».</p>
-                            <EvidenciaFirmaPanel registroId={r.id} />
+                            <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
                           </TarjetaRegistro>
                         ))}
                       </div>
@@ -824,7 +825,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                         espera={fechaEsperaTramite(r, modo === "actualizar" ? "actualizacion" : "baja")}>
                         <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                         {formPara(modo, r)}
-                        <EvidenciaFirmaPanel registroId={r.id} />
+                        <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
                       </TarjetaRegistro>
                     ))}
                   </div>
@@ -841,7 +842,7 @@ export default function VistaTi({ nombreSesion }: { nombreSesion?: string }) {
                     <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
                       <DetalleRegistro r={r} busy={busy} onDescartar={(s, m) => confirmarDescartar(r, s, m)} />
                       {formPara(modo, r)}
-                      <EvidenciaFirmaPanel registroId={r.id} />
+                      <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
                     </TarjetaRegistro>
                   ))}
                   {resultadosAccion.length === 0 && <p className="ti-hint">Sin resultados para «{query}».</p>}

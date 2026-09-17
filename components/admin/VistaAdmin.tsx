@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Registro, TipoUsuario } from "@/lib/mock/types";
+import type { RolPanel } from "@/lib/supabase/auth";
 import {
   listRegistros,
   registrarPago,
@@ -61,7 +62,7 @@ const grupoAdmin = (r: Registro): number => {
 
 // Pantalla de Administracion alineada con la experiencia de TI: una cola de
 // trabajo enfocada y, debajo, el padron completo en tarjetas tactiles.
-export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
+export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string; rol: RolPanel }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [loading, setLoading] = useState(true);
   const [modo, setModo] = useState<Modo>("inicio");
@@ -236,7 +237,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
                   )}
                   {/* SC-008: la evidencia va al final y bajo demanda. Aquí sirve
                       para cotejar quién firmó al confirmar el tipo de usuario. */}
-                  <EvidenciaFirmaPanel registroId={r.id} />
+                  <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
                 </TarjetaRegistro>
               ))}
               {padron.length === 0 && (
@@ -268,7 +269,7 @@ export default function VistaAdmin({ nombreSesion }: { nombreSesion: string }) {
                   <DetalleRegistro r={r} />
                   <FormPago r={r} busy={busy} cobradoPor={nombreSesion}
                     onSubmit={(pago) => confirmarPago(r, pago)} />
-                  <EvidenciaFirmaPanel registroId={r.id} />
+                  <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
                 </TarjetaRegistro>
               ))}
             </div>

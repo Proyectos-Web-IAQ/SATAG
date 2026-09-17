@@ -81,10 +81,10 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
           </div>
         </div>
 
-        {vista === "admin" && <VistaAdmin nombreSesion={nombreSesion} />}
-        {vista === "ti" && <VistaTi nombreSesion={nombreSesion} />}
+        {vista === "admin" && <VistaAdmin nombreSesion={nombreSesion} rol={rol} />}
+        {vista === "ti" && <VistaTi nombreSesion={nombreSesion} rol={rol} />}
         {vista === "finanzas" && <VistaFinanzas nombreSesion={nombreSesion} />}
-        {vista === "consulta" && <VistaConsulta />}
+        {vista === "consulta" && <VistaConsulta rol={rol} />}
       </div>
     </main>
   );
@@ -116,7 +116,7 @@ function IconoFiltro() {
 // el expediente y, cuando existe, la bitácora completa del registro. Arriba,
 // filtros rápidos (estado, TAG, estacionamiento, sin placas) que se combinan
 // entre sí y con el buscador de texto.
-function VistaConsulta() {
+function VistaConsulta({ rol }: { rol: RolPanel }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   // CC-02: el reporte de incompletos vive aquí porque Consulta es la vista de
   // investigación del padrón. TI lo tiene también en su propia pantalla: es
@@ -331,9 +331,10 @@ function VistaConsulta() {
               <BitacoraConsulta r={r} />
               {/* Consulta es donde se investiga un expediente, así que la
                   evidencia va después de la bitácora: primero qué le pasó al
-                  TAG, luego la prueba de lo que la persona aceptó. El bloque 48
-                  le abrió la lectura de la firma a este rol. */}
-              <EvidenciaFirmaPanel registroId={r.id} />
+                  TAG, luego la prueba de lo que la persona aceptó. Desde la
+                  junta del 9-sep este rol ya no la abre: el componente le dice
+                  a quién pedirla. */}
+              <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
             </TarjetaRegistro>
           ))}
           {filtrados.length === 0 && (

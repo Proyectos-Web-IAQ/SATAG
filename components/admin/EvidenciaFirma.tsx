@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { EvidenciaFirma as Evidencia, FirmanteRol } from "@/lib/mock/types";
 import { obtenerEvidenciaFirma } from "@/lib/supabase/apiPanel";
+import type { RolPanel } from "@/lib/supabase/auth";
 
 // SC-008 · Ver la firma desde el panel, con URL firmada temporal.
 //
@@ -14,9 +15,19 @@ import { obtenerEvidenciaFirma } from "@/lib/supabase/apiPanel";
 // El bucket `firmas` es privado y sigue siéndolo: la imagen se abre con una URL
 // firmada de vida corta que emite Supabase para esta sesión. Nada se publica.
 //
-// Lo ven los cuatro roles del panel: admin, ti, consulta y super (bloque 48).
-// `consulta` gana sólo lectura — sigue sin poder escribir ni borrar objetos del
-// bucket, y sin pasar la guardia de ningún RPC.
+// Quién la ve: TI y super, y `contador` en cuanto exista ese rol (L2-02). La
+// junta del 9-sep acotó la firma manuscrita a Sistemas y al contador, así que
+// Administración y Consulta dejan de verla; el bloque 71 lo cierra también en
+// la base. Super se conserva como única vía de soporte: las políticas RLS son
+// listas literales de roles, y sin él no quedaría ninguna puerta de auxilio.
+//
+// A quien no le toca no se le ofrece el botón. Pedir la firma y recibir un
+// «no hay evidencia» sería engañoso: la hay; lo que no tiene es el permiso.
+
+// Los roles que pueden abrirla. `contador` va nombrado desde ahora, igual que
+// en las políticas del bloque 71: queda inerte hasta que el rol exista en
+// auth.ts, y entonces funciona sin volver a tocar esta lista.
+const ROLES_VEN_FIRMA: readonly string[] = ["ti", "contador", "super"];
 
 const ROL_FIRMANTE: Record<FirmanteRol, string> = {
   usuario: "el propio titular",
@@ -44,7 +55,7 @@ function hashCorto(hash: string): string {
   return hash.length <= 24 ? hash : `${hash.slice(0, 12)}…${hash.slice(-8)}`;
 }
 
-export default function EvidenciaFirmaPanel({ registroId }: { registroId: string }) {
+export default function EvidenciaFirmaPanel({ registroId, rol }: { registroId: string; rol: RolPanel }) {
   const [evidencia, setEvidencia] = useState<Evidencia | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,6 +73,20 @@ export default function EvidenciaFirmaPanel({ registroId }: { registroId: string
     } finally {
       setCargando(false);
     }
+  }
+
+  // Va DESPUÉS de los hooks, nunca antes: el orden de los useState no puede
+  // depender del rol.
+  if (!ROLES_VEN_FIRMA.includes(rol)) {
+    return (
+      <div className="evidencia">
+        <p className="ti-section-title" style={{ margin: "0 0 6px" }}>Evidencia de aceptación</p>
+        <p className="ti-hint">
+          La firma manuscrita y su evidencia las consulta Sistemas. Si necesita cotejar
+          una firma, pídala a TI con el folio del expediente.
+        </p>
+      </div>
+    );
   }
 
   if (!evidencia && !sinEvidencia && !error) {

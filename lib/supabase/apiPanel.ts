@@ -398,9 +398,11 @@ interface EvidenciaRow {
 }
 
 // Evidencia de aceptación de un expediente + URL firmada temporal del PNG.
-// Devuelve null cuando no hay nada que mostrar: rol `consulta` (la RLS del
-// bloque 47 le niega la tabla) o expediente sin aceptación (los del banco de
-// QA, que se insertan directo).
+// Devuelve null cuando no hay nada que mostrar: un rol sin lectura de
+// `aceptaciones` —desde el bloque 71, admin y consulta— o un expediente sin
+// aceptación (los del banco de QA, que se insertan directo). Con esos roles el
+// panel ni siquiera llega aquí: EvidenciaFirma no ofrece el botón, para no dar
+// un «no hay evidencia» que sería falso.
 //
 // Si la metadata se lee pero la URL no se puede emitir, la evidencia se
 // devuelve igual con firmaUrl en null y el motivo en firmaError: el hash y las
