@@ -100,11 +100,15 @@ export async function actualizarContrasena(password: string): Promise<void> {
 //
 // Sin rol asignado -> el panel muestra "pide tu rol al administrador" (y la
 // BD no le deja leer nada de todas formas).
-export type RolPanel = "admin" | "ti" | "consulta" | "super";
+// L2-02: `contador` entra aqui ANTES de que el bloque 74 exista en la base, y
+// no pasa nada: mientras ningun JWT traiga ese rol, todo lo que depende de el
+// es codigo muerto. Por eso este cambio no tiene orden obligado con su bloque,
+// al contrario del cliente del 73.
+export type RolPanel = "admin" | "ti" | "consulta" | "contador" | "super";
 
 // Roles que un admin puede fijar en app_metadata. Es la fuente de verdad de la
 // RLS (bloques 27 y 30) y de la guardia de los RPCs (panel_exigir_rol).
-export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta", "super"];
+export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta", "contador", "super"];
 
 function leerRol(meta: Record<string, unknown> | undefined | null): RolPanel | null {
   const rol = meta?.rol;

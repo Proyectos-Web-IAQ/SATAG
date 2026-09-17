@@ -21,6 +21,11 @@ const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
   admin: ["admin", "finanzas", "consulta"],
   ti: ["ti"],
   consulta: ["consulta"],
+  // L2-02: el contador entra por el dinero. Finanzas primero, porque es su
+  // trabajo —es el unico que cierra el corte desde el bloque 74— y Consulta
+  // porque un corte se concilia contra expedientes: sin el padron, un cobro es
+  // un monto sin dueno. NO lleva la pestana de Administracion: no cobra.
+  contador: ["finanzas", "consulta"],
   super: ["admin", "ti", "finanzas", "consulta"],
 };
 
@@ -35,6 +40,7 @@ const ETIQUETA_ROL: Record<RolPanel, string> = {
   admin: "Administración",
   ti: "TI",
   consulta: "Consulta",
+  contador: "Contabilidad",
   super: "Super",
 };
 
