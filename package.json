@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "guardian": "node scripts/guardian.mjs",
+    "publicado": "node scripts/publicado.mjs",
     "guardian:mapa": "node scripts/guardian.mjs --mapa",
     "verificar": "npm run typecheck && npm run lint && npm run guardian"
   },
