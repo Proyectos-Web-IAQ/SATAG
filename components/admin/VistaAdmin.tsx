@@ -4,6 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Registro, TipoUsuario } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import {
+  SECCIONES_MAESTRO, SECCION_MAESTRO_LABEL, CRITERIO_ESTACIONAMIENTO_MAESTRO,
+  esSeccionMaestro, type SeccionMaestro,
+} from "@/lib/secciones";
+import {
   listRegistros,
   registrarPago,
   type AccionResultado,
@@ -28,6 +32,11 @@ type PagoCapturado = {
   // Parentesco con la familia, confirmado igual que el tipo. Solo cuando el
   // tipo confirmado es 'otro'; null en los demás.
   parentescoOtro: string | null;
+  // L2-09 / bloque 73: la sección en la que trabaja el maestro, confirmada con
+  // el mismo trato. Solo cuando el tipo confirmado es 'maestro'; null en los
+  // demás. Es el hueco que el bloque 70 dejó anotado: un expediente corregido
+  // A maestro en la caja se quedaba sin sección y ninguna pantalla la capturaba.
+  seccionMaestro: SeccionMaestro | null;
 };
 
 type ConfirmCfg = {
@@ -155,6 +164,11 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
       : parentescoAntes === null ? ` El parentesco con la familia quedará registrado como «${pago.parentescoOtro}».`
       : parentescoAntes !== pago.parentescoOtro ? ` El parentesco con la familia quedará corregido de «${parentescoAntes}» a «${pago.parentescoOtro}».`
       : ` Parentesco con la familia: «${pago.parentescoOtro}».`;
+    const seccionAntes = esSeccionMaestro(r.seccionMaestro) ? r.seccionMaestro : null;
+    const seccion = pago.seccionMaestro === null ? ""
+      : seccionAntes === null ? ` La sección quedará registrada como «${SECCION_MAESTRO_LABEL[pago.seccionMaestro]}»; de ella depende el estacionamiento que abrirá su TAG.`
+      : seccionAntes !== pago.seccionMaestro ? ` La sección quedará corregida de «${SECCION_MAESTRO_LABEL[seccionAntes]}» a «${SECCION_MAESTRO_LABEL[pago.seccionMaestro]}».`
+      : ` Sección: «${SECCION_MAESTRO_LABEL[pago.seccionMaestro]}».`;
     setConfirm({
       title: "Registrar pago",
       message: `Se registrará un pago en efectivo de ${dinero.format(pago.monto)} para ${r.folio}, ${r.usuarioNombre} (${r.placas ?? "sin placas"}). El sistema generará el folio del recibo. Cobrado por ${pago.cobradoPor}.`
@@ -162,6 +176,7 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
           ? ` Quien conduce quedará corregido de ${TIPO_USUARIO_LABEL[r.tipoUsuario]} a ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}, y el cambio se anotará en la bitácora.`
           : ` Queda validado como ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`)
         + parentesco
+        + seccion
         + " ¿Continuar?",
       confirmLabel: "Registrar pago",
       action: () => registrarPago(r.id, pago),
@@ -327,6 +342,12 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
   const [parentesco, setParentesco] = useState(r.parentescoOtro ?? "");
   const pideParentesco = tipoEfectivo === "otro";
   const faltaParentesco = pideParentesco && !parentesco.trim();
+  // Igual que el parentesco: arranca en lo que declaró el titular, no se borra
+  // al cambiar de chip y solo viaja si el tipo confirmado es maestro.
+  const seccionDeclarada = esSeccionMaestro(r.seccionMaestro) ? r.seccionMaestro : null;
+  const [seccion, setSeccion] = useState<SeccionMaestro | "">(seccionDeclarada ?? "");
+  const pideSeccion = tipoEfectivo === "maestro";
+  const faltaSeccion = pideSeccion && seccion === "";
   // El cotejo contra GES lo hace Administración al cobrar, no TI al instalar.
   // Va por el tipo confirmado en la caja: un maestro corregido aquí a padres
   // también se coteja, y casi siempre llega sin apellidos de familia.
@@ -363,6 +384,25 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
           </p>
         )}
       </div>
+      {pideSeccion && (
+        <div className="field">
+          <span>Sección en la que trabaja</span>
+          <p className="ti-hint" style={{ margin: "0 0 6px" }}>
+            {seccionDeclarada
+              ? "Es la que se declaró en el alta. Confírmela con la persona presente; si no corresponde, corríjala."
+              : "El expediente no la trae. Pregúntela a la persona presente."}
+            {" "}De ella depende el estacionamiento que abre su TAG: {CRITERIO_ESTACIONAMIENTO_MAESTRO}.
+          </p>
+          <div className="chip-row">
+            {SECCIONES_MAESTRO.map((s) => (
+              <button key={s} type="button"
+                className={`select-chip ${seccion === s ? "on" : ""}`}
+                onClick={() => setSeccion(s)}>{SECCION_MAESTRO_LABEL[s]}</button>
+            ))}
+          </div>
+          {faltaSeccion && <p className="field-error">Elija la sección en la que trabaja.</p>}
+        </div>
+      )}
       {pideParentesco && (
         <div className="field">
           <span>Parentesco con la familia</span>
@@ -393,10 +433,11 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
               : "Este expediente no trae los apellidos de la familia: pregunte el nombre del alumno y búsquelo en GES antes de cobrar."}
         </p>
       )}
-      <button type="button" className="primary-action" disabled={busy || faltaParentesco}
+      <button type="button" className="primary-action" disabled={busy || faltaParentesco || faltaSeccion}
         onClick={() => onSubmit({
           monto: montoNumero, cobradoPor: cobradoPor.trim(), tipoUsuario: tipoEfectivo,
           parentescoOtro: pideParentesco ? parentesco.trim() : null,
+          seccionMaestro: pideSeccion && seccion !== "" ? seccion : null,
         })}>
         {`Registrar pago de ${dinero.format(montoNumero)}`}
       </button>

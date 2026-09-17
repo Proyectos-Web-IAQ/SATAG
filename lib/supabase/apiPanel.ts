@@ -455,7 +455,10 @@ export async function obtenerEvidenciaFirma(registroId: string): Promise<Evidenc
 // viaja en el mismo acto, por la misma razón: null en los demás tipos.
 export async function registrarPago(
   id: string,
-  data: { monto: number; cobradoPor: string; tipoUsuario: TipoUsuario; parentescoOtro: string | null },
+  data: {
+    monto: number; cobradoPor: string; tipoUsuario: TipoUsuario;
+    parentescoOtro: string | null; seccionMaestro: string | null;
+  },
 ): Promise<AccionResultado> {
   return rpc("registrar_pago", {
     p_registro_id: id,
@@ -465,6 +468,10 @@ export async function registrarPago(
     // PostgREST resuelve la funcion por los NOMBRES de los argumentos: el cobro
     // solo funciona con el bloque que agrega este parametro ya aplicado.
     p_parentesco_otro: data.parentescoOtro?.trim() || null,
+    // Igual que el anterior, y por eso este cliente NO se publica antes del
+    // bloque 73: contra la firma de 5 parametros PostgREST no encuentra la
+    // funcion y se cae TODO cobro.
+    p_seccion_maestro: data.seccionMaestro || null,
   });
 }
 
