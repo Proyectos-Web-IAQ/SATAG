@@ -80,11 +80,12 @@ cuadra. Las dudas de caja, al CP Vicente.
    madre: confirme **el de su puesto** (Maestro o Administrativo), porque de él dependen los
    estacionamientos que abre su TAG, igual que en el paso 4 de la instalación.
 <!-- 17-sep: este renglon tenia el marcador «[PENDIENTE: que tipo se le confirma]» desde antes del
-     14-sep, y la guia ya estuvo impresa asi. Se resuelve por coherencia con la regla de
-     estacionamientos que la propia guia da mas abajo («Empleado que tambien es padre o madre: los de
-     su puesto»). PENDIENTE DE CONFIRMAR CON GERARDO: si la decision es la contraria —que se le
-     confirme «Padre / madre / tutor» porque asi cotejan en GES—, hay que cambiar este renglon Y la
-     regla de estacionamientos del paso 4 de la instalacion, porque hoy dicen lo mismo. -->
+     14-sep, y la guia ya estuvo impresa asi. CONFIRMADO POR GERARDO el 17-sep: manda el PUESTO. Un
+     empleado que tambien es padre o madre se confirma como Maestro o Administrativo, no como padre,
+     y con eso queda coherente con la regla de estacionamientos del paso 4 de la instalacion, que ya
+     decia «los de su puesto». Consecuencia que conviene recordar: a ese expediente NO se le piden
+     los apellidos de la familia (el alta solo los exige a padres, alumno y otro familiar), asi que
+     el cotejo en GES se hace por el nombre del titular. -->
 5. Si es «Otro familiar», revise «Parentesco con la familia»: confírmelo o corríjalo con las palabras de
    la persona (por ejemplo, tío del alumno). Sin parentesco no se puede cobrar.
 6. El «Folio de recibo» se genera solo al confirmar y «Cobrado por» es su usuario: no se escriben.

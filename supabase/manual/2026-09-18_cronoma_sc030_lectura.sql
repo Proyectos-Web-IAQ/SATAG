@@ -60,9 +60,15 @@
 --      desde el primer cobro sin cortar. Es un supuesto de trabajo
 --      mientras el CP no fije el dia del mes; vive escrito en
 --      components/admin/VistaFinanzas.tsx.
---   4. Si el contador pasa a ser el UNICO que corta, Administracion
---      pierde `cortar_caja` y deja de poder resolver el rojo del semaforo
---      que ve cada dia. Eso lo decide el CP, no TI.
+--   4. DECIDIDO POR GERARDO EL 17-SEP: Administracion SI pierde
+--      `cortar_caja`. El corte lo hace unicamente el rol contador. Con
+--      el supuesto 2 delante, la frase exacta es «lo cortan el contador
+--      y las cuentas super», no «solo el contador»: la guardia deja
+--      pasar a super siempre y quitarselo exigiria cambiar
+--      `panel_exigir_rol`, que es otro alcance. Consecuencia operativa
+--      que hay que decir en voz alta: cuando el semaforo se ponga
+--      amarillo, Administracion ya no podra resolverlo sola; tendra que
+--      avisar. Por eso el semaforo avisa a los 30 y no a los 35.
 --   5. La cuenta del CP necesita MFA ANTES del rol: sin `aal2` no pasa
 --      ninguna politica del panel, asi que el rol contador sin MFA lo
 --      deja fuera.

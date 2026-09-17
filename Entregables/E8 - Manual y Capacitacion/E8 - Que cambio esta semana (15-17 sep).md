@@ -20,5 +20,8 @@ quite y vuelva a poner los dos estacionamientos del departamento **STOCK SATAG**
 corte de caja** hasta nuevo aviso. Si el sitio no responde, se trabaja **en papel** y se captura
 después, como el 31 de agosto.
 
-> **El lunes 21 no se hace ningún cambio en el sistema.** Si algo falla, se anota y se ve el martes.
-> En sitio está Miguel; Gerardo contesta por teléfono desde la Ciudad de México.
+**El lunes 21, sin Sistemas en sitio.** Si el panel no abre o algo se ve raro: **Miguel**, en sitio,
+ext. **7120**. Si una familia no aparece en la lista de inscritos: **Administración**. Exportar el
+padrón a ZK al final del día y aplicar los niveles: **[PENDIENTE: Lidia o Ángel]**. Lo que no se
+pueda resolver en el momento: **Gerardo**, en la Ciudad de México, **[PENDIENTE: celular]**.
+==Ese día no se hace ningún cambio en el sistema:== si algo falla, se anota y se ve el martes.
