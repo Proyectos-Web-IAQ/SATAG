@@ -149,6 +149,11 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
   // (default hoy), salvo que TI pida todo el padron.
   const [desdeZk, setDesdeZk] = useState(hoyIso());
   const [todoPadronZk, setTodoPadronZk] = useState(false);
+  // Mismo par para el stock. Por omision, los dados de alta HOY: reimportar a
+  // ZK los que ya tiene obliga a repetirles el quitar y volver a poner los
+  // niveles del departamento, que es trabajo a mano y se hace de noche.
+  const [desdeStockZk, setDesdeStockZk] = useState(hoyIso());
+  const [todoStockZk, setTodoStockZk] = useState(false);
   const [loading, setLoading] = useState(true);
   const [marcas, setMarcas] = useState<string[]>([]);
   const [colores, setColores] = useState<string[]>([]);
@@ -304,6 +309,11 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
     }
     return m;
   }, [inventario, registros]);
+  // Lo que saldria en el archivo de stock para ZK con el filtro vigente.
+  const stockZk = useMemo(
+    () => tagsDisponibles.filter((t) =>
+      todoStockZk || !desdeStockZk || fechaLocalIso(t.dadoDeAltaEn) >= desdeStockZk),
+    [tagsDisponibles, todoStockZk, desdeStockZk]);
   // Lo que saldria en el archivo del padron para ZK con el filtro vigente.
   const padronZk = registros.filter((r) =>
     r.estado === "activo" && r.noDispositivo
@@ -497,13 +507,13 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
     setExportando(true); setError(null); setFeedback(null);
     try {
       const filas: FilaZk[] = tipo === "stock"
-        ? tagsDisponibles.map((t) => filaStock(t.noDispositivo))
+        ? stockZk.map((t) => filaStock(t.noDispositivo))
         : padronZk
             .map((r) => filaPadron(r, mapaZk.get(r.noDispositivo!)))
             .filter((f): f is FilaZk => f !== null);
       if (filas.length === 0) {
         throw new Error(tipo === "stock"
-          ? "No hay TAGs disponibles que exportar."
+          ? "No hay TAGs dados de alta en ese rango. Cambie la fecha o marque «todos los disponibles»."
           : "No hay expedientes activos con TAG instalados en ese rango. Cambie la fecha o marque «todo el padrón».");
       }
       const nombre = `zk-${tipo}-satag-${fechaArchivo()}.${formato}`;
@@ -511,7 +521,10 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
       descargarArchivo(blob, nombre);
       const importar = "En ZK: Importar → Fila de Inicio 2 → «Actualizar el ID de usuario existente» = Sí.";
       if (tipo === "stock") {
-        setFeedback(`${nombre}: ${filas.length} TAG${filas.length === 1 ? "" : "s"} al departamento STOCK SATAG. ${importar} Después, quite y vuelva a poner los dos estacionamientos del departamento STOCK SATAG para activarlos.`);
+        const fuera = tagsDisponibles.length - stockZk.length;
+        setFeedback(`${nombre}: ${filas.length} TAG${filas.length === 1 ? "" : "s"} al departamento STOCK SATAG`
+          + (fuera > 0 ? ` (los otros ${fuera} disponibles no van en el archivo: ZK ya los tiene)` : "")
+          + `. ${importar} Después, quite y vuelva a poner los dos estacionamientos del departamento STOCK SATAG para activarlos.`);
       } else {
         // El stock entra a ZK con los dos estacionamientos. Al instalarse, la
         // persona conserva esos niveles, que solo son correctos para padres y
@@ -964,6 +977,16 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
                 </div>
                 <div className="grid-2">
                   <div className="field">
+                    <span>Stock: dados de alta desde</span>
+                    <input className="input" type="date" value={desdeStockZk} disabled={todoStockZk} onChange={(e) => setDesdeStockZk(e.target.value)} />
+                  </div>
+                  <label className="check" style={{ alignSelf: "end", paddingBottom: 12 }}>
+                    <input type="checkbox" checked={todoStockZk} onChange={(e) => setTodoStockZk(e.target.checked)} />
+                    <span>Todos los disponibles: {tagsDisponibles.length} (re-escribe en ZK los que ya tiene)</span>
+                  </label>
+                </div>
+                <div className="grid-2">
+                  <div className="field">
                     <span>Padrón: instalados desde</span>
                     <input className="input" type="date" value={desdeZk} disabled={todoPadronZk} onChange={(e) => setDesdeZk(e.target.value)} />
                   </div>
@@ -973,9 +996,9 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
                   </label>
                 </div>
                 <div className="ti-chips">
-                  <button type="button" className="primary-action" disabled={exportando || tagsDisponibles.length === 0}
+                  <button type="button" className="primary-action" disabled={exportando || stockZk.length === 0}
                     onClick={() => descargarZk("stock", "xlsx")}>
-                    Descargar plantilla ZK (TAGs disponibles: {tagsDisponibles.length})
+                    Descargar plantilla ZK (TAGs por dar de alta: {stockZk.length})
                   </button>
                   <button type="button" className="primary-action" disabled={exportando || padronZk.length === 0}
                     onClick={() => descargarZk("padron", "xlsx")}>
@@ -983,13 +1006,16 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
                   </button>
                 </div>
                 <p className="ti-hint">
-                  Los TAGs disponibles salen como «DISPONIBLE / STOCK SATAG» en el departamento STOCK SATAG; al instalarse, el
+                  El archivo de stock trae solo los TAGs dados de alta desde la fecha que elija, para no volver a escribir en ZK
+                  los que ya tiene: reimportarlos le borraría los niveles y habría que activarlos otra vez. Si necesita rehacer
+                  ZK desde cero, marque «todos los disponibles».
+                  Los TAGs salen como «DISPONIBLE / STOCK SATAG» en el departamento STOCK SATAG; al instalarse, el
                   padrón mueve la misma tarjeta a su departamento real con la persona y su placa (en Celular). El importador
                   de ZK nunca asigna niveles de acceso: después de importar el stock, en ZK quite y vuelva a poner los dos
                   estacionamientos del departamento STOCK SATAG, y todo el stock queda activo. Al importar el padrón, ajuste
                   a mano solo los TAGs que el aviso de descarga le liste (alumnos, administrativos, maestros y TAGs propios).
                   Respaldo en el formato de export de ZK:{" "}
-                  <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("stock", "csv")}>disponibles .csv</button>
+                  <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("stock", "csv")}>stock .csv</button>
                   {" · "}
                   <button type="button" className="link-action" disabled={exportando} onClick={() => descargarZk("padron", "csv")}>padrón .csv</button>
                 </p>
@@ -1552,6 +1578,22 @@ function FormBaja({ r, busy, guardando, tiNombre, onTiNombre, onSubmit }: {
 // Nunca recortar el ISO UTC: se formatea en la zona del Instituto.
 const fechaHoraLocal = (iso: string) =>
   new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short", timeZone: "America/Mexico_City" }).format(new Date(iso));
+
+// Fecha (sin hora) de un ISO, en la zona del Instituto. Mismo criterio que
+// `fechaLocal` de apiPanel: recortar el ISO en UTC correria al dia siguiente
+// todo lo capturado despues de las 18:00, y el filtro de «hoy» dejaria fuera
+// justo el lote que se acaba de dar de alta.
+const FORMATO_DIA_LOCAL = new Intl.DateTimeFormat("es-MX", {
+  timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit",
+});
+
+const fechaLocalIso = (iso: string) => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso.slice(0, 10);
+  const p: Record<string, string> = {};
+  for (const parte of FORMATO_DIA_LOCAL.formatToParts(d)) p[parte.type] = parte.value;
+  return `${p.year}-${p.month}-${p.day}`;
+};
 
 const hoyIso = () => {
   const d = new Date();
