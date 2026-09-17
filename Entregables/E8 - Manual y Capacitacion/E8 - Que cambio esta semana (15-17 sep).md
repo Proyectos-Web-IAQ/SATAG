@@ -22,6 +22,8 @@ después, como el 31 de agosto.
 
 **El lunes 21, sin Sistemas en sitio.** Si el panel no abre o algo se ve raro: **Miguel**, en sitio,
 ext. **7120**. Si una familia no aparece en la lista de inscritos: **Administración**. Exportar el
-padrón a ZK al final del día y aplicar los niveles: **[PENDIENTE: Lidia o Ángel]**. Lo que no se
-pueda resolver en el momento: **Gerardo**, en la Ciudad de México, **[PENDIENTE: celular]**.
+padrón a ZK al final del día y aplicar los niveles: **Miguel o Ángel**, que aprenden a hacerlo
+el viernes. Lo que no se
+pueda resolver en el momento: **Gerardo**, a su **ext. 7123**, que ese día está desviada a su
+celular: marque igual que siempre.
 ==Ese día no se hace ningún cambio en el sistema:== si algo falla, se anota y se ve el martes.
