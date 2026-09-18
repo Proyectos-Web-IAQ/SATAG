@@ -21,9 +21,9 @@ corte de caja** hasta nuevo aviso. Si el sitio no responde, se trabaja **en pape
 después, como el 31 de agosto.
 
 **El lunes 21, sin Sistemas en sitio.** Si el panel no abre o algo se ve raro: **Miguel**, en sitio,
-ext. **7120**. Si una familia no aparece en la lista de inscritos: **Administración**. Exportar el
-padrón a ZK al final del día y aplicar los niveles: **Miguel o Ángel**, que aprenden a hacerlo
-el viernes. Lo que no se
-pueda resolver en el momento: **Gerardo**, a su **ext. 7123**, que ese día está desviada a su
-celular: marque igual que siempre.
-==Ese día no se hace ningún cambio en el sistema:== si algo falla, se anota y se ve el martes.
+ext. **7120**. Si una familia no aparece en la lista de inscritos: **Administración**.
+==Ese día NO se exporta el padrón a ZK:== se hace el miércoles. Los TAGs de la escuela ya abren
+desde el stock. **Si una familia trae su propio TAG, se cobra y se cita para el miércoles**: un TAG
+propio no está en ZK y, pegado el lunes, no abriría. Lo que no se pueda resolver en el momento:
+**Gerardo**, a su **ext. 7123**, desviada a su celular.
+==Ese día no se hace ningún cambio en el sistema:== si algo falla, se anota y se ve el miércoles.
