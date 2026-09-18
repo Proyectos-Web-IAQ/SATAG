@@ -48,7 +48,7 @@
 --   - Citas de instalacion en Google Calendar: ya vence el 9-oct, se
 --     confirma dentro de esta ventana.
 --
--- SEGUNDO GRUPO, agregado el 18-sep: dos actividades de CIERRE que se
+-- SEGUNDO GRUPO, agregado el 18-sep: tres actividades de CIERRE que se
 -- mueven al MIERCOLES 23, no a mejora continua. El 18-sep el equipo no se
 -- pudo juntar, asi que ni la capacitacion ni la verificacion final con
 -- cuentas reales pudieron hacerse, y las dos exigen al personal presente:
@@ -57,6 +57,9 @@
 --     reales de Administracion y TI; con perfil super no prueba nada.
 --   - 1.9 Manual + capacitacion breve (95 %): el material esta hecho (la
 --     hoja de una pagina y la chuleta de los videos), falta darla.
+--   - Aceptacion + acta de cierre (0 %): se firma SOBRE la verificacion
+--     final, asi que va despues de ella. Firmarla el 18 habria sido firmar
+--     sobre evidencia que todavia no existia. Decision de Gerardo del 18-sep.
 -- Van al 23 y no al 28 porque son del cierre, no mejoras: Gerardo vuelve el
 -- miercoles del laboratorio de Google y es lo primero que se hace.
 --
@@ -119,8 +122,8 @@ select column_name, data_type
 -- NO corra la carga: avise y se corrige el nombre.
 
 
--- 3. Las OCHO actividades que la carga va a mover, por id -------------
---    (las seis de mejora continua y las dos de cierre del segundo grupo)
+-- 3. Las NUEVE actividades que la carga va a mover, por id ------------
+--    (las seis de mejora continua y las tres de cierre del segundo grupo)
 --    Se identifican por ID y no por nombre a proposito: los nombres
 --    llevan acentos y empatarlos por texto ya costo abortos antes.
 select a.id, a.nombre, a.pct_avance, a.estado, a.fecha_fin_plan,
@@ -133,6 +136,7 @@ select a.id, a.nombre, a.pct_avance, a.estado, a.fecha_fin_plan,
          when '3d38c0d5-5fe4-4020-81c0-778bd88d96e1' then '2026-10-09  (citas en Calendar; ya la tiene)'
          when '1ae7c890-7ee9-4308-951c-09ebc73b1a3b' then '2026-09-23  (1.8 Pruebas: el Flujo 6 con cuentas reales)'
          when '83d20110-e468-4d76-ad1c-3e6288bec094' then '2026-09-23  (1.9 capacitacion con el equipo)'
+         when 'f2c2c599-856a-44f1-b7fe-8cf33a27e009' then '2026-09-23  (acta de cierre, despues de verificar)'
          else 'sin cambio'
        end as fecha_propuesta
   from pmo.actividad a
@@ -144,10 +148,11 @@ select a.id, a.nombre, a.pct_avance, a.estado, a.fecha_fin_plan,
         'baf41102-5774-49cf-9bab-1ab5e4cbca97',
         '3d38c0d5-5fe4-4020-81c0-778bd88d96e1',
         '1ae7c890-7ee9-4308-951c-09ebc73b1a3b',
-        '83d20110-e468-4d76-ad1c-3e6288bec094'
+        '83d20110-e468-4d76-ad1c-3e6288bec094',
+        'f2c2c599-856a-44f1-b7fe-8cf33a27e009'
        )
  order by a.fecha_fin_plan, a.nombre;
--- Deben salir OCHO filas. Si sale menos, un id cambio: pare.
+-- Deben salir NUEVE filas. Si sale menos, un id cambio: pare.
 
 
 -- 4. Las que NO se mueven, para que quede claro que no se tocan ----------
@@ -163,7 +168,8 @@ select a.nombre, a.pct_avance, a.estado, a.fecha_fin_plan
         'baf41102-5774-49cf-9bab-1ab5e4cbca97',
         '3d38c0d5-5fe4-4020-81c0-778bd88d96e1',
         '1ae7c890-7ee9-4308-951c-09ebc73b1a3b',
-        '83d20110-e468-4d76-ad1c-3e6288bec094'
+        '83d20110-e468-4d76-ad1c-3e6288bec094',
+        'f2c2c599-856a-44f1-b7fe-8cf33a27e009'
        )
  order by a.fecha_fin_plan nulls last, a.nombre;
 -- Estas son las que SI se cierran el 19-sep. «Aceptacion + acta de

@@ -4,10 +4,10 @@
 -- ella dejo en pmo_backup.sc030_actividad.
 -- Correr completo. Es una sola transaccion.
 --
--- Lo que devuelve: las ocho fechas `fecha_fin_plan` a como estaban. La
+-- Lo que devuelve: las nueve fechas `fecha_fin_plan` a como estaban. La
 -- carga no toco nada mas, asi que no hay nada mas que restaurar.
 --
--- OJO: esto devuelve las ocho actividades a estar VENCIDAS, que es el
+-- OJO: esto devuelve las nueve actividades a estar VENCIDAS, que es el
 -- estado del que SC-030 las saco. Solo tiene sentido si la solicitud se
 -- rechaza o si las fechas del bloque `objetivo` salieron mal.
 -- =====================================================================
@@ -22,8 +22,8 @@ begin
   end if;
 
   select count(*) into v_n from pmo_backup.sc030_actividad;
-  if v_n <> 8 then
-    raise exception 'El respaldo tiene % filas y deberia tener 8. No se restauro nada; revise el respaldo a mano.', v_n;
+  if v_n <> 9 then
+    raise exception 'El respaldo tiene % filas y deberia tener 9. No se restauro nada; revise el respaldo a mano.', v_n;
   end if;
 end
 $guardia$;
@@ -42,7 +42,7 @@ select b.nombre,
   from pmo_backup.sc030_actividad b
   join pmo.actividad a on a.id = b.id
  order by b.nombre;
--- Las ocho filas deben salir con ok = true.
+-- Las nueve filas deben salir con ok = true.
 
 commit;
 

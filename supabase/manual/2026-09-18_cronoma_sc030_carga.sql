@@ -6,7 +6,7 @@
 -- Una sola transaccion: si algo no cuadra, aborta y no toca nada.
 -- Respaldo persistente en pmo_backup.sc030_actividad (rollback aparte).
 --
--- QUE TOCA: solo `fecha_fin_plan`, y solo de las OCHO actividades que
+-- QUE TOCA: solo `fecha_fin_plan`, y solo de las NUEVE actividades que
 -- SC-030 reprograma. No toca avances, ni estados, ni ninguna otra
 -- actividad, ni las solicitudes, ni los riesgos. Los avances de cierre
 -- se reportan con el conector, que deja el corte del dia.
@@ -19,7 +19,7 @@ begin;
 create schema if not exists pmo_backup;
 
 -- ---------------------------------------------------------------------
--- EL OBJETIVO, en un solo bloque editable. Revise estas ocho lineas
+-- EL OBJETIVO, en un solo bloque editable. Revise estas nueve lineas
 -- antes de correr: son el unico dato que la carga escribe.
 -- ---------------------------------------------------------------------
 create temp table _sc030_objetivo (
@@ -37,7 +37,8 @@ insert into _sc030_objetivo (actividad_id, etiqueta, fecha_fin_plan) values
   ('3d38c0d5-5fe4-4020-81c0-778bd88d96e1', 'Citas en Google Calendar',           '2026-10-09'),
   -- Segundo grupo, 18-sep: cierre que se mueve al miercoles 23, no mejora.
   ('1ae7c890-7ee9-4308-951c-09ebc73b1a3b', '1.8 Pruebas (Flujo 6)',              '2026-09-23'),
-  ('83d20110-e468-4d76-ad1c-3e6288bec094', '1.9 Capacitacion con el equipo',     '2026-09-23');
+  ('83d20110-e468-4d76-ad1c-3e6288bec094', '1.9 Capacitacion con el equipo',     '2026-09-23'),
+  ('f2c2c599-856a-44f1-b7fe-8cf33a27e009', 'Acta de cierre, tras verificar',     '2026-09-23');
 
 do $carga$
 declare
@@ -63,13 +64,13 @@ begin
     raise exception 'El respaldo sc030_actividad ya existe: la carga ya corrio. Use el rollback antes de repetir. No se aplico nada.';
   end if;
 
-  -- Guardia 4: las ocho actividades existen y son de este proyecto.
+  -- Guardia 4: las nueve actividades existen y son de este proyecto.
   select count(*) into v_n
     from pmo.actividad a
     join _sc030_objetivo o on o.actividad_id = a.id
    where a.proyecto_id = v_proj;
-  if v_n <> 8 then
-    raise exception 'Se esperaban 8 actividades del proyecto SATAG y se encontraron %. Un id cambio o pertenece a otro proyecto. No se aplico nada.', v_n;
+  if v_n <> 9 then
+    raise exception 'Se esperaban 9 actividades del proyecto SATAG y se encontraron %. Un id cambio o pertenece a otro proyecto. No se aplico nada.', v_n;
   end if;
 
   -- Guardia 5: ninguna revision pendiente.
@@ -85,7 +86,7 @@ begin
     raise exception 'Hay % revision(es) PENDIENTE(S) en SATAG. Resuelvalas antes de reprogramar. No se aplico nada.', v_n;
   end if;
 
-  -- Guardia 6: ninguna de las ocho esta ya terminada. Reprogramar algo
+  -- Guardia 6: ninguna de las nueve esta ya terminada. Reprogramar algo
   --   terminado moveria la fecha de un entregable ya cumplido, que es
   --   justo lo que SC-020 evito en agosto.
   select count(*) into v_n
@@ -93,7 +94,7 @@ begin
     join _sc030_objetivo o on o.actividad_id = a.id
    where a.pct_avance >= 100;
   if v_n <> 0 then
-    raise exception '% de las ocho actividades ya esta(n) al 100 por ciento: no se reprograma lo terminado. Revise el alcance de SC-030. No se aplico nada.', v_n;
+    raise exception '% de las nueve actividades ya esta(n) al 100 por ciento: no se reprograma lo terminado. Revise el alcance de SC-030. No se aplico nada.', v_n;
   end if;
 
   -- Respaldo persistente ------------------------------------------------
@@ -109,11 +110,11 @@ begin
    where o.actividad_id = a.id
      and a.proyecto_id  = v_proj;
   get diagnostics v_n = row_count;
-  if v_n <> 8 then
-    raise exception 'Se esperaba mover 8 fechas y se movieron %. No se aplico nada.', v_n;
+  if v_n <> 9 then
+    raise exception 'Se esperaba mover 9 fechas y se movieron %. No se aplico nada.', v_n;
   end if;
 
-  raise notice 'SC-030: ocho fechas reprogramadas. Respaldo en pmo_backup.sc030_actividad.';
+  raise notice 'SC-030: nueve fechas reprogramadas. Respaldo en pmo_backup.sc030_actividad.';
 end
 $carga$;
 
@@ -139,7 +140,7 @@ select count(*) as actividades,
   from pmo.actividad
  where proyecto_id = (select id from pmo.proyecto where codigo = 'SATAG');
 -- `vencidas` es el numero que esta reprogramacion existe para bajar. Si
--- despues de la carga sigue contando las ocho, algo no se aplico.
+-- despues de la carga sigue contando las nueve, algo no se aplico.
 
 commit;
 
@@ -156,6 +157,6 @@ commit;
 -- cero y las guardias no se quejan, porque el respaldo tampoco quedo.
 --
 -- Si ya confirmo y la constancia no cuadra, use
--- 2026-09-18_cronoma_sc030_rollback.sql, que restaura las ocho fechas
+-- 2026-09-18_cronoma_sc030_rollback.sql, que restaura las nueve fechas
 -- desde el respaldo persistente.
 -- ---------------------------------------------------------------------
