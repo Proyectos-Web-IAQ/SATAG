@@ -35,6 +35,10 @@ const RUTAS = [
       { texto: "las consulta Sistemas", que: "la firma solo la abren TI y super (L2-03)" },
       { texto: "dados de alta desde", que: "el stock a ZK va filtrado por fecha de alta" },
       { texto: "Contabilidad", que: "el rol contador existe en el cliente (inerte hasta el bloque 74)" },
+      // Marca el nombre de columna, no un rotulo de pantalla: va dentro del
+      // select de listInstalaciones, asi que sobrevive a la minificacion y a
+      // cualquier cambio de redaccion de las tarjetas.
+      { texto: "instalado_por_email", que: "el tablero de instalacion del contador" },
     ],
   },
 ];
