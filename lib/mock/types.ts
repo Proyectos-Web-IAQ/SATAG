@@ -266,6 +266,21 @@ export interface PagoReciente {
   cortado: boolean;         // true = ya pertenece a un corte cerrado
 }
 
+// ---- Medición de la instalación (métrica que pidió Contabilidad) ----
+//
+// Un expediente ya instalado, con los tres sellos de tiempo del embudo. Ojo con
+// `instaladoEn`: sólo existe desde el bloque 68 (15-sep-2026). Las instalaciones
+// anteriores tienen `fechaInstalacion` pero no hora, así que no se pueden medir
+// y el tablero lo dice en pantalla en vez de esconderlas del conteo.
+export interface InstalacionMedida {
+  folio: string;
+  fechaInstalacion: string;        // DATE local, existe en TODAS (bloque 68, l.172)
+  altaEn: string;                  // registros.created_at
+  cobradoEn: string | null;        // pagos.created_at
+  instaladoEn: string | null;      // null en las anteriores al bloque 68
+  instaladoPorEmail: string | null;
+}
+
 // ---- Reporte de expedientes incompletos (CC-02, bloque 45) ----
 
 // Motivo por el que a un expediente le falta algo para operar. Los códigos los

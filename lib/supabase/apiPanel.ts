@@ -19,6 +19,7 @@ import type {
   EstadoRegistro,
   EvidenciaFirma,
   FirmanteRol,
+  InstalacionMedida,
   Movimiento,
   MotivoIncompleto,
   Pago,
@@ -778,6 +779,65 @@ export async function listPagosDeCorte(corteId: string | null): Promise<PagoReci
       registroFolio: reg?.folio ?? null,
       usuarioNombre: reg?.usuario_nombre_completo ?? null,
       cortado: p.corte_id !== null,
+    };
+  });
+}
+
+// ---- Medicion de la instalacion (metrica que pidio Contabilidad) ----
+
+interface InstalacionRow {
+  folio: string;
+  fecha_instalacion: string;
+  created_at: string;
+  instalado_en: string | null;
+  instalado_por_email: string | null;
+  // `registros` es el padre, asi que PostgREST entrega los pagos como ARRAY
+  // (uno-a-muchos, igual que en SELECT_REGISTRO). Se admite el objeto suelto
+  // por si la relacion se declara to-one algun dia.
+  pagos:
+    | { created_at: string }
+    | { created_at: string }[]
+    | null;
+}
+
+// Los expedientes YA INSTALADOS, con los tres sellos del embudo.
+//
+// Se filtra por `fecha_instalacion`, no por `instalado_en`, A PROPOSITO: la
+// hora de instalacion solo existe desde el bloque 68 (15-sep-2026), asi que
+// filtrar por ella escondería las instalaciones anteriores y el tablero diria
+// que la escuela instalo menos TAGs de los que instalo. Se traen todas y la
+// pantalla distingue cuales se pueden medir.
+//
+// Sin RPC nuevo: la RLS de `registros` y de `pagos` ya deja leer a los roles
+// del panel, y las medianas se calculan en el cliente sobre unas decenas de
+// filas. No hace falta bloque SQL para esto.
+//
+// El limite de 2000 es holgura, no un tope de negocio: el padron completo del
+// colegio no llega a mil vehiculos. Si algun dia lo rozara, la medicion tendria
+// que bajar a la base (un RPC que devuelva las medianas ya calculadas) en vez de
+// subir este numero, porque a esa altura ya no conviene traer todas las filas.
+export async function listInstalaciones(): Promise<InstalacionMedida[]> {
+  const { data, error } = await supabaseAuth
+    .from("registros")
+    .select("folio, fecha_instalacion, created_at, instalado_en, instalado_por_email, pagos ( created_at )")
+    .not("fecha_instalacion", "is", null)
+    .order("instalado_en", { ascending: false, nullsFirst: false })
+    .limit(2000);
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as InstalacionRow[]).map((r) => {
+    // El PRIMER cobro, no un cobro cualquiera: un expediente puede tener mas de
+    // uno (reinstalacion, segundo TAG) y PostgREST no garantiza el orden del
+    // embed. El que arranca la espera hasta la instalacion es el mas antiguo.
+    const pago = Array.isArray(r.pagos)
+      ? [...r.pagos].sort(porCreatedAt)[0]
+      : r.pagos;
+    return {
+      folio: r.folio,
+      fechaInstalacion: r.fecha_instalacion,
+      altaEn: r.created_at,
+      cobradoEn: pago?.created_at ?? null,
+      instaladoEn: r.instalado_en,
+      instaladoPorEmail: r.instalado_por_email,
     };
   });
 }

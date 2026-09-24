@@ -5,6 +5,7 @@ import type { CorteCaja, EstadoCaja, PagoReciente, ResultadoCorte } from "@/lib/
 import { obtenerEstadoCaja, cortarCaja, listCortes, listPagosDeCorte } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import PanelInstalacion from "@/components/admin/PanelInstalacion";
 import { scrollAlAviso } from "@/components/admin/RegistroCard";
 
 const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
@@ -118,10 +119,12 @@ type ConfirmCfg = {
   ok: (r: ResultadoCorte) => string;
 };
 
-// Vista de finanzas de Administración (rol admin/super). Responde las dos
-// preguntas del usuario: cuánto debería haber en caja ahora, y cuánto se ha
-// vendido. Y permite el corte: contar el efectivo, conciliar y reestablecer la
-// caja. El historial de cortes muestra los cobros de cada corte al expandirlo.
+// Vista de finanzas de Administración (rol admin/super, y contador desde el
+// bloque 74). Responde las dos preguntas del usuario: cuánto debería haber en
+// caja ahora, y cuánto se ha vendido. Y permite el corte: contar el efectivo,
+// conciliar y reestablecer la caja. El historial de cortes muestra los cobros
+// de cada corte al expandirlo. Al final va el tablero de instalación que pidió
+// Contabilidad, en PanelInstalacion.
 // Toda la autoridad vive en la BD (bloque 42); esta pantalla solo la presenta.
 export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }) {
   const [estado, setEstado] = useState<EstadoCaja | null>(null);
@@ -463,6 +466,11 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
           </div>
         )}
       </div>
+
+      {/* El dinero primero y la operación después: quien entra a esta pestaña
+          viene a cortar la caja, y el tablero de instalación es lectura. Carga
+          por su cuenta, así que un fallo suyo no estorba al corte. */}
+      <PanelInstalacion />
 
       {confirm && (
         <ConfirmDialog
