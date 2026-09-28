@@ -39,6 +39,9 @@ const RUTAS = [
       // select de listInstalaciones, asi que sobrevive a la minificacion y a
       // cualquier cambio de redaccion de las tarjetas.
       { texto: "instalado_por_email", que: "el tablero de instalacion del contador" },
+      // Clase CSS que solo existe en el JS de las graficas: prueba que la pestana
+      // Tablero (columnas y dispersion) esta publicada, no solo su consulta.
+      { texto: "viz-mediana", que: "las graficas del tablero (pestana Tablero)" },
     ],
   },
 ];

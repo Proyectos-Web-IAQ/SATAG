@@ -5,7 +5,6 @@ import type { CorteCaja, EstadoCaja, PagoReciente, ResultadoCorte } from "@/lib/
 import { obtenerEstadoCaja, cortarCaja, listCortes, listPagosDeCorte } from "@/lib/supabase/apiPanel";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
-import PanelInstalacion from "@/components/admin/PanelInstalacion";
 import { scrollAlAviso } from "@/components/admin/RegistroCard";
 
 const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
@@ -123,8 +122,9 @@ type ConfirmCfg = {
 // bloque 74). Responde las dos preguntas del usuario: cuánto debería haber en
 // caja ahora, y cuánto se ha vendido. Y permite el corte: contar el efectivo,
 // conciliar y reestablecer la caja. El historial de cortes muestra los cobros
-// de cada corte al expandirlo. Al final va el tablero de instalación que pidió
-// Contabilidad, en PanelInstalacion.
+// de cada corte al expandirlo. El tablero de instalación NO vive aquí: tiene su
+// propia pestaña (PanelInstalacion), porque el dinero y la operación se miran en
+// momentos distintos y mezclarlos alarga la pantalla del corte sin necesidad.
 // Toda la autoridad vive en la BD (bloque 42); esta pantalla solo la presenta.
 export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }) {
   const [estado, setEstado] = useState<EstadoCaja | null>(null);
@@ -466,11 +466,6 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
           </div>
         )}
       </div>
-
-      {/* El dinero primero y la operación después: quien entra a esta pestaña
-          viene a cortar la caja, y el tablero de instalación es lectura. Carga
-          por su cuenta, así que un fallo suyo no estorba al corte. */}
-      <PanelInstalacion />
 
       {confirm && (
         <ConfirmDialog

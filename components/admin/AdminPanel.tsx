@@ -9,10 +9,11 @@ import VistaAdmin from "@/components/admin/VistaAdmin";
 import VistaTi from "@/components/admin/VistaTi";
 import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import ListaIncompletos from "@/components/admin/Incompletos";
+import PanelInstalacion from "@/components/admin/PanelInstalacion";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import { DetalleRegistro, TarjetaRegistro } from "@/components/admin/RegistroCard";
 
-type Vista = "admin" | "ti" | "finanzas" | "consulta";
+type Vista = "admin" | "ti" | "finanzas" | "tablero" | "consulta";
 
 // La primera pestaña es la vista inicial de cada rol. Super conserva todas para
 // poder recorrer el flujo con una misma sesión de pruebas. Finanzas la ven
@@ -26,14 +27,15 @@ const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
   // trabajo —es el unico que cierra el corte desde el bloque 74— y Consulta
   // porque un corte se concilia contra expedientes: sin el padron, un cobro es
   // un monto sin dueno. NO lleva la pestana de Administracion: no cobra.
-  contador: ["finanzas", "consulta"],
-  super: ["admin", "ti", "finanzas", "consulta"],
+  contador: ["finanzas", "tablero", "consulta"],
+  super: ["admin", "ti", "finanzas", "tablero", "consulta"],
 };
 
 const ETIQUETA_VISTA: Record<Vista, string> = {
   admin: "Administración",
   ti: "TI",
   finanzas: "Finanzas",
+  tablero: "Tablero",
   consulta: "Consulta",
 };
 
@@ -91,6 +93,7 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
         {vista === "admin" && <VistaAdmin nombreSesion={nombreSesion} rol={rol} />}
         {vista === "ti" && <VistaTi nombreSesion={nombreSesion} rol={rol} />}
         {vista === "finanzas" && <VistaFinanzas nombreSesion={nombreSesion} />}
+        {vista === "tablero" && <PanelInstalacion />}
         {vista === "consulta" && <VistaConsulta rol={rol} />}
       </div>
     </main>
