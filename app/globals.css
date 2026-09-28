@@ -809,17 +809,16 @@ a { color: var(--primary-strong); }
 /* ---------- Graficas del tablero de instalacion ----------
    SVG en linea, sin libreria. Reglas que NO son de gusto y conviene no aflojar:
 
-   COLOR. Las series salen de la paleta institucional de arriba, no de una
-   inventada. El azul --primary (#002E6C) es demasiado oscuro para una marca de
-   datos: queda fuera de la banda de luminosidad en la que dos colores se
-   distinguen bien, asi que las marcas usan --viz-serie-1, un paso mas claro del
-   MISMO azul, y se reserva --primary para texto y titulos. El par
-   azul/rojo-185 se valido: separacion para daltonismo DeltaE 19.7 (el minimo
-   aceptable es 8) y contraste sobre blanco por encima de 3:1 los dos.
+   COLOR. Una sola serie, un solo azul. Sale de la paleta institucional de
+   arriba, no de una inventada. El azul --primary (#002E6C) es demasiado oscuro
+   para una marca de datos chica, asi que las marcas usan --viz-serie-1, un paso
+   mas claro del MISMO azul, y se reserva --primary para texto y titulos.
+   No hay un color por persona: cada renglon ya lleva su nombre, y el rojo en
+   este panel significa alerta. El color se reserva para cuando signifique algo.
 
    TEXTO. Ni un rotulo lleva color de serie. Van todos en las tintas del sitio
-   (--ink, --muted) y la identidad la carga el punto de color de al lado; un
-   color de serie usado como texto es ilegible en cuanto es claro.
+   (--ink, --muted); un color de serie usado como texto es ilegible en cuanto
+   es claro.
 
    REJA. Hairline de 1px y SOLIDA. Punteada se lee como "proyeccion" o "umbral"
    cuando solo es una reja, y ensucia.
@@ -829,19 +828,20 @@ a { color: var(--primary-strong); }
    un alfiler al que nadie le atina, y con teclado seria imposible. */
 :root {
   --viz-serie-1: #1F5FA8;  /* paso claro del azul institucional, para marcas */
-  --viz-serie-2: #EB0028;  /* Pantone 185 C, tal cual */
   --viz-reja: #e4e9f0;     /* recesiva, pero que aguante un proyector */
 }
 
-.viz { overflow-x: auto; position: relative; }
+/* .viz NO desliza a proposito: ahi vive el globo con el detalle, y overflow-x:
+   auto obliga a overflow-y: auto tambien, que recortaba el globo del primer punto
+   por arriba. El deslizamiento horizontal esta un nivel adentro, en .viz-scroll. */
+.viz { position: relative; }
+.viz-scroll { overflow-x: auto; }
 /* min-width para que el texto del eje no se encoja hasta ser ilegible en
    celular: mejor un deslizamiento horizontal que rotulos de 5px. */
 .viz-svg { display: block; height: auto; min-width: 620px; width: 100%; }
 
 .viz-columna { fill: var(--viz-serie-1); }
-.viz-punto { stroke: var(--panel); stroke-width: 2; }
-.viz-punto--s1 { fill: var(--viz-serie-1); }
-.viz-punto--s2 { fill: var(--viz-serie-2); }
+.viz-punto { fill: var(--viz-serie-1); stroke: var(--panel); stroke-width: 2; }
 
 .viz-eje { stroke: var(--line); stroke-width: 1; }
 .viz-reja { stroke: var(--viz-reja); stroke-width: 1; }
@@ -875,12 +875,3 @@ a { color: var(--primary-strong); }
 }
 .viz-globo__valor { font-weight: 800; }
 .viz-globo__linea { color: #c6cfdb; font-size: 0.75rem; }
-
-.viz-leyenda { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 10px; }
-.viz-leyenda__item {
-  align-items: center; color: var(--muted); display: inline-flex;
-  font-size: 0.82rem; font-weight: 700; gap: 6px;
-}
-.viz-leyenda__punto { border-radius: 50%; height: 10px; width: 10px; }
-.viz-leyenda__punto.viz-punto--s1 { background: var(--viz-serie-1); }
-.viz-leyenda__punto.viz-punto--s2 { background: var(--viz-serie-2); }

@@ -1,21 +1,26 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { duracion, personaCorta } from "@/lib/duracion";
 
 // Las dos graficas del tablero de instalacion. SVG en linea, sin libreria: el
 // sitio es un export estatico y meterle una dependencia de graficas para dibujar
 // seis puntos y cinco columnas costaria mas de lo que da.
 //
-// PALETA. Sale de la institucional (Pantone) que ya vive en globals.css, no de
-// una inventada. El azul #002E6C es demasiado oscuro para una marca de datos
-// (queda fuera de la banda de luminosidad), asi que las marcas usan un paso mas
-// claro del mismo azul, --viz-serie-1; el rojo es el Pantone 185 C tal cual. El
-// par se valido: separacion para daltonismo DeltaE 19.7 y contraste sobre blanco
-// por encima de 3:1 los dos.
+// COLOR. Una sola serie, un solo azul, en las dos graficas. Sale de la paleta
+// institucional (Pantone) que ya vive en globals.css, pero un paso mas claro: el
+// azul oficial #002E6C es demasiado oscuro para una marca de datos chica y casi
+// se ve negro. --viz-serie-1 paso la validacion de contraste y de luminosidad.
+//
+// A PROPOSITO NO HAY UN COLOR POR PERSONA. Cada renglon ya lleva su nombre, asi
+// que el color repetiria lo que el renglon ya dice; y el rojo, que en este panel
+// significa alerta, en el punto de alguien se lee como "va mal". La primera
+// version lo hacia asi y ademas asignaba el color por POSICION en la lista, no
+// por persona: si el orden cambiaba, dos personas intercambiaban de color, y con
+// una tercera se repetia el mismo rojo. Se quito entera, no se parcho.
 //
 // El TEXTO nunca lleva color de serie: los rotulos y los ejes van en los tonos de
-// tinta del sitio y la identidad la carga el punto de color que va al lado.
+// tinta del sitio.
 
 export interface FilaDia {
   dia: string; // AAAA-MM-DD, ya en fecha de Queretaro
@@ -44,25 +49,47 @@ function diaCorto(dia: string): string {
 
 // ---- Globo de datos, compartido por las dos graficas ----
 
-interface Globo { left: number; top: number; titulo: string; lineas: string[] }
+interface Globo { left: number; top: number; ancho: number; titulo: string; lineas: string[] }
 
 // Se posiciona desde el rectangulo de la MARCA, no desde el puntero: asi el globo
 // sale igual con el raton y con el teclado (Tab), que es justo lo que se pide
 // —que el foco muestre lo mismo que el hover— y no depende de coordenadas del
 // viewBox, que escalan con el ancho de la pantalla.
+//
+// Las coordenadas son relativas a .viz, que NO desliza: el deslizamiento
+// horizontal vive en .viz-scroll, un nivel adentro. Si el globo estuviera dentro
+// del que desliza habria que sumarle el scrollLeft, y lo recortaria por arriba
+// (overflow-x: auto obliga a overflow-y: auto, y el globo sobresale de la fila
+// de arriba). Antes habia aqui un tope de 44px para disimularlo: era un parche
+// que ademas ponia el globo sobre la marca en vez de senalarla.
 function posDeMarca(destino: Element, contenedor: HTMLDivElement | null) {
-  if (!contenedor) return { left: 0, top: 0 };
+  if (!contenedor) return { left: 0, top: 0, ancho: 0 };
   const m = destino.getBoundingClientRect();
   const c = contenedor.getBoundingClientRect();
-  // El tope de 44 evita que el globo se salga por arriba del contenedor: ahi lo
-  // recortaria el scroll horizontal y la marca de la primera fila se quedaria
-  // sin poder leerse.
-  return { left: m.left - c.left + m.width / 2, top: Math.max(m.top - c.top, 44) };
+  return { left: m.left - c.left + m.width / 2, top: m.top - c.top, ancho: c.width };
 }
 
 function GloboDatos({ g }: { g: Globo }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // El ancho del globo se conoce hasta que esta pintado, asi que se mide aqui y
+  // se recorre lo justo si se sale por un lado: los puntos de las orillas lo
+  // dejaban medio fuera del marco. Corre antes de que el navegador pinte, no se
+  // ve el salto. Toca el DOM directo y no un estado: guardar el desplazamiento en
+  // estado costaria un segundo render por cada movimiento del puntero.
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.marginLeft = "0px";
+    const mitad = el.offsetWidth / 2;
+    const dx = g.left - mitad < 0
+      ? mitad - g.left
+      : g.left + mitad > g.ancho ? g.ancho - (g.left + mitad) : 0;
+    el.style.marginLeft = `${dx}px`;
+  }, [g]);
+
   return (
-    <div className="viz-globo" style={{ left: g.left, top: g.top }} role="tooltip">
+    <div ref={ref} className="viz-globo" style={{ left: g.left, top: g.top }} role="tooltip">
       <span className="viz-globo__valor">{g.titulo}</span>
       {g.lineas.map((l) => (
         <span className="viz-globo__linea" key={l}>{l}</span>
@@ -99,48 +126,50 @@ export function ColumnasPorDia({ dias }: { dias: FilaDia[] }) {
 
   return (
     <div className="viz" ref={cont}>
-      <svg viewBox={`0 0 ${W} ${H}`} className="viz-svg" role="img"
-        aria-label={`Instalaciones por día: ${orden.map((d) => `${diaCorto(d.dia)}, ${d.tags}`).join("; ")}`}>
-        {/* Linea base: hairline solida, un tono sobre la superficie. */}
-        <line x1={izq} y1={base} x2={W - der} y2={base} className="viz-eje" />
-        {orden.map((d, i) => {
-          const cx = izq + banda * i + banda / 2;
-          const x = cx - ancho / 2;
-          const yTapa = yDe(d.tags);
-          const r = Math.min(4, base - yTapa);
-          return (
-            <g key={d.dia} className="viz-col-g">
-              {/* Tapa redondeada de 4px, base cuadrada, desde la linea base. */}
-              <path className="viz-columna"
-                d={`M ${x} ${base} L ${x} ${yTapa + r} Q ${x} ${yTapa} ${x + r} ${yTapa} L ${x + ancho - r} ${yTapa} Q ${x + ancho} ${yTapa} ${x + ancho} ${yTapa + r} L ${x + ancho} ${base} Z`} />
-              <text x={cx} y={yTapa - 7} className="viz-valor" textAnchor="middle">{d.tags}</text>
-              <text x={cx} y={base + 19} className="viz-marca" textAnchor="middle">{diaCorto(d.dia)}</text>
-              {/* El area sensible es la banda entera, no la columna: 24px de
-                  ancho es un blanco al que nadie le atina. */}
-              <rect x={izq + banda * i} y={arriba} width={banda} height={alto + abajo}
-                fill="transparent" tabIndex={0} className="viz-blanco"
-                aria-label={`${diaCorto(d.dia)}: ${d.tags} instalaciones`}
-                onPointerEnter={(e) => setGlobo({
-                  ...posDeMarca(e.currentTarget, cont.current),
-                  titulo: `${d.tags} TAG(s)`,
-                  lineas: [
-                    diaCorto(d.dia),
-                    d.medibles > 0
-                      ? `mediana del trámite ${duracion(d.mediana)} · ${d.medibles} con hora`
-                      : "sin hora sellada ese día",
-                  ],
-                })}
-                onFocus={(e) => setGlobo({
-                  ...posDeMarca(e.currentTarget, cont.current),
-                  titulo: `${d.tags} TAG(s)`,
-                  lineas: [diaCorto(d.dia)],
-                })}
-                onPointerLeave={() => setGlobo(null)}
-                onBlur={() => setGlobo(null)} />
-            </g>
-          );
-        })}
-      </svg>
+      <div className="viz-scroll">
+        <svg viewBox={`0 0 ${W} ${H}`} className="viz-svg" role="img"
+          aria-label={`Instalaciones por día: ${orden.map((d) => `${diaCorto(d.dia)}, ${d.tags}`).join("; ")}`}>
+          {/* Linea base: hairline solida, un tono sobre la superficie. */}
+          <line x1={izq} y1={base} x2={W - der} y2={base} className="viz-eje" />
+          {orden.map((d, i) => {
+            const cx = izq + banda * i + banda / 2;
+            const x = cx - ancho / 2;
+            const yTapa = yDe(d.tags);
+            const r = Math.min(4, base - yTapa);
+            return (
+              <g key={d.dia} className="viz-col-g">
+                {/* Tapa redondeada de 4px, base cuadrada, desde la linea base. */}
+                <path className="viz-columna"
+                  d={`M ${x} ${base} L ${x} ${yTapa + r} Q ${x} ${yTapa} ${x + r} ${yTapa} L ${x + ancho - r} ${yTapa} Q ${x + ancho} ${yTapa} ${x + ancho} ${yTapa + r} L ${x + ancho} ${base} Z`} />
+                <text x={cx} y={yTapa - 7} className="viz-valor" textAnchor="middle">{d.tags}</text>
+                <text x={cx} y={base + 19} className="viz-marca" textAnchor="middle">{diaCorto(d.dia)}</text>
+                {/* El area sensible es la banda entera, no la columna: 24px de
+                    ancho es un blanco al que nadie le atina. */}
+                <rect x={izq + banda * i} y={arriba} width={banda} height={alto + abajo}
+                  fill="transparent" tabIndex={0} className="viz-blanco"
+                  aria-label={`${diaCorto(d.dia)}: ${d.tags} instalaciones`}
+                  onPointerEnter={(e) => setGlobo({
+                    ...posDeMarca(e.currentTarget, cont.current),
+                    titulo: `${d.tags} TAG(s)`,
+                    lineas: [
+                      diaCorto(d.dia),
+                      d.medibles > 0
+                        ? `mediana del trámite ${duracion(d.mediana)} · ${d.medibles} con hora`
+                        : "sin hora sellada ese día",
+                    ],
+                  })}
+                  onFocus={(e) => setGlobo({
+                    ...posDeMarca(e.currentTarget, cont.current),
+                    titulo: `${d.tags} TAG(s)`,
+                    lineas: [diaCorto(d.dia)],
+                  })}
+                  onPointerLeave={() => setGlobo(null)}
+                  onBlur={() => setGlobo(null)} />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
       {globo && <GloboDatos g={globo} />}
     </div>
   );
@@ -184,23 +213,9 @@ export function DispersionTiempos({ personas, medianaGlobal }: {
   const sufijo = unidad === MIN ? " min" : unidad === HORA ? " h" : " d";
   const etiquetaEje = (v: number) => (v === 0 ? "0" : `${Math.round(v / unidad)}${sufijo}`);
 
-  const serieDe = (i: number) => (i === 0 ? "viz-punto--s1" : "viz-punto--s2");
-
   return (
-    <>
-      {/* Dos series o mas: la leyenda va siempre. La identidad no puede depender
-          solo del color. */}
-      {conDatos.length > 1 && (
-        <div className="viz-leyenda">
-          {conDatos.map((p, i) => (
-            <span className="viz-leyenda__item" key={p.clave}>
-              <span className={`viz-leyenda__punto ${serieDe(i)}`} aria-hidden="true" />
-              {personaCorta(p.email)}
-            </span>
-          ))}
-        </div>
-      )}
-      <div className="viz" ref={cont}>
+    <div className="viz" ref={cont}>
+      <div className="viz-scroll">
         <svg viewBox={`0 0 ${W} ${H}`} className="viz-svg" role="img"
           aria-label={`Tiempo del trámite por instalación. ${conDatos.map((p) => `${personaCorta(p.email)}: ${p.deltas.map((d) => duracion(d.ms)).join(", ")}`).join("; ")}`}>
           {marcas.map((v) => (
@@ -237,7 +252,7 @@ export function DispersionTiempos({ personas, medianaGlobal }: {
                   <g key={d.folio} className="viz-punto-g">
                     {/* Anillo de 2px del color de la superficie: los puntos siguen
                         legibles donde se traslapan. */}
-                    <circle cx={xDe(d.ms)} cy={cy} r={5.5} className={`viz-punto ${serieDe(i)}`} />
+                    <circle cx={xDe(d.ms)} cy={cy} r={5.5} className="viz-punto" />
                     {/* Blanco de 24px: un punto de 11px es un alfiler. */}
                     <rect x={xDe(d.ms) - 12} y={cy - 12} width={24} height={24}
                       fill="transparent" tabIndex={0} className="viz-blanco"
@@ -260,8 +275,8 @@ export function DispersionTiempos({ personas, medianaGlobal }: {
             );
           })}
         </svg>
-        {globo && <GloboDatos g={globo} />}
       </div>
-    </>
+      {globo && <GloboDatos g={globo} />}
+    </div>
   );
 }
