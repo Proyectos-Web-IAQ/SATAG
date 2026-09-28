@@ -15,8 +15,9 @@ import { DetalleRegistro, TarjetaRegistro } from "@/components/admin/RegistroCar
 type Vista = "admin" | "ti" | "finanzas" | "consulta";
 
 // La primera pestaña es la vista inicial de cada rol. Super conserva todas para
-// poder recorrer el flujo con una misma sesión de pruebas. Finanzas es de
-// Administración: solo admin y super la ven, igual que la RLS de cortes_caja.
+// poder recorrer el flujo con una misma sesión de pruebas. Finanzas la ven
+// Administración, el contador y super, igual que la RLS de cortes_caja desde el
+// bloque 74; el contador es además el único que puede cerrar el corte.
 const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
   admin: ["admin", "finanzas", "consulta"],
   ti: ["ti"],
