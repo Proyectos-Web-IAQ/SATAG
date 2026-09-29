@@ -1,38 +1,41 @@
 -- =====================================================================
--- Borrar la DEMOSTRACION del aviso a Chat · 15-sep-2026
+-- borrar_alta_de_prueba.sql — quitar UN alta de prueba, sin dejar huecos
 --
--- Para que el equipo vea el sistema completo funcionando se hace un alta
--- REAL de prueba por /registro/, Administracion la cobra con su cuenta y
--- el espacio "SATAG - TI" recibe el aviso. Este script la quita despues
--- SIN dejar huecos:
---   - borra solo ese expediente, con su pago, firma registrada,
+-- Cada tanto hace falta probar el sistema de punta a punta con un alta REAL
+-- por /registro/: la firma, el cobro, el aviso a Chat. Este script la quita
+-- despues sin que quede rastro raro:
+--   - borra solo ese expediente, con su pago, su evidencia de firma, sus
 --     movimientos, estacionamientos y solicitudes;
---   - regresa la secuencia de folios y la de recibos al numero anterior,
---     para que la siguiente familia real reciba el folio y el recibo que
---     le tocaban (sin hueco que explicar al contador).
+--   - devuelve la secuencia de folios y la de recibos al numero anterior,
+--     para que la siguiente familia real reciba el folio y el recibo que le
+--     tocaban, sin un hueco que explicarle al contador.
 --
--- REGLAS DE LA DEMOSTRACION (las guardias las exigen):
---   - Titular con "Prueba" en el nombre (por ejemplo: Prueba / Sistemas /
---     Demo), tipo Administrativo, sin placas.
---   - NO se instala TAG. Administracion NO recibe dinero.
---   - Hacerla cuando ninguna familia se este registrando ni pagando: si
---     entra un alta o un cobro real despues de la prueba, el PASO 1 NO
---     borra (borrar dejaria un hueco en los folios reales) y la prueba se
---     da de baja con su motivo.
+-- LO QUE EXIGEN LAS GUARDIAS, y no se negocia:
+--   - El titular lleva "Prueba" en el nombre. Es lo unico que impide borrar
+--     a una familia de verdad por un dedazo en el folio.
+--   - NO tiene TAG instalado ni reservado en el inventario.
+--   - Es el ULTIMO expediente. Si entro un alta real despues, borrar dejaria
+--     un hueco en los folios buenos: el script aborta y entonces la prueba se
+--     da de BAJA con su motivo, no se borra.
+--   - Si hubo cobro, no esta dentro de un corte de caja y es el ultimo recibo.
+--
+-- Por eso la prueba se hace cuando no haya familias registrandose ni pagando.
 --
 -- ORDEN:
---   PASO 0 (solo lee): antes de la demo y otra vez despues del cobro.
+--   PASO 0 (solo lee): antes de la prueba y otra vez al terminarla.
 --   PASO 1 (borra, con candado): una sola ejecucion.
 --   Dashboard: borrar a mano la imagen de la firma (el SQL no puede).
 --   PASO 2 (solo lee): comprobacion.
 --
--- El aviso que ya llego al espacio de Chat se queda: es la demostracion.
+-- HISTORIAL: escrito el 15-sep-2026 para la demostracion del aviso a Chat
+-- (SATAG-000008) y generalizado el 29-sep, cuando hizo falta otra vez para
+-- probar el selector de TAGs del inventario (SATAG-000019).
 -- =====================================================================
 
 
 -- ---------------------------------------------------------------------
--- PASO 0 — Solo lee. Antes de la demo anote en que numero van las dos
--- secuencias. Despues del cobro, la prueba debe salir ARRIBA, con
+-- PASO 0 — Solo lee. Antes de la prueba anote en que numero van las dos
+-- secuencias. Al terminarla, la prueba debe salir ARRIBA, con
 -- "dice prueba: true", "TAG: ninguno" y "en corte: false", y las
 -- secuencias un numero adelante. Anote su folio y el nombre del archivo
 -- de la firma.
@@ -73,14 +76,14 @@ order by orden;
 -- PASO 1 — BORRA. Pegue como PRIMERA linea, en la MISMA ejecucion, el
 -- folio de la prueba que vio en el PASO 0:
 --
---     set satag.borrar_demo = 'SATAG-000008';
+--     set satag.borrar_prueba = 'SATAG-000019';
 --
 -- Sin esa linea, o si cualquier guardia falla, aborta sin borrar nada.
 -- Si termina bien, la ultima consulta muestra el resultado.
 -- ---------------------------------------------------------------------
 do $borrar$
 declare
-    v_folio     text := coalesce(current_setting('satag.borrar_demo', true), '');
+    v_folio     text := coalesce(current_setting('satag.borrar_prueba', true), '');
     v_num       bigint;
     v_reg       public.registros%rowtype;
     v_pago      public.pagos%rowtype;
@@ -93,7 +96,7 @@ declare
     n           int;
 begin
     if v_folio !~ '^SATAG-[0-9]{6,}$' then
-        raise exception 'Cancelado: falta el candado. Pegue  set satag.borrar_demo = ''SATAG-00000N'';  con el folio de la prueba como primera linea, en la misma ejecucion. No se borro nada.';
+        raise exception 'Cancelado: falta el candado. Pegue  set satag.borrar_prueba = ''SATAG-00000N'';  con el folio de la prueba como primera linea, en la misma ejecucion. No se borro nada.';
     end if;
     v_num := substring(v_folio from '^SATAG-([0-9]+)$')::bigint;
 
@@ -167,7 +170,7 @@ $borrar$;
 
 select
     (select count(*) from public.registros
-      where folio = current_setting('satag.borrar_demo', true))            as expediente_debe_ser_0,
+      where folio = current_setting('satag.borrar_prueba', true))            as expediente_debe_ser_0,
     (select last_value from public.registros_folio_seq)                     as folios_ultimo_usado,
     (select last_value from public.pagos_folio_recibo_seq)                  as recibos_ultimo_usado,
     (select count(*)::text || ' cobros · $' || coalesce(sum(monto), 0)::text
@@ -182,7 +185,7 @@ select
 
 -- ---------------------------------------------------------------------
 -- PASO 2 — Comprobacion. firmas_sin_expediente_de_hoy debe ser 0, y la
--- caja y las secuencias deben estar como antes de la demo (PASO 0).
+-- caja y las secuencias deben estar como antes de la prueba (PASO 0).
 -- ---------------------------------------------------------------------
 select
     (select count(*) from storage.objects o
