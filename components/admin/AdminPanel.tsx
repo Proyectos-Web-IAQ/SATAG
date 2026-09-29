@@ -21,7 +21,15 @@ type Vista = "admin" | "ti" | "finanzas" | "tablero" | "consulta";
 // bloque 74; el contador es además el único que puede cerrar el corte.
 const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
   admin: ["admin", "finanzas", "consulta"],
-  ti: ["ti"],
+  // TI tambien ve el Tablero (29-sep). Son quienes instalan y quienes salen
+  // medidos ahi: dejarles la medicion fuera de su propia pantalla obligaba a
+  // pedir prestada la cuenta del contador para ver su propio trabajo. Su
+  // pestana de trabajo va primero; el Tablero es lectura.
+  //
+  // No hizo falta SQL: la RLS de registros y pagos lista a ti desde el bloque
+  // 30, asi que listInstalaciones ya le respondia; lo unico que faltaba era la
+  // pestana.
+  ti: ["ti", "tablero"],
   consulta: ["consulta"],
   // L2-02: el contador entra por el dinero. Finanzas primero, porque es su
   // trabajo —es el unico que cierra el corte desde el bloque 74— y Consulta
