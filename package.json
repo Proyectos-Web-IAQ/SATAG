@@ -12,7 +12,8 @@
     "guardian": "node scripts/guardian.mjs",
     "publicado": "node scripts/publicado.mjs",
     "guardian:mapa": "node scripts/guardian.mjs --mapa",
-    "verificar": "npm run typecheck && npm run lint && npm run guardian"
+    "test": "vitest run",
+    "verificar": "npm run typecheck && npm run lint && npm run guardian && npm run test"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.1",
@@ -22,11 +23,12 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@types/node": "^20.14.0",
+    "@types/node": "^24.19.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.2.10",
-    "typescript": "^5.8.0"
+    "typescript": "^5.8.0",
+    "vitest": "^5.0.2"
   }
 }

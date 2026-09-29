@@ -42,6 +42,11 @@ jobs:
       - name: Guardián de antipatrones
         run: npm run guardian
 
+      - name: Pruebas unitarias
+        # Lógica pura: la medición del tablero y los formateadores. No tocan la
+        # base ni el navegador; eso es del arnés (post-deploy.yml).
+        run: npm run test
+
       - name: Compilar
         # Valores de relleno: el cliente de Supabase se construye al cargar el
         # módulo y aborta si faltan, pero la compilación no llama a la base.

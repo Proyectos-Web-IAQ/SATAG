@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 import { duracion, personaCorta } from "@/lib/duracion";
+import type { FilaDia, FilaPersona } from "@/lib/instalaciones";
 
 // Las dos graficas del tablero de instalacion. SVG en linea, sin libreria: el
 // sitio es un export estatico y meterle una dependencia de graficas para dibujar
@@ -21,26 +22,6 @@ import { duracion, personaCorta } from "@/lib/duracion";
 //
 // El TEXTO nunca lleva color de serie: los rotulos y los ejes van en los tonos de
 // tinta del sitio.
-
-export interface FilaDia {
-  dia: string; // AAAA-MM-DD, ya en fecha de Queretaro
-  tags: number;
-  medibles: number;
-  mediana: number | null;
-}
-
-export interface FilaPersona {
-  clave: string;
-  email: string | null;
-  tags: number;
-  medibles: number;
-  mediana: number | null;
-  masRapida: number | null;
-  masTardada: number | null;
-  // Cada duracion medible, una por instalacion. Es lo que dibuja la grafica de
-  // dispersion: con seis datos, ensenar los seis es mas honesto que resumirlos.
-  deltas: { folio: string; ms: number }[];
-}
 
 function diaCorto(dia: string): string {
   const [y, m, d] = dia.split("-");

@@ -3,14 +3,10 @@
 import { useEffect, useState } from "react";
 import type { InstalacionMedida } from "@/lib/mock/types";
 import { listInstalaciones } from "@/lib/supabase/apiPanel";
-import { duracion, mediana, personaCorta } from "@/lib/duracion";
+import { duracion, personaCorta } from "@/lib/duracion";
+import { medir } from "@/lib/instalaciones";
 import Loader from "@/components/Loader";
-import {
-  ColumnasPorDia,
-  DispersionTiempos,
-  type FilaDia,
-  type FilaPersona,
-} from "@/components/admin/GraficasInstalacion";
+import { ColumnasPorDia, DispersionTiempos } from "@/components/admin/GraficasInstalacion";
 
 // Pestana TABLERO: cuantos TAGs se han instalado, cuanto tarda el tramite y
 // quien los instalo. La pidio Contabilidad y es la segunda pantalla del rol
@@ -25,92 +21,6 @@ import {
 function diaCorto(dia: string): string {
   const [y, m, d] = dia.split("-");
   return d && m && y ? `${d}/${m}/${y}` : dia;
-}
-
-interface Medicion {
-  total: number;
-  conHora: number;
-  medibles: number;
-  // Cobro posterior a la instalacion. No deberia pasar (se cobra antes de
-  // instalar), pero si pasa la resta sale negativa y una mediana negativa no
-  // significa nada: se sacan del calculo y se dicen aparte.
-  fueraDeOrden: number;
-  medCobroInst: number | null;
-  masRapida: number | null;
-  masTardada: number | null;
-  porPersona: FilaPersona[];
-  porDia: FilaDia[];
-}
-
-function medir(filas: InstalacionMedida[]): Medicion {
-  const cobroInst: number[] = [];
-  const porPersona = new Map<string, {
-    email: string | null; tags: number; deltas: { folio: string; ms: number }[];
-  }>();
-  const porDia = new Map<string, { tags: number; deltas: number[] }>();
-  let conHora = 0;
-  let fueraDeOrden = 0;
-
-  for (const f of filas) {
-    // El delta del tramite existe solo si hay las dos horas y van en orden.
-    let delta: number | null = null;
-    if (f.instaladoEn) {
-      conHora += 1;
-      if (f.cobradoEn) {
-        const d = Date.parse(f.instaladoEn) - Date.parse(f.cobradoEn);
-        if (Number.isFinite(d)) {
-          if (d >= 0) { delta = d; cobroInst.push(d); } else fueraDeOrden += 1;
-        }
-      }
-    }
-
-    const clave = f.instaladoPorEmail ?? "";
-    const persona = porPersona.get(clave) ?? { email: f.instaladoPorEmail, tags: 0, deltas: [] };
-    persona.tags += 1;
-    if (delta !== null) persona.deltas.push({ folio: f.folio, ms: delta });
-    porPersona.set(clave, persona);
-
-    const dia = porDia.get(f.fechaInstalacion) ?? { tags: 0, deltas: [] };
-    dia.tags += 1;
-    if (delta !== null) dia.deltas.push(delta);
-    porDia.set(f.fechaInstalacion, dia);
-  }
-
-  // Por volumen, NO por velocidad: ordenar por tiempos seria un ranking de
-  // personas sobre tres o cuatro casos de un solo dia, y eso no es justo ni dice
-  // nada. El desempate por nombre mantiene el orden estable entre cargas.
-  const personas: FilaPersona[] = [...porPersona.entries()]
-    .map(([clave, p]) => {
-      const ms = p.deltas.map((d) => d.ms);
-      return {
-        clave,
-        email: p.email,
-        tags: p.tags,
-        medibles: ms.length,
-        mediana: mediana(ms),
-        masRapida: ms.length > 0 ? Math.min(...ms) : null,
-        masTardada: ms.length > 0 ? Math.max(...ms) : null,
-        // Ordenados para que la grafica dibuje los puntos de izquierda a derecha.
-        deltas: [...p.deltas].sort((a, b) => a.ms - b.ms),
-      };
-    })
-    .sort((a, b) => b.tags - a.tags || personaCorta(a.email).localeCompare(personaCorta(b.email)));
-
-  const dias: FilaDia[] = [...porDia.entries()]
-    .map(([dia, d]) => ({ dia, tags: d.tags, medibles: d.deltas.length, mediana: mediana(d.deltas) }))
-    .sort((a, b) => b.dia.localeCompare(a.dia));
-
-  return {
-    total: filas.length,
-    conHora,
-    medibles: cobroInst.length,
-    fueraDeOrden,
-    medCobroInst: mediana(cobroInst),
-    masRapida: cobroInst.length > 0 ? Math.min(...cobroInst) : null,
-    masTardada: cobroInst.length > 0 ? Math.max(...cobroInst) : null,
-    porPersona: personas,
-    porDia: dias,
-  };
 }
 
 export default function PanelInstalacion() {

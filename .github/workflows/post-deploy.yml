@@ -20,13 +20,21 @@
 #   Variable (opcional)      ARNES_REPO   — «organizacion/repositorio» del arnés.
 #                            Por omisión Proyectos-Web-IAQ/satag-arnes.
 #
-# Vercel crea un «deployment» en GitHub por cada despliegue y reporta su estado;
-# el evento deployment_status trae la URL publicada en environment_url.
+# DISPARADOR, y por qué cambió (29-sep-2026). Hasta la mudanza de hosting este
+# flujo colgaba de `deployment_status`, un evento que creaba Vercel por cada
+# despliegue y que traía la URL publicada en environment_url. Desde el 10-sep se
+# publica por FTPS a cPanel con FTP-Deploy-Action, que NO crea «deployments» en
+# GitHub: el evento dejó de ocurrir y este flujo dejó de correr en silencio, que
+# es la peor forma de que una verificación desaparezca. Ahora cuelga del propio
+# flujo de despliegue con `workflow_run`. Como ese evento no trae URL, la del
+# sitio va fija (es un dominio propio y no cambia).
 
 name: Verificación post-despliegue (navegador)
 
 on:
-  deployment_status:
+  workflow_run:
+    workflows: ["Deploy a GoDaddy (satag)"]
+    types: [completed]
   workflow_dispatch:
     inputs:
       base:
@@ -39,8 +47,7 @@ jobs:
     if: >-
       vars.ARNES_POST_DEPLOY == 'true' &&
       (github.event_name == 'workflow_dispatch' ||
-       (github.event.deployment_status.state == 'success' &&
-        github.event.deployment.environment == 'Production'))
+       github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -63,7 +70,7 @@ jobs:
         # --estricto: el arnés sale con código 1 si alguna comprobación queda
         # en false; sin esa bandera solo las anota (uso manual).
         env:
-          SATAG_BASE: ${{ github.event.inputs.base || github.event.deployment_status.environment_url }}
+          SATAG_BASE: ${{ github.event.inputs.base || 'https://satag.asuncionqro.edu.mx' }}
         run: node capturar.mjs --solo=fallos --estricto
 
       - name: Guardar capturas y resultados

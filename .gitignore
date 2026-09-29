@@ -50,3 +50,7 @@ pruebas-carga/bin/
 
 # Temporales de la conversion a Word (_herramientas/md2docx.ps1)
 *.tmp.html
+
+# Supabase CLI: rastros locales (version cacheada, credenciales de enlace).
+supabase/.temp/
+supabase/.branches/
