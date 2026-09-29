@@ -1,0 +1,19 @@
+-- Devuelve el search_path despues del volcado de produccion.
+--
+-- POR QUE EXISTE. `supabase db dump` emite en su linea 9:
+--
+--     SELECT pg_catalog.set_config('search_path', '', false);
+--
+-- Es lo correcto para un restore —obliga a que todo vaya calificado con su
+-- esquema y evita sorpresas— pero el ajuste PERSISTE en la sesion, y lo
+-- siguiente que corre `supabase db reset` es la semilla, que inserta en
+-- `estacionamientos` sin calificar. Resultado: la migracion entra bien y el
+-- reset falla despues con «relation "estacionamientos" does not exist», que
+-- suena a que el esquema no se aplico cuando si se aplico.
+--
+-- VA EN UN ARCHIVO APARTE, y no editando el volcado, a proposito: el volcado se
+-- va a regenerar cada vez que produccion cambie, y cualquier arreglo hecho
+-- dentro de el se perderia en silencio en la siguiente regeneracion. Aqui
+-- sobrevive. Las migraciones corren en orden de nombre, asi que este archivo
+-- entra inmediatamente despues.
+SELECT pg_catalog.set_config('search_path', 'public', false);

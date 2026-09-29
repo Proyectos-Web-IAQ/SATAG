@@ -128,10 +128,17 @@ on conflict (version) do nothing;
 -- ---------------------------------------------------------------------
 -- Aviso de privacidad SATAG placeholder/version inicial.
 -- ---------------------------------------------------------------------
-insert into aviso_versiones (version, contenido, url_publica, vigente) values
+-- contenido_simplificado es OBLIGATORIO en una version vigente: lo exige el
+-- CHECK aviso_vigente_exige_simplificado, agregado despues de que se escribio
+-- esta semilla. Sin el, la semilla aborta. Se detecto el 29-sep-2026 al montar
+-- el entorno local, que es la primera vez que la semilla se corre contra el
+-- esquema de hoy; en produccion nunca se reejecuta y por eso nadie lo vio.
+insert into aviso_versiones (version, contenido, contenido_simplificado, url_publica, vigente) values
     (1,
      '[PLACEHOLDER] Aviso de privacidad SATAG. Reemplazar por el texto aprobado ' ||
      'por Direccion/Legal antes de produccion. Correo: aviso.privacidad@asuncionqro.edu.mx.',
+     '[PLACEHOLDER] Aviso simplificado: quien trata los datos, para que, y donde ' ||
+     'consultar el integro. Reemplazar por el texto aprobado.',
      '/aviso-de-privacidad',
      true)
 on conflict (version) do nothing;
