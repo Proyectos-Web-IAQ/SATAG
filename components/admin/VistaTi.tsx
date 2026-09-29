@@ -23,6 +23,7 @@ import {
 import { filaStock, filaPadron, generarXlsxZk, generarCsvZk, leerExportZk, descargarArchivo, fechaArchivo, type FilaZk } from "@/lib/zk/plantillaZk";
 import { estacionamientosSugeridos, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
 import type { RolPanel } from "@/lib/supabase/auth";
+import { chipsDisponibles } from "@/lib/inventario";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
@@ -1277,6 +1278,14 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
   // plegada porque el caso normal es que coincida y no queremos alargar la
   // pantalla de siempre.
   const [corrigiendo, setCorrigiendo] = useState(false);
+  const [verTodosTag, setVerTodosTag] = useState(false);
+  const [verTodosApartado, setVerTodosApartado] = useState(false);
+
+  // Los botones se filtran con lo que ya se escribio en el campo, en vez de
+  // pedir un buscador aparte: quien instala esta de pie, con el TAG en una
+  // mano, y teclea los ultimos digitos de la etiqueta.
+  const listaTag = chipsDisponibles(disponibles, tag, verTodosTag);
+  const listaApartado = chipsDisponibles(disponibles, apartadoNo, verTodosApartado);
   const veh = useDatosVehiculo(r);
   const valido = TAG_RE.test(tag);
   const apartadoLleno = propio && apartadoNo.trim() !== "";
@@ -1366,15 +1375,21 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
         {!propio && disponibles.length > 0 && (
           <>
             <div className="chip-row">
-              {disponibles.slice(0, 12).map((n) => (
+              {listaTag.visibles.map((n) => (
                 <button key={n} type="button" className={`select-chip ${tag === n ? "on" : ""}`}
                   onClick={() => setTag((cur) => (cur === n ? "" : n))}>{n}</button>
               ))}
+              {listaTag.ocultos > 0 && (
+                <button type="button" className="link-action" onClick={() => setVerTodosTag(true)}>
+                  Ver los {listaTag.ocultos} restantes
+                </button>
+              )}
             </div>
             <p className="ti-hint">
               {tagReservado ? `El TAG ${tagReservado} quedó reservado para este expediente desde la captura. ` : ""}
-              Disponibles del inventario: toque uno para usarlo, o capture otro número abajo.
-              {disponibles.length > 12 ? ` Hay ${disponibles.length - 12} más en «TAGs de la escuela».` : ""}
+              {listaTag.sinCoincidencias
+                ? `Ninguno de los ${disponibles.length} disponibles contiene «${tag}». Puede capturarlo igual: se instala aunque no esté en el inventario.`
+                : "Disponibles del inventario: toque uno para usarlo. Si escribe abajo, la lista se filtra sola."}
             </p>
           </>
         )}
@@ -1394,10 +1409,15 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
               ofrecen los disponibles del inventario. */}
           {disponibles.length > 0 && (
             <div className="chip-row">
-              {disponibles.slice(0, 12).map((n) => (
+              {listaApartado.visibles.map((n) => (
                 <button key={n} type="button" className={`select-chip ${apartadoNo === n ? "on" : ""}`}
                   onClick={() => setApartadoNo((cur) => (cur === n ? "" : n))}>{n}</button>
               ))}
+              {listaApartado.ocultos > 0 && (
+                <button type="button" className="link-action" onClick={() => setVerTodosApartado(true)}>
+                  Ver los {listaApartado.ocultos} restantes
+                </button>
+              )}
             </div>
           )}
           <input className={`input ${apartadoLleno && !apartadoValido ? "invalid" : ""}`} inputMode="numeric" autoComplete="off"
