@@ -6,8 +6,10 @@ import type { RolPanel } from "@/lib/supabase/auth";
 import {
   listRegistros,
   registrarPago,
+  validarPermisoMenor,
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
+import PermisoMenor from "@/components/admin/PermisoMenor";
 import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
@@ -172,6 +174,18 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
     });
   }
 
+  // Aceptar el permiso del menor. Pide confirmacion como el cobro: queda
+  // sellado con quien y cuando, y no se puede deshacer desde el panel.
+  function aceptarPermiso(r: Registro) {
+    setConfirm({
+      title: "Aceptar el permiso para conducir",
+      message: `Usted declara haber visto el permiso para conducir de ${r.usuarioNombre} (${r.folio}) y que esta a su nombre y vigente. Quedara registrado a nombre de quien acepta, con la fecha y la hora. ¿Continuar?`,
+      confirmLabel: "Aceptar el permiso",
+      action: () => validarPermisoMenor(r.id, nombreSesion),
+      ok: () => `Permiso aceptado para ${r.folio}. Ya se puede cobrar.`,
+    });
+  }
+
   const banners = (
     <div className="ti-banners" aria-live="polite" ref={bannersRef}>
       {feedback && <p className="catalog-feedback catalog-feedback--ok">{feedback}</p>}
@@ -230,8 +244,12 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
                   <DetalleRegistro r={r} />
                   <HistorialPagos r={r} />
                   {porCobrar(r) ? (
-                    <FormPago r={r} busy={busy} cobradoPor={nombreSesion}
-                      onSubmit={(pago) => confirmarPago(r, pago)} />
+                    <>
+                      <PermisoMenor r={r} busy={busy}
+                        onAceptar={() => aceptarPermiso(r)} />
+                      <FormPago r={r} busy={busy} cobradoPor={nombreSesion}
+                        onSubmit={(pago) => confirmarPago(r, pago)} />
+                    </>
                   ) : (
                     <EstadoPago r={r} />
                   )}
@@ -267,6 +285,7 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
                 <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)} chip={<ChipCobro r={r} />}
                   espera={r.createdAt.slice(0, 10)}>
                   <DetalleRegistro r={r} />
+                  <PermisoMenor r={r} busy={busy} onAceptar={() => aceptarPermiso(r)} />
                   <FormPago r={r} busy={busy} cobradoPor={nombreSesion}
                     onSubmit={(pago) => confirmarPago(r, pago)} />
                   <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
