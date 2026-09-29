@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import type { InstalacionMedida } from "@/lib/mock/types";
 import { listInstalaciones } from "@/lib/supabase/apiPanel";
 import { duracion, personaCorta } from "@/lib/duracion";
-import { medir } from "@/lib/instalaciones";
+import { medir, marcador } from "@/lib/instalaciones";
+import { diaQro } from "@/lib/caja";
+import Marcador from "@/components/admin/Marcador";
+import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
 import { ColumnasPorDia, DispersionTiempos } from "@/components/admin/GraficasInstalacion";
 
@@ -23,7 +26,12 @@ function diaCorto(dia: string): string {
   return d && m && y ? `${d}/${m}/${y}` : dia;
 }
 
-export default function PanelInstalacion() {
+// `rol` y `email` deciden si ademas del tablero se pinta EL MARCADOR. Quien
+// instala ve su juego; el contador ve solo la medicion, que es lo que pidio.
+export default function PanelInstalacion({ rol, email }: {
+  rol?: RolPanel;
+  email?: string;
+}) {
   const [filas, setFilas] = useState<InstalacionMedida[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -68,8 +76,14 @@ export default function PanelInstalacion() {
     ? null
     : [...m.porDia].sort((a, b) => b.tags - a.tags || b.dia.localeCompare(a.dia))[0];
 
+  const conJuego = rol === "ti" || rol === "super";
+
   return (
     <>
+      {conJuego && (
+        <Marcador m={marcador(filas ?? [], email ?? null, diaQro())} email={email ?? null} />
+      )}
+
       <div className="metric-cards metric-cards--4">
         <div className="metric-card">
           <span className="metric-label">TAGs instalados</span>

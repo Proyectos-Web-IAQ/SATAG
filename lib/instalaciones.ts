@@ -49,6 +49,15 @@ export interface Medicion {
   porDia: FilaDia[];
 }
 
+// El tramite de una fila, en milisegundos, o null si no se puede medir.
+// Existe solo con los dos sellos y en orden: una instalacion sellada antes de su
+// cobro daria un negativo, y un tiempo negativo no significa nada.
+export function deltaTramite(f: InstalacionMedida): number | null {
+  if (!f.instaladoEn || !f.cobradoEn) return null;
+  const d = Date.parse(f.instaladoEn) - Date.parse(f.cobradoEn);
+  return Number.isFinite(d) && d >= 0 ? d : null;
+}
+
 export function medir(filas: InstalacionMedida[]): Medicion {
   const cobroInst: number[] = [];
   const porPersona = new Map<string, {
@@ -117,5 +126,82 @@ export function medir(filas: InstalacionMedida[]): Medicion {
     masTardada: cobroInst.length > 0 ? Math.max(...cobroInst) : null,
     porPersona: personas,
     porDia: dias,
+  };
+}
+
+// =====================================================================
+// EL MARCADOR (pestana Tablero con cuenta de TI)
+//
+// El tablero del contador es informativo a proposito: mide el tramite y dice en
+// pantalla que NO compara personas. Este es otra cosa: es de quienes instalan,
+// para quienes instalan, y esta hecho para que ir a poner un TAG tenga algo de
+// juego.
+//
+// LA REGLA QUE HACE JUSTO EL JUEGO. La unica duracion que guarda el sistema es
+// del cobro a la instalacion, y ahi dentro va lo que la familia tardo en
+// caminar hasta el estacionamiento. Gamificar eso premiaria la suerte: a quien
+// le toque una familia que pago y volvio al dia siguiente le sale un tiempo
+// pesimo sin haber hecho nada mal. Por eso para las MARCAS solo cuentan las
+// instalaciones de la MISMA VISITA. El resto suma en los totales y no compite.
+//
+// Si algun dia se sella la hora de inicio de la instalacion, este limite sobra y
+// el juego pasa a medir el trabajo de verdad.
+export const LIMITE_MISMA_VISITA_MS = 2 * 3_600_000;
+
+export interface Marca {
+  ms: number;
+  folio: string;
+  dia: string;
+  email: string | null;
+}
+
+export interface Marcador {
+  // De quien mira.
+  misTags: number;
+  miMejor: Marca | null;
+  hoyTags: number;
+  hoyMejor: Marca | null;
+  // Del equipo.
+  equipoTags: number;
+  record: Marca | null;
+  // Cuantas compiten de cuantas hay: el denominador honesto, tambien aqui.
+  elegibles: number;
+  conHora: number;
+}
+
+// `hoy` es 'AAAA-MM-DD' en fecha de Queretaro y entra como parametro: la funcion
+// no consulta el reloj del sistema, para poder probarla con una fecha fija.
+export function marcador(
+  filas: InstalacionMedida[],
+  email: string | null,
+  hoy: string,
+): Marcador {
+  const mejor = (a: Marca | null, b: Marca) => (a === null || b.ms < a.ms ? b : a);
+  let misTags = 0, hoyTags = 0, elegibles = 0, conHora = 0;
+  let miMejor: Marca | null = null, hoyMejor: Marca | null = null, record: Marca | null = null;
+
+  for (const f of filas) {
+    const mio = email !== null && f.instaladoPorEmail === email;
+    if (mio) {
+      misTags += 1;
+      if (f.fechaInstalacion === hoy) hoyTags += 1;
+    }
+    if (f.instaladoEn) conHora += 1;
+
+    const ms = deltaTramite(f);
+    if (ms === null || ms > LIMITE_MISMA_VISITA_MS) continue;
+    elegibles += 1;
+
+    const m: Marca = { ms, folio: f.folio, dia: f.fechaInstalacion, email: f.instaladoPorEmail };
+    record = mejor(record, m);
+    if (mio) {
+      miMejor = mejor(miMejor, m);
+      if (f.fechaInstalacion === hoy) hoyMejor = mejor(hoyMejor, m);
+    }
+  }
+
+  return {
+    misTags, miMejor, hoyTags, hoyMejor,
+    equipoTags: filas.length, record, elegibles, conHora,
   };
 }

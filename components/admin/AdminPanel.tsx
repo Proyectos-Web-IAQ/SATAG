@@ -101,7 +101,7 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
         {vista === "admin" && <VistaAdmin nombreSesion={nombreSesion} rol={rol} />}
         {vista === "ti" && <VistaTi nombreSesion={nombreSesion} rol={rol} />}
         {vista === "finanzas" && <VistaFinanzas nombreSesion={nombreSesion} />}
-        {vista === "tablero" && <PanelInstalacion />}
+        {vista === "tablero" && <PanelInstalacion rol={rol} email={adminEmail} />}
         {vista === "consulta" && <VistaConsulta rol={rol} />}
       </div>
     </main>

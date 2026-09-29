@@ -875,3 +875,30 @@ a { color: var(--primary-strong); }
 }
 .viz-globo__valor { font-weight: 800; }
 .viz-globo__linea { color: #c6cfdb; font-size: 0.75rem; }
+
+/* ---------- El marcador de quien instala (pestana Tablero, rol ti/super) ----------
+   Mismos datos que el tablero del contador, otra intencion: abajo se mide, aqui
+   se juega. Por eso este bloque SI es prominente y el de abajo es sobrio.
+   La cifra grande es la marca propia, no la de nadie mas: el record de la casa
+   va en una tira aparte, y se pone verde cuando lo tiene quien esta mirando. */
+.marcador__hero {
+  align-items: center;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+  border-radius: 10px; color: #fff; display: flex; flex-direction: column;
+  gap: 5px; margin-bottom: 16px; padding: 22px 16px; text-align: center;
+}
+.marcador__etiqueta {
+  color: #b9c9e4; font-size: 0.78rem; font-weight: 800;
+  letter-spacing: 0.09em; text-transform: uppercase;
+}
+.marcador__cifra { font-size: 2.9rem; font-weight: 800; line-height: 1; }
+.marcador__pie { color: #cfdcef; font-size: 0.86rem; font-weight: 600; }
+
+.marcador__record {
+  background: #fffbe6; border: 1px solid #f0dc8a; border-radius: 8px;
+  color: var(--ink); font-size: 0.93rem; font-weight: 600;
+  margin: 4px 0 0; padding: 11px 14px;
+}
+/* Verde cuando el record lo tiene quien mira: es la unica celebracion de la
+   pantalla y conviene que se note. */
+.marcador__record--suyo { background: #eaf6ee; border-color: #b7e0c4; }

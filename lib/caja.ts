@@ -39,6 +39,12 @@ const FMT_DIA_QRO = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/Mexico_City", dateStyle: "short",
 });
 
+// La fecha de HOY en Queretaro, como AAAA-MM-DD. Misma razon que el formateador
+// de arriba: en UTC, despues de las 18:00 locales el dia ya es otro.
+export function diaQro(d: Date = new Date()): string {
+  return FMT_DIA_QRO.format(d);
+}
+
 // `ahora` es parametro con valor por omision, no una llamada a new Date() por
 // dentro: asi la funcion se puede probar con una fecha fija. Una funcion que
 // consulta el reloj del sistema por su cuenta no se puede verificar.
