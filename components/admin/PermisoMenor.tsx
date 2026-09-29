@@ -29,6 +29,11 @@ export default function PermisoMenor({ r, busy, onAceptar }: {
   const [url, setUrl] = useState<string | null>(null);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Las imagenes de evidencia salen acotadas y se amplian al pulsarlas. Se
+  // resuelve con un interruptor y no abriendo la URL en otra pestana porque
+  // esa URL caduca en un minuto: el enlace llegaria muerto a la mitad de las
+  // veces.
+  const [ampliada, setAmpliada] = useState(false);
 
   if (!r.usuarioEsMenor) return null;
 
@@ -76,8 +81,14 @@ export default function PermisoMenor({ r, busy, onAceptar }: {
 
       {url ? (
         // Enlace temporal: caduca en un minuto. Si se vence, se vuelve a pedir.
-        <img src={url} alt="Permiso para conducir del menor"
-          style={{ borderRadius: 8, display: "block", marginBottom: 10, maxWidth: "100%" }} />
+        <img className={`evidencia__img ${ampliada ? "evidencia__img--grande" : ""}`}
+          src={url}
+          alt="Permiso para conducir del menor"
+          title={ampliada ? "Pulse para reducir" : "Pulse para ampliar"}
+          tabIndex={0} role="button"
+          style={{ marginBottom: 10 }}
+          onClick={() => setAmpliada((v) => !v)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAmpliada((v) => !v); } }} />
       ) : (
         <button type="button" className="link-action" disabled={cargando} onClick={ver}
           style={{ marginBottom: 10 }}>

@@ -642,10 +642,19 @@ a { color: var(--primary-strong); }
    Bloque aparte dentro del expediente: es evidencia legal, no un dato
    operativo más. El borde punteado lo separa sin competir con .ti-form. */
 .evidencia { border-top: 1px dashed var(--line); margin-top: 12px; padding-top: 12px; }
+/* Las imagenes de evidencia van ACOTADAS de alto, no solo de ancho.
+   Reportado el 29-sep: una foto de credencial tomada con telefono ocupaba la
+   pantalla entera y para ver el resto del expediente habia que bajar el zoom
+   del navegador al 25 %. max-width sola no basta: limita el ancho y deja que
+   una imagen vertical crezca sin fin hacia abajo.
+   Se pulsan para ampliar, que es cuando de verdad hace falta el detalle. */
 .evidencia__img {
   background: #fff; border: 1px solid var(--line); border-radius: 8px;
-  display: block; margin-top: 10px; max-width: 100%;
+  cursor: zoom-in; display: block; margin-top: 10px;
+  max-height: 240px; max-width: 100%;
 }
+.evidencia__img--grande { cursor: zoom-out; max-height: none; }
+.evidencia__img:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 /* El hash va en monoespaciada y se puede cortar: 64 caracteres desbordan la
    tarjeta en celular. El valor completo vive en el title. */
 .evidencia__hash {

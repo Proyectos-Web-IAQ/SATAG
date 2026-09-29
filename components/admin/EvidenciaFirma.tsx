@@ -60,6 +60,10 @@ export default function EvidenciaFirmaPanel({ registroId, rol }: { registroId: s
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sinEvidencia, setSinEvidencia] = useState(false);
+  // La firma sale acotada de alto y se amplia al pulsarla. Con un interruptor y
+  // no abriendo la URL en otra pestana: esa URL caduca en un minuto y el enlace
+  // llegaria muerto la mitad de las veces.
+  const [ampliada, setAmpliada] = useState(false);
 
   async function cargar() {
     setCargando(true);
@@ -128,8 +132,13 @@ export default function EvidenciaFirmaPanel({ registroId, rol }: { registroId: s
             /* eslint-disable-next-line @next/next/no-img-element -- URL firmada temporal
                de Storage: el optimizador de imágenes de Next no aplica en un sitio
                estático y reescribiría un enlace que caduca en segundos. */
-            <img className="evidencia__img" src={evidencia.firmaUrl}
-              alt={`Firma de ${evidencia.firmanteNombre}`} />
+            <img className={`evidencia__img ${ampliada ? "evidencia__img--grande" : ""}`}
+              src={evidencia.firmaUrl}
+              alt={`Firma de ${evidencia.firmanteNombre}`}
+              title={ampliada ? "Pulse para reducir" : "Pulse para ampliar"}
+              tabIndex={0} role="button"
+              onClick={() => setAmpliada((v) => !v)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAmpliada((v) => !v); } }} />
           ) : (
             <p className="submit-error" style={{ margin: "0 0 10px" }}>
               No se pudo abrir la imagen de la firma
