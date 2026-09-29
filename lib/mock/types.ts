@@ -159,6 +159,13 @@ export interface Registro {
   instaladoPor: string | null;
   // Hora real de la instalación (bloque 68, L2-04); nula en lo instalado antes.
   instaladoEn?: string | null;
+  // Permiso para conducir del conductor menor de edad (bloque 75). La RUTA
+  // solo la puede abrir admin y super; el resto del panel ve el estado, que
+  // es lo que necesita para saber si se puede instalar.
+  permisoUrl?: string | null;
+  permisoValidado?: boolean;
+  permisoValidadoPor?: string | null;
+  permisoValidadoEn?: string | null;
   motivoBaja: string | null;
   fechaBaja: string | null;
   observaciones: string | null;

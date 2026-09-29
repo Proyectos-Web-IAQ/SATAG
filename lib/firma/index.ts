@@ -4,5 +4,5 @@
 export { default as SignaturePad } from "./SignaturePad";
 export type { FirmaTrazos } from "./SignaturePad";
 export type { Firma } from "./tipos";
-export { sha256Hex, subirFirma, rutaEnBucket, urlFirmada, verificarImagen } from "./servicio";
+export { sha256Hex, subirFirma, subirArchivo, rutaEnBucket, urlFirmada, verificarImagen } from "./servicio";
 export type { OpcionesBucket } from "./servicio";

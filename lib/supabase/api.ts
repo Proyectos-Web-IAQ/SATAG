@@ -10,7 +10,7 @@ import type {
   ProcedenciaTag,
   CrearRegistroResultado,
 } from "@/lib/mock/types";
-import { subirFirma, type FirmaTrazos } from "@/lib/firma";
+import { subirFirma, subirArchivo, type FirmaTrazos } from "@/lib/firma";
 
 // "Otro" es opcion de UI, no vive en los catalogos (decision cerrada).
 const CON_OTRO = (nombres: string[]) => [...nombres, "Otro"];
@@ -130,6 +130,10 @@ export interface CrearRegistroInput {
   sinPlacas: boolean;
   procedenciaTag: ProcedenciaTag;
   observaciones: string | null;
+  // Foto del permiso para conducir, SOLO cuando el conductor es menor de
+  // edad (bloque 75). Null en cualquier otro caso: el RPC la ignora igual,
+  // pero mandarla seria recabar un dato que el aviso no ampara para ese tipo.
+  permisoArchivo: File | null;
   firmaDataUrl: string; // PNG en data URL desde el SignaturePad
   firmaTrazos: FirmaTrazos | null; // vector del trazo (evidencia)
   firmanteNombre: string;
@@ -159,10 +163,18 @@ function contextoCliente(): Record<string, unknown> {
 // El bucket privado de las firmas. La subida y el hash del PNG viven en el
 // modulo reutilizable lib/firma (CC-08); aqui solo se dice a que bucket va.
 const BUCKET_FIRMAS = "firmas";
+const BUCKET_PERMISOS = "permisos";
 
 export async function crearRegistro(input: CrearRegistroInput): Promise<CrearRegistroResultado> {
   if (!input.aceptaReglamento) throw new Error("Debe aceptar el reglamento.");
   if (!input.firmaDataUrl) throw new Error("Falta la firma.");
+
+  // El permiso se sube ANTES que la firma a proposito: si esta subida falla
+  // —archivo muy grande, tipo no admitido, red— no queda una firma huerfana en
+  // Storage. anon puede subir pero no borrar, asi que lo que entra se queda.
+  const permiso = input.usuarioEsMenor && input.permisoArchivo
+    ? await subirArchivo(supabase, input.permisoArchivo, { bucket: BUCKET_PERMISOS })
+    : null;
 
   // Nota: si el RPC fallara despues de subir, la firma queda huerfana en Storage
   // (anon no puede borrar). Es aceptable para el MVP; se limpia del lado admin.
@@ -194,6 +206,8 @@ export async function crearRegistro(input: CrearRegistroInput): Promise<CrearReg
     p_observaciones: input.observaciones,
     p_reglamento_version_id: input.reglamentoVersionId,
     p_aviso_version_id: input.avisoVersionId,
+    p_permiso_url: permiso?.ruta ?? null,
+    p_permiso_sha256: permiso?.sha256 ?? null,
     // Ultimos parametros de la firma nueva del RPC. PostgREST resuelve la
     // funcion por los NOMBRES de los argumentos, asi que este alta solo
     // funciona con el bloque ya aplicado: el orden de salida es primero la

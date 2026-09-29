@@ -136,6 +136,10 @@ interface RegistroRow {
   fecha_instalacion: string | null;
   instalado_por: string | null;
   instalado_en: string | null;
+  permiso_url: string | null;
+  permiso_validado: boolean | null;
+  permiso_validado_por: string | null;
+  permiso_validado_en: string | null;
   observaciones: string | null;
   created_at: string;
   pagos: PagoRow[];
@@ -151,6 +155,7 @@ const SELECT_REGISTRO = `
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
   tag_apartado, tag_apartado_no, estado,
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por, instalado_en,
+  permiso_url, permiso_validado, permiso_validado_por, permiso_validado_en,
   observaciones, created_at,
   pagos ( monto, metodo, cobrado_por, folio_recibo, fecha, created_at ),
   registro_estacionamientos ( estacionamiento_clave ),
@@ -246,6 +251,10 @@ function mapRegistro(r: RegistroRow): Registro {
     fechaInstalacion: r.fecha_instalacion,
     instaladoPor: r.instalado_por,
     instaladoEn: r.instalado_en,
+    permisoUrl: r.permiso_url,
+    permisoValidado: r.permiso_validado ?? false,
+    permisoValidadoPor: r.permiso_validado_por,
+    permisoValidadoEn: r.permiso_validado_en,
     motivoBaja: r.motivo_baja,
     fechaBaja: r.fecha_baja,
     observaciones: r.observaciones,
@@ -840,6 +849,24 @@ export async function listInstalaciones(): Promise<InstalacionMedida[]> {
       instaladoPorEmail: r.instalado_por_email,
     };
   });
+}
+
+// ---- Permiso del conductor menor de edad (bloque 75) ----
+
+// Administracion lo acepta al cobrar. El RPC exige el rol admin por dentro:
+// aqui no se decide nada de permisos, solo se llama.
+export async function validarPermisoMenor(registroId: string, hechoPor: string): Promise<AccionResultado> {
+  return rpc("validar_permiso_menor", {
+    p_registro_id: registroId,
+    p_hecho_por: hechoPor.trim() || null,
+  });
+}
+
+// URL temporal para ver la foto. El bucket es privado y la politica del bloque
+// 75 solo deja leerlo a admin y super con aal2: a cualquier otro rol Storage le
+// niega la firma de la URL, que es justo lo que se quiere.
+export async function urlPermiso(ruta: string): Promise<string> {
+  return urlFirmada(supabaseAuth, ruta, { bucket: "permisos", segundos: FIRMA_URL_SEGUNDOS });
 }
 
 // ---- Utilidades de sesion ----

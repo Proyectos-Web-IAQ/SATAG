@@ -74,6 +74,11 @@ export default function RegistroWizard() {
   const [gestionanteExtranjero, setGestionanteExtranjero] = useState(false);
   const [gestionanteRelacion, setGestionanteRelacion] = useState<GestionanteRelacion | "">("");
   const [esMenor, setEsMenor] = useState(false);
+  // Foto del permiso para conducir del menor (bloque 75). Los limites son los
+  // mismos que los del bucket: si se pasa, Storage la rechaza con un mensaje
+  // que la familia no entiende, y aqui se le dice en su idioma.
+  const [permisoArchivo, setPermisoArchivo] = useState<File | null>(null);
+  const [permisoError, setPermisoError] = useState<string | null>(null);
   // Quién conduce el vehículo. Arranca SIN valor (SC-029, L2-11): con
   // «Padre / Madre / Tutor» preseleccionado, un maestro o un alumno podía
   // enviar el alta sin haber mirado el campo, y el tipo decide qué se le pide
@@ -259,6 +264,9 @@ export default function RegistroWizard() {
       if (tipoUsuario === "maestro" && !seccionMaestro) {
         e.seccionMaestro = "Seleccione la sección en la que trabaja.";
       }
+      if (esMenor && !permisoArchivo) {
+        e.permisoArchivo = "Adjunte la foto del permiso para conducir del menor.";
+      }
     }
     if (s === 1) {
       if (!marcaFinal.trim()) e.marca = "Seleccione o escriba la marca.";
@@ -324,6 +332,7 @@ export default function RegistroWizard() {
         gestionanteNombrePartes: hayGestionante ? gestionanteNombrePartes : null,
         gestionanteRelacion: hayGestionante ? (gestionanteRelacion || null) : null,
         usuarioEsMenor: esMenor,
+        permisoArchivo: esMenor ? permisoArchivo : null,
         firmanteRol: hayGestionante ? (gestionanteRelacion || "otro") : "usuario",
         tipoUsuario,
         // El estado ya se limpia al cambiar de tipo; el candado se repite aquí
@@ -435,14 +444,57 @@ export default function RegistroWizard() {
                     setTipoUsuario(tipoAntesDeMenor.current);
                     tipoAntesDeMenor.current = null;
                   }
+                  // Si deja de ser menor, el permiso ya no aplica y no se
+                  // guarda: es un documento oficial que no habria por que
+                  // conservar ni mandar.
+                  if (!marcado) { setPermisoArchivo(null); setPermisoError(null); }
                 }} />
               <span>El conductor es <strong>menor de edad</strong>.</span>
             </label>
             {esMenor && (
-              <p className="hint" style={{ marginTop: -4, marginBottom: 12 }}>
-                El menor puede ser usuario del beneficio vehicular, pero el aviso de privacidad y el
-                reglamento debe aceptarlos y firmarlos su <strong>padre, madre o tutor</strong> como representante.
-              </p>
+              <>
+                <p className="hint" style={{ marginTop: -4, marginBottom: 12 }}>
+                  El menor puede ser usuario del beneficio vehicular, pero el aviso de privacidad y el
+                  reglamento debe aceptarlos y firmarlos su <strong>padre, madre o tutor</strong> como representante.
+                </p>
+                <div className="field">
+                  <span>Foto del permiso para conducir del menor</span>
+                  <p className="hint" style={{ margin: "0 0 8px" }}>
+                    Necesitará una <strong>foto del permiso para conducir</strong> expedido a nombre del menor.
+                    Puede tomarla ahora con la cámara. Sin ella no se puede terminar el registro.
+                  </p>
+                  <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+                    className={`input ${mostrarErrores && errores.permisoArchivo ? "invalid" : ""}`}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0] ?? null;
+                      setPermisoError(null);
+                      if (!f) { setPermisoArchivo(null); return; }
+                      // Se comprueba aqui y no al enviar: enterarse de que la
+                      // foto no sirve en el ultimo paso, despues de firmar, es
+                      // el peor momento posible.
+                      if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
+                        setPermisoArchivo(null);
+                        setPermisoError("El archivo debe ser una foto (JPG, PNG o WEBP). Si tiene el permiso en PDF, tómele una foto a la pantalla.");
+                        return;
+                      }
+                      if (f.size > 5 * 1024 * 1024) {
+                        setPermisoArchivo(null);
+                        setPermisoError("La foto pesa más de 5 MB. Tome la foto con menor resolución o recórtela.");
+                        return;
+                      }
+                      setPermisoArchivo(f);
+                    }} />
+                  {permisoArchivo && !permisoError && (
+                    <p className="hint" style={{ margin: "6px 0 0" }}>
+                      ✓ {permisoArchivo.name} · {(permisoArchivo.size / 1024 / 1024).toFixed(1)} MB
+                    </p>
+                  )}
+                  {permisoError && <p className="field-error">{permisoError}</p>}
+                  {!permisoError && mostrarErrores && errores.permisoArchivo && (
+                    <p className="field-error">{errores.permisoArchivo}</p>
+                  )}
+                </div>
+              </>
             )}
             <label className="check" style={{ marginBottom: 12 }}>
               <input type="checkbox" checked={hayGestionante} disabled={esMenor}

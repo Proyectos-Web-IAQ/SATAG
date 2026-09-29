@@ -42,6 +42,31 @@ export async function subirFirma(
 }
 
 /**
+ * Igual que subirFirma pero para un archivo que el usuario elige o fotografia
+ * (en SATAG: el permiso de conducir del conductor menor de edad, bucket
+ * "permisos"). Misma politica: nombre aleatorio, sin upsert, y devuelve la ruta
+ * CON el bucket adelante mas el SHA-256 del contenido.
+ *
+ * La extension se deduce del tipo MIME y no del nombre que traiga el archivo:
+ * un telefono puede mandar "image.jpg" con contenido PNG, y lo que importa para
+ * servirlo despues es el tipo real.
+ */
+export async function subirArchivo(
+  cliente: SupabaseClient,
+  archivo: Blob,
+  { bucket }: OpcionesBucket,
+): Promise<{ ruta: string; sha256: string }> {
+  const sha256 = await sha256Hex(await archivo.arrayBuffer());
+  const ext = archivo.type === "image/png" ? "png" : archivo.type === "image/webp" ? "webp" : "jpg";
+  const nombre = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await cliente.storage
+    .from(bucket)
+    .upload(nombre, archivo, { contentType: archivo.type || "image/jpeg", upsert: false });
+  if (error) throw new Error(`No se pudo subir el archivo: ${error.message}`);
+  return { ruta: `${bucket}/${nombre}`, sha256 };
+}
+
+/**
  * La ruta guardada lleva el bucket adelante; el SDK de Storage ya recibe el
  * bucket por su cuenta y espera la ruta SIN ese prefijo. Pasarsela completa
  * hace que busque "firmas/firmas/<uuid>.png" y responda "no encontrado".

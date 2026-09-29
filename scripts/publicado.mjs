@@ -26,6 +26,10 @@ const RUTAS = [
     marcas: [
       { texto: "p_seccion_maestro", que: "el alta manda la seccion del maestro (bloque 70)" },
       { texto: "El conductor del veh", que: "la etiqueta del conductor (L2-12)" },
+      // El alta ya manda el permiso del menor: el nombre del parametro viaja
+      // dentro del cuerpo de la llamada al RPC, asi que sobrevive a la
+      // minificacion y a cualquier cambio de redaccion de la pantalla.
+      { texto: "p_permiso_sha256", que: "el alta manda el permiso del menor (bloque 75)" },
     ],
   },
   {
