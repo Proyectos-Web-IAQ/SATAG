@@ -1,0 +1,931 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<title>SATAG · permiso del menor en el cobro</title><style>/* =====================================================================
+   SATAG — tema base. Inspirado en el sistema de diseño de SEVAD:
+   navy institucional del IAQ, campos azul-grisáceo, fuente Raleway.
+   ===================================================================== */
+
+:root {
+  color-scheme: only light;
+
+  /* Paleta institucional OFICIAL IAQ (Pantone) */
+  --ink: #2E2A25;            /* Pantone Black C — texto */
+  --muted: #657080;          /* gris neutro (secundario) */
+  --line: #dbe1e8;           /* bordes */
+  --panel: #ffffff;          /* tarjetas */
+  --page: #ffffff;           /* fondo */
+  --primary: #002E6C;        /* Pantone 294 C — azul institucional */
+  --primary-strong: #002051; /* azul más oscuro: títulos, botón, hover */
+  --field-bg: #f4f7fc;       /* fondo de campos */
+  --amber: #FFDD00;          /* Pantone Yellow C */
+  --rose: #EB0028;           /* Pantone 185 C */
+  --green: #009844;          /* Pantone 347 C */
+  --cyan: #4ca7b8;           /* acento suave (no oficial) */
+  --shadow: 0 18px 50px rgba(0, 46, 108, 0.12);
+  --header-h: 64px;
+  --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+html, body { min-height: 100%; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(0, 46, 108, 0.05), transparent 32rem),
+    var(--page);
+  color: var(--ink);
+  font-family: var(--font-raleway), Inter, ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+}
+button, textarea, input, select { font: inherit; }
+a { color: var(--primary-strong); }
+
+/* ---------- Header institucional ---------- */
+.app-header {
+  align-items: center;
+  background: var(--primary);
+  display: flex;
+  justify-content: space-between;
+  height: var(--header-h);
+  padding: 0 0 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  overflow: hidden;
+}
+.app-brand { display: flex; align-items: center; gap: 10px; }
+.app-badge {
+  width: 38px; height: 38px; border-radius: 999px; background: #fff;
+  display: grid; place-items: center; overflow: hidden; flex: none;
+}
+.app-badge img { width: 26px; height: 26px; display: block; }
+.app-titles { display: flex; flex-direction: column; line-height: 1.05; }
+.app-title { color: #fff; font-size: 0.9rem; font-weight: 800; letter-spacing: 0.12em; }
+.app-subtitle { color: rgba(255, 255, 255, .82); font-size: 0.68rem; font-weight: 600; }
+.app-copete { height: 100%; width: auto; display: block; }
+
+/* Imágenes de marca en paneles blancos */
+.brand-logo { display: block; max-width: 260px; width: 72%; height: auto; margin: 0 auto 20px; }
+.brand-sello { display: block; max-width: 150px; width: 45%; height: auto; margin: 6px auto 14px; }
+
+/* ---------- Layout público (encuesta-style) ---------- */
+.page-shell {
+  align-items: center; display: flex; justify-content: center;
+  min-height: calc(100dvh - var(--header-h)); padding: 24px;
+}
+.survey-panel {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(219, 225, 232, 0.9);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  max-width: 720px; width: min(100%, 720px); padding: 28px;
+}
+/* Lote B (SC-018): en un telefono de 390px, los 24px del marco mas los 28px
+   del panel se comian 104px del ancho — mas de una cuarta parte de la
+   pantalla en aire. En angosto el marco casi desaparece y el panel respira
+   con 14px: se recuperan ~60px para el contenido, que es texto legal y
+   campos. El escritorio no cambia. */
+@media (max-width: 640px) {
+  .page-shell { padding: 12px 6px; }
+  .survey-panel { padding: 18px 14px; }
+}
+.login-panel { max-width: 460px; }
+
+.survey-header { margin: 0 0 22px; }
+.survey-header h1 { color: var(--ink); font-size: clamp(1.6rem, 5vw, 2.2rem); line-height: 1.08; margin: 0; }
+.survey-header p { color: var(--muted); font-size: 1rem; line-height: 1.55; margin: 12px 0 0; max-width: 560px; }
+.lead { color: var(--muted); margin: 0 0 18px; }
+
+.top-row { align-items: flex-start; display: flex; justify-content: space-between; gap: 16px; }
+.step-pill {
+  background: #eef1f7; border: 1px solid #d3dae7; border-radius: 999px;
+  color: var(--primary-strong); font-size: 0.8rem; font-weight: 700;
+  padding: 8px 12px; white-space: nowrap;
+}
+
+/* ---------- Campos (patrón SEVAD) ---------- */
+.field { display: grid; gap: 6px; margin-bottom: 16px; }
+.field > span, .label { color: var(--ink); font-size: 0.9rem; font-weight: 800; }
+.input, .select, .textarea, .field input, .field select, .field textarea {
+  background: var(--field-bg); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--ink); min-height: 46px; outline: none; padding: 10px 12px; width: 100%;
+}
+.textarea, .field textarea { min-height: 90px; resize: vertical; }
+.input:focus, .select:focus, .textarea:focus,
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--primary); box-shadow: 0 0 0 4px rgba(0, 46, 108, 0.12);
+}
+.input:disabled, .field input:disabled { opacity: .55; cursor: not-allowed; }
+.hint { font-size: 0.8rem; color: var(--muted); }
+.opcional { color: var(--muted); font-size: .78rem; font-style: normal; font-weight: 600; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.check { display: flex; align-items: flex-start; gap: 10px; font-size: 0.95rem; }
+.check input { margin-top: 3px; }
+
+/* ---------- Botones (patrón SEVAD) ---------- */
+.primary-action {
+  background: var(--primary); border: 0; border-radius: var(--radius); color: #fff;
+  cursor: pointer; font-weight: 800; min-height: 50px; padding: 0 20px;
+}
+/* En una pantalla táctil el :hover se queda pegado después de tocar: el botón
+   que se acaba de pulsar sigue resaltado y se lee como si quedara seleccionado.
+   Por eso todo resaltado de esta hoja —aquí y en las clases de más abajo— va
+   condicionado a que exista un puntero de verdad; en escritorio no cambia nada. */
+@media (hover: hover) {
+  .primary-action:hover:not(:disabled) { background: var(--primary-strong); }
+}
+.primary-action:disabled { background: #b4bccb; cursor: not-allowed; }
+.ghost-action {
+  background: transparent; border: 1px solid var(--primary); border-radius: var(--radius);
+  color: var(--primary); cursor: pointer; font-weight: 700; min-height: 44px; padding: 0 16px;
+}
+@media (hover: hover) {
+  .ghost-action:hover:not(:disabled) { background: var(--primary); color: #fff; }
+}
+.ghost-action:disabled { color: var(--muted); border-color: var(--line); cursor: not-allowed; opacity: .6; }
+.link-action { background: none; border: 0; color: var(--primary-strong); cursor: pointer; font-weight: 700; padding: 0; }
+@media (hover: hover) {
+  .link-action:hover:not(:disabled) { text-decoration: underline; }
+}
+.link-action--danger { color: #b0392e; }
+.btn-row { display: flex; justify-content: space-between; gap: 12px; margin-top: 20px; }
+
+/* ---------- Stepper del wizard ---------- */
+.stepper { display: flex; gap: 6px; margin-bottom: 8px; }
+.stepper__item { flex: 1; height: 6px; border-radius: 99px; background: var(--line); }
+.stepper__item.done { background: var(--amber); }
+.stepper__item.active { background: var(--primary); }
+
+/* ---------- Avisos ---------- */
+.submit-error {
+  background: #fdecea; border: 1px solid #f3b9b4; border-radius: var(--radius);
+  color: #a23b36; font-size: 0.92rem; font-weight: 700; margin: 14px 0 0; padding: 12px 14px;
+}
+.notice {
+  background: #f2f5fb; border: 1px solid #d3dae7; border-radius: var(--radius);
+  padding: 14px 16px; font-size: 0.9rem; color: #2a3b56;
+}
+/* El fondo del aviso y el de los campos son casi el mismo azul grisáceo: al
+   corregir el vehículo en el estacionamiento, a pleno sol y con el celular en
+   la mano, no se alcanzaba a ver dónde empieza cada campo. Solo dentro del
+   aviso; contra el panel blanco del resto del sistema sí contrastan. */
+.notice .input, .notice .select, .notice .textarea,
+.notice .field input, .notice .field select, .notice .field textarea {
+  background: #fff;
+}
+.badge {
+  display: inline-block; border-radius: 999px; font-size: 0.74rem; font-weight: 800; padding: 3px 12px;
+  background: #fdf0e1; color: #9a5a1a;
+}
+
+/* ---------- Reglamento / firma / comprobante ---------- */
+.reglamento {
+  max-height: 220px; overflow-y: auto; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; background: var(--field-bg); font-size: 0.95rem;
+}
+/* D-14: en teléfono el documento se leía por una mirilla de ~5 renglones con
+   media pantalla vacía encima. La caja crece a la altura disponible del
+   viewport; la puerta de «desplácese hasta el final» queda intacta — solo
+   cambia cuánto se lee por pantalla. (dvh con respaldo vh para navegadores
+   viejos; los que no entienden ninguna conservan los 220px.) */
+@media (max-width: 640px) {
+  .reglamento { max-height: 55vh; max-height: min(55dvh, 520px); }
+}
+.reglamento ol { margin: 0; padding-left: 20px; }
+.reglamento li { margin-bottom: 8px; }
+.sigpad {
+  border: 2px dashed var(--line); border-radius: var(--radius);
+  /* La línea base orienta el trazo como el renglón de un documento en papel.
+     Va como fondo CSS del canvas: el bitmap que se exporta a PNG no la
+     incluye, así que la evidencia de firma sale limpia. */
+  background:
+    linear-gradient(to top, transparent 52px, #d3dae7 52px, #d3dae7 53px, transparent 53px),
+    #fff;
+  touch-action: none; width: 100%; height: 200px; display: block;
+}
+.comprobante { text-align: center; }
+.comprobante .folio { font-size: 26px; font-weight: 800; color: var(--primary-strong); letter-spacing: 1px; }
+
+/* =====================================================================
+   Panel administrativo (Administración + TI)
+   ===================================================================== */
+/* Raleway trae por defecto cifras de estilo antiguo (el 1 y el 0 parecen
+   minúsculas): en placas, TAGs y folios se leen disparejas. */
+.admin-shell { display: flex; font-variant-numeric: lining-nums; justify-content: center; min-height: calc(100dvh - var(--header-h)); padding: 16px 24px 40px; }
+.admin-panel { max-width: 1200px; width: min(100%, 1200px); }
+
+.admin-header {
+  align-items: flex-start; border-bottom: 1px solid var(--line);
+  display: flex; gap: 16px; justify-content: space-between; margin-bottom: 20px; padding: 16px 0 16px;
+}
+.admin-header h1 { color: var(--ink); font-size: 1.4rem; margin: 0; }
+.admin-header .admin-sub { color: var(--muted); font-size: 0.85rem; margin-top: 4px; }
+.admin-header-actions { align-items: flex-end; display: flex; flex-direction: column; gap: 10px; }
+.admin-whoami { color: var(--muted); font-size: 0.82rem; }
+
+.admin-tabs { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.admin-tab {
+  background: transparent; border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--primary-strong); cursor: pointer; font-weight: 700; min-height: 36px; padding: 0 14px;
+}
+@media (hover: hover) {
+  .admin-tab:hover:not(.admin-tab--active) { background: var(--primary); border-color: var(--primary); color: #fff; }
+}
+.admin-tab--active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+.toolbar { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+.toolbar .search { flex: 1; min-width: 220px; }
+
+.metric-cards { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; }
+.metric-card { background: #f2f5fb; border: 1px solid #d3dae7; border-radius: var(--radius); display: flex; flex-direction: column; gap: 6px; padding: 16px; }
+.metric-label { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
+.metric-value { color: var(--primary-strong); font-size: 1.8rem; font-weight: 800; line-height: 1; }
+/* Semáforo de pendientes: verde (0), amarillo (pocos), rojo (muchos) */
+.metric-card--ok { background: #eaf6ee; border-color: #b7e0c4; }
+.metric-card--ok .metric-label { color: #1f6b3a; font-weight: 800; }
+.metric-card--ok .metric-value { color: #1f6b3a; }
+.metric-card--warn { background: #fdf0e1; border-color: #f0d9a8; }
+.metric-card--warn .metric-label { color: #9a5a1a; font-weight: 800; }
+.metric-card--warn .metric-value { color: #9a5a1a; }
+.metric-card--alert { background: #fdecec; border-color: #f4b8b8; }
+.metric-card--alert .metric-label { color: #b3271e; font-weight: 800; }
+.metric-card--alert .metric-value { color: #b3271e; }
+
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 1px 2px rgba(20, 29, 38, 0.05); padding: 16px; margin-bottom: 16px; }
+.panel-title { color: var(--ink); font-size: 1rem; font-weight: 800; margin: 0 0 12px; }
+
+.admin-table { border-collapse: collapse; width: 100%; }
+.admin-table th, .admin-table td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: left; }
+.admin-table th { color: var(--muted); font-size: 0.82rem; font-weight: 800; }
+.admin-table td { color: var(--ink); font-weight: 600; font-size: 0.92rem; }
+.admin-table tr.selectable { cursor: pointer; }
+@media (hover: hover) {
+  .admin-table tr.selectable:hover td { background: #f7f9fc; }
+}
+.admin-table tr.is-selected td { background: #eef2f8; }
+.table-wrap { overflow-x: auto; }
+
+/* Chips de estado */
+.status-chip { border-radius: 999px; display: inline-block; font-size: 0.74rem; font-weight: 800; padding: 2px 10px; white-space: nowrap; }
+.status-chip--pendiente { background: #fdf0e1; color: #9a5a1a; }
+.status-chip--activo { background: #eaf6ee; color: #1f6b3a; }
+.status-chip--baja { background: #eef1f4; color: var(--muted); }
+.status-chip--bloqueado { background: #fde8e7; color: #a22620; }
+
+/* Expediente (detalle) */
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+.detail-grid .k { color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+.detail-grid .v { color: var(--ink); font-weight: 600; font-size: 0.95rem; margin-bottom: 6px; }
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.select-chip { border: 1px solid var(--line); border-radius: var(--radius); background: var(--field-bg); padding: 8px 14px; cursor: pointer; font-weight: 700; color: var(--ink); }
+.select-chip.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+/* D-15: un chip deshabilitado se veia identico a uno pulsable. En el cobro de
+   un menor, los tipos bloqueados parecian botones vivos que "no respondian" y
+   la restriccion se leia como averia. El estado disabled ya existia en el JSX
+   (VistaAdmin, FormPago); lo que faltaba era que se VIERA. */
+.select-chip:disabled { opacity: 0.45; cursor: not-allowed; }
+.select-chip:disabled.on { opacity: 1; }
+.catalog-feedback { border-radius: var(--radius); font-size: 0.9rem; font-weight: 600; margin: 0 0 14px; padding: 10px 14px; }
+.catalog-feedback--ok { background: #eaf6ee; border: 1px solid #b7e0c4; color: #1f6b3a; }
+
+.footer { padding: 18px; text-align: center; color: var(--muted); font-size: 0.78rem; }
+
+@media (max-width: 620px) {
+  .grid-2, .metric-cards, .detail-grid { grid-template-columns: 1fr; }
+  /* Encabezado compacto en celular: apilado, titulo en una linea legible y
+     correo que hace wrap en lugar de cortarse en el borde. */
+  .admin-shell { padding: 8px 12px 32px; }
+  .admin-header { flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 14px; padding: 10px 0 12px; }
+  .admin-header h1 { font-size: 1.15rem; }
+  .admin-header-actions { align-items: flex-start; }
+  .admin-whoami { overflow-wrap: anywhere; }
+}
+
+/* =====================================================================
+   Vista TI — mobile-first: se usa desde el celular en el estacionamiento.
+   Areas tactiles grandes, placas como dato principal, poco scroll.
+   ===================================================================== */
+.ti-actions { display: grid; gap: 12px; margin-bottom: 18px; }
+/* TI tiene cuatro colas (instalar, actualizar, baja, notas): 2x2 en pantalla
+   ancha las deja balanceadas, sin una tarjeta huerfana en su propia fila. */
+@media (min-width: 720px) { .ti-actions { grid-template-columns: repeat(2, 1fr); } }
+/* Administracion solo tiene una cola operativa: cobrar. La tarjeta conserva el
+   mismo peso visual que las acciones de TI sin quedar reducida a una fraccion. */
+@media (min-width: 720px) { .ti-actions.admin-actions { grid-template-columns: minmax(0, 1fr); } }
+.ti-action {
+  align-items: center; background: #f2f5fb; border: 1px solid #d3dae7; border-radius: 10px;
+  cursor: pointer; display: flex; gap: 12px; justify-content: space-between;
+  min-height: 76px; padding: 14px 16px; text-align: left; width: 100%;
+}
+@media (hover: hover) {
+  .ti-action:hover { border-color: var(--primary); }
+}
+.ti-action:active { transform: scale(0.99); }
+.ti-action__title { color: var(--primary-strong); display: block; font-size: 1.05rem; font-weight: 800; }
+.ti-action__sub { color: var(--muted); display: block; font-size: 0.82rem; font-weight: 600; margin-top: 2px; }
+.ti-action__count { border-radius: 999px; flex: none; font-size: 1.15rem; font-weight: 800; min-width: 46px; padding: 9px 12px; text-align: center; }
+.ti-action__count--ok { background: #eaf6ee; color: #1f6b3a; }
+.ti-action__count--warn { background: #fdf0e1; color: #9a5a1a; }
+.ti-action__count--alert { background: #fdecec; color: #b3271e; }
+
+.ti-topbar { align-items: center; display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+.ti-topbar h2 { color: var(--ink); font-size: 1.15rem; margin: 0; }
+.ti-topbar .panel-title { margin: 0; }
+.ti-refresh { margin-left: auto; }
+.ti-back {
+  background: transparent; border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--primary-strong); cursor: pointer; font-weight: 700; min-height: 44px; padding: 0 14px;
+}
+@media (hover: hover) {
+  .ti-back:hover { background: var(--field-bg); }
+}
+
+.ti-cards { display: grid; gap: 10px; }
+/* "Esperando pago": registros del alta que aun no se pueden instalar porque
+   falta el cobro de Administracion. Se muestran atenuados —presentes pero no
+   accionables— y recuperan opacidad al abrirse para poder leerlos. */
+.ti-cards--muted .ti-card { opacity: 0.6; }
+.ti-cards--muted .ti-card.is-open { opacity: 1; }
+.ti-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; scroll-margin-top: calc(var(--header-h) + 10px); }
+.ti-card.is-open { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 46, 108, 0.10); }
+/* Señal de vehículo sin placas (permiso/nuevo): en vez de entintar toda la
+   tarjeta —demasiado peso visual—, solo el título "SIN PLACAS" toma un tono
+   ámbar de píldora. Menos invasivo y la señal sigue legible de un vistazo. */
+.ti-card--sin-placas .ti-card__placas {
+  background: #fdf0e1; border-radius: 6px; color: #9a5a1a;
+  font-size: 1rem; letter-spacing: 0.02em; padding: 2px 10px;
+}
+.ti-card__head { background: none; border: 0; cursor: pointer; display: block; padding: 14px; text-align: left; width: 100%; }
+.ti-card__row { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
+.ti-card__placas { color: var(--ink); font-size: 1.25rem; font-weight: 800; letter-spacing: 0.04em; }
+.ti-card__veh { color: var(--ink); display: block; font-weight: 700; margin-top: 2px; }
+.ti-card__sub { color: var(--muted); display: block; font-size: 0.9rem; font-weight: 600; margin-top: 2px; }
+.ti-card__meta { color: var(--muted); display: block; font-size: 0.8rem; font-weight: 600; margin-top: 6px; }
+.ti-card__solicitud {
+  background: #fdf0e1; border-radius: 6px; color: #9a5a1a; display: block;
+  font-size: 0.82rem; font-weight: 700; margin-top: 8px; padding: 6px 10px;
+}
+.ti-card__espera { display: block; margin-top: 6px; }
+/* Badge de urgencia (SC-003): cuanto lleva esperando la familia. Reusa el
+   semaforo de los contadores (verde/ambar/rojo). */
+.espera-badge { border-radius: 999px; font-size: 0.72rem; font-weight: 800; padding: 2px 9px; white-space: nowrap; }
+.espera-badge--ok { background: #eaf6ee; color: #1f6b3a; }
+.espera-badge--warn { background: #fdf0e1; color: #9a5a1a; }
+.espera-badge--alert { background: #fdecec; color: #b3271e; }
+.ti-card__body { border-top: 1px solid var(--line); padding: 14px; }
+/* Dentro de la tarjeta el detalle va compacto a 2 columnas (tambien en celular)
+   para que el formulario quede lo mas arriba posible. */
+.ti-card__body .detail-grid { gap: 6px 14px; grid-template-columns: 1fr 1fr; }
+
+.ti-form { border-top: 1px dashed var(--line); margin-top: 12px; padding-top: 14px; }
+.ti-form .primary-action { width: 100%; }
+.ti-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+.ti-chips .select-chip { min-height: 44px; }
+/* Los chips con los que TI elige estacionamiento y No. de TAG van en .chip-row,
+   que se quedó en ~37px de alto: con el dedo, de pie junto al coche, se falla
+   el toque y se marca el chip de al lado. Solo dentro de los formularios de TI
+   —los de la barra de filtros son chicos a propósito y ahí no estorba. */
+.ti-form .chip-row .select-chip { min-height: 44px; }
+.ti-check-placas { align-self: center; margin-bottom: 16px; }
+.ti-banners { scroll-margin-top: calc(var(--header-h) + 10px); }
+.ti-banners .catalog-feedback, .ti-banners .submit-error { margin: 0 0 14px; }
+.ti-empty {
+  background: #eaf6ee; border: 1px solid #b7e0c4; border-radius: var(--radius);
+  color: #1f6b3a; font-weight: 700; padding: 16px; text-align: center;
+}
+.ti-hint { color: var(--muted); font-size: 0.88rem; margin: 4px 0 8px; }
+.ti-section-title {
+  color: var(--muted); font-size: 0.8rem; font-weight: 800;
+  letter-spacing: 0.05em; margin: 16px 0 8px; text-transform: uppercase;
+}
+
+/* Filtros rápidos de Consulta: barra colapsable (chips agrupados) con un
+   resumen de filtros activos siempre visible aunque esté cerrada. */
+.consulta-filtros { display: grid; gap: 10px; margin-bottom: 12px; }
+.filtros-toolbar { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; }
+.filtros-toggle {
+  align-items: center; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 999px; color: var(--primary-strong); cursor: pointer; display: inline-flex;
+  font-weight: 800; font-size: 0.85rem; gap: 8px; padding: 8px 14px;
+}
+@media (hover: hover) {
+  .filtros-toggle:hover { border-color: var(--primary); }
+}
+.filtros-badge {
+  background: var(--primary); border-radius: 999px; color: #fff; display: inline-grid;
+  font-size: 0.72rem; font-variant-numeric: tabular-nums; height: 18px; min-width: 18px;
+  padding: 0 5px; place-items: center;
+}
+/* Resumen: cada filtro activo como pildora con su boton para quitarlo. */
+.filtro-activo {
+  align-items: center; background: #eaf0fa; border: 1px solid #cdddf3; border-radius: 999px;
+  color: var(--primary-strong); display: inline-flex; font-size: 0.82rem; font-weight: 700;
+  gap: 4px; padding: 5px 6px 5px 12px;
+}
+.filtro-activo button {
+  background: none; border: 0; color: var(--primary-strong); cursor: pointer;
+  font-size: 1.05rem; line-height: 1; padding: 0 3px;
+}
+/* Barra desplegada, con el fondo de campo para leerse como una unidad. */
+.filtros-bar {
+  background: var(--field-bg); border: 1px solid var(--line); border-radius: 10px;
+  display: grid; gap: 10px; padding: 12px 14px;
+}
+.filtro-grupo { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px; }
+.filtro-label {
+  color: var(--muted); font-size: 0.72rem; font-weight: 800;
+  letter-spacing: 0.04em; min-width: 116px; text-transform: uppercase;
+}
+.filtros-bar .select-chip { border-radius: 999px; font-size: 0.85rem; padding: 6px 13px; }
+@media (max-width: 620px) { .filtro-label { min-width: 100%; } }
+
+/* Bitácora dentro de la tarjeta de Consulta (solo lectura): mismo lenguaje
+   visual que el historial de pagos, en tabla compacta que hace scroll en
+   celular sin desbordar la tarjeta. */
+.consulta-bitacora { border-top: 1px dashed var(--line); margin-top: 4px; }
+.consulta-bitacora .admin-table th, .consulta-bitacora .admin-table td { font-size: 0.82rem; padding: 8px 10px; }
+
+/* Detalle de cobro dentro de las tarjetas compartidas con TI. */
+.admin-payment-history { border-top: 1px dashed var(--line); margin-top: 4px; padding-top: 2px; }
+.admin-auto-receipt { margin: 0 0 16px; padding: 10px 12px; }
+.admin-payment-row {
+  align-items: flex-start; background: var(--field-bg); border-radius: var(--radius);
+  display: flex; gap: 4px 12px; justify-content: space-between; margin-bottom: 8px;
+  padding: 9px 10px;
+}
+.admin-payment-row strong { color: var(--ink); white-space: nowrap; }
+.admin-payment-row span { color: var(--muted); font-size: 0.82rem; font-weight: 600; text-align: right; }
+.admin-paid-hint { background: #eaf6ee; border-radius: var(--radius); color: #1f6b3a; padding: 10px 12px; }
+
+@media (max-width: 480px) {
+  .admin-payment-row { display: grid; }
+  .admin-payment-row span { text-align: left; }
+}
+
+/* ---------- Loader estilo Tetris (bloques que caen, colores IAQ) ---------- */
+.loader { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 28px; }
+.loader__grid { display: grid; grid-template-columns: repeat(2, 16px); grid-auto-rows: 16px; gap: 4px; }
+.loader .b { width: 16px; height: 16px; border-radius: 3px; opacity: 0; animation: tetris-drop 1.3s infinite; }
+.loader .b1 { background: var(--primary); animation-delay: 0s; }
+.loader .b2 { background: var(--green); animation-delay: .16s; }
+.loader .b3 { background: var(--amber); animation-delay: .32s; }
+.loader .b4 { background: var(--rose); animation-delay: .48s; }
+.loader__label { color: var(--muted); font-size: .85rem; font-weight: 600; }
+@keyframes tetris-drop {
+  0% { transform: translateY(-20px); opacity: 0; }
+  25% { transform: translateY(0); opacity: 1; }
+  70% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(-20px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader .b { animation-duration: 0s; opacity: 1; }
+}
+
+/* Monto fijo en el cobro: dato, no campo. */
+.monto-fijo {
+  background: var(--field-bg); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--ink); font-size: 1.05rem; font-weight: 800; margin: 0;
+  min-height: 46px; padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+}
+.monto-fijo__nota { color: var(--muted); font-size: .78rem; font-weight: 600; }
+
+/* ---------- Modal de confirmación ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15, 29, 56, .45);
+  display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 50;
+}
+/* Los mensajes de confirmación son largos a propósito (repiten el No. de TAG,
+   el vehículo corregido, el estacionamiento y la advertencia): en un teléfono
+   el diálogo crecía por debajo del borde de la pantalla y Cancelar/Confirmar
+   quedaban fuera de alcance, sin manera de llegar a ellos. Ahora el texto es
+   lo que se desplaza. (dvh con respaldo vh, igual que .reglamento.) */
+.modal {
+  background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); max-width: 420px; width: 100%; padding: 24px;
+  max-height: 85vh; max-height: 85dvh; overflow-y: auto;
+}
+.modal h2 { margin: 0 0 8px; font-size: 1.1rem; color: var(--ink); }
+.modal p { margin: 0 0 18px; color: var(--ink); }
+/* El No. de TAG que se coteja contra el físico: los lotes son consecutivos y
+   difieren en el último dígito, así que va grande y con cifras parejas. */
+.modal .modal__dato {
+  color: var(--ink); font-size: 1.6rem; font-variant-numeric: lining-nums tabular-nums;
+  font-weight: 800; letter-spacing: .06em; margin: 0 0 10px; overflow-wrap: anywhere;
+}
+.modal__actions { display: flex; justify-content: flex-end; gap: 10px; }
+.btn-danger { background: var(--rose) !important; }
+
+/* ---------- Aviso simplificado en el primer paso del alta ----------
+   Informativo y compacto: el consentimiento formal se recoge más adelante,
+   con el aviso integral y la firma. */
+.aviso-corto {
+  border: 1px solid var(--line); border-left: 4px solid var(--primary);
+  border-radius: var(--radius); background: var(--field-bg);
+  padding: 12px 14px; margin-bottom: 20px;
+  font-size: 0.82rem; color: var(--muted); line-height: 1.5;
+}
+.aviso-corto .panel-title { font-size: 0.9rem; color: var(--ink); margin-bottom: 6px; }
+.aviso-corto a { color: var(--primary-strong); font-weight: 700; }
+
+/* El aviso corto va plegado salvo su primer párrafo, para que el formulario
+   empiece a la vista. El botón de desplegar y el enlace al integral comparten
+   renglón y se apilan solos en pantalla angosta. */
+.aviso-corto__acciones {
+  align-items: center; display: flex; flex-wrap: wrap;
+  gap: 6px 16px; margin-top: 4px;
+}
+
+/* ---------- Burbuja del aviso simplificado ----------
+   El simplificado dejó de encabezar el formulario y bajó al pie: encima del
+   contenido tenía una jerarquía visual que lo hacía leerse como una primera
+   aceptación, y el aviso integral del paso 3 quedaba pareciendo el mismo
+   texto repetido. Abajo informa sin competir, y se cierra con la equis como
+   cualquier aviso al pie, que es el gesto que el usuario ya conoce.
+
+   Se mantiene el peso tipográfico legible: es discreta por ubicación, no por
+   letra chica. */
+.aviso-burbuja {
+  position: fixed; z-index: 60;
+  left: 16px; right: 16px; bottom: 16px;
+  margin: 0 auto; max-width: 420px;
+  background: var(--panel, #fff);
+  border: 1px solid var(--line); border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.16);
+  padding: 14px 40px 12px 16px;
+  font-size: 0.8rem; color: var(--muted); line-height: 1.5;
+  animation: aviso-burbuja-entra 260ms ease-out both;
+}
+.aviso-burbuja__titulo {
+  color: var(--ink); font-size: 0.82rem; font-weight: 700;
+  margin: 0 0 6px;
+}
+.aviso-burbuja__texto { margin: 0 0 8px; }
+.aviso-burbuja a { color: var(--primary-strong); font-weight: 700; }
+.aviso-burbuja__acciones {
+  align-items: center; display: flex; flex-wrap: wrap;
+  gap: 6px 16px;
+}
+/* Área de toque de 32 px: es el control que más se va a usar en celular. */
+.aviso-burbuja__cerrar {
+  position: absolute; top: 8px; right: 8px;
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 0; border-radius: 8px;
+  color: var(--muted); cursor: pointer;
+  font-size: 1.25rem; line-height: 1;
+}
+@media (hover: hover) {
+  .aviso-burbuja__cerrar:hover { background: var(--field-bg); color: var(--ink); }
+}
+.aviso-burbuja__cerrar:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+@keyframes aviso-burbuja-entra {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aviso-burbuja { animation: none; }
+}
+/* En escritorio se recuesta en la esquina y deja el formulario centrado. */
+@media (min-width: 900px) {
+  .aviso-burbuja { left: auto; right: 24px; bottom: 24px; margin: 0; }
+}
+/* En celular ocupa el ancho y se le reserva sitio al pie del formulario para
+   que no tape el botón de continuar. */
+@media (max-width: 899px) {
+  .page-shell:has(.aviso-burbuja) { padding-bottom: 220px; }
+}
+
+/* ---------- Aviso de privacidad como página pública ----------
+   A diferencia de .reglamento (caja con scroll dentro del wizard), aquí el
+   texto se lee completo: es la URL que la BD publica en aviso_versiones. */
+.aviso-publico { font-size: 0.95rem; color: var(--ink); line-height: 1.6; }
+
+/* ---------- Reporte de expedientes incompletos (CC-02) ----------
+   Tarjeta de sólo lectura: reusa la anatomía de .ti-card pero sin cabecera
+   plegable, porque aquí no hay nada que abrir ni ninguna acción que ejecutar.
+   El padding replica el de .ti-card__head para que ambas listas se vean igual. */
+.incompleto { padding: 14px; }
+.incompleto__motivos { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 6px; }
+/* Tono del motivo: rojo = el expediente está roto (un estado que los RPC no
+   pueden producir); ámbar = falta información o alguien debe dar seguimiento.
+   Mismo semáforo que .espera-badge, para no enseñar dos códigos de color. */
+.motivo-chip {
+  border-radius: 999px; font-size: 0.74rem; font-weight: 800;
+  padding: 3px 10px; white-space: nowrap;
+}
+.motivo-chip--alert { background: #fdecec; color: #b3271e; }
+.motivo-chip--warn { background: #fdf0e1; color: #9a5a1a; }
+
+/* Consulta suma la tarjeta de incompletos a las tres que ya tenía. La regla va
+   dentro del media query porque esta hoja declara el apilado de .metric-cards
+   en celular ANTES de este bloque: sin el min-width, al ser posterior en el
+   archivo ganaría y dejaría cuatro columnas apretadas en un teléfono. */
+@media (min-width: 621px) {
+  .metric-cards--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ---------- Sello de validación del tipo de usuario (CC-05) ----------
+   El tipo lo declara el titular en un formulario público; Administración lo
+   confirma al cobrar. Distinguir "declarado" de "validado" es lo que hace útil
+   al dato, así que el estado va pegado al valor, no en otra columna. */
+.tipo-sello {
+  border-radius: 999px; font-size: 0.7rem; font-weight: 800;
+  padding: 2px 8px; white-space: nowrap;
+}
+.tipo-sello--ok { background: #eaf6ee; color: #1f6b3a; }
+.tipo-sello--pendiente { background: #eef1f4; color: var(--muted); }
+.tipo-sello__detalle {
+  color: var(--muted); display: block; font-size: 0.75rem;
+  font-weight: 600; margin-top: 2px;
+}
+
+/* ---------- Evidencia de firma en el panel (SC-008) ----------
+   Bloque aparte dentro del expediente: es evidencia legal, no un dato
+   operativo más. El borde punteado lo separa sin competir con .ti-form. */
+.evidencia { border-top: 1px dashed var(--line); margin-top: 12px; padding-top: 12px; }
+/* Las imagenes de evidencia van ACOTADAS de alto, no solo de ancho.
+   Reportado el 29-sep: una foto de credencial tomada con telefono ocupaba la
+   pantalla entera y para ver el resto del expediente habia que bajar el zoom
+   del navegador al 25 %. max-width sola no basta: limita el ancho y deja que
+   una imagen vertical crezca sin fin hacia abajo.
+   Se pulsan para ampliar, que es cuando de verdad hace falta el detalle. */
+.evidencia__img {
+  background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  cursor: zoom-in; display: block; margin-top: 10px;
+  max-height: 240px; max-width: 100%;
+}
+.evidencia__img--grande { cursor: zoom-out; max-height: none; }
+.evidencia__img:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+/* El hash va en monoespaciada y se puede cortar: 64 caracteres desbordan la
+   tarjeta en celular. El valor completo vive en el title. */
+.evidencia__hash {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem; overflow-wrap: anywhere;
+}
+
+/* ---------- Error de campo ---------- */
+.field-error { color: var(--rose); font-size: .8rem; font-weight: 600; margin: 4px 0 0; }
+.input.invalid, .select.invalid { border-color: var(--rose); box-shadow: 0 0 0 3px rgba(235, 0, 40, .14); }
+
+/* ---------- Impresión del comprobante ---------- */
+/* ---------- Copia del trámite para el titular ----------
+   El equivalente del ejemplar en papel que la familia se lleva a casa: los
+   datos registrados y el texto íntegro de lo que aceptó. En pantalla va
+   plegada para no sepultar el folio; al imprimir se abre sola (ver @media
+   print más abajo), porque una copia que hay que desplegar a mano no es una
+   copia. */
+.copia-titular {
+  border-top: 1px dashed var(--line);
+  margin-top: 28px; padding-top: 20px; text-align: left;
+}
+.copia-datos { display: grid; gap: 8px; margin: 14px 0 18px; }
+.copia-datos > div {
+  display: grid; grid-template-columns: 150px 1fr; gap: 12px;
+  border-bottom: 1px solid var(--line); padding-bottom: 8px;
+}
+.copia-datos dt { color: var(--muted); font-size: .82rem; font-weight: 700; }
+.copia-datos dd { color: var(--ink); font-size: .92rem; margin: 0; }
+.copia-doc { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; }
+.copia-doc > summary {
+  cursor: pointer; font-size: .88rem; font-weight: 800; color: var(--primary-strong);
+  padding: 12px 14px; list-style-position: inside;
+}
+.copia-doc[open] > summary { border-bottom: 1px solid var(--line); }
+.copia-doc > ol, .copia-doc > p { font-size: .85rem; color: var(--ink); line-height: 1.55; }
+.copia-doc > ol { margin: 12px 0; padding: 0 16px 0 34px; }
+.copia-doc > ol li { margin-bottom: 8px; }
+.copia-doc > p { margin: 10px 14px; }
+.copia-constancia {
+  font-size: .82rem; color: var(--muted); line-height: 1.5;
+  border-left: 3px solid var(--primary); padding-left: 12px; margin-top: 16px;
+}
+
+@media (max-width: 640px) {
+  .copia-datos > div { grid-template-columns: 1fr; gap: 2px; }
+}
+
+/* ---------- Apellidos de la familia, resaltados en el expediente ----------
+   Es el dato con el que Administracion coteja contra la lista de inscritos
+   antes de autorizar la instalacion de un TAG: el control de externos que se
+   pidio en la junta del 9-sep. En la rejilla de detalle se veia exactamente
+   igual que el color del coche, y para encontrarlo habia que leer renglon por
+   renglon. Ocupa el ancho completo —asi no se parte en la mitad de una de las
+   dos columnas— y el valor sube de cuerpo y pasa al azul institucional, con la
+   barra lateral que esta hoja ya usa para lo que hay que leer aparte (ver
+   .copia-constancia). Se busca de un vistazo; no se lee de corrido.
+   El chip ambar de «Sin capturar» conserva su propio tratamiento: ahi lo que
+   importa es que falta, no el valor. */
+.detail-grid .apellidos-familia { grid-column: 1 / -1; }
+.detail-grid .apellidos-familia .v {
+  background: var(--field-bg);
+  border-left: 3px solid var(--primary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--primary-strong);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: .3px;
+  padding: 6px 12px;
+}
+/* Cuando falta el dato, el renglon no debe gritar con el estilo del valor:
+   el chip ya dice lo suyo y el fondo azul le restaria alarma. */
+.detail-grid .apellidos-familia .v:has(.motivo-chip) {
+  background: none;
+  border-left: 0;
+  font-size: inherit;
+  letter-spacing: normal;
+  padding: 0;
+}
+
+/* ---------- Medida de lectura: texto justificado ----------
+   Miguel pidió el 10-sep que los textos «se lean mejor»: decía que se veían
+   cargados a un lado. El justificado se aplica SOLO a prosa de lectura
+   corrida — el aviso de privacidad, el reglamento, la copia del titular y los
+   párrafos explicativos de las páginas públicas — porque es donde el bloque de
+   texto se lee como un documento. Fuera quedan a propósito:
+
+   - .hint, que sirve lo mismo para un párrafo de cuatro renglones que para el
+     contador «215/500» o un «Cargando el aviso…»;
+   - .lead, que son instrucciones de una línea;
+   - .comprobante, centrado por diseño alrededor del folio;
+   - todo el panel (.admin-*, .ti-*), que es tabla y dato, no lectura.
+
+   El :not(.login-panel) deja fuera el acceso del personal: login, MFA,
+   invitación y restablecer contraseña son todos «survey-panel login-panel».
+
+   hyphens: auto es obligatorio aquí, no un adorno. Justificar español sin
+   partir palabras deja renglones con huecos enormes; el <html lang="es"> de
+   app/layout.tsx es lo que le da al navegador el diccionario para partirlas.
+   hyphenate-limit-chars evita partir palabras cortas (donde no está soportado,
+   degrada solo y no rompe nada).
+
+   .aviso-burbuja__texto estuvo fuera hasta el 15-sep, porque en 420px a 0.8rem
+   el justificado abre huecos. Miguel entró el 14-sep y pidió que la burbuja del
+   paso 1 fuera como el resto del aviso (SC-029, L2-10), y Gerardo decidió el
+   15-sep que el aviso vaya justificado también en teléfono: ver la regla de
+   abajo, que ya no lo regresa a bandera izquierda. */
+.aviso-burbuja__texto,
+.aviso-publico p,
+.reglamento > p,
+.reglamento li,
+.copia-doc > p,
+.copia-doc > ol li,
+.copia-constancia,
+.survey-panel:not(.login-panel) .survey-header p,
+.survey-panel:not(.login-panel) .notice {
+  text-align: justify;
+  text-justify: inter-word;
+  -webkit-hyphens: auto;
+  hyphens: auto;
+  hyphenate-limit-chars: 6 3 3;
+}
+
+/* En un teléfono la columna baja a ~330px: cada renglón lleva tan pocas
+   palabras que estirarlos deja el texto agujereado, que es justo lo contrario
+   de lo que se pidió. Debajo de este ancho se vuelve a bandera izquierda; el
+   guionizado se queda, porque ahí sí ayuda a que el renglón no termine medio
+   vacío.
+   El aviso de privacidad (burbuja, paso 3 y página pública) y el reglamento
+   del paso 4, que comparte su recuadro, quedan fuera de esta regla y se
+   justifican también en teléfono: decisión de Gerardo del 15-sep (SC-029,
+   L2-10). */
+@media (max-width: 480px) {
+  .copia-doc > p,
+  .copia-doc > ol li,
+  .copia-constancia,
+  .survey-panel:not(.login-panel) .survey-header p,
+  .survey-panel:not(.login-panel) .notice {
+    text-align: left;
+  }
+}
+
+@media print {
+  .app-header, .btn-row, .stepper, .top-row, .footer, .no-print { display: none !important; }
+  body { background: #fff; }
+  .page-shell { padding: 0; display: block; }
+  .survey-panel { box-shadow: none; border: 0; max-width: 100%; }
+
+  /* La copia sale COMPLETA aunque en pantalla estuviera plegada: el contenido
+     de un <details> cerrado sigue en el documento, solo oculto. */
+  .copia-doc > *:not(summary) { display: block !important; }
+  .copia-doc > ol { display: block !important; }
+  .copia-doc { break-inside: auto; page-break-inside: auto; border-color: #ccc; }
+  .copia-doc > summary { list-style: none; }
+  .copia-doc > summary::-webkit-details-marker { display: none; }
+  .copia-doc > ol li { break-inside: avoid; page-break-inside: avoid; }
+  .copia-titular { break-before: page; page-break-before: always; }
+  .copia-datos > div { break-inside: avoid; page-break-inside: avoid; }
+}
+
+/* ---------- Graficas del tablero de instalacion ----------
+   SVG en linea, sin libreria. Reglas que NO son de gusto y conviene no aflojar:
+
+   COLOR. Una sola serie, un solo azul. Sale de la paleta institucional de
+   arriba, no de una inventada. El azul --primary (#002E6C) es demasiado oscuro
+   para una marca de datos chica, asi que las marcas usan --viz-serie-1, un paso
+   mas claro del MISMO azul, y se reserva --primary para texto y titulos.
+   No hay un color por persona: cada renglon ya lleva su nombre, y el rojo en
+   este panel significa alerta. El color se reserva para cuando signifique algo.
+
+   TEXTO. Ni un rotulo lleva color de serie. Van todos en las tintas del sitio
+   (--ink, --muted); un color de serie usado como texto es ilegible en cuanto
+   es claro.
+
+   REJA. Hairline de 1px y SOLIDA. Punteada se lee como "proyeccion" o "umbral"
+   cuando solo es una reja, y ensucia.
+
+   BLANCOS. El area sensible es siempre mas grande que la marca: la banda
+   completa en las columnas y 24px alrededor de cada punto. Un punto de 11px es
+   un alfiler al que nadie le atina, y con teclado seria imposible. */
+:root {
+  --viz-serie-1: #1F5FA8;  /* paso claro del azul institucional, para marcas */
+  --viz-reja: #e4e9f0;     /* recesiva, pero que aguante un proyector */
+}
+
+/* .viz NO desliza a proposito: ahi vive el globo con el detalle, y overflow-x:
+   auto obliga a overflow-y: auto tambien, que recortaba el globo del primer punto
+   por arriba. El deslizamiento horizontal esta un nivel adentro, en .viz-scroll. */
+.viz { position: relative; }
+.viz-scroll { overflow-x: auto; }
+/* min-width para que el texto del eje no se encoja hasta ser ilegible en
+   celular: mejor un deslizamiento horizontal que rotulos de 5px. */
+.viz-svg { display: block; height: auto; min-width: 620px; width: 100%; }
+
+.viz-columna { fill: var(--viz-serie-1); }
+.viz-punto { fill: var(--viz-serie-1); stroke: var(--panel); stroke-width: 2; }
+
+.viz-eje { stroke: var(--line); stroke-width: 1; }
+.viz-reja { stroke: var(--viz-reja); stroke-width: 1; }
+/* La mediana es una anotacion, no reja: va mas oscura y con su rotulo pegado,
+   para que no se confunda con una linea de la reja. */
+.viz-mediana { stroke: var(--ink); stroke-width: 1.5; }
+
+.viz-valor { fill: var(--ink); font-size: 13px; font-weight: 800; }
+.viz-fila { fill: var(--ink); font-size: 12.5px; font-weight: 700; }
+.viz-marca { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.viz-anotacion { fill: var(--ink); font-size: 11.5px; font-weight: 700; }
+
+/* La marca responde al puntero y al foco. El resalte es de UNA marca: de ahi
+   las clases viz-col-g / viz-punto-g, porque el grupo de la persona envuelve
+   todos sus puntos y sin ellas se prenderian todos a la vez. */
+.viz-col-g:hover .viz-columna,
+.viz-col-g:focus-within .viz-columna { fill: var(--primary); }
+.viz-punto-g:hover .viz-punto,
+.viz-punto-g:focus-within .viz-punto { stroke: var(--ink); }
+
+.viz-blanco { cursor: default; outline: none; }
+.viz-blanco:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* El globo: el VALOR manda y la etiqueta lo acompana (al contrario que una
+   leyenda), porque quien ya apunto a la marca lo que quiere es el numero. */
+.viz-globo {
+  background: var(--ink); border-radius: 6px; box-shadow: 0 6px 18px rgba(20, 29, 38, 0.18);
+  color: #fff; display: flex; flex-direction: column; gap: 1px; font-size: 0.8rem;
+  line-height: 1.35; padding: 7px 10px; pointer-events: none; position: absolute;
+  transform: translate(-50%, calc(-100% - 8px)); white-space: nowrap; z-index: 5;
+}
+.viz-globo__valor { font-weight: 800; }
+.viz-globo__linea { color: #c6cfdb; font-size: 0.75rem; }
+
+/* ---------- El marcador de quien instala (pestana Tablero, rol ti/super) ----------
+   Mismos datos que el tablero del contador, otra intencion: abajo se mide, aqui
+   se juega. Por eso este bloque SI es prominente y el de abajo es sobrio.
+   La cifra grande es la marca propia, no la de nadie mas: el record de la casa
+   va en una tira aparte, y se pone verde cuando lo tiene quien esta mirando. */
+.marcador__hero {
+  align-items: center;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-strong) 100%);
+  border-radius: 10px; color: #fff; display: flex; flex-direction: column;
+  gap: 5px; margin-bottom: 16px; padding: 22px 16px; text-align: center;
+}
+.marcador__etiqueta {
+  color: #b9c9e4; font-size: 0.78rem; font-weight: 800;
+  letter-spacing: 0.09em; text-transform: uppercase;
+}
+.marcador__cifra { font-size: 2.9rem; font-weight: 800; line-height: 1; }
+.marcador__pie { color: #cfdcef; font-size: 0.86rem; font-weight: 600; }
+
+.marcador__record {
+  background: #fffbe6; border: 1px solid #f0dc8a; border-radius: 8px;
+  color: var(--ink); font-size: 0.93rem; font-weight: 600;
+  margin: 4px 0 0; padding: 11px 14px;
+}
+/* Verde cuando el record lo tiene quien mira: es la unica celebracion de la
+   pantalla y conviene que se note. */
+.marcador__record--suyo { background: #eaf6ee; border-color: #b7e0c4; }
+
+body{padding:22px;max-width:900px;margin:0 auto;font-family:system-ui,sans-serif;background:#f4f7fc}
+h3{font-family:system-ui;color:#002E6C;margin:20px 0 6px;font-size:15px}
+p.n{font-family:system-ui;color:#657080;margin:0 0 10px;font-size:13px}</style></head><body>
+<h3>1 · Pendiente, sin abrir</h3>
+<p class="n">Es como llega. El botón de aceptar está apagado: no se acepta un documento que no se ha visto.</p>
+<div class="notice" style="margin:0 0 16px;padding:10px 12px"><p style="margin:0 0 8px"><strong>Conductor menor de edad.</strong> Antes de cobrar, abra el permiso para conducir y compruebe que está a nombre del alumno y vigente.</p><p style="margin:0 0 10px"><button type="button" class="link-action">▸ Ver el permiso</button></p><button type="button" class="primary-action" disabled="">Aceptar el permiso</button><p class="ti-hint" style="margin:6px 0 0">Ábralo primero: no se acepta un documento que no se ha visto.</p></div>
+<h3>2 · Pendiente, con el permiso abierto</h3>
+<p class="n">La imagen sale acotada a 240 px y se amplía al pulsarla. El botón ya se habilita.</p>
+<div class="notice" style="margin:0 0 16px;padding:10px 12px"><p style="margin:0 0 8px"><strong>Conductor menor de edad.</strong> Antes de cobrar, abra el permiso para conducir y compruebe que está a nombre del alumno y vigente.</p><img class="evidencia__img " src="data:image/svg+xml;utf8,%0A%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22640%22%20height%3D%22400%22%3E%0A%20%20%3Crect%20width%3D%22640%22%20height%3D%22400%22%20fill%3D%22%23b98a55%22%2F%3E%0A%20%20%3Crect%20x%3D%2240%22%20y%3D%2250%22%20width%3D%22560%22%20height%3D%22300%22%20rx%3D%2214%22%20fill%3D%22%23eceee8%22%20stroke%3D%22%23c9ccc4%22%2F%3E%0A%20%20%3Crect%20x%3D%2240%22%20y%3D%2250%22%20width%3D%22560%22%20height%3D%2260%22%20rx%3D%2214%22%20fill%3D%22%23dfe3da%22%2F%3E%0A%20%20%3Ctext%20x%3D%2270%22%20y%3D%2288%22%20font-family%3D%22sans-serif%22%20font-size%3D%2220%22%20fill%3D%22%233a3f36%22%3EPERMISO%20PARA%20CONDUCIR%20%C2%B7%20EJEMPLO%3C%2Ftext%3E%0A%20%20%3Crect%20x%3D%2270%22%20y%3D%22135%22%20width%3D%22120%22%20height%3D%22150%22%20fill%3D%22%23c4c8bf%22%2F%3E%0A%20%20%3Ctext%20x%3D%2295%22%20y%3D%22215%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%20fill%3D%22%236b6f66%22%3EFOTO%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22215%22%20y%3D%22160%22%20font-family%3D%22sans-serif%22%20font-size%3D%2215%22%20fill%3D%22%233a3f36%22%3ENOMBRE%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22215%22%20y%3D%22185%22%20font-family%3D%22sans-serif%22%20font-size%3D%2219%22%20fill%3D%22%231b1e18%22%3EPRUEBA%20TEST%20TEST%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22215%22%20y%3D%22225%22%20font-family%3D%22sans-serif%22%20font-size%3D%2215%22%20fill%3D%22%233a3f36%22%3EFECHA%20DE%20NACIMIENTO%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22215%22%20y%3D%22248%22%20font-family%3D%22sans-serif%22%20font-size%3D%2218%22%20fill%3D%22%231b1e18%22%3E01%2F01%2F2009%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22215%22%20y%3D%22288%22%20font-family%3D%22sans-serif%22%20font-size%3D%2215%22%20fill%3D%22%233a3f36%22%3EVIGENCIA%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%22215%22%20y%3D%22311%22%20font-family%3D%22sans-serif%22%20font-size%3D%2218%22%20fill%3D%22%231b1e18%22%3E2025%20-%202027%3C%2Ftext%3E%0A%20%20%3Ctext%20x%3D%2240%22%20y%3D%22385%22%20font-family%3D%22sans-serif%22%20font-size%3D%2215%22%20fill%3D%22%23fff%22%3EImagen%20de%20ejemplo.%20No%20corresponde%20a%20ninguna%20persona.%3C%2Ftext%3E%0A%3C%2Fsvg%3E" alt="Permiso para conducir del menor" title="Pulse para ampliar" tabindex="0" role="button" style="margin-bottom:10px"/><button type="button" class="primary-action">Aceptar el permiso</button></div>
+<h3>3 · Ya aceptado</h3>
+<p class="n">Queda quién lo aceptó y cuándo. No se deshace desde el panel.</p>
+<p class="notice" style="margin:0 0 16px;padding:10px 12px">✓ Permiso para conducir <strong>aceptado</strong> por administracion@asuncionqro.edu.mx · 29/09/2026, 01:36 p.m..</p>
+<h3>4 · Menor sin permiso en el expediente</h3>
+<p class="n">Los menores dados de alta antes del bloque 75. No se les puede exigir a posteriori, así que se cobran normal.</p>
+<p class="notice" style="margin:0 0 16px;padding:10px 12px">Este expediente es de un <strong>conductor menor de edad</strong> y no trae el permiso para conducir. Si se registró antes de que el sistema lo pidiera, cóbrelo normal y pida el documento por fuera. Si es reciente, algo falló al subirlo.</p>
+</body></html>

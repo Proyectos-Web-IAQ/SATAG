@@ -90,10 +90,13 @@ export default function PermisoMenor({ r, busy, onAceptar }: {
           onClick={() => setAmpliada((v) => !v)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setAmpliada((v) => !v); } }} />
       ) : (
-        <button type="button" className="link-action" disabled={cargando} onClick={ver}
-          style={{ marginBottom: 10 }}>
-          {cargando ? "Abriendo…" : "▸ Ver el permiso"}
-        </button>
+        // En su propio parrafo: .link-action es en linea, y suelto se le pegaba
+        // al boton de aceptar hasta encabalgarse con el.
+        <p style={{ margin: "0 0 10px" }}>
+          <button type="button" className="link-action" disabled={cargando} onClick={ver}>
+            {cargando ? "Abriendo…" : "▸ Ver el permiso"}
+          </button>
+        </p>
       )}
 
       {error && <p className="field-error" style={{ margin: "0 0 10px" }}>{error}</p>}
