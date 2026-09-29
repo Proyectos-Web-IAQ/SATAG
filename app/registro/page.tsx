@@ -293,9 +293,35 @@ export default function RegistroWizard() {
 
   const errores = mostrarErrores ? validarPaso(step) : {};
 
+  // Marca los errores Y LLEVA A LA PERSONA HASTA EL PRIMERO.
+  //
+  // Reportado el 29-sep probando en telefono: al pulsar el boton, que esta
+  // abajo, el aviso aparecia mas arriba y fuera de la pantalla. Desde el punto
+  // de vista de quien registra no pasa NADA al pulsar, y la conclusion
+  // razonable es que el sistema se trabo. En un formulario largo, en un
+  // telefono, un error que no se ve es un error que no existe.
+  //
+  // El retraso es necesario: React pinta los mensajes en el ciclo siguiente a
+  // setMostrarErrores, y en las dos salidas que ademas cambian de paso hay que
+  // esperar a que el paso nuevo este en pantalla.
+  function senalarErrores() {
+    setMostrarErrores(true);
+    setTimeout(() => {
+      const primero = document.querySelector<HTMLElement>(".field-error, .submit-error");
+      if (!primero) return;
+      primero.scrollIntoView({ behavior: "smooth", block: "center" });
+      // El campo suele estar pegado a su mensaje: enfocarlo deja el cursor
+      // donde hay que escribir y en un telefono levanta el teclado. Sin
+      // preventScroll el navegador haria un segundo salto que compite con el
+      // de arriba.
+      const campo = primero.closest(".field, .check")?.querySelector<HTMLElement>("input, select, textarea");
+      campo?.focus({ preventScroll: true });
+    }, 60);
+  }
+
   function avanzar() {
     const e = validarPaso(step);
-    if (Object.keys(e).length) { setMostrarErrores(true); return; }
+    if (Object.keys(e).length) { senalarErrores(); return; }
     setMostrarErrores(false);
     setStep((s) => s + 1);
   }
@@ -306,22 +332,22 @@ export default function RegistroWizard() {
 
   async function enviarValidado() {
     const e = validarPaso(4);
-    if (Object.keys(e).length) { setMostrarErrores(true); return; }
+    if (Object.keys(e).length) { senalarErrores(); return; }
     // Ultimo cerrojo de D-01: el alta no sale con avisoVersion o
     // reglamentoVersion en null. La navegacion ya lo impide paso a paso, pero
     // el envio es el unico punto donde la firma se vuelve evidencia, asi que
     // se vuelve a comprobar aqui y se devuelve a la persona al paso que fallo.
     if (!aviso || !reglamento || !avisoValido || !reglamentoValido) {
       setError("No se puede enviar el registro porque el aviso de privacidad o el reglamento no se cargaron. Recargue la página e inténtelo de nuevo.");
-      setMostrarErrores(true);
       setStep(avisoValido ? 3 : 2);
+      senalarErrores();
       return;
     }
     // El paso 1 ya no deja avanzar sin elegir quién conduce; se repite aquí
     // porque es el último punto antes de que el dato se vuelva evidencia.
     if (tipoUsuario === "") {
-      setMostrarErrores(true);
       setStep(0);
+      senalarErrores();
       return;
     }
     setEnviando(true);
