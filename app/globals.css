@@ -858,6 +858,250 @@ a { color: var(--primary-strong); }
    para que no se confunda con una linea de la reja. */
 .viz-mediana { stroke: var(--ink); stroke-width: 1.5; }
 
+/* ---------- La curva de ocupacion (pestana Estacionamiento) ----------
+   Una curva, no columnas: lo que se lee es la forma del dia —dos crestas, la de
+   la manana repartida en dos horas y la de las 14:00 concentrada en una— y eso
+   con 64 columnas de 15 minutos no se ve. Misma serie, mismo azul: el relleno es
+   el mismo color a baja opacidad y no un segundo color, que es lo que la regla
+   de arriba prohibe. */
+.viz-area { fill: var(--viz-serie-1); fill-opacity: 0.14; stroke: none; }
+.viz-linea { fill: none; stroke: var(--viz-serie-1); stroke-width: 2; stroke-linejoin: round; }
+/* El aforo SI va discontinuo, y no contradice la regla de la reja solida: la reja
+   es referencia y tiene que ser muda, mientras el aforo es un umbral y el
+   discontinuo es justo como se lee un umbral. */
+.viz-aforo { stroke: var(--ink); stroke-width: 1.5; stroke-dasharray: 5 4; }
+
+/* ---------- La paleta de GRUPOS (histograma apilado del estacionamiento) ----------
+   LA REGLA DE ARRIBA SIGUE EN PIE, y esta es su excepcion declarada, no su derogacion.
+   Un solo color de serie vale cuando la serie es una. Aqui la pregunta ES la
+   composicion —de quien es cada tramo de cada barra— y partirla en dos graficas para
+   no usar color obligaba a leer dos veces lo que cabe en una.
+
+   TRES CONDICIONES, porque son las que hacian valiosa la regla:
+
+   1. NO HAY ROJO. En este panel el rojo significa alerta (.metric-card--alert) y
+      gastarlo en un grupo haria desconfiar del resto de los colores.
+   2. PALETA SEGURA PARA DALTONISMO. Son los tonos de Okabe-Ito, que es el conjunto
+      validado para las tres deficiencias comunes, con el azul institucional en el
+      primer lugar. No se eligieron por bonitos.
+   3. EL COLOR NUNCA ES EL UNICO CANAL. Cada tramo lleva su rotulo en el blanco
+      sensible y la tabla hermana trae las mismas cifras en texto. Quien no distinga
+      dos tonos no se queda sin el dato.
+
+   El gris va al ultimo a proposito: «Sin clasificar» no es un grupo, es el residuo, y
+   un color saturado lo ascenderia a categoria. */
+:root {
+  --viz-g1: #1F5FA8;  /* azul institucional */
+  --viz-g2: #E69F00;  /* naranja */
+  --viz-g3: #009E73;  /* verde azulado */
+  --viz-g4: #CC79A7;  /* morado */
+  --viz-g5: #8A94A6;  /* gris: el residuo, no una categoria */
+}
+.viz-g1 { fill: var(--viz-g1); }
+.viz-g2 { fill: var(--viz-g2); }
+.viz-g3 { fill: var(--viz-g3); }
+.viz-g4 { fill: var(--viz-g4); }
+.viz-g5 { fill: var(--viz-g5); }
+
+/* La leyenda va pegada a la grafica y en linea, no en una columna aparte: el viaje de
+   ida y vuelta a una leyenda lejana es lo que hace que una apilada se lea mal. */
+.viz-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 8px; padding: 0; list-style: none; }
+.viz-leyenda li { align-items: center; color: var(--ink); display: flex; font-size: 0.82rem; font-weight: 700; gap: 6px; }
+.viz-leyenda i { border-radius: 3px; display: inline-block; height: 12px; width: 12px; }
+
+/* ---------- Secciones desplegables (pestana Estacionamiento) ----------
+   Un <details> por seccion y las personas adentro. Es navegacion de verdad —se abre
+   lo que interesa y lo demas no estorba— y NO necesita una linea de JavaScript, que
+   en un sitio exportado estatico no es un detalle: lo que no es interactivo por el
+   navegador hay que hidratarlo, y esto no.
+
+   Lo mismo vale para imprimir: un <details> cerrado sigue en el documento, asi que la
+   regla de impresion de mas arriba lo abre todo y la hoja sale completa. */
+.depto { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 8px; }
+.depto[open] { border-color: #c3cede; }
+.depto > summary {
+  align-items: center; cursor: pointer; display: flex; flex-wrap: wrap; gap: 6px 14px;
+  list-style: none; min-height: 44px; padding: 10px 14px;
+}
+.depto > summary::-webkit-details-marker { display: none; }
+.depto > summary::before {
+  color: var(--muted); content: "▸"; display: inline-block; font-size: 0.9rem;
+  transition: transform 0.12s ease; width: 10px;
+}
+.depto[open] > summary::before { transform: rotate(90deg); }
+.depto > summary:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.depto__nombre { color: var(--ink); flex: 1 1 200px; font-weight: 800; }
+.depto__cifra { color: var(--muted); font-size: 0.82rem; font-weight: 700; white-space: nowrap; }
+.depto__cifra strong { color: var(--ink); }
+.depto__cuerpo { border-top: 1px solid var(--line); padding: 12px 14px 14px; }
+/* La fila de una persona señalada no se pinta de rojo: el rojo es alerta y esto es
+   «conviene mirarlo». La insignia carga el significado, no el fondo del renglon. */
+.fila-marcada { background: #fdf7ee; }
+
+/* ================= Pestana Estacionamiento: la capa de presentacion =================
+   Lo de abajo es diseno, no decoracion, y cada regla responde a un problema concreto
+   de leer numeros en una junta frente a un proyector. */
+
+/* ---------- La credencial que no esta en ningun padron ----------
+   EL UNICO ROJO GRANDE DE ESTA PANTALLA, y por eso significa algo. Todo lo demas del
+   tablero son hallazgos para interpretar; esto es lo unico que hay que resolver hoy:
+   un vehiculo que abre la pluma y del que no se sabe nada, ni en SATAG, ni en la hoja,
+   ni en el control de acceso.
+
+   Va arriba de la navegacion y no dentro de una pestana a proposito: si estuviera en
+   una vista, se veria solo si alguien entra a esa vista, y esto tiene que verse
+   siempre. Cuando no hay ninguna, el bloque no existe —no se deja un recuadro verde
+   diciendo que todo esta bien, porque eso entrena a ignorar el lugar donde aparecen
+   las alertas. */
+.alerta-huerfanas {
+  background: #fdecec; border: 1px solid #f0b4b0; border-left: 5px solid #b3271e;
+  border-radius: var(--radius); margin: 0 0 18px; padding: 14px 16px;
+}
+.alerta-huerfanas__t {
+  color: #8f1f18; font-size: 1.05rem; font-weight: 800; line-height: 1.3; margin: 0 0 6px;
+}
+.alerta-huerfanas__p { color: #6d2a25; font-size: 0.88rem; line-height: 1.5; margin: 0 0 10px; max-width: 78ch; }
+.alerta-huerfanas__l { color: #6d2a25; font-size: 0.85rem; line-height: 1.7; margin: 0; padding-left: 18px; }
+.alerta-huerfanas__l strong { font-variant-numeric: tabular-nums; }
+
+/* ---------- Navegacion entre vistas ----------
+   Siete paneles apilados obligan a recorrer la pagina para encontrar uno. Con
+   pestanas el panel se elige, y la barra se queda pegada arriba al desplazar porque
+   perder la navegacion al bajar es justo cuando mas falta hace. */
+.vistas {
+  background: var(--panel); border-bottom: 1px solid var(--line); display: flex; gap: 2px;
+  margin: 0 0 18px; overflow-x: auto; padding: 0; position: sticky; top: 0; z-index: 4;
+}
+.vistas__b {
+  background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted);
+  cursor: pointer; font-family: inherit; font-size: 0.9rem; font-weight: 700;
+  min-height: 46px; padding: 10px 16px; white-space: nowrap;
+}
+.vistas__b:hover { color: var(--ink); }
+.vistas__b[aria-selected="true"] { border-bottom-color: var(--primary); color: var(--primary-strong); }
+.vistas__b:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.vistas__n {
+  background: #e7edf7; border-radius: 999px; color: var(--primary-strong); font-size: 0.72rem;
+  font-weight: 800; margin-left: 7px; padding: 1px 7px;
+}
+
+/* ---------- Control segmentado (E1 / E2) ----------
+   Dos opciones excluyentes no son dos pestanas ni un desplegable: son un segmentado,
+   que muestra las dos a la vez y deja ver cual esta activa sin abrir nada. */
+.segmentado { background: #eef2f8; border-radius: 10px; display: inline-flex; gap: 2px; margin-bottom: 14px; padding: 3px; }
+.segmentado__b {
+  background: none; border: 0; border-radius: 8px; color: var(--muted); cursor: pointer;
+  font-family: inherit; font-size: 0.88rem; font-weight: 700; min-height: 40px; padding: 8px 18px;
+}
+.segmentado__b[aria-pressed="true"] { background: var(--panel); box-shadow: 0 1px 3px rgba(20,29,38,.14); color: var(--primary-strong); }
+.segmentado__b:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+/* ---------- Encabezado de seccion ----------
+   Tres niveles: el rotulo dice de que trata, el titulo dice el HALLAZGO, y la nota
+   dice como se midio. Un titulo que solo nombra el tema obliga a cada quien a sacar
+   su propia conclusion, y la mitad de la sala sacara otra. */
+.sec__rotulo {
+  color: var(--muted); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.08em;
+  margin: 0 0 4px; text-transform: uppercase;
+}
+.sec__titulo { color: var(--primary-strong); font-size: 1.22rem; font-weight: 800; line-height: 1.25; margin: 0 0 6px; }
+.sec__nota { color: var(--muted); font-size: 0.88rem; line-height: 1.5; margin: 0 0 16px; max-width: 76ch; }
+
+/* ---------- Tarjetas de cifra ----------
+   El numero manda y la unidad lo acompana: quien mira un tablero busca la magnitud
+   primero. `tabular-nums` para que las cifras no bailen al cambiar de dato. */
+.kpis { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px; }
+.kpi { background: linear-gradient(180deg, #f7f9fd 0%, #f2f5fb 100%); border: 1px solid #d8e0ed; border-radius: 12px; padding: 14px 16px; }
+.kpi__r { color: var(--muted); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.04em; margin: 0 0 8px; text-transform: uppercase; }
+.kpi__v { align-items: baseline; color: var(--primary-strong); display: flex; font-size: 2rem; font-weight: 800; gap: 5px; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi__u { color: var(--muted); font-size: 0.92rem; font-weight: 700; }
+.kpi__p { color: var(--ink); font-size: 0.8rem; line-height: 1.45; margin: 8px 0 0; }
+.kpi--marca { background: linear-gradient(180deg, #eef4fd 0%, #e4edfa 100%); border-color: #b9cdea; }
+
+/* ---------- Tablas ----------
+   Encabezado pegajoso porque una tabla de cuarenta renglones pierde sus titulos al
+   tercero; numeros a la derecha y tabulares porque asi se comparan de un vistazo; y
+   el encabezado ordenable es un boton de verdad, no un th con onClick, para que
+   funcione con teclado. */
+.tabla-pro { border-collapse: separate; border-spacing: 0; font-size: 0.88rem; width: 100%; }
+.tabla-pro thead th {
+  background: #f4f7fc; border-bottom: 1px solid #d3dae7; color: var(--muted); font-size: 0.74rem;
+  font-weight: 800; letter-spacing: 0.04em; padding: 0; position: sticky; text-align: left;
+  text-transform: uppercase; top: 0; z-index: 1;
+}
+.tabla-pro thead th.num, .tabla-pro td.num { text-align: right; }
+.tabla-pro td { border-bottom: 1px solid #eef1f6; padding: 9px 12px; vertical-align: middle; }
+.tabla-pro td.num { font-variant-numeric: tabular-nums; }
+.tabla-pro tbody tr:hover { background: #f8fafd; }
+.tabla-pro .orden {
+  background: none; border: 0; color: inherit; cursor: pointer; font: inherit; letter-spacing: inherit;
+  padding: 10px 12px; text-transform: inherit; white-space: nowrap; width: 100%;
+}
+.tabla-pro th.num .orden { text-align: right; }
+.tabla-pro .orden:hover { color: var(--ink); }
+.tabla-pro .orden:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.tabla-pro th[aria-sort] .orden { color: var(--primary-strong); }
+.tabla-pro .orden i { font-style: normal; margin-left: 4px; opacity: 0.55; }
+/* El subtitulo de la columna: minusculas y sin espaciado, para que se lea como una
+   frase y no como otro encabezado. */
+.tabla-pro .sub {
+  display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0; margin-top: 3px;
+  opacity: 0.8; text-transform: none;
+}
+
+/* La barra de ancho dentro de la celda: compara de un vistazo sin gastar una grafica
+   aparte. Va detras del numero, no en lugar de el. */
+.barra-celda { background: #e7edf7; border-radius: 3px; display: block; height: 4px; margin-top: 4px; }
+.barra-celda i { background: var(--viz-serie-1); border-radius: 3px; display: block; height: 100%; }
+
+/* Visible solo para lectores de pantalla. El buscador lleva su `placeholder`, pero un
+   placeholder NO es una etiqueta: desaparece al escribir y varios lectores no lo
+   anuncian. La etiqueta existe y se oculta, que es distinto de no ponerla. */
+.sr-only {
+  border: 0; clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; overflow: hidden;
+  padding: 0; position: absolute; white-space: nowrap; width: 1px;
+}
+
+/* ---------- Maestro-detalle: la lista de secciones y la gente de la elegida ----------
+   POR QUE NO UN ACORDEON. Catorce secciones desplegables vuelcan sus renglones hacia
+   abajo y la pagina crece sin control: con trescientas credenciales en una sola
+   seccion, abrir dos es perder el hilo. Aqui solo hay una abierta a la vez, la lista
+   se queda a la vista mientras se mira el detalle, y la altura de la pagina no cambia
+   al elegir. Es la diferencia entre hojear y bucear. */
+.md { align-items: start; display: grid; gap: 16px; grid-template-columns: minmax(230px, 310px) minmax(0, 1fr); }
+@media (max-width: 900px) { .md { grid-template-columns: 1fr; } }
+
+.md__lista {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  max-height: 60vh; overflow-y: auto; padding: 4px;
+}
+.md__item {
+  background: none; border: 0; border-radius: 8px; cursor: pointer; display: block;
+  font-family: inherit; padding: 9px 10px; text-align: left; width: 100%;
+}
+.md__item:hover { background: #f4f7fc; }
+.md__item[aria-current="true"] { background: #eaf1fc; box-shadow: inset 3px 0 0 var(--primary); }
+.md__item:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.md__n { align-items: baseline; display: flex; gap: 8px; justify-content: space-between; }
+.md__nombre { color: var(--ink); font-size: 0.88rem; font-weight: 700; line-height: 1.25; }
+.md__v { color: var(--primary-strong); font-size: 0.82rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.md__sub { color: var(--muted); font-size: 0.75rem; font-weight: 600; margin-top: 2px; }
+.md__panel { min-width: 0; }
+
+/* El detalle tiene su propio desplazamiento para que la pagina no crezca: con el
+   encabezado pegajoso de la tabla, se recorre la lista sin perder los titulos. */
+.tabla-scroll { border: 1px solid var(--line); border-radius: 10px; max-height: 58vh; overflow: auto; }
+.tabla-scroll .table-wrap { overflow: visible; }
+
+/* ---------- Buscador ---------- */
+.buscador { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.buscador input {
+  border: 1px solid var(--line); border-radius: 9px; font-family: inherit; font-size: 0.9rem;
+  max-width: 320px; min-height: 42px; padding: 9px 12px; width: 100%;
+}
+.buscador input:focus-visible { border-color: var(--primary); outline: 2px solid var(--primary); outline-offset: -1px; }
+.buscador__n { color: var(--muted); font-size: 0.84rem; font-weight: 700; }
+
 .viz-valor { fill: var(--ink); font-size: 13px; font-weight: 800; }
 .viz-fila { fill: var(--ink); font-size: 12.5px; font-weight: 700; }
 .viz-marca { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }

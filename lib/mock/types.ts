@@ -9,6 +9,10 @@ export type TipoUsuario = "maestro" | "padres" | "alumno" | "admin" | "otro";
 export type GestionanteRelacion = "padre" | "madre" | "tutor" | "otro";
 export type FirmanteRol = "usuario" | "padre" | "madre" | "tutor" | "otro";
 export type ProcedenciaTag = "escuela" | "propio";
+
+/** Bloque 79. Finanzas y las bandejas de pendientes excluyen lo que no es 'satag'. */
+export type OrigenExpediente = "satag" | "migracion_hoja" | "migracion_zk";
+export type EvidenciaAceptacion = "electronica" | "fisica" | "no_localizada";
 // 'bloqueado' existe en la BD (12_registros.sql) aunque el panel aun no lo
 // produce: el tipo lo incluye para que un registro bloqueado no truene la UI.
 export type EstadoRegistro = "pendiente" | "activo" | "baja" | "bloqueado";
@@ -147,6 +151,18 @@ export interface Registro {
   // Dispositivo
   noDispositivo: string | null;
   procedenciaTag: ProcedenciaTag;
+  /**
+   * De donde salio el expediente (bloque 79).
+   *
+   * 'satag' es un alta normal, que paso por caja y firmo en pantalla. Los otros dos
+   * vienen del padron historico o del control de acceso, y por eso NO estan
+   * pendientes de cobro ni les falta una firma: su firma obra en papel y nunca
+   * hubo un cobro que hacer. Toda pantalla que hable de dinero o de pendientes
+   * tiene que mirar esto antes de pedir algo.
+   */
+  origenExpediente: OrigenExpediente;
+  /** Donde obra la aceptacion del reglamento (bloque 79). */
+  evidenciaAceptacion: EvidenciaAceptacion;
   // Apartado (CC-01): cuando la familia usa su propio TAG, la escuela reserva
   // el que le tocaba. tagApartado = hay reserva; tagApartadoNo = su numero.
   tagApartado: boolean;

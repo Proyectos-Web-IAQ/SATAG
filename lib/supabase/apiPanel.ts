@@ -25,6 +25,8 @@ import type {
   Pago,
   PagoReciente,
   ProcedenciaTag,
+  OrigenExpediente,
+  EvidenciaAceptacion,
   Registro,
   RegistroIncompleto,
   ResultadoCorte,
@@ -127,6 +129,8 @@ interface RegistroRow {
   sin_placas: boolean;
   no_dispositivo: string | null;
   procedencia_tag: string;
+  origen_expediente: string | null;
+  evidencia_aceptacion: string | null;
   tag_apartado: boolean;
   tag_apartado_no: string | null;
   estado: string;
@@ -153,6 +157,7 @@ const SELECT_REGISTRO = `
   tipo_validado, tipo_validado_por, tipo_validado_en, usuario_es_menor,
   apellidos_familia, parentesco_otro, seccion_maestro,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
+  origen_expediente, evidencia_aceptacion,
   tag_apartado, tag_apartado_no, estado,
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por, instalado_en,
   permiso_url, permiso_validado, permiso_validado_por, permiso_validado_en,
@@ -243,6 +248,8 @@ function mapRegistro(r: RegistroRow): Registro {
     sinPlacas: r.sin_placas,
     noDispositivo: r.no_dispositivo,
     procedenciaTag: r.procedencia_tag as ProcedenciaTag,
+    origenExpediente: (r.origen_expediente ?? "satag") as OrigenExpediente,
+    evidenciaAceptacion: (r.evidencia_aceptacion ?? "electronica") as EvidenciaAceptacion,
     tagApartado: r.tag_apartado,
     tagApartadoNo: r.tag_apartado_no,
     estado: r.estado as EstadoRegistro,
@@ -344,6 +351,7 @@ interface IncompletoRow {
 const SELECT_INCOMPLETO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
+  origen_expediente, evidencia_aceptacion,
   estado, folio_recibo, created_at, dias_desde_alta, dias_desde_pago, motivos
 `;
 
@@ -881,4 +889,139 @@ export function nombreDesdeEmail(email: string): string {
     .filter(Boolean)
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
     .join(" ");
+}
+
+/* ===================================================================== */
+/* Pestaña Estacionamiento (SC-031, bloques 78-80)                       */
+/* ===================================================================== */
+
+/**
+ * El padrón, reducido a lo que la pestaña Estacionamiento necesita.
+ *
+ * NO SE REUSA `listRegistros()` A PROPOSITO: ese trae nombre, placas, pagos,
+ * movimientos y solicitudes de cada expediente, y esta pantalla dibuja agregados.
+ * Traer dos mil nombres a una pantalla que no los muestra es cargar datos
+ * personales sin motivo, y el motivo es la mitad de la justificacion para tenerlos.
+ *
+ * Trae el TAG porque es la llave con la bitácora, el tipo porque resuelve el grupo,
+ * y el origen porque distingue un alta de SATAG de un expediente migrado.
+ */
+export interface PadronEstacionamiento {
+  noDispositivo: string;
+  tipoUsuario: TipoUsuario;
+  estado: EstadoRegistro;
+  origenExpediente: OrigenExpediente;
+  estacionamientos: string[];
+}
+
+interface PadronEstRow {
+  no_dispositivo: string;
+  tipo_usuario: string;
+  estado: string;
+  origen_expediente: string | null;
+  registro_estacionamientos: { estacionamiento_clave: string }[] | null;
+}
+
+export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento[]> {
+  const { data, error } = await supabaseAuth
+    .from("registros")
+    .select("no_dispositivo, tipo_usuario, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave )")
+    .not("no_dispositivo", "is", null)
+    // El padron completo son ~2,900 expedientes. El tope es holgura, no negocio: si
+    // algun dia se rozara, la resolucion del rol baja a la base en vez de subir este
+    // numero, por la misma razon escrita mas arriba para las medianas.
+    .limit(5000);
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as PadronEstRow[]).map((r) => ({
+    noDispositivo: r.no_dispositivo,
+    tipoUsuario: r.tipo_usuario as TipoUsuario,
+    estado: r.estado as EstadoRegistro,
+    origenExpediente: (r.origen_expediente ?? "satag") as OrigenExpediente,
+    estacionamientos: (r.registro_estacionamientos ?? []).map((e) => e.estacionamiento_clave).sort(),
+  }));
+}
+
+/** Las ventanas de bitácora ya cargadas. Son pocas filas: una por archivo. */
+export interface ImportacionZk {
+  id: string;
+  archivo: string;
+  sha256: string;
+  filasArchivo: number;
+  filasConTarjeta: number;
+  topeAlcanzado: boolean;
+  desde: string | null;
+  hasta: string | null;
+  huecoDias: number | null;
+  importadoPor: string;
+  importadoEn: string;
+}
+
+interface ImportacionRow {
+  id: string;
+  archivo: string;
+  sha256: string;
+  filas_archivo: number;
+  filas_con_tarjeta: number;
+  tope_alcanzado: boolean;
+  desde: string | null;
+  hasta: string | null;
+  hueco_dias: string | number | null;
+  importado_por: string;
+  importado_en: string;
+}
+
+export async function listImportacionesZk(): Promise<ImportacionZk[]> {
+  const { data, error } = await supabaseAuth
+    .from("zk_importaciones")
+    .select("id, archivo, sha256, filas_archivo, filas_con_tarjeta, tope_alcanzado, desde, hasta, hueco_dias, importado_por, importado_en")
+    .order("hasta", { ascending: false, nullsFirst: false })
+    .limit(200);
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as ImportacionRow[]).map((r) => ({
+    id: r.id,
+    archivo: r.archivo,
+    sha256: r.sha256,
+    filasArchivo: r.filas_archivo,
+    filasConTarjeta: r.filas_con_tarjeta,
+    topeAlcanzado: r.tope_alcanzado,
+    desde: r.desde,
+    hasta: r.hasta,
+    huecoDias: num(r.hueco_dias),
+    importadoPor: r.importado_por,
+    importadoEn: r.importado_en,
+  }));
+}
+
+/**
+ * Manda la bitácora a la base, por lotes.
+ *
+ * POR LOTES Y NO DE UN GOLPE: una ventana son ~9,600 filas con tarjeta, y mandarlas
+ * en un solo `jsonb` deja a la pantalla sin saber nada durante todo el viaje y sin
+ * forma de reanudar si se corta. El renglón de la importación se crea en la primera
+ * llamada y las demás cuelgan del mismo `sha256`, así que una carga interrumpida
+ * queda identificable y se completa repitiéndola: `id_evento` es llave primaria y
+ * lo que ya entró no entra dos veces.
+ */
+export async function cargarEventosZk(
+  meta: Record<string, unknown>,
+  filas: Record<string, unknown>[],
+  hechoPor: string | null,
+  onAvance?: (hechas: number, total: number) => void,
+): Promise<{ insertados: number; yaEstaban: number }> {
+  const LOTE = 1000;
+  let insertados = 0;
+  let yaEstaban = 0;
+  for (let i = 0; i < filas.length; i += LOTE) {
+    const { data, error } = await supabaseAuth.rpc("cargar_eventos_zk", {
+      p_meta: meta,
+      p_filas: filas.slice(i, i + LOTE),
+      p_hecho_por: hechoPor,
+    });
+    if (error) throw new Error(traducirError(error.message));
+    const r = data as { insertados?: number; yaEstaban?: number };
+    insertados += r?.insertados ?? 0;
+    yaEstaban += r?.yaEstaban ?? 0;
+    onAvance?.(Math.min(i + LOTE, filas.length), filas.length);
+  }
+  return { insertados, yaEstaban };
 }

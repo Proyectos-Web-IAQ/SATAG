@@ -315,6 +315,18 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
 // (ámbar/verde/gris) sin estilos nuevos.
 function ChipCobro({ r }: { r: Registro }) {
   if (r.estado === "baja") return <span className="status-chip status-chip--baja">Baja</span>;
+  // UN EXPEDIENTE MIGRADO NO ESTA PENDIENTE DE COBRO: nunca hubo un cobro que
+  // hacer. Venia del padron historico, donde el TAG se entrego y se firmo en papel,
+  // y al migrarlo no se le invento un pago de cero para que «cuadrara». Sin esta
+  // linea, los 2,837 expedientes migrados aparecen en ambar como trabajo pendiente
+  // de Administracion y entierran los que de verdad hay que cobrar.
+  if (r.origenExpediente !== "satag") {
+    return (
+      <span className="status-chip status-chip--baja" title="Viene del padrón histórico: no pasó por caja y no hay nada que cobrar.">
+        Del padrón
+      </span>
+    );
+  }
   if (r.pagos.length === 0) return <span className="status-chip status-chip--pendiente">Por cobrar</span>;
   return <span className="status-chip status-chip--activo">Pagado</span>;
 }
