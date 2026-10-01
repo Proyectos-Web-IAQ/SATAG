@@ -44,6 +44,19 @@ const RUTAS = [
       // cualquier cambio de redaccion de las tarjetas.
       { texto: "instalado_por_email", que: "el tablero de instalacion del contador" },
       { texto: "validar_permiso_menor", que: "Administracion acepta el permiso al cobrar (bloque 75)" },
+      // Dos marcas para la pestana Estacionamiento (SC-031), y las dos son cadenas
+      // que SOLO existen en lo nuevo. `origen_expediente` viaja dentro del select de
+      // listPadronEstacionamiento y `cargar_eventos_zk` dentro de la llamada al RPC:
+      // sobreviven a la minificacion igual que un nombre de parametro. `alerta-huerfanas`
+      // es la clase del aviso rojo y prueba que el panel entero esta publicado, no
+      // solo su capa de datos.
+      { texto: "cargar_eventos_zk", que: "la bitacora se puede guardar en SATAG (bloque 78)" },
+      { texto: "origen_expediente", que: "el panel distingue un alta de un expediente migrado (bloque 79)" },
+      // `alerta-huerfanas` seria la marca natural, pero es una clase CSS y este
+      // script solo baja los chunks de JavaScript: habria fallado siempre. Se usa en
+      // su lugar el valor de una clave del catalogo de senales, que es una cadena del
+      // panel y viaja en el chunk.
+      { texto: "fueraDeNorma", que: "la pestana Estacionamiento y sus senales por credencial" },
       // Clase CSS que solo existe en el JS de las graficas: prueba que la pestana
       // Tablero (columnas y dispersion) esta publicada, no solo su consulta.
       { texto: "viz-mediana", que: "las graficas del tablero (pestana Tablero)" },
