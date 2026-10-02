@@ -55,6 +55,7 @@ import type { ResumenEventos } from "@/lib/zk/eventos";
 import { esHuerfana, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import { EstanciasPorRol, HistogramaEstancias, MiniDia, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
 import PlanoPlantel from "@/components/admin/PlanoPlantel";
+import VialidadBeta from "@/components/admin/VialidadBeta";
 import { Kpi, Kpis, Seccion, Segmentado, TablaPro, Vistas, type Columna } from "@/components/admin/UiEstacionamiento";
 
 // Con espacio fino antes del signo, como se escribe en español; y el mismo en toda la pantalla.
@@ -508,6 +509,9 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
     { clave: "secciones", titulo: "Secciones", cuenta: totalMarcadas },
     { clave: "permanencia", titulo: "Permanencia" },
     { clave: "calidad", titulo: "Qué tan firme es esto" },
+    // La ultima y en beta a proposito: es el porque de todo esto —la calle—, pero
+    // la mitad de sus datos se capturan a mano y viven en el navegador.
+    { clave: "vialidad", titulo: "Vialidad · beta" },
   ];
 
   return (
@@ -1021,6 +1025,9 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
           </p>
         </Seccion>
       )}
+
+      {/* =============================================== VIALIDAD (beta) ======= */}
+      {vista === "vialidad" && <VialidadBeta m={m} />}
 
       {/* =============================================== CALIDAD =============== */}
       {vista === "calidad" && (

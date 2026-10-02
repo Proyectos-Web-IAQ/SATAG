@@ -1342,3 +1342,18 @@ a { color: var(--primary-strong); }
 .actividad { list-style: none; margin: 0; padding: 0; }
 .actividad li { border-bottom: 1px solid var(--line); display: grid; font-size: 0.92rem; gap: 12px; grid-template-columns: 7.5rem minmax(0, 1fr); padding: 8px 0; }
 .actividad time { color: var(--muted); font-size: 0.86rem; font-variant-numeric: tabular-nums; }
+
+/* ---------- Vialidad, en beta ----------
+   La insignia «beta» es texto pequeno con filete, no una pastilla de color: avisa
+   sin alarmar. La captura es un formulario corto dentro de un <details>, que se
+   abre solo mientras no haya nada capturado. */
+.beta { border: 1px solid var(--line); border-radius: 4px; color: var(--muted); font-size: 0.7rem; font-weight: 800; letter-spacing: 0.08em; padding: 1px 6px; text-transform: uppercase; }
+.beta-captura { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 10px; }
+.beta-captura > summary { color: var(--primary-strong); cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+.beta-captura ol { color: var(--ink); font-size: 0.92rem; line-height: 1.5; margin: 8px 0 14px; padding-left: 20px; }
+.beta-captura__ruta { display: grid; gap: 4px; margin-bottom: 12px; max-width: 520px; }
+.beta-captura__ruta span, .beta-captura__horas span { color: var(--muted); font-size: 0.82rem; }
+.beta-captura input { border: 1px solid var(--line); border-radius: 7px; font: inherit; min-height: 42px; padding: 8px 10px; width: 100%; }
+.beta-captura input:focus-visible { border-color: var(--primary); outline: 2px solid var(--primary); outline-offset: -1px; }
+.beta-captura__horas { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); margin-bottom: 14px; max-width: 640px; }
+.beta-captura__horas label { display: grid; gap: 4px; }
