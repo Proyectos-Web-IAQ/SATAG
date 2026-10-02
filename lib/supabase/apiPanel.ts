@@ -1192,15 +1192,46 @@ export async function listPadronZk(): Promise<PersonaZk[]> {
 }
 
 /** Manda el export entero en una llamada; el RPC escribe solo lo que cambia (rol ti). */
-export async function cargarPadronZk(
-  meta: { archivo: string; sha256: string; filasArchivo: number; exportadoEn: string | null },
-  filas: { tarjeta: string; nombre: string; departamentoId: string; departamento: string }[],
-  hechoPor: string | null,
-): Promise<{ yaEstaba: boolean; insertadas: number; actualizadas: number; retiradas: number; vigentes: number }> {
+export interface MetaPadronZk {
+  archivo: string;
+  sha256: string;
+  filasArchivo: number;
+  exportadoEn: string | null;
+  /** Repetir la llamada con esto en `true` es la unica forma de pasar el freno. */
+  forzar?: boolean;
+}
+
+export type FilaPadronZk = { tarjeta: string; nombre: string; departamentoId: string; departamento: string };
+
+/**
+ * Lo que contesta el RPC (bloque 84). O escribio, o FRENO sin escribir nada y pide
+ * que una persona confirme: `retira_muchos` cuando el archivo dejaria fuera a mas
+ * de 20 personas y mas del 20 % de las vigentes (un export filtrado), y
+ * `export_anterior` cuando el archivo es mas viejo que el ultimo cargado (puede ser
+ * el bueno para deshacer un error, o uno elegido por equivocacion).
+ */
+export type RespuestaCargaPadronZk =
+  | { requiereConfirmacion: false; yaEstaba: boolean; insertadas: number; actualizadas: number; retiradas: number; vigentes: number }
+  | { requiereConfirmacion: true; motivos: ("retira_muchos" | "export_anterior")[]; retiraria: number; vigentes: number; exportadoEn: string | null; ultimoExportadoEn: string | null };
+
+export async function cargarPadronZk(meta: MetaPadronZk, filas: FilaPadronZk[], hechoPor: string | null): Promise<RespuestaCargaPadronZk> {
   const { data, error } = await supabaseAuth.rpc("cargar_padron_zk", { p_meta: meta, p_filas: filas, p_hecho_por: hechoPor });
   if (error) throw new Error(traducirError(error.message));
-  const r = (data ?? {}) as { yaEstaba?: boolean; insertadas?: number; actualizadas?: number; retiradas?: number; vigentes?: number };
-  return { yaEstaba: r.yaEstaba ?? false, insertadas: r.insertadas ?? 0, actualizadas: r.actualizadas ?? 0, retiradas: r.retiradas ?? 0, vigentes: r.vigentes ?? 0 };
+  const r = (data ?? {}) as {
+    requiereConfirmacion?: boolean; motivos?: string[]; retiraria?: number; exportadoEn?: string | null; ultimoExportadoEn?: string | null;
+    yaEstaba?: boolean; insertadas?: number; actualizadas?: number; retiradas?: number; vigentes?: number;
+  };
+  if (r.requiereConfirmacion) {
+    return {
+      requiereConfirmacion: true,
+      motivos: (r.motivos ?? []).filter((m): m is "retira_muchos" | "export_anterior" => m === "retira_muchos" || m === "export_anterior"),
+      retiraria: r.retiraria ?? 0,
+      vigentes: r.vigentes ?? 0,
+      exportadoEn: r.exportadoEn ?? null,
+      ultimoExportadoEn: r.ultimoExportadoEn ?? null,
+    };
+  }
+  return { requiereConfirmacion: false, yaEstaba: r.yaEstaba ?? false, insertadas: r.insertadas ?? 0, actualizadas: r.actualizadas ?? 0, retiradas: r.retiradas ?? 0, vigentes: r.vigentes ?? 0 };
 }
 
 /**

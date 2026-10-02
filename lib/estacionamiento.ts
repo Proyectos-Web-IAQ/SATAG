@@ -121,6 +121,10 @@ export const UMBRAL_SHOUP = 0.85;
  * que se queda ocho horas no aparece; un padre de familia que se queda ocho, si.
  */
 export const FACTOR_FUERA_DE_NORMA = 3;
+/** Credenciales que necesita un grupo para que su mediana sea una norma y no una anecdota. */
+export const MIN_CREDENCIALES_NORMA = 10;
+/** Estancias medidas que necesita una persona para que su mediana diga algo de su costumbre. */
+export const MIN_ESTANCIAS_NORMA = 3;
 
 /** Quien resuelve el dueno de una tarjeta. Lo implementa el llamador. */
 export type RolDe = (tarjeta: string) => string;
@@ -1129,13 +1133,25 @@ export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: Opci
 
   // Quien se sale de la norma de su propio grupo. La norma la fija el grupo, asi que
   // no hay ninguna lista escrita a mano de quien «deberia» rotar.
+  //
+  // LA NORMA TIENE QUE SER UNA POBLACION, y la persona tiene que tener costumbre
+  // (Gerardo pidio revisar estas cuentas el 2-oct):
+  //   - «Sin clasificar» no es un grupo: es la gente que nadie supo clasificar, y su
+  //     mediana mezcla padres con personal. Contra eso no se señala a nadie.
+  //   - Un grupo de tres credenciales tampoco fija norma: su mediana es una anecdota.
+  //   - Una sola estancia larga no es «quedarse de mas»: es una tarde. Hacen falta
+  //     varias estancias medidas para que la mediana de la persona diga algo.
   const usoPorCredencial = medirPorCredencial(estancias, oDesde, oHasta, rolDe);
-  const medianaDelGrupo = new Map(porRolLista.map((r) => [r.rol, r.medianaMin]));
+  const grupoDe = new Map(porRolLista.map((r) => [r.rol, r]));
   const fueraDeNorma = usoPorCredencial
     .filter((u) => {
       if (u.medianaMin === null || u.medianaMin < MIN_ESTANCIA_LARGA) return false;
-      const norma = medianaDelGrupo.get(rolDe(u.tarjeta) || "Sin clasificar");
-      return norma !== null && norma !== undefined && norma > 0 && u.medianaMin >= norma * FACTOR_FUERA_DE_NORMA;
+      if (u.estancias < MIN_ESTANCIAS_NORMA) return false;
+      const rol = rolDe(u.tarjeta) || "Sin clasificar";
+      if (rol === "Sin clasificar") return false;
+      const g = grupoDe.get(rol);
+      if (!g || g.credenciales < MIN_CREDENCIALES_NORMA || g.medianaMin === null || g.medianaMin <= 0) return false;
+      return u.medianaMin >= g.medianaMin * FACTOR_FUERA_DE_NORMA;
     })
     .sort((a, b) => (b.medianaMin ?? 0) - (a.medianaMin ?? 0));
 

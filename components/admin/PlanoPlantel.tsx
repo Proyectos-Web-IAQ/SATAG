@@ -12,7 +12,8 @@
 //   - A los dos se entra por Cerrada de la Asuncion.
 //   - El E1 es una franja de un solo ancho que arranca en la calle; al frente estan
 //     la puerta y la parte techada, y atras sigue el resto de los cajones. El techo
-//     grande de al lado es el auditorio de secundaria, no estacionamiento.
+//     grande de al lado son las canchas techadas del Instituto, no estacionamiento
+//     (el 2-oct primero se dijo «auditorio de secundaria»; Gerardo lo corrigio).
 //   - El E2 esta debajo de las canchas; su puerta da a la Cerrada frente a la
 //     2a. Privada de la Asuncion.
 //   - Cada estacionamiento tiene UNA puerta, con la entrada de un lado y la salida
@@ -53,11 +54,14 @@ export default function PlanoPlantel({
   ocupacion,
   cupos,
   minutoInicial,
+  encabezado = false,
 }: {
   ocupacion: OcupacionLote[];
   cupos: Record<string, number | null>;
   /** Donde arranca el deslizador: la hora del pico, que es lo que todos quieren ver. */
   minutoInicial: number | null;
+  /** Como vista propia: la frase es el titular de la pagina y no un pie del plano. */
+  encabezado?: boolean;
 }) {
   const [minuto, setMinuto] = useState(() => Math.min(20 * 60, Math.max(6 * 60, Math.round((minutoInicial ?? 7 * 60 + 30) / 15) * 15)));
   const id = useId();
@@ -97,7 +101,18 @@ export default function PlanoPlantel({
 
   return (
     <div className="plano">
-      <p className="plano__frase" aria-live="polite">{frase}</p>
+      {encabezado ? (
+        <>
+          <h2 className="titular" aria-live="polite">{frase}</h2>
+          <p className="titular__sub">
+            Mueva la hora y vea cómo cambia cada estacionamiento sobre el mismo plano. Más oscuro es más
+            lleno, según la mediana entre los días comparables. Cada puerta tiene la entrada de un lado y
+            la salida del otro.
+          </p>
+        </>
+      ) : (
+        <p className="plano__frase" aria-live="polite">{frase}</p>
+      )}
       <div className="plano__hora">
         <label htmlFor={`${id}-hora`}>Hora</label>
         <input id={`${id}-hora`} type="range" min={6 * 60} max={20 * 60} step={15} value={minuto}
@@ -126,7 +141,7 @@ export default function PlanoPlantel({
           <polygon className="plano__contorno" points={pol([[105, 425], [160, 395], [197, 478], [142, 507]])} />
           <Rotulo en={[151, 455]} texto="Básquet" className="plano__ref" />
           <polygon className="plano__edificio plano__edificio--borde" points={pol([[205, 553], [263, 515], [408, 690], [348, 738]])} />
-          <Rotulo en={[306, 627]} texto="Auditorio de secundaria" angulo={51} className="plano__ref" />
+          <Rotulo en={[306, 627]} texto="Canchas techadas" angulo={51} className="plano__ref" />
           <path className="plano__edificio plano__edificio--borde" d={`M${sx - 18},${sy} A18,18 0 0 1 ${sx + 18},${sy} Z`} />
 
           {/* E2, bajo las canchas */}
@@ -152,10 +167,12 @@ export default function PlanoPlantel({
           <text className="plano__ref" x={592} y={722} textAnchor="end">N ↑ · esquema, no a escala</text>
         </svg>
       </div>
-      <p className="ti-hint">
-        Cada puerta tiene la entrada de un lado y la salida del otro. Más oscuro es más lleno, según la
-        mediana entre los días comparables.
-      </p>
+      {!encabezado && (
+        <p className="ti-hint">
+          Cada puerta tiene la entrada de un lado y la salida del otro. Más oscuro es más lleno, según la
+          mediana entre los días comparables.
+        </p>
+      )}
     </div>
   );
 }

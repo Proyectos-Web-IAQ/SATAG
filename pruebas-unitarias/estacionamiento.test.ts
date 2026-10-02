@@ -220,3 +220,32 @@ describe("lecturas puntuales para las filas de la pantalla", () => {
     expect(minutosTipicosPorEncima(franjas, 15)).toBe(30);
   });
 });
+
+describe("fueraDeNorma · la norma tiene que ser una poblacion, y la persona tener costumbre", () => {
+  const dias = ["2026-09-21", "2026-09-22", "2026-09-23", "2026-09-24", "2026-09-25"];
+  // Doce padres que dejan y arrancan todos los dias, y uno que se queda seis horas.
+  const padres = Array.from({ length: 12 }, (_, i) => `p${i}`);
+  const base = dias.flatMap((d) => padres.flatMap((t) => estancia(t, "07:10:00", "07:25:00", d)));
+  const largo = dias.flatMap((d) => estancia("largo", "07:00:00", "13:00:00", d));
+  const rolDe = (t: string) => (t.startsWith("s") || t === "x" ? "Sin clasificar" : "Padres de familia");
+
+  it("un padre que se queda seis horas, cinco dias, se señala", () => {
+    const m = medirEstacionamiento([...base, ...largo], rolDe);
+    expect(m.fueraDeNorma.map((u) => u.tarjeta)).toEqual(["largo"]);
+  });
+  it("una sola tarde larga no es costumbre: no se señala", () => {
+    const m = medirEstacionamiento([...base, ...estancia("una", "07:00:00", "13:00:00", dias[1])], rolDe);
+    expect(m.fueraDeNorma).toHaveLength(0);
+  });
+  it("«Sin clasificar» no es un grupo: nadie se señala contra el, aunque sea grande", () => {
+    const sin = dias.flatMap((d) => Array.from({ length: 12 }, (_, i) => `s${i}`).flatMap((t) => estancia(t, "07:10:00", "07:25:00", d)));
+    const x = dias.flatMap((d) => estancia("x", "07:00:00", "13:00:00", d));
+    const m = medirEstacionamiento([...base, ...sin, ...x], rolDe);
+    expect(m.fueraDeNorma).toHaveLength(0);
+  });
+  it("un grupo de tres credenciales no fija norma", () => {
+    const pocos = dias.flatMap((d) => ["a", "b", "c"].flatMap((t) => estancia(t, "07:10:00", "07:25:00", d)));
+    const m = medirEstacionamiento([...pocos, ...largo], () => "Alumnos");
+    expect(m.fueraDeNorma).toHaveLength(0);
+  });
+});

@@ -121,7 +121,7 @@ export function Seccion({
   children: ReactNode;
 }) {
   return (
-    <section className="panel">
+    <section className="sec">
       <p className="sec__rotulo">{rotulo}</p>
       <h3 className="sec__titulo">{titulo}</h3>
       {nota && <p className="sec__nota">{nota}</p>}

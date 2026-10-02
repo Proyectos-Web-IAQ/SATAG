@@ -17,7 +17,7 @@
 // de una familia: lo que si se enlaza son los expedientes con los mismos apellidos de
 // familia, en «Datos», para ir de uno a otro.
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import type { Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import { listPasosDeTarjetas, type PasoZk } from "@/lib/supabase/apiPanel";
@@ -150,7 +150,14 @@ export function PasosSemana({ estancias }: { estancias: Estancia[] }) {
 
 /* ------------------------------------------------------------------ la ficha */
 
-function Ficha({ r, rol, familia, onIr }: { r: Registro; rol: RolPanel; familia: Registro[]; onIr: (id: string) => void }) {
+function Ficha({ r, rol, familia, onIr, extras = [] }: {
+  r: Registro;
+  rol: RolPanel;
+  familia: Registro[];
+  onIr: (id: string) => void;
+  /** Avisos que trae quien usa la ficha y que el expediente solo no sabe: los de la bitacora y los de ZK. */
+  extras?: string[];
+}) {
   const [pasos, setPasos] = useState<{ para: string; estancias: Estancia[]; error: string | null; cargando: boolean }>({
     para: "", estancias: [], error: null, cargando: false,
   });
@@ -205,6 +212,7 @@ function Ficha({ r, rol, familia, onIr }: { r: Registro; rol: RolPanel; familia:
     if (!r.estacionamientos.includes(l)) avisos.push(`Entró por el ${l} y no tiene esa pluma en SATAG.`);
   }
   if (r.estado === "baja" && visitas > 0) avisos.push("Está dado de baja y su TAG sigue abriendo la pluma.");
+  for (const a of extras) if (!avisos.includes(a)) avisos.push(a);
 
   const rolTexto = ROL_LABEL[r.tipoUsuario];
   const seccion = r.seccionMaestro ?? (r.apellidosFamilia ? `familia ${r.apellidosFamilia}` : null);
@@ -342,13 +350,17 @@ function Ficha({ r, rol, familia, onIr }: { r: Registro; rol: RolPanel; familia:
 
 /* ------------------------------------------------------------------ lista y ficha */
 
-export default function FichaPersona({ registros, todos, rol, vacio }: {
+export default function FichaPersona({ registros, todos, rol, vacio, linea, avisosExtra }: {
   /** Los expedientes que pasan el buscador y los filtros de Consulta. */
   registros: Registro[];
   /** El padrón completo, para enlazar a la misma familia aunque el filtro la deje fuera. */
   todos: Registro[];
   rol: RolPanel;
   vacio: string;
+  /** Una linea mas en cada renglon de la lista: lo que quien usa la ficha sabe de esa persona (su uso del estacionamiento). */
+  linea?: (r: Registro) => ReactNode;
+  /** Avisos que el expediente solo no sabe, para «Lo que no cuadra»; tambien encienden el punto de la lista. */
+  avisosExtra?: (r: Registro) => string[];
 }) {
   const [elegido, setElegido] = useState<string | null>(null);
   const id = useId();
@@ -357,7 +369,8 @@ export default function FichaPersona({ registros, todos, rol, vacio }: {
   const señalada = (r: Registro) =>
     (r.noDispositivo !== null && !r.placas && !r.sinPlacas) ||
     r.solicitudes.some((s) => !s.atendida) ||
-    (r.estado === "activo" && r.estacionamientos.length === 0);
+    (r.estado === "activo" && r.estacionamientos.length === 0) ||
+    (avisosExtra !== undefined && avisosExtra(r).length > 0);
 
   const familia = actual && actual.apellidosFamilia
     ? todos.filter((f) => f.id !== actual.id && f.apellidosFamilia && f.apellidosFamilia.toLowerCase() === actual.apellidosFamilia!.toLowerCase())
@@ -381,6 +394,7 @@ export default function FichaPersona({ registros, todos, rol, vacio }: {
                   {ROL_LABEL[r.tipoUsuario]} · {r.noDispositivo ? <>TAG <code>{r.noDispositivo}</code></> : "sin TAG"}
                   {r.placas ? <> · <code>{r.placas}</code></> : ""}
                 </span>
+                {linea && <span className="persona__mt persona__uso">{linea(r)}</span>}
               </button>
             </li>
           ))}
@@ -390,7 +404,7 @@ export default function FichaPersona({ registros, todos, rol, vacio }: {
         </ul>
       </div>
       {actual ? (
-        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} />
+        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} />
       ) : (
         <div className="ficha"><p className="ficha__vacio">{vacio}</p></div>
       )}
