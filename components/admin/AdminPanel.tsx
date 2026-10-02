@@ -157,8 +157,11 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
 function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
   const grupos = useMemo(() => gruposDe(rol), [rol]);
   const claves = grupos.flatMap((g) => g.vistas.map((v) => v.clave));
+  // Se abre en el Resumen del estacionamiento, que es la noticia (Gerardo, 2-oct);
+  // quien no lo ve abre en la primera vista que tenga. Al volver, en la última.
+  const inicial = claves.includes("resumen") ? "resumen" : claves[0];
   const [vista, setVista] = useState<string>(
-    ultimaVistaConsulta !== null && claves.includes(ultimaVistaConsulta) ? ultimaVistaConsulta : claves[0],
+    ultimaVistaConsulta !== null && claves.includes(ultimaVistaConsulta) ? ultimaVistaConsulta : inicial,
   );
   const elegir = (v: string) => {
     ultimaVistaConsulta = v;
