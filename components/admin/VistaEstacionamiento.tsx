@@ -145,6 +145,9 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     const ventanas = imps.filter((i) => (i.hasta ?? "") >= desde);
     // Sin total: la base no sabe cuantas filas van a venir (los traslapes y las
     // filas sin sentido no estan), y una barra que nunca llega al 100% miente.
+    // Y se limpia el error de antes: Reintentar y Descartar llegan aqui directo, y un
+    // aviso rojo encima de datos recien leidos contradice lo que se ve.
+    setError(null);
     setProcesando("Leyendo la bitácora guardada…");
     setAvance(null);
     try {
@@ -395,7 +398,16 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
               huecoEntre: d !== null && d > 0 && ultima && lectura.resumen.desde ? { hastaAnterior: ultima, desdeSiguiente: lectura.resumen.desde } : null,
             };
           })(),
-          serie: origen === "base" && serie ? { ventanas: serie.ventanas.length, truncadas: serie.ventanas.filter((v) => v.topeAlcanzado).length } : null,
+          serie:
+            origen === "base" && serie
+              ? {
+                  ventanas: serie.ventanas.length,
+                  truncadas: serie.ventanas.filter((v) => v.topeAlcanzado).length,
+                  // Donde arranca la ultima ventana: si se trunco, lo que falta es lo
+                  // anterior a esa fecha, no lo posterior.
+                  ultimaDesde: [...serie.ventanas].sort((a, b) => ((a.hasta ?? "") < (b.hasta ?? "") ? 1 : -1))[0]?.desde ?? null,
+                }
+              : null,
         };
       })()
     : null;
@@ -422,12 +434,14 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
                 Volver a leer de la base
               </button>
             </>
-          ) : (
+          ) : CARGAN.includes(rol) ? (
             <>
               En ZKBioSecurity: <strong>{GLOSARIO.todosLosEventos.ruta}</strong>. Es {GLOSARIO.todosLosEventos.detalle}.
-              Sirve tal como ZK lo entrega, en Excel o en CSV. El archivo se lee en este navegador y no se sube a
-              ningún lado: de él solo viaja su huella digital, que es lo que impide procesarlo dos veces.
+              Sirve tal como ZK lo entrega, en Excel o en CSV. Se lee en este navegador y lo que trae se guarda en
+              SATAG para todos; del archivo mismo solo viaja su huella digital, que es lo que impide procesarlo dos veces.
             </>
+          ) : (
+            <>Lo que se mide aquí es lo guardado en SATAG. Las ventanas las carga TI.</>
           )}
         </p>
 
@@ -541,9 +555,15 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
       ) : (
         <div className="panel">
           <p className="ti-empty">
-            Todavía no hay ninguna bitácora guardada. Para ver la medición hace falta el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity:{" "}
-            {GLOSARIO.todosLosEventos.ruta}. Sirve en Excel o en CSV, tal como lo entrega, y una vez guardado se
-            queda para todos.
+            {CARGAN.includes(rol) ? (
+              <>
+                Todavía no hay ninguna bitácora guardada. Para ver la medición hace falta el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity:{" "}
+                {GLOSARIO.todosLosEventos.ruta}. Sirve en Excel o en CSV, tal como lo entrega, y una vez guardado se
+                queda para todos.
+              </>
+            ) : (
+              <>Todavía no hay ninguna bitácora guardada. Las ventanas las carga TI desde el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity.</>
+            )}
           </p>
         </div>
       )}

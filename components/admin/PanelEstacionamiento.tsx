@@ -216,7 +216,7 @@ export interface DatosEstacionamiento {
    * las 40,000 filas de ZK. `null` cuando se mide un archivo recién elegido, que
    * es una sola ventana y se describe como tal.
    */
-  serie?: { ventanas: number; truncadas: number } | null;
+  serie?: { ventanas: number; truncadas: number; ultimaDesde?: string | null } | null;
 }
 
 /**
@@ -1058,12 +1058,17 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
           )}
           {d.serie && (resumen.topeAlcanzado || d.serie.truncadas > 0) && (
             <p className="notice" style={{ margin: "0 0 14px", padding: "10px 12px" }}>
+              {/* ZK se queda con las 40,000 filas MAS RECIENTES: a una ventana truncada
+                  le falta su arranque, no su final. Decirlo al reves mandaba a exportar
+                  despues de la ultima fecha, y eso nunca cierra el hueco. */}
               {resumen.topeAlcanzado
-                ? <>La última ventana llegó a las <strong>40,000 filas</strong>, que es donde ZKBioSecurity corta: lo
-                  que pasó después de su último evento todavía no está en SATAG.</>
+                ? <>La última ventana llegó a las <strong>40,000 filas</strong>, que es donde ZKBioSecurity corta, y ZK se
+                  queda con las más recientes: lo que falta es lo anterior a su primer evento
+                  {d.serie.ultimaDesde ? `, el ${diaCorto(d.serie.ultimaDesde.slice(0, 10))}` : ""}. Para cubrirlo, exporte por
+                  rango de fechas hasta ese día.</>
                 : <>{d.serie.truncadas} de las {d.serie.ventanas} ventanas guardadas llegaron a las <strong>40,000 filas</strong> de
-                  ZKBioSecurity y quedaron truncadas.</>}
-              {" "}Si entre dos ventanas faltan días, el aviso de arriba lo dice con fechas.
+                  ZKBioSecurity: a cada una le falta su arranque, no su final.</>}
+              {" "}Si eso dejó días sin cubrir entre dos ventanas, el aviso de arriba lo dice con fechas.
             </p>
           )}
           <ul className="detail-grid">
