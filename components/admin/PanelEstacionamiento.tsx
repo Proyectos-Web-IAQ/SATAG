@@ -536,19 +536,26 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
             <span>›</span>
             <span>Plano del plantel</span>
           </p>
-          <PlanoPlantel ocupacion={m.ocupacion} cupos={cupos} minutoInicial={m.picoTotal.minuto} encabezado />
-          <div className="firme">
-            <div>
-              <strong>Es un esquema, no una foto.</strong> Se trazó sobre capturas del satélite y no está a escala. A
-              los dos estacionamientos se entra por Cerrada de la Asunción; el E1 es una franja con la puerta y la
-              parte techada al frente, y la puerta del E2 da a la Cerrada frente a la 2a. Privada. El techo grande
-              junto al E1 son las canchas techadas del Instituto.
-            </div>
-            <div>
-              La ocupación a cada hora es la mediana entre los {m.diasComparables.length} días comparables
-              {sinCupos ? ", contra el propio máximo de cada estacionamiento porque faltan sus cajones" : ""}.
-            </div>
-          </div>
+          <PlanoPlantel
+            ocupacion={m.ocupacion}
+            cupos={cupos}
+            minutoInicial={m.picoTotal.minuto}
+            encabezado
+            pie={
+              <div className="firme">
+                <div>
+                  <strong>Es un esquema, no una foto.</strong> Se trazó sobre capturas del satélite y no está a escala.
+                  A los dos estacionamientos se entra por Cerrada de la Asunción; el E1 es una franja con la puerta y
+                  la parte techada al frente, y la puerta del E2 da a la Cerrada frente a la 2a. Privada. El techo
+                  grande junto al E1 son las canchas techadas del Instituto.
+                </div>
+                <div>
+                  La ocupación a cada hora es la mediana entre los {m.diasComparables.length} días comparables
+                  {sinCupos ? ", contra el propio máximo de cada estacionamiento porque faltan sus cajones" : ""}.
+                </div>
+              </div>
+            }
+          />
         </>
       )}
 
