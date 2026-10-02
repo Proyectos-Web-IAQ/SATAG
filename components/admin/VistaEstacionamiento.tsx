@@ -56,6 +56,8 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   const [personas, setPersonas] = useState<Map<string, PersonaZk> | null>(null);
   const [archivo, setArchivo] = useState<string | null>(null);
   const [procesando, setProcesando] = useState<string | null>(null);
+  /** Avance de la carga: `null` mientras no se sepa cuanto falta. */
+  const [avance, setAvance] = useState<{ hechas: number; total: number } | null>(null);
   const [avisoCarga, setAvisoCarga] = useState<string | null>(null);
   const bytesRef = useRef<ArrayBuffer | null>(null);
 
@@ -114,7 +116,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   /** Manda la ventana a la base. Es lo que hace que mañana haya serie. */
   async function guardar() {
     if (!lectura || !bytesRef.current) return;
-    setProcesando("Guardando la bitácora…");
+    setProcesando("Guardando la bitácora en SATAG…");
     setError(null);
     try {
       const sha = await huella(bytesRef.current);
@@ -141,8 +143,9 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           repeticion: e.repeticion,
           departamentoEvento: e.departamentoEvento,
         }));
+      setAvance({ hechas: 0, total: filas.length });
       const r = await cargarEventosZk(meta, filas, email, (hechas, total) =>
-        setProcesando(`Guardando la bitácora… ${hechas.toLocaleString("es-MX")} de ${total.toLocaleString("es-MX")}`),
+        setAvance({ hechas, total }),
       );
       setAvisoCarga(
         r.insertados === 0
@@ -154,6 +157,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
       setError(err instanceof Error ? err.message : "No se pudo guardar la bitácora.");
     } finally {
       setProcesando(null);
+      setAvance(null);
     }
   }
 
@@ -266,7 +270,28 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           </div>
         </div>
 
-        {procesando && <p className="hint" role="status">{procesando}</p>}
+        {procesando && (
+          <div className="carga">
+            <p className="carga__t">
+              <span role="status">{procesando}</span>
+              {avance && (
+                <span className="carga__n">
+                  {avance.hechas.toLocaleString("es-MX")} de {avance.total.toLocaleString("es-MX")} eventos
+                </span>
+              )}
+            </p>
+            <div
+              className={`carga__b${avance ? "" : " carga__b--vaga"}`}
+              role="progressbar"
+              aria-label={procesando}
+              aria-valuemin={avance ? 0 : undefined}
+              aria-valuemax={avance ? avance.total : undefined}
+              aria-valuenow={avance ? avance.hechas : undefined}
+            >
+              <i style={avance ? { width: `${Math.round((avance.hechas / Math.max(avance.total, 1)) * 100)}%` } : undefined} />
+            </div>
+          </div>
+        )}
         {error && <p className="submit-error" role="alert">{error}</p>}
         {avisoCarga && <p className="notice" style={{ margin: "10px 0 0", padding: "10px 12px" }}>{avisoCarga}</p>}
 

@@ -1093,6 +1093,30 @@ a { color: var(--primary-strong); }
 .tabla-scroll { border: 1px solid var(--line); border-radius: 10px; max-height: 58vh; overflow: auto; }
 .tabla-scroll .table-wrap { overflow: visible; }
 
+/* ---------- Barra de progreso de una carga ----------
+   Una ventana son ~9,600 eventos que viajan en lotes de mil: diez viajes en los que
+   la pantalla no puede decir nada mas que «espere». Sin barra, una carga de treinta
+   segundos se siente como una pantalla colgada, y lo primero que hace alguien con una
+   pantalla colgada es volver a pulsar.
+
+   Lleva el numero ADEMAS de la barra: la barra dice cuanto falta de un vistazo y el
+   numero dice que de verdad esta avanzando. Una barra sola que se mueve a saltos
+   grandes parece atorada. */
+.carga { margin: 12px 0 0; }
+.carga__t { align-items: baseline; color: var(--ink); display: flex; font-size: 0.85rem; gap: 8px; justify-content: space-between; margin: 0 0 6px; }
+.carga__n { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 700; }
+.carga__b { background: #e7edf7; border-radius: 999px; height: 8px; overflow: hidden; }
+.carga__b i {
+  background: var(--viz-serie-1); border-radius: 999px; display: block; height: 100%;
+  transition: width 0.18s ease;
+}
+/* Sin porcentaje conocido todavia: se mueve sola para que se note que algo pasa. */
+.carga__b--vaga i { animation: carga-vaga 1.1s ease-in-out infinite; width: 35%; }
+@keyframes carga-vaga {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(286%); }
+}
+
 /* ---------- Buscador ---------- */
 .buscador { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
 .buscador input {
