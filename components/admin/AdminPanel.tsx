@@ -11,8 +11,7 @@ import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import PanelInstalacion from "@/components/admin/PanelInstalacion";
 import VistaEstacionamiento from "@/components/admin/VistaEstacionamiento";
-import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
-import { DetalleRegistro, TarjetaRegistro } from "@/components/admin/RegistroCard";
+import FichaPersona from "@/components/admin/FichaPersona";
 
 type Vista = "admin" | "ti" | "finanzas" | "tablero" | "estacionamiento" | "consulta";
 
@@ -132,11 +131,11 @@ function IconoFiltro() {
   );
 }
 
-// Consulta comparte el patrón de tarjetas expandibles de Administración y TI,
-// en modo solo lectura: sin acciones ni formularios. Al abrir una tarjeta se ve
-// el expediente y, cuando existe, la bitácora completa del registro. Arriba,
-// filtros rápidos (estado, TAG, estacionamiento, sin placas) que se combinan
-// entre sí y con el buscador de texto.
+// Consulta es la lista del padrón que se abre a la ficha de una persona
+// (DISEÑO.md §3.4): buscador y filtros rápidos arriba, la lista a un lado y la
+// ficha al otro, en modo solo lectura. Desde octubre de 2026 la ficha junta lo
+// que antes estaba repartido —expediente, TAGs, vehículo, bitácora y los pasos
+// por la pluma— y lo que no cuadra lo dice en una columna aparte.
 function VistaConsulta({ rol }: { rol: RolPanel }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   // CC-02: el reporte de incompletos vive aquí porque Consulta es la vista de
@@ -145,7 +144,6 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
   const [incompletos, setIncompletos] = useState<RegistroIncompleto[]>([]);
   const [verIncompletos, setVerIncompletos] = useState(false);
   const [query, setQuery] = useState("");
-  const [selId, setSelId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   // Filtros rápidos: cada dimensión acota (AND entre dimensiones); dentro de
@@ -217,8 +215,6 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
     activos: registros.filter((r) => r.estado === "activo").length,
   }), [registros]);
 
-  const toggleSel = (id: string) => setSelId((cur) => (cur === id ? null : id));
-
   if (loading && registros.length === 0) return <Loader label="Cargando registros…" />;
 
   if (loadError && registros.length === 0) {
@@ -232,18 +228,14 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
 
   return (
     <>
-      <div className="metric-cards metric-cards--4">
-        <div className={`metric-card metric-card--${metrics.pendientes === 0 ? "ok" : metrics.pendientes <= 4 ? "warn" : "alert"}`}>
-          <span className="metric-label">Pendientes</span>
-          <span className="metric-value">{metrics.pendientes}</span>
-        </div>
-        <div className="metric-card"><span className="metric-label">Registros</span><span className="metric-value">{metrics.total}</span></div>
-        <div className="metric-card"><span className="metric-label">Activos</span><span className="metric-value">{metrics.activos}</span></div>
-        <div className={`metric-card metric-card--${incompletos.length === 0 ? "ok" : incompletos.length <= 4 ? "warn" : "alert"}`}>
-          <span className="metric-label">Incompletos</span>
-          <span className="metric-value">{incompletos.length}</span>
-        </div>
-      </div>
+      {/* Las cifras del padrón en una línea, no en tarjetas: son contexto, no el
+          hallazgo. Lo que pide acción está en el reporte de incompletos de abajo. */}
+      <p className="ficha__cifras" style={{ margin: "0 0 14px" }}>
+        <span>Expedientes <b>{metrics.total.toLocaleString("es-MX")}</b></span>
+        <span>Activos <b>{metrics.activos.toLocaleString("es-MX")}</b></span>
+        <span>Pendientes de cobro <b>{metrics.pendientes}</b></span>
+        <span>Incompletos <b>{incompletos.length}</b></span>
+      </p>
 
       {/* CC-02: arranca colapsado. El reporte se consulta cuando se busca, no
           es lo primero que hay que leer al abrir Consulta. */}
@@ -345,53 +337,13 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
             <button type="button" className="link-action" onClick={() => refresh()}>Reintentar</button>
           </p>
         )}
-        <div className="ti-cards">
-          {filtrados.map((r) => (
-            <TarjetaRegistro key={r.id} r={r} abierto={selId === r.id} onToggle={() => toggleSel(r.id)}>
-              <DetalleRegistro r={r} />
-              <BitacoraConsulta r={r} />
-              {/* Consulta es donde se investiga un expediente, así que la
-                  evidencia va después de la bitácora: primero qué le pasó al
-                  TAG, luego la prueba de lo que la persona aceptó. Desde la
-                  junta del 9-sep este rol ya no la abre: el componente le dice
-                  a quién pedirla. */}
-              <EvidenciaFirmaPanel registroId={r.id} rol={rol} />
-            </TarjetaRegistro>
-          ))}
-          {filtrados.length === 0 && (
-            <p className="ti-hint">
-              {q || hayFiltros ? "Sin resultados con los filtros actuales." : "Aún no hay registros en el padrón."}
-            </p>
-          )}
-        </div>
+        <FichaPersona
+          registros={filtrados}
+          todos={registros}
+          rol={rol}
+          vacio={q || hayFiltros ? "Sin resultados con los filtros actuales." : "Aún no hay registros en el padrón."}
+        />
       </div>
     </>
-  );
-}
-
-// Bitácora del registro dentro de la tarjeta de Consulta. Es el dato extra que
-// Consulta sí muestra y las pantallas de acción (Admin/TI) no necesitan: aquí
-// se investiga el historial, allá se opera.
-function BitacoraConsulta({ r }: { r: Registro }) {
-  if (r.movimientos.length === 0) return null;
-  return (
-    <div className="consulta-bitacora">
-      <p className="ti-section-title">Bitácora</p>
-      <div className="table-wrap">
-        <table className="admin-table">
-          <thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th><th>Por</th></tr></thead>
-          <tbody>
-            {r.movimientos.map((m, i) => (
-              <tr key={`${m.fecha}-${m.tipo}-${i}`}>
-                <td>{m.fecha}</td>
-                <td style={{ textTransform: "capitalize" }}>{m.tipo}</td>
-                <td>{m.motivo ?? "—"}</td>
-                <td>{m.hechoPor ?? "—"}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
   );
 }

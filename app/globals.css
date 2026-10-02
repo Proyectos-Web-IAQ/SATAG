@@ -1334,6 +1334,11 @@ a { color: var(--primary-strong); }
 .tabla-tipo tr.baja td.mono { text-decoration: line-through; text-decoration-color: var(--line); }
 .pasos svg { display: block; height: auto; min-width: 520px; width: 100%; }
 .pasos__nota { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
+/* E2 en el azul de serie, E1 en gris: el color distingue el estacionamiento y la
+   nota lo dice en texto. Una estancia sin salida leida va mas clara. */
+.pasos__barra { fill: var(--viz-serie-1); }
+.pasos__barra--e1 { fill: #8a94a6; }
+.pasos__barra--abierta { fill-opacity: 0.45; }
 .actividad { list-style: none; margin: 0; padding: 0; }
 .actividad li { border-bottom: 1px solid var(--line); display: grid; font-size: 0.92rem; gap: 12px; grid-template-columns: 7.5rem minmax(0, 1fr); padding: 8px 0; }
 .actividad time { color: var(--muted); font-size: 0.86rem; font-variant-numeric: tabular-nums; }

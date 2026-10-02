@@ -1026,3 +1026,56 @@ export async function cargarEventosZk(
   }
   return { insertados, yaEstaban };
 }
+
+// ---- Los pasos de una persona por la pluma (ficha de persona, 2-oct-2026) ----
+
+/** Un acceso concedido de la bitacora, sin ruido: ni rechazos ni rafagas del lector. */
+export interface PasoZk {
+  idEvento: number;
+  /** Hora de pared del controlador, tal como la guardo el bloque 78. */
+  ocurrioEn: string;
+  lote: string;
+  sentido: "entrada" | "salida";
+  tarjeta: string;
+}
+
+interface PasoRow {
+  id_evento: number;
+  ocurrio_en: string;
+  lote: string;
+  sentido: string;
+  tarjeta: string;
+}
+
+/**
+ * Los ultimos pasos de un conjunto de tarjetas: las de una misma persona, con el
+ * TAG vigente y los que tuvo antes.
+ *
+ * La RLS de `zk_eventos` (bloque 78) la leen ti, contador y super; a los demas la
+ * base les devuelve cero filas, y la ficha lo dice en vez de dibujar una semana
+ * vacia como si la persona no hubiera venido. Se piden los mas recientes, en orden
+ * descendente, y se devuelven en orden de tiempo: la ficha dibuja de izquierda a
+ * derecha.
+ */
+export async function listPasosDeTarjetas(tarjetas: string[], tope = 400): Promise<PasoZk[]> {
+  const limpias = [...new Set(tarjetas.map((t) => t.replace(/\D/g, "")).filter(Boolean))];
+  if (limpias.length === 0) return [];
+  const { data, error } = await supabaseAuth
+    .from("zk_eventos")
+    .select("id_evento, ocurrio_en, lote, sentido, tarjeta")
+    .in("tarjeta", limpias)
+    .eq("concedido", true)
+    .eq("repeticion", false)
+    .order("ocurrio_en", { ascending: false })
+    .limit(tope);
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as PasoRow[])
+    .map((r) => ({
+      idEvento: r.id_evento,
+      ocurrioEn: r.ocurrio_en,
+      lote: r.lote,
+      sentido: (r.sentido === "salida" ? "salida" : "entrada") as "entrada" | "salida",
+      tarjeta: r.tarjeta,
+    }))
+    .reverse();
+}
