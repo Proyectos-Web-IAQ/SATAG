@@ -1204,17 +1204,30 @@ export async function cargarPadronZk(
 }
 
 /**
- * El id del ultimo evento guardado. Es lo que permite mandar de un archivo solo lo
- * que la base no tiene: ZK numera los eventos al recogerlos, asi que todo lo nuevo
- * tiene un id mayor, aunque haya ocurrido antes. `null` si no hay nada guardado.
+ * Que ids de evento, dentro de un rango, ya estan guardados. Es lo que permite mandar
+ * de un archivo solo lo que la base no tiene.
+ *
+ * POR RANGO Y NO «MAYOR QUE EL ULTIMO»: ZK numera los eventos al recogerlos, pero un
+ * export viejo que nunca se guardo trae ids menores que el ultimo guardado, y un
+ * filtro por «mayor que» lo habria descartado entero sin avisar. Leer los ids que
+ * ya estan cuesta una o dos peticiones (solo el id, 5,000 por pagina) y deja mandar
+ * exactamente lo que falta, venga de donde venga.
  */
-export async function maxIdEventoZk(): Promise<number | null> {
-  const { data, error } = await supabaseAuth
-    .from("zk_eventos")
-    .select("id_evento")
-    .order("id_evento", { ascending: false })
-    .limit(1);
-  if (error) throw new Error(traducirError(error.message));
-  const r = (data as { id_evento: number }[])[0];
-  return r ? Number(r.id_evento) : null;
+export async function idsEventosGuardados(desdeId: number, hastaId: number): Promise<Set<number>> {
+  const PAGINA = 5000;
+  const ids = new Set<number>();
+  for (let pagina = 0; pagina < 200; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("zk_eventos")
+      .select("id_evento")
+      .gte("id_evento", desdeId)
+      .lte("id_evento", hastaId)
+      .order("id_evento", { ascending: true })
+      .range(ids.size, ids.size + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as { id_evento: number }[];
+    if (filas.length === 0) break;
+    for (const r of filas) ids.add(Number(r.id_evento));
+  }
+  return ids;
 }

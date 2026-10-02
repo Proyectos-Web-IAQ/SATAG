@@ -36,8 +36,8 @@ import {
   listEventosZk,
   listImportacionesZk,
   listPadronEstacionamiento,
+  idsEventosGuardados,
   listPadronZk,
-  maxIdEventoZk,
   type CargaPadronZk,
   type ImportacionZk,
   type PadronEstacionamiento,
@@ -252,10 +252,10 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   /**
    * Manda la ventana a la base. Es lo que hace que mañana haya serie.
    *
-   * SOLO LO NUEVO: antes de mandar se pide el id del ultimo evento guardado y se
-   * filtra. ZK numera los eventos al recogerlos, asi que lo que la base no tiene
-   * siempre tiene un id mayor. Un archivo que traslapa con la ventana anterior deja
-   * de costar diez peticiones para costar una, y uno repetido no cuesta ninguna.
+   * SOLO LO NUEVO: antes de mandar se pregunta que ids del rango del archivo ya estan
+   * guardados y se mandan solo los que faltan. Un archivo que traslapa con la ventana
+   * anterior deja de costar diez peticiones para costar una o dos, uno repetido no
+   * manda filas, y un export viejo que nunca se guardo entra completo.
    */
   async function guardar(l: LecturaEventos | null = lectura, bytes: ArrayBuffer | null = bytesRef.current, nombre: string | null = archivo) {
     if (!l || !bytes) return;
@@ -277,10 +277,13 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         exportadoEn: l.resumen.exportadoEn,
         huecoDias: huecoEnDias(anterior, l.resumen.desde),
       };
-      const ultimoId = await maxIdEventoZk();
       const conSentido = l.eventos.filter((e) => e.sentido !== null);
+      const yaGuardados =
+        conSentido.length > 0
+          ? await idsEventosGuardados(Math.min(...conSentido.map((e) => e.idEvento)), Math.max(...conSentido.map((e) => e.idEvento)))
+          : new Set<number>();
       const filas = conSentido
-        .filter((e) => ultimoId === null || e.idEvento > ultimoId)
+        .filter((e) => !yaGuardados.has(e.idEvento))
         .map((e) => ({
           idEvento: String(e.idEvento),
           ocurrioEn: e.ocurrioEn,
