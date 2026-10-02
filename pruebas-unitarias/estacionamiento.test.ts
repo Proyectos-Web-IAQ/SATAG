@@ -186,3 +186,37 @@ describe("medirEstacionamiento · el corte llega a la medicion", () => {
     expect(e2?.diaPico[e2.diaPico.length - 1].minuto).toBe(8 * 60);
   });
 });
+
+describe("lecturas puntuales para las filas de la pantalla", () => {
+  const pasos = [
+    { minuto: 300, dentro: 0 },
+    { minuto: 420, dentro: 50 },
+    { minuto: 440, dentro: 110 },
+    { minuto: 457, dentro: 70 },
+    { minuto: 1260, dentro: 0 },
+  ];
+  const franjas = [300, 315, 330].map((minuto, i) => ({ minuto, p50: [10, 40, 20][i], p25: 0, p75: 0 }));
+
+  it("lee la escalera en un minuto: el ultimo escalon que ya empezo", async () => {
+    const { dentroEn } = await import("@/lib/estacionamiento");
+    expect(dentroEn(pasos, 430)).toBe(50);
+    expect(dentroEn(pasos, 440)).toBe(110);
+    expect(dentroEn(pasos, 299)).toBe(0);
+  });
+
+  it("mide cuanto dura por encima de un umbral, escalon por escalon", async () => {
+    const { minutosPorEncima } = await import("@/lib/estacionamiento");
+    expect(minutosPorEncima(pasos, 100)).toBe(17);
+    expect(minutosPorEncima(pasos, 60)).toBe(17 + 803);
+    expect(minutosPorEncima(pasos, 200)).toBe(0);
+  });
+
+  it("lee la mediana en la franja mas cercana y encuentra su pico en un rango", async () => {
+    const { medianaEn, picoDeLaMediana, minutosTipicosPorEncima } = await import("@/lib/estacionamiento");
+    expect(medianaEn(franjas, 318)).toBe(40);
+    expect(picoDeLaMediana(franjas, 300, 330)?.minuto).toBe(315);
+    expect(picoDeLaMediana(franjas, 320, 330)?.minuto).toBe(330);
+    expect(picoDeLaMediana([], 0, 9)).toBeNull();
+    expect(minutosTipicosPorEncima(franjas, 15)).toBe(30);
+  });
+});

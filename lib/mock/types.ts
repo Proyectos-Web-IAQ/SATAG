@@ -22,6 +22,8 @@ export interface Estacionamiento {
   clave: string; // 'E1' | 'E2'
   descripcion: string;
   activo: boolean;
+  /** Cuantos cajones tiene (bloque 79). `null` mientras nadie los haya contado. */
+  cupoLugares: number | null;
 }
 
 // SC-027: mapa tarjeta -> ID de ZKBioSecurity guardado en la base (sin

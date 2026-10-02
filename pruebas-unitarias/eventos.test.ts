@@ -340,3 +340,37 @@ describe("exportadoEnDe · la hora en el nombre del archivo", () => {
     expect(parsearEventosZk(texto).resumen.exportadoEn).toBeNull();
   });
 });
+
+describe("lecturaDesdeBase: la misma lectura, venga del archivo o de la base", () => {
+  it("resume igual que el parser y toma la cobertura de las ventanas", async () => {
+    const { lecturaDesdeBase, resumirEventos } = await import("@/lib/zk/eventos");
+    const ev = (idEvento: number, ocurrioEn: string, sentido: "entrada" | "salida", concedido = true, repeticion = false) => ({
+      idEvento, ocurrioEn, lote: "E2" as const, sentido, tarjeta: "123", descripcion: "", concedido, departamentoEvento: "", repeticion,
+    });
+    const eventos = [
+      ev(3, "2026-09-23 07:10:00", "entrada"),
+      ev(1, "2026-09-22 07:05:00", "entrada"),
+      ev(2, "2026-09-22 07:20:00", "salida"),
+      ev(4, "2026-09-23 07:10:04", "entrada", true, true),
+      ev(5, "2026-09-23 08:00:00", "entrada", false),
+    ];
+    const l = lecturaDesdeBase(eventos, [
+      { filasArchivo: 100, filasConTarjeta: 3, topeAlcanzado: false, desde: "2026-09-22 06:00:00", hasta: "2026-09-22 20:00:00" },
+      { filasArchivo: 50, filasConTarjeta: 2, topeAlcanzado: true, desde: "2026-09-23 06:00:00", hasta: "2026-09-23 20:00:00", exportadoEn: "2026-09-23 20:30:00" },
+    ]);
+    expect(l.eventos.map((e) => e.idEvento)).toEqual([1, 2, 3, 4, 5]);
+    expect(l.resumen).toMatchObject({
+      filasArchivo: 150, filasSinTarjeta: 145, filasConTarjeta: 5, accesos: 3, repeticiones: 1, rechazos: 1, rechazosBrutos: 1,
+      entradas: 2, salidas: 1, desde: "2026-09-22 06:00:00", hasta: "2026-09-23 20:00:00", exportadoEn: "2026-09-23 20:30:00",
+      diasConActividad: 2, topeAlcanzado: true, tarjetasDistintas: 1,
+    });
+    expect(l.resumen.desbalance).toBeCloseTo(0.5);
+    expect(resumirEventos(eventos).accesos).toBe(3);
+  });
+
+  it("sin ventanas ni eventos devuelve una lectura vacia y coherente", async () => {
+    const { lecturaDesdeBase } = await import("@/lib/zk/eventos");
+    const l = lecturaDesdeBase([], []);
+    expect(l.resumen).toMatchObject({ filasArchivo: 0, accesos: 0, desde: null, hasta: null, desbalance: null, diasConActividad: 0 });
+  });
+});

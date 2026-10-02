@@ -38,6 +38,7 @@ import type {
   TipoUsuario,
   TramiteSolicitado,
 } from "@/lib/mock/types";
+import type { EventoZk } from "@/lib/zk/eventos";
 
 export interface AccionResultado {
   id: string;
@@ -309,18 +310,20 @@ export async function listNotasSinExpediente(): Promise<Solicitud[]> {
   return (data as unknown as SolicitudRow[]).map(mapSolicitud);
 }
 
-// Catalogo de estacionamientos activos (para los chips de asignacion en TI).
+// Catalogo de estacionamientos activos: los chips de asignacion en TI y, con
+// `cupo_lugares`, el denominador de la saturacion en la pestana Estacionamiento.
 export async function getEstacionamientos(): Promise<Estacionamiento[]> {
   const { data, error } = await supabaseAuth
     .from("estacionamientos")
-    .select("clave, descripcion, activo")
+    .select("clave, descripcion, activo, cupo_lugares")
     .eq("activo", true)
     .order("clave");
   if (error) throw new Error(traducirError(error.message));
-  return (data as { clave: string; descripcion: string | null; activo: boolean }[]).map((e) => ({
+  return (data as { clave: string; descripcion: string | null; activo: boolean; cupo_lugares: number | null }[]).map((e) => ({
     clave: e.clave,
     descripcion: e.descripcion ?? e.clave,
     activo: e.activo,
+    cupoLugares: e.cupo_lugares,
   }));
 }
 
@@ -1023,4 +1026,117 @@ export async function cargarEventosZk(
     onAvance?.(Math.min(i + LOTE, filas.length), filas.length);
   }
   return { insertados, yaEstaban };
+}
+
+// ---- Los pasos de una persona por la pluma (ficha de persona, 2-oct-2026) ----
+
+/** Un acceso concedido de la bitacora, sin ruido: ni rechazos ni rafagas del lector. */
+export interface PasoZk {
+  idEvento: number;
+  /** Hora de pared del controlador, tal como la guardo el bloque 78. */
+  ocurrioEn: string;
+  lote: string;
+  sentido: "entrada" | "salida";
+  tarjeta: string;
+}
+
+interface PasoRow {
+  id_evento: number;
+  ocurrio_en: string;
+  lote: string;
+  sentido: string;
+  tarjeta: string;
+}
+
+/**
+ * Los ultimos pasos de un conjunto de tarjetas: las de una misma persona, con el
+ * TAG vigente y los que tuvo antes.
+ *
+ * La RLS de `zk_eventos` (bloque 78) la leen ti, contador y super; a los demas la
+ * base les devuelve cero filas, y la ficha lo dice en vez de dibujar una semana
+ * vacia como si la persona no hubiera venido. Se piden los mas recientes, en orden
+ * descendente, y se devuelven en orden de tiempo: la ficha dibuja de izquierda a
+ * derecha.
+ */
+export async function listPasosDeTarjetas(tarjetas: string[], tope = 400): Promise<PasoZk[]> {
+  const limpias = [...new Set(tarjetas.map((t) => t.replace(/\D/g, "")).filter(Boolean))];
+  if (limpias.length === 0) return [];
+  const { data, error } = await supabaseAuth
+    .from("zk_eventos")
+    .select("id_evento, ocurrio_en, lote, sentido, tarjeta")
+    .in("tarjeta", limpias)
+    .eq("concedido", true)
+    .eq("repeticion", false)
+    .order("ocurrio_en", { ascending: false })
+    .limit(tope);
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as PasoRow[])
+    .map((r) => ({
+      idEvento: r.id_evento,
+      ocurrioEn: r.ocurrio_en,
+      lote: r.lote,
+      sentido: (r.sentido === "salida" ? "salida" : "entrada") as "entrada" | "salida",
+      tarjeta: r.tarjeta,
+    }))
+    .reverse();
+}
+
+/**
+ * Los eventos guardados, para medir SIN el archivo (2-oct-2026).
+ *
+ * Pagina de mil en mil con `.range()` y sigue hasta una pagina vacia, no hasta una
+ * «corta»: si PostgREST tuviera un tope menor que mil, una pagina corta no seria la
+ * ultima y el panel mediria media ventana sin avisar. Trae solo lo que la medicion
+ * usa; `descripcion` no se guarda y se devuelve vacia.
+ *
+ * `desde` acota en el tiempo (hora de pared del controlador, como `ocurrio_en`):
+ * una temporada entera son cientos de miles de filas y la pantalla no las necesita
+ * todas para contar el dia tipico. El tope de paginas es un seguro declarado, no
+ * un limite de negocio: si se toca, la respuesta lo dice en `truncado`.
+ */
+export async function listEventosZk(
+  desde: string | null,
+  onAvance?: (filas: number) => void,
+  topePaginas = 120,
+): Promise<{ eventos: EventoZk[]; truncado: boolean }> {
+  const PAGINA = 1000;
+  const eventos: EventoZk[] = [];
+  let truncado = false;
+  for (let pagina = 0; ; pagina += 1) {
+    if (pagina >= topePaginas) {
+      truncado = true;
+      break;
+    }
+    let q = supabaseAuth
+      .from("zk_eventos")
+      .select("id_evento, ocurrio_en, lote, sentido, tarjeta, concedido, repeticion, departamento_evento")
+      .order("ocurrio_en", { ascending: true })
+      .order("id_evento", { ascending: true })
+      .range(eventos.length, eventos.length + PAGINA - 1);
+    if (desde) q = q.gte("ocurrio_en", desde);
+    const { data, error } = await q;
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as unknown as {
+      id_evento: number; ocurrio_en: string; lote: string; sentido: string; tarjeta: string;
+      concedido: boolean; repeticion: boolean; departamento_evento: string | null;
+    }[];
+    if (filas.length === 0) break;
+    for (const r of filas) {
+      eventos.push({
+        idEvento: Number(r.id_evento),
+        // Postgres devuelve el timestamp sin zona como «2026-09-22T07:18:00»; el
+        // parser y la medicion trabajan con «2026-09-22 07:18:00».
+        ocurrioEn: String(r.ocurrio_en).replace("T", " ").slice(0, 19),
+        lote: r.lote as EventoZk["lote"],
+        sentido: r.sentido === "salida" ? "salida" : "entrada",
+        tarjeta: r.tarjeta,
+        descripcion: "",
+        concedido: r.concedido,
+        departamentoEvento: r.departamento_evento ?? "",
+        repeticion: r.repeticion,
+      });
+    }
+    onAvance?.(eventos.length);
+  }
+  return { eventos, truncado };
 }

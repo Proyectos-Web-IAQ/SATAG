@@ -82,6 +82,9 @@ en SATAG hubo que arreglar a posteriori.
       pantalla se equivoque no debe alcanzar para ver un dato.
 - [ ] **Privilegios revocados además de la RLS** en las tablas críticas: dos barreras
       independientes, no una.
+- [ ] **Las tablas que se crean «de paso» también cuentan**: respaldos, copias y tablas de
+      trabajo que no son `temp`. Si el proyecto da privilegios por omisión a los roles de la
+      API, nacen expuestas; se blindan (RLS + revoke) en la misma ejecución que las crea.
 - [ ] **La prueba que lo valida:** consultas directas con cada perfil (sin rol, rol sin MFA, cada
       rol con MFA) verificando **cero filas** donde toca. Si la protección solo existe en el
       front, no existe.

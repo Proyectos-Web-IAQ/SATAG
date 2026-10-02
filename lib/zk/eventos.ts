@@ -222,31 +222,87 @@ export function parsearEventosZk(texto: string, nombreArchivo: string | null = n
   }
 
   const eventos = marcarRepeticiones(conTarjeta);
-  const utiles = eventos.filter((e) => e.concedido && !e.repeticion);
-  const entradas = utiles.filter((e) => e.sentido === "entrada").length;
-  const salidas = utiles.filter((e) => e.sentido === "salida").length;
   const tiempos = [...tiemposArchivo].sort();
 
   return {
     eventos,
     resumen: {
+      ...resumirEventos(eventos),
       filasArchivo: tabla.total,
       filasSinTarjeta,
       filasConTarjeta: eventos.length,
-      accesos: utiles.length,
-      repeticiones: eventos.filter((e) => e.repeticion).length,
-      rechazos: eventos.filter((e) => !e.concedido && !e.repeticion).length,
-      rechazosBrutos: eventos.filter((e) => !e.concedido).length,
-      tarjetasDistintas: new Set(utiles.map((e) => e.tarjeta)).size,
-      sinSentido: eventos.filter((e) => e.sentido === null).length,
-      entradas,
-      salidas,
-      desbalance: entradas > 0 ? Math.abs(entradas - salidas) / entradas : null,
       desde: tiempos[0] ?? null,
       hasta: tiempos[tiempos.length - 1] ?? null,
       exportadoEn: nombreArchivo === null ? null : exportadoEnDe(nombreArchivo),
       diasConActividad: new Set(tiemposArchivo.map(dia)).size,
       topeAlcanzado: tabla.topeAlcanzado,
+    },
+  };
+}
+
+/**
+ * Las cifras del resumen que salen de los eventos mismos, vengan de un archivo o de
+ * la base. Es UNA funcion para las dos fuentes a proposito: si el archivo y la base
+ * contaran los rechazos de forma distinta, la pantalla diria dos cosas del mismo dia.
+ */
+export function resumirEventos(eventos: EventoZk[]) {
+  const utiles = eventos.filter((e) => e.concedido && !e.repeticion);
+  const entradas = utiles.filter((e) => e.sentido === "entrada").length;
+  const salidas = utiles.filter((e) => e.sentido === "salida").length;
+  return {
+    accesos: utiles.length,
+    repeticiones: eventos.filter((e) => e.repeticion).length,
+    rechazos: eventos.filter((e) => !e.concedido && !e.repeticion).length,
+    rechazosBrutos: eventos.filter((e) => !e.concedido).length,
+    tarjetasDistintas: new Set(utiles.map((e) => e.tarjeta)).size,
+    sinSentido: eventos.filter((e) => e.sentido === null).length,
+    entradas,
+    salidas,
+    desbalance: entradas > 0 ? Math.abs(entradas - salidas) / entradas : null,
+  };
+}
+
+/** Lo que `zk_importaciones` sabe de cada ventana guardada y el resumen necesita. */
+export interface VentanaGuardada {
+  filasArchivo: number;
+  filasConTarjeta: number;
+  topeAlcanzado: boolean;
+  desde: string | null;
+  hasta: string | null;
+  exportadoEn?: string | null;
+}
+
+/**
+ * Una lectura reconstruida DESDE LA BASE: los eventos guardados de varias ventanas
+ * mas lo que `zk_importaciones` dice de cada archivo.
+ *
+ * Es lo que hace que la pestana no dependa del archivo que alguien subio en su
+ * navegador: quien abra la pestana manana ve lo mismo. Lo que la base no guarda
+ * —las filas sin tarjeta— se reconstruye por diferencia con lo que el archivo traia,
+ * que si quedo contado en la importacion. `desde` y `hasta` son los de las ventanas,
+ * no los de los eventos: la cobertura real es la del archivo, igual que al parsear.
+ */
+export function lecturaDesdeBase(eventos: EventoZk[], ventanas: VentanaGuardada[]): LecturaEventos {
+  const ordenados = [...eventos].sort((a, b) =>
+    a.ocurrioEn < b.ocurrioEn ? -1 : a.ocurrioEn > b.ocurrioEn ? 1 : a.idEvento - b.idEvento,
+  );
+  const filasArchivo = ventanas.reduce((s, v) => s + v.filasArchivo, 0);
+  const filasConTarjeta = ventanas.reduce((s, v) => s + v.filasConTarjeta, 0);
+  const desdes = ventanas.map((v) => v.desde).filter((x): x is string => x !== null).sort();
+  const hastas = ventanas.map((v) => v.hasta).filter((x): x is string => x !== null).sort();
+  const ultima = [...ventanas].sort((a, b) => ((a.hasta ?? "") < (b.hasta ?? "") ? 1 : -1))[0];
+  return {
+    eventos: ordenados,
+    resumen: {
+      ...resumirEventos(ordenados),
+      filasArchivo,
+      filasSinTarjeta: Math.max(0, filasArchivo - filasConTarjeta),
+      filasConTarjeta: ordenados.length,
+      desde: desdes[0] ?? null,
+      hasta: hastas[hastas.length - 1] ?? null,
+      exportadoEn: ultima?.exportadoEn ?? null,
+      diasConActividad: new Set(ordenados.map((e) => dia(e.ocurrioEn))).size,
+      topeAlcanzado: ventanas.some((v) => v.topeAlcanzado),
     },
   };
 }

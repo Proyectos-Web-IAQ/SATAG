@@ -107,6 +107,26 @@ Ejecutar en Supabase SQL Editor siguiendo el orden numerico.
 > y la API queda ambigua o sirviendo la firma equivocada. Los bloques que solo cambian el
 > *cuerpo* (mismo `create or replace`, 36/38/40/41) no lo necesitan.
 
+## Respaldos de datos (02/10/2026)
+
+Todo bloque de datos que deje una tabla de respaldo en `public` la deja **expuesta a la API**
+si no hace nada mas: el proyecto da `grant all ... to anon, authenticated` por omision a toda
+tabla nueva (`migrations/20260929120000_esquema_produccion.sql:3667-3668`), PostgREST la
+publica sola y `create table ... as` nace sin RLS. Paso con `_respaldo_reposiciones_02oct`
+(placas y observaciones de 18 expedientes) el 02/10.
+
+Regla:
+
+- El respaldo se llama `_respaldo_<que>_<fecha>`, para que el blindaje lo encuentre.
+- En la **misma ejecucion** que lo crea, el bloque hace
+  `alter table ... enable row level security` y
+  `revoke all on table ... from anon, authenticated, public`.
+  Si el bloque ya se corrio sin eso, se corre enseguida
+  `supabase/manual/2026-10-02_URGENTE_blindar_respaldos.sql`, que es idempotente y blinda
+  todos los `_respaldo*` de una vez.
+- El rollback comentado sigue funcionando: postgres y service_role conservan acceso.
+- Pasada una semana sin necesitarlo, el respaldo se borra con `drop table`.
+
 ## Ciclo de auditoria por tabla
 
 Para cada archivo:

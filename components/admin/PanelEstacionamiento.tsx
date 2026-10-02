@@ -15,6 +15,11 @@
 // lee como un reproche a quien vino a trabajar. Los numeros lo confirman: los coches
 // del personal apenas se mueven entre la media manana y el pico. Son carga base.
 //
+// DESDE OCTUBRE DE 2026 EL RESUMEN SIGUE DISEÑO.md: una frase que afirma el hallazgo,
+// la grafica que la respalda con su linea de lleno, y debajo las cifras como FILAS que
+// al tocarse resaltan su rango en la grafica y abren su detalle. Nada de tarjetas de
+// cifra. Las vistas de detalle (Secciones, Permanencia, limites) siguen debajo.
+//
 // ES PRESENTACIONAL A PROPOSITO. Recibe las cifras ya medidas y no consulta nada. NI
 // UNA MEDIANA SE CALCULA AQUI: la version anterior sacaba la mediana global
 // promediando las medianas por grupo y publicaba 4 h 10 m donde la real era 31 min.
@@ -29,20 +34,32 @@ import { useState } from "react";
 import { diaCorto } from "@/lib/caja";
 import { duracion } from "@/lib/duracion";
 import {
+  dentroEn,
+  FRANJA_DESDE,
+  FRANJA_HASTA,
   horaCorta,
+  medianaEn,
   MINUTO_MESETA,
+  minutosPorEncima,
+  minutosTipicosPorEncima,
+  picoDeLaMediana,
+  SHARE_SATURACION,
   UMBRAL_SHOUP,
   type Eleccion,
   type EstanciasRol,
   type Medicion,
+  type OcupacionLote,
   type UsoCredencial,
 } from "@/lib/estacionamiento";
 import type { ResumenEventos } from "@/lib/zk/eventos";
 import { esHuerfana, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
-import { EstanciasPorRol, HistogramaEstancias, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
+import { EstanciasPorRol, HistogramaEstancias, MiniDia, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
+import PlanoPlantel from "@/components/admin/PlanoPlantel";
+import VialidadBeta from "@/components/admin/VialidadBeta";
 import { Kpi, Kpis, Seccion, Segmentado, TablaPro, Vistas, type Columna } from "@/components/admin/UiEstacionamiento";
 
-const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : "—");
+// Con espacio fino antes del signo, como se escribe en español; y el mismo en toda la pantalla.
+const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}\u202f%` : "—");
 const dur = (min: number | null | undefined) => duracion((min ?? 0) * 60_000);
 
 /** Departamentos de ZK que, si aparecen en la bitácora, son el hallazgo. */
@@ -315,27 +332,31 @@ function VistaMaestroDetalle({
 export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento }) {
   const { m, eleccion, resumen, cupos, padron, fuentes, verIdentidad } = d;
   const [vista, setVista] = useState("resumen");
-  const [lote, setLote] = useState<string>(m.ocupacion.find((o) => o.pico.dentro > 0)?.lote ?? "E2");
+  // Se abre en el estacionamiento MAS LLENO contra su cupo —o contra si mismo, sin
+  // cupo—, porque ese es el que trae la noticia. El otro queda a un toque.
+  const [lote, setLote] = useState<string>(() => {
+    const razon = (o: OcupacionLote) => {
+      const c = cupos[o.lote];
+      return c ? o.pico.dentro / c : o.pico.dentro / 1000;
+    };
+    return [...m.ocupacion].sort((a, b) => razon(b) - razon(a))[0]?.lote ?? "E2";
+  });
   // Que seccion esta elegida en cada maestro-detalle. Van por separado para que
   // cambiar de pestana no pierda lo que se estaba mirando en la otra.
   const [sel, setSel] = useState<Record<string, string>>({});
+  // La fila abierta del resumen. Es la que se resalta en la grafica: cambiar de
+  // estacionamiento la devuelve al pico, que es por donde se empieza a leer.
+  const [fila, setFila] = useState<string | null>("pico");
+  const elegirLote = (l: string) => {
+    setLote(l);
+    setFila("pico");
+  };
 
   const totalEstancias = m.estancias.reduce((a, r) => a + r.estancias, 0);
   const largas = m.estancias.reduce((a, r) => a + r.largas, 0);
   const cortas = m.estancias.reduce((a, r) => a + r.cortas, 0);
   const censuradas = m.estancias.reduce((a, r) => a + r.censuradas, 0);
-  const enPicoTotal = m.enElPico.reduce((a, r) => a + r.coches, 0);
-  const enMesetaTotal = m.enLaMeseta.reduce((a, r) => a + r.coches, 0);
   const sinCupos = Object.values(cupos).every((c) => c === null);
-
-  const esPersonal = (rol: string) => rol === "Personal docente" || rol === "Administración y servicios";
-  const suma = (filas: { rol: string; coches: number }[]) =>
-    filas.filter((r) => esPersonal(r.rol)).reduce((a, r) => a + r.coches, 0);
-  const personalPico = suma(m.enElPico);
-  const personalMeseta = suma(m.enLaMeseta);
-
-  const oleadaE2 = m.oleada.porLote.find((x) => x.lote === "E2")?.coches ?? 0;
-  const oleadaE1 = m.oleada.porLote.find((x) => x.lote === "E1")?.coches ?? 0;
 
   // Las señales de catálogo son BÚSQUEDAS en el padrón, no aritmética: por eso viven
   // aquí y no en lib/. La estadística —quién se sale de la norma de su grupo— sí
@@ -488,6 +509,9 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
     { clave: "secciones", titulo: "Secciones", cuenta: totalMarcadas },
     { clave: "permanencia", titulo: "Permanencia" },
     { clave: "calidad", titulo: "Qué tan firme es esto" },
+    // La ultima y en beta a proposito: es el porque de todo esto —la calle—, pero
+    // la mitad de sus datos se capturan a mano y viven en el navegador.
+    { clave: "vialidad", titulo: "Vialidad · beta" },
   ];
 
   return (
@@ -547,180 +571,259 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
       )}
 
       {/* =============================================== RESUMEN =============== */}
-      {vista === "resumen" && (
-        <>
-          <Kpis>
-            <Kpi
-              rotulo="Su peor momento dura"
-              valor={m.ventana.minutos}
-              unidad="min, el día más lleno"
-              pie={
-                <>
-                  {m.ventana.minutos} minutos en total entre las {horaCorta(m.ventana.desde)} y las{" "}
-                  {horaCorta(m.ventana.hasta)} —no de corrido— con {m.ventana.umbral} coches o más dentro:
-                  el 95% de su máximo de {m.picoTotal.dentro}.
-                </>
-              }
-              marcada
-            />
-            <Kpi
-              rotulo="En el peor momento"
-              valor={
-                <>
-                  {m.picoTotal.dentro}
-                  {m.picoTotal.hasta > m.picoTotal.dentro && <span className="kpi__u">–{m.picoTotal.hasta}</span>}
-                </>
-              }
-              unidad="coches"
-              pie={<>el {m.picoTotal.dia ? diaCorto(m.picoTotal.dia) : "—"} a las {horaCorta(m.picoTotal.minuto)}</>}
-            />
-            <Kpi
-              rotulo="La oleada que lo produce"
-              valor={m.oleada.coches}
-              unidad="coches"
-              pie={<>entre {horaCorta(m.oleada.desde)} y {horaCorta(m.oleada.hasta)}; se van en {dur(m.oleada.medianaMin)}</>}
-            />
-            <Kpi
-              rotulo="Ventana medida"
-              valor={m.dias.length}
-              unidad="días"
-              pie={<>{m.diasComparables.length} comparables · {d.ventanas === 1 ? "primera exportación" : `${d.ventanas} exportaciones`}</>}
-            />
-          </Kpis>
+      {vista === "resumen" && oActivo && (() => {
+        /* Todo lo de aqui es LECTURA de la medicion para un estacionamiento: que
+           frase lo describe y que filas lo sostienen. No hay una mediana nueva. */
+        const o = oActivo;
+        const cupo = cupos[o.lote] ?? null;
+        const picoMin = o.pico.minuto;
+        const pctPico = cupo !== null && cupo > 0 ? Math.round((o.pico.dentro / cupo) * 100) : null;
+        const umbral = cupo !== null ? Math.round(cupo * 0.9) : Math.round(o.pico.dentro * SHARE_SATURACION);
+        const minDiaMax = minutosPorEncima(o.diaPico, umbral);
+        const minTipico = minutosTipicosPorEncima(o.franjas, umbral);
+        const minSinLugar = cupo !== null ? minutosPorEncima(o.diaPico, cupo - 1) : 0;
+        const mesetaTipica = medianaEn(o.franjas, MINUTO_MESETA);
+        const salida = picoDeLaMediana(o.franjas, 12 * 60, FRANJA_HASTA);
+        const oleadaLote = m.oleada.porLote.find((x) => x.lote === o.lote)?.coches ?? 0;
+        const enPico = [...o.porRol].sort((a, b) => b.cajonesEnElPico - a.cajonesEnElPico);
+        const enPicoTotalLote = enPico.reduce((a, r) => a + r.cajonesEnElPico, 0);
+        const porEstancias = [...o.porRol].filter((r) => r.medianaMin !== null).sort((a, b) => b.estancias - a.estancias);
+        const topeMediana = Math.max(...porEstancias.map((r) => r.medianaMin ?? 0), 1);
+        const nombre = `E${o.lote.slice(1)}`;
+        const diaPico = o.pico.dia ? diaCorto(o.pico.dia) : "el día más lleno";
 
-          <Seccion
-            rotulo="La forma del día"
-            titulo={`El ${m.picoTotal.dia ? diaCorto(m.picoTotal.dia) : "día más lleno"}, el estacionamiento estuvo en su peor momento ${m.ventana.minutos} minutos, no toda la jornada`}
-            nota={
+        // Donde empieza y termina el rato por encima del umbral, para resaltarlo.
+        let desdeUmbral: number | null = null;
+        let hastaUmbral: number | null = null;
+        for (let k = 0; k + 1 < o.diaPico.length; k += 1) {
+          if (o.diaPico[k].dentro > umbral) {
+            if (desdeUmbral === null) desdeUmbral = o.diaPico[k].minuto;
+            hastaUmbral = o.diaPico[k + 1].minuto;
+          }
+        }
+
+        const seLlena = cupo !== null && o.pico.dentro > umbral;
+        const titular =
+          cupo === null
+            ? `El ${nombre} estuvo en su peor momento ${minDiaMax} minutos, no toda la jornada.`
+            : seLlena
+              ? `El ${nombre} se llena ${minDiaMax} ${minDiaMax === 1 ? "minuto" : "minutos"} al día, no todo el día.`
+              : `El ${nombre} no se llena: en su peor momento llegó al ${pctPico} %.`;
+        const bajada =
+          cupo === null
+            ? `El ${diaPico} a las ${horaCorta(picoMin)} había ${o.pico.dentro} coches dentro. Falta contar sus cajones para decir si sobró lugar.`
+            : `El ${diaPico} a las ${horaCorta(picoMin)} había ${o.pico.dentro} coches en ${cupo} cajones, el ${pctPico} %. Pasada la oleada, un día típico baja a ${mesetaTipica} a media mañana.`;
+
+        interface Fila { k: string; q: string; a: string; rango: [number, number] | null; det: React.ReactNode }
+        const filas: Fila[] = [];
+        if (picoMin !== null) {
+          filas.push({
+            k: "pico",
+            q: "A qué hora llega a su máximo",
+            a: pctPico !== null ? `${horaCorta(picoMin)} · ${pctPico} %` : `${horaCorta(picoMin)} · ${o.pico.dentro} coches`,
+            rango: [Math.max(FRANJA_DESDE, picoMin - 10), Math.min(FRANJA_HASTA, picoMin + 10)],
+            det: (
               <>
-                Entre las {horaCorta(m.ventana.desde)} y las {horaCorta(m.ventana.hasta)} hubo{" "}
-                {m.ventana.umbral} coches o más dentro durante {m.ventana.minutos} de esos{" "}
-                {Math.round((m.ventana.hasta ?? 0) - (m.ventana.desde ?? 0))} minutos: el lleno va y viene.
-                El resto del día la ocupación es una meseta plana. La línea continua es el día más lleno
-                de cada estacionamiento; la punteada, la mitad de los {m.diasComparables.length} días
-                comparables, con la banda entre sus cuartiles: si la banda es estrecha, el día típico
-                existe de verdad.
-              </>
-            }
-          >
-            {m.ocupacion.map((o) => (
-              <div key={o.lote} style={{ marginTop: 14 }}>
-                <h4 className="ti-section-title">
-                  Estacionamiento {o.lote.slice(1)} · lo más lleno que se le vio fueron {o.pico.dentro} coches,
-                  el {o.pico.dia ? diaCorto(o.pico.dia) : "—"} a las {horaCorta(o.pico.minuto)}
-                </h4>
-                <OcupacionDelDia o={o} cupo={cupos[o.lote] ?? null} comparables={m.diasComparables.length} />
-              </div>
-            ))}
-            {/* Sumar los dos maximos da mas que el titular, y la razon no es un error:
-                cada estacionamiento llego a su tope en un dia distinto. Decirlo aqui
-                cuesta una linea; no decirlo deja a quien sume con la impresion de que
-                la pantalla se contradice, que es el defecto que ya costo una vez. */}
-            {m.ocupacion.filter((o) => o.pico.dia).length > 1 &&
-              new Set(m.ocupacion.map((o) => o.pico.dia).filter(Boolean)).size > 1 && (
-                <p className="ti-hint" style={{ marginTop: 10 }}>
-                  Los dos máximos suman{" "}
-                  {m.ocupacion.reduce((a, o) => a + o.pico.dentro, 0)}, más que los{" "}
-                  {m.picoTotal.dentro} del momento más lleno de arriba, y no es una contradicción:{" "}
-                  {m.ocupacion
-                    .filter((o) => o.pico.dia)
-                    .map((o) => `el ${o.lote.slice(1)} llegó a su tope el ${diaCorto(o.pico.dia as string)}`)
-                    .join(" y ")}
-                  . Cada uno se llenó su propio día, así que nunca estuvieron los dos en su máximo a la vez.
+                <p>
+                  El {diaPico} a las {horaCorta(picoMin)} había {o.pico.dentro} coches dentro
+                  {cupo !== null ? ` de ${cupo} cajones` : ""}. Quince minutos antes eran{" "}
+                  {dentroEn(o.diaPico, picoMin - 15)} y quince minutos después, {dentroEn(o.diaPico, picoMin + 15)}.
                 </p>
-              )}
-            {sinCupos && (
-              <p className="notice" style={{ margin: "14px 0 0", padding: "10px 12px" }}>
-                <strong>Estas curvas dicen cuántos coches entraron, no si hubo lugar.</strong> Falta el dato
-                más barato de todos: cuántos cajones tiene cada estacionamiento.
-              </p>
-            )}
-          </Seccion>
-
-          <Seccion
-            rotulo="Por dónde entra"
-            titulo={`De los ${m.oleada.coches} coches de la oleada, ${oleadaE2} entraron por el mismo estacionamiento`}
-            nota={
-              <>
-                {m.oleada.cortas} de los {m.oleada.coches} ({pct(m.oleada.cortas, m.oleada.coches)}) se van en
-                media hora o menos: es una oleada de paso, no de estancia. Y no es por falta de derecho —
-                de {eleccion.conDerechoAmbos} credenciales que pueden entrar a los dos, {eleccion.siempreE2} entraron
-                siempre por el 2.
+                {o.pico.hasta > o.pico.dentro && (
+                  <p>Pudieron ser hasta {o.pico.hasta}: la diferencia son coches cuya salida el lector no registró.</p>
+                )}
               </>
-            }
-          >
-            <Kpis>
-              <Kpi rotulo="Entraron por el 2" valor={oleadaE2} pie={`${pct(oleadaE2, m.oleada.coches)} de la oleada`} marcada />
-              <Kpi rotulo="Entraron por el 1" valor={oleadaE1} pie={`${pct(oleadaE1, m.oleada.coches)} de la oleada`} />
-              <Kpi rotulo="Se quedan" valor={dur(m.oleada.medianaMin)} pie="mediana de la oleada" />
-              <Kpi
-                rotulo="Con derecho a los dos"
-                valor={eleccion.conDerechoAmbos}
-                pie={
-                  eleccion.conUnaSolaEntrada > 0
-                    ? `${eleccion.conUnaSolaEntrada} de ellas entraron una sola vez: su «siempre» es una observación`
-                    : "y que además usaron el estacionamiento"
-                }
-              />
-            </Kpis>
-          </Seccion>
-
-          <Seccion
-            rotulo="De dónde sale el pico"
-            titulo={`De los ${enPicoTotal - enMesetaTotal} coches que aparecen entre media mañana y el peor momento, la mayoría son de padres de familia`}
-            nota={
-              <>
-                Las dos columnas son el mismo día, {m.picoTotal.dia ? diaCorto(m.picoTotal.dia) : "—"}: una a
-                las {horaCorta(MINUTO_MESETA)} y otra en el pico de las {horaCorta(m.picoTotal.minuto)}. Las
-                cifras son coches, no proporciones: los dos momentos tienen totales distintos
-                ({enMesetaTotal} contra {enPicoTotal}), así que un porcentaje compararía peras con
-                manzanas. El personal
-                pasa de {personalMeseta} a {personalPico} coches — prácticamente no se mueve, porque es una
-                jornada de trabajo y no una elección de horario. Lo que aparece en el pico es otra población.
-              </>
-            }
-          >
-            <TablaPro
-              filas={m.enElPico.map((r) => ({
-                rol: r.rol,
-                pico: r.coches,
-                meseta: m.enLaMeseta.find((x) => x.rol === r.rol)?.coches ?? 0,
-              }))}
-              claveFila={(f) => f.rol}
-              ordenInicial="pico"
-              cols={[
-                { clave: "rol", titulo: "Grupo", pie: "resuelto contra el padrón", celda: (f) => f.rol, orden: (f) => f.rol },
-                {
-                  clave: "meseta", titulo: "A media mañana",
-                  pie: `coches dentro a las ${horaCorta(MINUTO_MESETA)} (${enMesetaTotal} en total)`, num: true,
-                  celda: (f) => f.meseta,
-                  orden: (f) => f.meseta,
-                },
-                {
-                  clave: "pico", titulo: "En el peor momento",
-                  pie: `coches dentro a las ${horaCorta(m.picoTotal.minuto)} (${enPicoTotal} en total)`, num: true,
-                  celda: (f) => f.pico,
-                  orden: (f) => f.pico,
-                  barra: (f) => f.pico / Math.max(enPicoTotal, 1),
-                },
-                {
-                  clave: "dif", titulo: "Diferencia", pie: "cuánto creció de una a otra", num: true,
-                  celda: (f) => (f.pico - f.meseta >= 0 ? `+${f.pico - f.meseta}` : `${f.pico - f.meseta}`),
-                  orden: (f) => f.pico - f.meseta,
-                },
-              ]}
-            />
-            <p className="ti-hint" style={{ marginTop: 10 }}>
-              Los {enPicoTotal} del peor momento son los coches con entrada y salida leídas, y es la misma
-              cifra del titular: esta tabla y el pico salen del mismo cálculo, así que no pueden discrepar.
-              {m.picoTotal.hasta > m.picoTotal.dentro && (
-                <> Además había hasta {m.picoTotal.hasta}: la diferencia son {m.picoTotal.hasta - m.picoTotal.dentro} coches
-                que entraron y cuya salida el lector nunca registró.</>
-              )}
+            ),
+          });
+        }
+        filas.push({
+          k: "dura",
+          q: cupo !== null ? "Cuánto pasa por encima del 90 %" : "Cuánto dura su peor momento",
+          a: `${minDiaMax} min`,
+          rango: desdeUmbral !== null && hastaUmbral !== null ? [desdeUmbral, hastaUmbral] : null,
+          det: (
+            <p>
+              El {diaPico} pasó {minDiaMax} minutos con más de {umbral} coches dentro
+              {cupo !== null && minSinLugar > 0 ? `, y ${minSinLugar} de ellos sin un solo cajón libre` : ""}.
+              Un día típico pasa {minTipico}. {cupo === null ? "El umbral es el 95 % de su propio máximo, porque no hay cajones contados." : ""}
             </p>
-          </Seccion>
-        </>
-      )}
+          ),
+        });
+        filas.push({
+          k: "entrada",
+          q: "Por dónde entra la oleada",
+          a: `${oleadaLote} de ${m.oleada.coches}`,
+          rango: [m.oleada.desde, m.oleada.hasta],
+          det: (
+            <>
+              <p>
+                De los {m.oleada.coches} coches que entran entre {horaCorta(m.oleada.desde)} y {horaCorta(m.oleada.hasta)},
+                {" "}{oleadaLote} lo hacen por el {nombre}. Cada estacionamiento tiene una sola puerta, con la entrada de un
+                lado y la salida del otro: los que entran y los que ya dejaron a alguien se cruzan ahí.
+              </p>
+              <p>
+                {m.oleada.cortas} de los {m.oleada.coches} ({pct(m.oleada.cortas, m.oleada.coches)}) se van en media hora o
+                menos. De {eleccion.conDerechoAmbos} credenciales con derecho a los dos, {eleccion.siempreE2} entraron siempre
+                por el E2.
+              </p>
+            </>
+          ),
+        });
+        if (enPicoTotalLote > 0) {
+          filas.push({
+            k: "quien",
+            q: "Quién está dentro en el pico",
+            a: `${enPico[0].rol} ${pct(enPico[0].cajonesEnElPico, enPicoTotalLote)}`,
+            rango: picoMin !== null ? [Math.max(FRANJA_DESDE, picoMin - 10), Math.min(FRANJA_HASTA, picoMin + 10)] : null,
+            det: (
+              <>
+                <p>En su peor momento, por grupo:</p>
+                <div className="barras">
+                  {enPico.filter((r) => r.cajonesEnElPico > 0).map((r) => (
+                    <div className="barra" key={r.rol}>
+                      <span>{r.rol}</span>
+                      <span className="barra__t"><i style={{ width: `${Math.round((r.cajonesEnElPico / enPicoTotalLote) * 100)}%` }} /></span>
+                      <span className="barra__v">{r.cajonesEnElPico}</span>
+                    </div>
+                  ))}
+                </div>
+                <p>Suman {enPicoTotalLote}: salen del mismo barrido que el pico, así que no pueden discrepar.</p>
+              </>
+            ),
+          });
+        }
+        if (porEstancias.length > 0) {
+          filas.push({
+            k: "estancia",
+            q: "Cuánto se queda cada grupo, mediana",
+            a: `${porEstancias[0].rol} ${dur(porEstancias[0].medianaMin)}`,
+            rango: null,
+            det: (
+              <>
+                <div className="barras">
+                  {porEstancias.map((r) => (
+                    <div className="barra" key={r.rol}>
+                      <span>{r.rol}</span>
+                      <span className="barra__t"><i style={{ width: `${Math.round(((r.medianaMin ?? 0) / topeMediana) * 100)}%` }} /></span>
+                      <span className="barra__v">{dur(r.medianaMin)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p>
+                  No hay una mediana del estacionamiento a propósito: mezclar a quien deja a un niño con quien
+                  trabaja ocho horas da una cifra que no describe a nadie. Se usa la mediana y no el promedio
+                  por la misma razón.
+                </p>
+              </>
+            ),
+          });
+        }
+        if (salida !== null && picoMin !== null && salida.minuto > picoMin + 90) {
+          filas.push({
+            k: "salida",
+            q: "La salida escolar",
+            a: cupo !== null ? `${horaCorta(salida.minuto)} · ${Math.round((salida.p50 / cupo) * 100)} %` : `${horaCorta(salida.minuto)} · ${salida.p50} coches`,
+            rango: [salida.minuto - 25, Math.min(FRANJA_HASTA, salida.minuto + 25)],
+            det: (
+              <p>
+                La salida produce una segunda oleada: en un día típico hay {salida.p50} coches dentro a las{" "}
+                {horaCorta(salida.minuto)}{cupo !== null ? `, el ${Math.round((salida.p50 / cupo) * 100)} % de los cajones` : ""}.
+                Es más ancha y más baja que la de la mañana porque las salidas por sección se escalonan.
+              </p>
+            ),
+          });
+        }
+        const abierta = filas.find((f) => f.k === fila) ?? null;
+        const anotaciones = [{ minuto: 7 * 60, texto: "Entrada" }].concat(
+          salida !== null && picoMin !== null && salida.minuto > picoMin + 90 ? [{ minuto: salida.minuto, texto: "Salida escolar" }] : [],
+        );
+        const techoPar = Math.max(...m.ocupacion.map((x) => Math.max(cupos[x.lote] ?? 0, x.pico.hasta, ...x.franjas.map((f) => f.p75))), 10);
+
+        return (
+          <>
+            <p className="titular__migas">
+              <span>Estacionamiento</span>
+              <span>›</span>
+              <span>{m.dias.length === 1 ? diaCorto(m.dias[0]) : `del ${diaCorto(m.dias[0])} al ${diaCorto(m.dias[m.dias.length - 1])}`}</span>
+            </p>
+            <h2 className="titular">{titular}</h2>
+            <p className="titular__sub">{bajada}</p>
+
+            {m.ocupacion.length > 1 && (
+              <Segmentado
+                etiqueta="Estacionamiento"
+                activa={lote}
+                onCambio={elegirLote}
+                opciones={m.ocupacion.map((x) => ({ clave: x.lote, titulo: `E${x.lote.slice(1)}` }))}
+              />
+            )}
+
+            <OcupacionDelDia
+              o={o}
+              cupo={cupo}
+              comparables={m.diasComparables.length}
+              resalte={abierta?.rango ?? null}
+              anotaciones={anotaciones}
+            />
+
+            <div className="filas">
+              {filas.map((f) => (
+                <div className="fila" key={f.k} data-abierta={f.k === fila}>
+                  <button type="button" className="fila__b" aria-expanded={f.k === fila}
+                    onClick={() => setFila((v) => (v === f.k ? null : f.k))}>
+                    <span className="fila__q">{f.q}</span>
+                    <span className="fila__a">{f.a}</span>
+                    <span className="fila__flecha" aria-hidden="true">›</span>
+                  </button>
+                  {f.k === fila && <div className="fila__det">{f.det}</div>}
+                </div>
+              ))}
+            </div>
+
+            {m.ocupacion.length > 1 && (
+              <section className="seccion-plana">
+                <h3>Los dos estacionamientos, lado a lado</h3>
+                <p className="sub">Misma escala y mismo día típico. La diferencia está en la hora y la forma, no solo en la altura.</p>
+                <div className="par">
+                  {m.ocupacion.map((x) => {
+                    const c = cupos[x.lote] ?? null;
+                    const p = picoDeLaMediana(x.franjas, FRANJA_DESDE, FRANJA_HASTA);
+                    return (
+                      <div key={x.lote}>
+                        <h4>E{x.lote.slice(1)}</h4>
+                        <p>
+                          {p ? `Un día típico llega a ${p.p50} a las ${horaCorta(p.minuto)}` : "Sin día típico"}
+                          {c !== null && p ? `, el ${Math.round((p.p50 / c) * 100)} % de sus ${c} cajones.` : "."}
+                        </p>
+                        <MiniDia o={x} cupo={c} techo={techoPar} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+
+            <section className="seccion-plana">
+              <h3>El plantel a lo largo del día</h3>
+              <p className="sub">Mueva la hora y vea cómo cambia cada estacionamiento sobre el mismo plano.</p>
+              <PlanoPlantel ocupacion={m.ocupacion} cupos={cupos} minutoInicial={m.picoTotal.minuto} />
+            </section>
+
+            <div className="firme">
+              <div>
+                <strong>Qué tan firme es esto.</strong> {m.diasComparables.length} de {m.dias.length} días describen un día
+                normal{m.corte ? `, y el archivo corta el ${diaCorto(m.corte.dia)} a las ${horaCorta(m.corte.minuto)}` : ""}.
+                El detalle está en «Qué tan firme es esto».
+              </div>
+              <div>
+                {sinCupos
+                  ? "Estas curvas dicen cuántos coches hay dentro, no si sobró lugar: falta contar los cajones de cada estacionamiento."
+                  : `Los cajones son los contados por el Instituto: ${m.ocupacion.map((x) => `${cupos[x.lote] ?? "sin contar"} en el E${x.lote.slice(1)}`).join(" y ")}.`}
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* =========================================== ESTACIONAMIENTOS =========== */}
       {vista === "lotes" && oActivo && (
@@ -728,52 +831,12 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
           <Segmentado
             etiqueta="Estacionamiento"
             activa={lote}
-            onCambio={setLote}
+            onCambio={elegirLote}
             opciones={m.ocupacion.map((o) => ({
               clave: o.lote,
               titulo: `Estacionamiento ${o.lote.slice(1)} · hasta ${o.pico.dentro} coches`,
             }))}
           />
-
-          <Kpis>
-            <Kpi
-              rotulo="Lo más lleno que se le vio"
-              valor={oActivo.pico.dentro}
-              unidad="coches"
-              pie={
-                <>
-                  el {oActivo.pico.dia ? diaCorto(oActivo.pico.dia) : "—"} a las {horaCorta(oActivo.pico.minuto)}
-                  {oActivo.pico.hasta > oActivo.pico.dentro && ` · hasta ${oActivo.pico.hasta} con las salidas no leídas`}
-                </>
-              }
-              marcada
-            />
-            <Kpi
-              rotulo="Coches de la oleada que entraron por aquí"
-              valor={m.oleada.porLote.find((x) => x.lote === oActivo.lote)?.coches ?? 0}
-              unidad="coches"
-              pie={<>de los {m.oleada.coches} de la oleada, entre {horaCorta(m.oleada.desde)} y {horaCorta(m.oleada.hasta)}</>}
-            />
-            <Kpi
-              rotulo="Credenciales distintas"
-              valor={oActivo.tarjetas}
-              pie={`${oActivo.entradas} entradas y ${oActivo.salidas} salidas`}
-            />
-            <Kpi
-              rotulo={cupos[oActivo.lote] != null ? "Ocupación en su peor momento" : "Se saturaría con"}
-              valor={
-                cupos[oActivo.lote] != null
-                  ? pct(oActivo.pico.dentro, cupos[oActivo.lote] as number)
-                  : Math.floor(oActivo.pico.dentro / UMBRAL_SHOUP)
-              }
-              unidad={cupos[oActivo.lote] != null ? undefined : "cajones o menos"}
-              pie={
-                cupos[oActivo.lote] != null
-                  ? `sobre ${cupos[oActivo.lote]} cajones contados`
-                  : `al ${Math.round(UMBRAL_SHOUP * 100)}% ya se da vueltas buscando lugar`
-              }
-            />
-          </Kpis>
 
           <Seccion
             rotulo={`Estacionamiento ${oActivo.lote.slice(1)}`}
@@ -962,6 +1025,9 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
           </p>
         </Seccion>
       )}
+
+      {/* =============================================== VIALIDAD (beta) ======= */}
+      {vista === "vialidad" && <VialidadBeta m={m} />}
 
       {/* =============================================== CALIDAD =============== */}
       {vista === "calidad" && (

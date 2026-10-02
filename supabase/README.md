@@ -178,6 +178,11 @@ que alguien ya acoto a mano; dejarlo encendido deshara ese trabajo en cuanto un 
 cree objetos. Apagarlo **no** cierra lo ya expuesto: solo cambia el comportamiento de lo que
 venga. Revisar que quedaria fuera antes de tocarlo.
 
+**Actualizacion 02/10/2026: la recomendacion es apagarlo.** Ese dia un bloque de datos dejo
+`_respaldo_reposiciones_02oct` legible con la llave publicable (ver «Respaldos de datos» en
+`sql/README.md` y `manual/2026-10-02_URGENTE_blindar_respaldos.sql`). Apagarlo no sustituye
+el revoke de cada tabla nueva: los privilegios por omision siguen dando `grant all` a `anon`.
+
 ### Vault, `pg_net` y el interruptor `parametros` (bloque 66, 15-sep-2026)
 
 El aviso al espacio de Google Chat "SATAG - TI" depende de piezas que no se ven en el

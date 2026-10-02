@@ -14,7 +14,7 @@
 // pico rotulado. Comparar dos numeros grandes lado a lado se lee igual de bien y no
 // pide un color que significaria «la otra cosa», que es justo lo que la regla evita.
 
-import { FRANJA_DESDE, FRANJA_HASTA, horaCorta, type CubetaEstancia, type EstanciasRol, type OcupacionLote } from "@/lib/estacionamiento";
+import { FRANJA_DESDE, FRANJA_HASTA, horaCorta, medianaEn, type CubetaEstancia, type EstanciasRol, type OcupacionLote } from "@/lib/estacionamiento";
 import { duracion } from "@/lib/duracion";
 
 const W = 720;
@@ -51,11 +51,21 @@ export function OcupacionDelDia({
   o,
   cupo,
   comparables,
+  resalte = null,
+  anotaciones = [],
 }: {
   o: OcupacionLote;
   cupo: number | null;
   /** Cuantos dias entran en la mediana. Va en la leyenda: una mediana sin su n es una cifra sin poblacion. */
   comparables: number;
+  /**
+   * Un rango de minutos que se pinta de fondo: es lo que la fila elegida debajo de
+   * la grafica esta explicando (DISEÑO.md §3.3). La fila y la franja son la misma
+   * cosa vista dos veces, por eso se resalta aqui y no en un globo.
+   */
+  resalte?: [number, number] | null;
+  /** Rotulos sobre el dato —«Entrada», «Salida escolar»— en vez de una leyenda. */
+  anotaciones?: { minuto: number; texto: string }[];
 }) {
   const izq = 46, der = 14, arriba = 26, alto = 168, abajo = 28;
   const H = arriba + alto + abajo;
@@ -66,8 +76,10 @@ export function OcupacionDelDia({
   // falta el aforo. Una grafica que llena su marco dice «lleno» aunque el texto de
   // al lado diga lo contrario, y gana la forma. Con el aforo contado, el techo lo
   // fija el aforo y la lectura vuelve a ser honesta.
+  // Con cupo, un 8% de aire arriba de la linea de lleno: pegada al borde del marco
+  // no se ve como linea sino como marco, y su rotulo no cabe.
   const HOLGURA = 1.2;
-  const techo = cupo !== null ? Math.max(cupo, o.pico.hasta) : Math.max(Math.ceil(o.pico.hasta * HOLGURA), 10);
+  const techo = cupo !== null ? Math.max(cupo, o.pico.hasta) * 1.08 : Math.max(Math.ceil(o.pico.hasta * HOLGURA), 10);
   const x = (m: number) => r(izq + ((m - FRANJA_DESDE) / (FRANJA_HASTA - FRANJA_DESDE)) * ancho);
   const y = (n: number) => r(arriba + alto - (n / techo) * alto);
 
@@ -99,7 +111,7 @@ export function OcupacionDelDia({
     [...o.franjas].reverse().map((f) => `L ${x(f.minuto)} ${y(f.p25)}`).join(" ") +
     " Z";
 
-  const marcas = [0, Math.round(techo / 2), techo];
+  const marcas = cupo !== null ? [0, Math.round(cupo / 2), cupo] : [0, Math.round(techo / 2), Math.round(techo)];
   const horas = etiquetaHoras(FRANJA_DESDE, FRANJA_HASTA);
   const diaRotulo = o.pico.dia ? diaLegible(o.pico.dia) : "el día más lleno";
 
@@ -131,12 +143,32 @@ export function OcupacionDelDia({
             </g>
           ))}
 
+          {resalte !== null && (
+            <rect className="viz-resalte" x={x(resalte[0])} y={arriba - 6}
+              width={Math.max(3, x(resalte[1]) - x(resalte[0]))} height={alto + 6} />
+          )}
+
           {cupo !== null && (
             <g>
               <line className="viz-aforo" x1={izq} x2={W - der} y1={y(cupo)} y2={y(cupo)} />
-              <text className="viz-anotacion" x={W - der} y={y(cupo) - 6} textAnchor="end">{cupo} cajones</text>
+              <text className="viz-anotacion" x={W - der} y={y(cupo) - 6} textAnchor="end">Lleno · {cupo} cajones</text>
             </g>
           )}
+
+          {anotaciones.map((a) => {
+            const v = Math.max(enElDia(a.minuto), medianaEn(o.franjas, a.minuto));
+            const izquierda = a.minuto < (FRANJA_DESDE + FRANJA_HASTA) / 2;
+            return (
+              <g key={a.minuto}>
+                {/* Pegada al dato y no al marco, asi nunca se encima con la linea de
+                    lleno. Por la manana el texto va a la IZQUIERDA de la guia, donde el
+                    dia todavia no empieza; por la tarde va encima, donde no hay nada. */}
+                <line className="viz-guia" x1={x(a.minuto)} x2={x(a.minuto)} y1={y(v) - (izquierda ? 4 : 26)} y2={y(v) + (izquierda ? 12 : -6)} />
+                <text className="viz-marca" x={izquierda ? x(a.minuto) - 6 : x(a.minuto)} y={izquierda ? y(v) + 4 : y(v) - 30}
+                  textAnchor={izquierda ? "end" : "middle"}>{a.texto}</text>
+              </g>
+            );
+          })}
 
           <path className="viz-area" d={banda} />
           <path className="viz-linea-tipica" d={mediana} />
@@ -353,5 +385,49 @@ export function EstanciasPorRol({ filas }: { filas: EstanciasRol[] }) {
         </svg>
       </div>
     </div>
+  );
+}
+
+/**
+ * El dia tipico de UN estacionamiento, chico, para poner los dos lado a lado.
+ *
+ * Misma escala en los dos a proposito: la comparacion que importa es la forma —una
+ * oleada corta contra una meseta— y la altura contra su propia linea de lleno. Sin
+ * eje vertical: lleva su cupo rotulado y eso basta para leerla.
+ */
+export function MiniDia({ o, cupo, techo }: { o: OcupacionLote; cupo: number | null; techo: number }) {
+  const w = 340, ht = 128, izq = 4, der = 4, arriba = 22, abajo = 18;
+  const alto = ht - arriba - abajo;
+  const x = (m: number) => r(izq + ((m - FRANJA_DESDE) / (FRANJA_HASTA - FRANJA_DESDE)) * (w - izq - der));
+  const y = (n: number) => r(arriba + alto - (n / Math.max(techo, 1)) * alto);
+  const linea = o.franjas.map((f, i) => `${i === 0 ? "M" : "L"} ${x(f.minuto)} ${y(f.p50)}`).join(" ");
+  const area = `${linea} L ${x(FRANJA_HASTA)} ${y(0)} L ${x(FRANJA_DESDE)} ${y(0)} Z`;
+  const pico = o.franjas.reduce((a, b) => (b.p50 > a.p50 ? b : a), o.franjas[0]);
+  return (
+    <svg className="mini-dia" viewBox={`0 0 ${w} ${ht}`} role="img"
+      aria-label={`Día típico del estacionamiento ${o.lote}: hasta ${pico?.p50 ?? 0} coches a las ${horaCorta(pico?.minuto ?? null)}${cupo !== null ? ` de ${cupo} cajones` : ""}.`}>
+      <line className="viz-eje" x1={izq} x2={w - der} y1={y(0)} y2={y(0)} />
+      {cupo !== null && (
+        <g>
+          <line className="viz-aforo" x1={izq} x2={w - der} y1={y(cupo)} y2={y(cupo)} />
+          <text className="viz-marca" x={w - der} y={y(cupo) - 4} textAnchor="end">{cupo} cajones</text>
+        </g>
+      )}
+      <path className="viz-area" d={area} />
+      <path className="viz-linea-tipica" d={linea} />
+      {pico && pico.p50 > 0 && (() => {
+        // Si el pico roza la linea de lleno, el rotulo va debajo del punto para no
+        // encimarse con el de los cajones.
+        const pegado = cupo !== null && y(pico.p50) - y(cupo) < 16;
+        return (
+          <text className="viz-anotacion" x={x(pico.minuto) + (pico.minuto < 13 * 60 ? 6 : -6)}
+            y={pegado ? y(pico.p50) + 16 : y(pico.p50) - 6}
+            textAnchor={pico.minuto < 13 * 60 ? "start" : "end"}>{pico.p50} a las {horaCorta(pico.minuto)}</text>
+        );
+      })()}
+      {[7 * 60, 12 * 60, 17 * 60].map((m) => (
+        <text key={m} className="viz-marca" x={x(m)} y={ht - 4} textAnchor="middle">{horaCorta(m)}</text>
+      ))}
+    </svg>
   );
 }
