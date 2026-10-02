@@ -30,7 +30,7 @@ const CLAVE = "satag.vialidad.beta.v1";
 const HORAS = [6 * 60 + 30, 7 * 60, 7 * 60 + 15, 7 * 60 + 30, 7 * 60 + 45, 8 * 60, 10 * 60, 14 * 60 + 15, 14 * 60 + 30, 14 * 60 + 45];
 const REFERENCIA = 10 * 60;
 
-interface Captura {
+interface DatosCalle {
   ruta: string;
   /** Minutos del trayecto por hora del dia, segun Google. */
   minutos: Record<string, number | null>;
@@ -38,13 +38,13 @@ interface Captura {
   capturadoEl: string | null;
 }
 
-const VACIA: Captura = { ruta: "Prol. Bernardo Quintana, de Calz. de los Arcos a la glorieta", minutos: {}, capturadoEl: null };
+const VACIA: DatosCalle = { ruta: "Prol. Bernardo Quintana, de Calz. de los Arcos a la glorieta", minutos: {}, capturadoEl: null };
 
-function leer(): Captura {
+function leer(): DatosCalle {
   try {
     const raw = localStorage.getItem(CLAVE);
     if (!raw) return VACIA;
-    const c = JSON.parse(raw) as Partial<Captura>;
+    const c = JSON.parse(raw) as Partial<DatosCalle>;
     return { ruta: c.ruta ?? VACIA.ruta, minutos: c.minutos ?? {}, capturadoEl: c.capturadoEl ?? null };
   } catch {
     return VACIA;
@@ -52,7 +52,7 @@ function leer(): Captura {
 }
 
 export default function VialidadBeta({ m }: { m: Medicion }) {
-  const [c, setC] = useState<Captura>(VACIA);
+  const [c, setC] = useState<DatosCalle>(VACIA);
   const [listo, setListo] = useState(false);
   const id = useId();
 
@@ -61,7 +61,7 @@ export default function VialidadBeta({ m }: { m: Medicion }) {
     setListo(true);
   }, []);
 
-  const guardar = (nuevo: Captura) => {
+  const guardar = (nuevo: DatosCalle) => {
     const conFecha = { ...nuevo, capturadoEl: new Date().toISOString().slice(0, 10) };
     setC(conFecha);
     try {
