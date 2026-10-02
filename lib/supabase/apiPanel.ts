@@ -309,18 +309,20 @@ export async function listNotasSinExpediente(): Promise<Solicitud[]> {
   return (data as unknown as SolicitudRow[]).map(mapSolicitud);
 }
 
-// Catalogo de estacionamientos activos (para los chips de asignacion en TI).
+// Catalogo de estacionamientos activos: los chips de asignacion en TI y, con
+// `cupo_lugares`, el denominador de la saturacion en la pestana Estacionamiento.
 export async function getEstacionamientos(): Promise<Estacionamiento[]> {
   const { data, error } = await supabaseAuth
     .from("estacionamientos")
-    .select("clave, descripcion, activo")
+    .select("clave, descripcion, activo, cupo_lugares")
     .eq("activo", true)
     .order("clave");
   if (error) throw new Error(traducirError(error.message));
-  return (data as { clave: string; descripcion: string | null; activo: boolean }[]).map((e) => ({
+  return (data as { clave: string; descripcion: string | null; activo: boolean; cupo_lugares: number | null }[]).map((e) => ({
     clave: e.clave,
     descripcion: e.descripcion ?? e.clave,
     activo: e.activo,
+    cupoLugares: e.cupo_lugares,
   }));
 }
 

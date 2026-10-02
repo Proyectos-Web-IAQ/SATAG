@@ -27,6 +27,7 @@ import Loader from "@/components/Loader";
 import PanelEstacionamiento, { type DatosEstacionamiento } from "@/components/admin/PanelEstacionamiento";
 import {
   cargarEventosZk,
+  getEstacionamientos,
   listImportacionesZk,
   listPadronEstacionamiento,
   type ImportacionZk,
@@ -50,6 +51,9 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
 export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; email: string | null }) {
   const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(null);
   const [importaciones, setImportaciones] = useState<ImportacionZk[]>([]);
+  // Cajones contados por estacionamiento (bloque 79). Sin ellos la pantalla dice
+  // ocupacion pero no saturacion; un lote sin contar se queda en `null`.
+  const [cupos, setCupos] = useState<Record<string, number | null>>({ E1: null, E2: null });
   const [error, setError] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
 
@@ -66,9 +70,10 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     setCargando(true);
     setError(null);
     try {
-      const [p, i] = await Promise.all([listPadronEstacionamiento(), listImportacionesZk()]);
+      const [p, i, e] = await Promise.all([listPadronEstacionamiento(), listImportacionesZk(), getEstacionamientos()]);
       setPadron(p);
       setImportaciones(i);
+      setCupos(Object.fromEntries([["E1", null], ["E2", null], ...e.map((x) => [x.clave, x.cupoLugares] as const)]));
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo leer el padrón.");
     } finally {
@@ -220,7 +225,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           m,
           eleccion: medirEleccion(lectura.eventos, tieneAmbos),
           resumen: lectura.resumen,
-          cupos: { E1: null, E2: null },
+          cupos,
           padron: personas,
           fuentes,
           verIdentidad: VEN_IDENTIDAD.includes(rol),
