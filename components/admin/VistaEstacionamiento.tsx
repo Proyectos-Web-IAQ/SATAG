@@ -28,6 +28,8 @@
 import { useEffect, useRef, useState } from "react";
 import Loader from "@/components/Loader";
 import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
+import GenteEstacionamiento, { SeccionesEstacionamiento } from "@/components/admin/GenteEstacionamiento";
+import type { Registro } from "@/lib/mock/types";
 import {
   cargarEventosZk,
   cargarPadronZk,
@@ -36,6 +38,7 @@ import {
   listEventosZk,
   listImportacionesZk,
   listPadronEstacionamiento,
+  listRegistros,
   idsEventosGuardados,
   listPadronZk,
   type CargaPadronZk,
@@ -85,6 +88,8 @@ const memoria: {
   cargaPadron?: CargaPadronZk | null;
   archivo?: string | null;
   bytes?: ArrayBuffer | null;
+  /** El padron completo de SATAG, que solo piden las vistas de gente. */
+  registros?: Registro[];
 } = {};
 
 /** «2026-10-02T18:55:00+00:00» a «02/10/2026». */
@@ -104,8 +109,8 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/** Las vistas que atiende este contenedor: las del panel, y la de los archivos de ZK. */
-export type VistaEstac = VistaPanel | "archivos";
+/** Las vistas que atiende este contenedor: las del panel, las dos de gente y la de los archivos de ZK. */
+export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos";
 
 export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPanel; email: string | null; vista: VistaEstac }) {
   const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
@@ -139,11 +144,16 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     respuesta: Extract<RespuestaCargaPadronZk, { requiereConfirmacion: true }>;
   } | null>(null);
   const bytesRef = useRef<ArrayBuffer | null>(memoria.bytes ?? null);
+  // El padron completo de SATAG (con TAGs, vehiculo, movimientos): lo piden solo las
+  // vistas de gente, y se baja la primera vez que se abre una.
+  const [registros, setRegistros] = useState<Registro[] | undefined>(memoria.registros);
+  const [cargandoRegistros, setCargandoRegistros] = useState(false);
+  const [errorRegistros, setErrorRegistros] = useState<string | null>(null);
 
   // Cada cambio de estado que cuesta reconstruir se anota en la memoria del modulo.
   useEffect(() => {
-    Object.assign(memoria, { padron: padron ?? undefined, importaciones, cupos, lectura, origen, serie, personas, cargaPadron, archivo, bytes: bytesRef.current });
-  }, [padron, importaciones, cupos, lectura, origen, serie, personas, cargaPadron, archivo]);
+    Object.assign(memoria, { padron: padron ?? undefined, importaciones, cupos, lectura, origen, serie, personas, cargaPadron, archivo, registros, bytes: bytesRef.current });
+  }, [padron, importaciones, cupos, lectura, origen, serie, personas, cargaPadron, archivo, registros]);
 
   /**
    * Baja de la base las ventanas de las ultimas DIAS_SERIE y mide con ellas. Es lo
@@ -214,6 +224,24 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     if (memoria.padron === undefined) cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function cargarRegistros() {
+    setCargandoRegistros(true);
+    setErrorRegistros(null);
+    try {
+      setRegistros(await listRegistros());
+    } catch (err) {
+      setErrorRegistros(err instanceof Error ? err.message : "No se pudo leer el padrón.");
+    } finally {
+      setCargandoRegistros(false);
+    }
+  }
+
+  useEffect(() => {
+    if ((vista === "lotes" || vista === "secciones") && registros === undefined && !cargandoRegistros) cargarRegistros();
+    // Solo cuando se entra a una vista de gente sin padron: lo demas es estado propio.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vista]);
 
   async function elegirBitacora(f: File | null) {
     if (!f) return;
@@ -652,7 +680,23 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         </p>
       )}
       {datos ? (
-        <PanelEstacionamiento d={datos} vista={vista} />
+        vista === "lotes" || vista === "secciones" ? (
+          (() => {
+            const comunes = {
+              m: datos.m,
+              registros: registros ?? [],
+              cargando: cargandoRegistros,
+              error: errorRegistros,
+              personas,
+              fuentes: datos.fuentes,
+              rol,
+              onReintentar: cargarRegistros,
+            };
+            return vista === "lotes" ? <GenteEstacionamiento {...comunes} /> : <SeccionesEstacionamiento {...comunes} cupos={cupos} />;
+          })()
+        ) : (
+          <PanelEstacionamiento d={datos} vista={vista} />
+        )
       ) : procesando ? null : importaciones.length > 0 ? (
         <p className="ti-empty">
           No se pudo leer la bitácora guardada.{" "}

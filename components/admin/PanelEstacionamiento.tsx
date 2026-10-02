@@ -25,10 +25,12 @@
 // lateral de Consulta —el esqueleto que aprobo— y llega como prop; aqui no hay
 // pestanas:
 //   Resumen           la noticia; cierra con que tan firme es y cuantos dias hay.
-//   Estacionamientos  uno, el otro o los dos; sus secciones, y la gente de cada una.
-//   Secciones         el reporte global por seccion —lugares que ocupa y cuanto se
-//                     queda— con la distribucion de permanencias. Sin personas: esas
-//                     se consultan en Estacionamientos.
+//   Estacionamientos  la gente: la lista y la ficha de Personas recortadas a uno, el
+//                     otro o los dos, con filtro por seccion. No vive aqui sino en
+//                     GenteEstacionamiento, porque necesita el padron completo.
+//   Secciones         el reporte global por seccion con la misma forma que el
+//                     Resumen y, dentro de cada seccion, su gente con la misma ficha.
+//                     Tampoco vive aqui: esta junto a Estacionamientos.
 //   Plano del plantel el esquema con la ocupacion a la hora que se elija. Es vista
 //                     propia porque al final de un informe largo nadie llegaba a verlo.
 //   Vialidad · beta   la calle.
@@ -63,135 +65,19 @@ import {
   picoDeLaMediana,
   SHARE_SATURACION,
   type Eleccion,
-  type EstanciasRol,
   type Medicion,
   type OcupacionLote,
-  type UsoCredencial,
 } from "@/lib/estacionamiento";
 import type { ResumenEventos } from "@/lib/zk/eventos";
 import { esHuerfana, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
-import { EstanciasPorRol, HistogramaEstancias, MiniDia, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
+import { MiniDia, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
 import PlanoPlantel from "@/components/admin/PlanoPlantel";
 import VialidadBeta from "@/components/admin/VialidadBeta";
-import { Kpi, Kpis, Seccion, Segmentado, TablaPro, type Columna } from "@/components/admin/UiEstacionamiento";
+import { Segmentado } from "@/components/admin/UiEstacionamiento";
 
 // Con espacio fino antes del signo, como se escribe en español; y el mismo en toda la pantalla.
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}\u202f%` : "—");
 const dur = (min: number | null | undefined) => duracion((min ?? 0) * 60_000);
-
-/** Departamentos de ZK que, si aparecen en la bitácora, son el hallazgo. */
-const DEPTO_BAJAS = "10";
-const DEPTO_STOCK = "3";
-
-interface Señal {
-  clave: string;
-  texto: string;
-  /**
-   * Si cuenta para «por revisar».
-   *
-   * NO TODA SEÑAL ES UN PENDIENTE, y confundirlo rompe el unico canal que avisa.
-   * Mientras la migracion no corra, «sin expediente en SATAG» le toca a casi todas
-   * las credenciales: contarlas hacia que la pestana dijera «511 por revisar», que
-   * cada seccion dijera su propio total y que los 511 renglones salieran resaltados.
-   * Un resaltado que distingue a todos no distingue a ninguno, y lo que de verdad
-   * hay que resolver —una huerfana, dos bajas, dieciocho fuera de norma— quedaba
-   * enterrado debajo de la misma insignia repetida quinientas veces.
-   *
-   * Las dos que informan y no piden accion: «sin expediente» (lo resuelve la
-   * migracion, de una vez y para todas) y «stock SATAG» (que la propia pantalla
-   * declara normal).
-   */
-  pendiente: boolean;
-  /**
-   * El tono de `.status-chip`.
-   *
-   * El rojo (`bloqueado`) está reservado para UNA sola señal: la credencial que no
-   * aparece en ningún padrón. Todo lo demás es «conviene mirarlo», que no es una
-   * alerta. Si el rojo se gasta en lo que solo hay que revisar, deja de significar
-   * «hay que resolverlo hoy» y la pantalla entera pierde un canal.
-   */
-  tono: "pendiente" | "baja" | "activo" | "bloqueado";
-  porque: string;
-}
-
-const SEÑAL: Record<string, Señal> = {
-  fueraDeNorma: {
-    clave: "fueraDeNorma",
-    pendiente: true,
-    texto: "se queda de más",
-    tono: "pendiente",
-    porque:
-      "Su permanencia mediana es al menos el triple de la de su propio grupo y pasa de cuatro horas. No está prohibido: conviene saber si la credencial corresponde a quien la usa.",
-  },
-  deBaja: {
-    clave: "deBaja",
-    pendiente: true,
-    texto: "dada de baja",
-    tono: "pendiente",
-    porque:
-      "Está en el departamento BAJAS del control de acceso y aun así abrió la pluma. Una baja que abre es una baja que no se aplicó.",
-  },
-  stock: {
-    clave: "stock",
-    pendiente: false,
-    texto: "stock SATAG",
-    tono: "activo",
-    porque:
-      "Cruzó con el departamento de stock: es una instalación del día, porque el TAG pasa la pluma antes de que se suba el padrón a ZK, que se sube al cierre.",
-  },
-  sinPadron: {
-    clave: "sinPadron",
-    pendiente: true,
-    texto: "sin padrón",
-    tono: "baja",
-    porque:
-      "El control de acceso le abrió, pero el export de personas no la conoce. O el padrón está desactualizado, o es una credencial que nadie administra.",
-  },
-  sinDepartamento: {
-    clave: "sinDepartamento",
-    pendiente: true,
-    texto: "falta su departamento",
-    tono: "pendiente",
-    porque:
-      "Ni SATAG ni el control de acceso dicen a qué departamento pertenece: en ZK está en «General», que no es un departamento sino el cajón de sastre de la configuración vieja. Clasificarla en ZK y volver a exportar el padrón la acomoda sola.",
-  },
-  sinExpediente: {
-    clave: "sinExpediente",
-    pendiente: false,
-    texto: "sin expediente en SATAG",
-    tono: "pendiente",
-    porque:
-      "Aparece en ZK o en la hoja histórica, pero todavía no tiene expediente en SATAG. Es lo que la migración resuelve.",
-  },
-  huerfana: {
-    clave: "huerfana",
-    pendiente: true,
-    texto: "NO ESTÁ EN NINGÚN PADRÓN",
-    tono: "bloqueado",
-    porque:
-      "Abrió la pluma y no aparece ni en SATAG, ni en la hoja de cálculo, ni en ZK. Es un vehículo con acceso del que no se sabe nada.",
-  },
-};
-
-interface FilaPersona {
-  uso: UsoCredencial;
-  persona: PersonaZk | null;
-  señales: Señal[];
-}
-
-interface Agrupado {
-  nombre: string;
-  filas: FilaPersona[];
-  credenciales: number;
-  entradas: number;
-  minutos: number;
-  marcadas: number;
-  mediana: number | null;
-  /** Cuantos cajones ocupa a la vez, en su propio peor momento. */
-  cajones: number;
-  /** Cuantos ocupaba en el peor momento del estacionamiento. Suma al pico total. */
-  enPico: number;
-}
 
 export interface DatosEstacionamiento {
   m: Medicion;
@@ -236,129 +122,8 @@ export interface DatosEstacionamiento {
   serie?: { ventanas: number; truncadas: number; ultimaDesde?: string | null } | null;
 }
 
-/**
- * La tabla de personas de una seccion.
- *
- * VIVE FUERA DEL COMPONENTE A PROPOSITO. Definida dentro del render, React la trata
- * como un tipo nuevo en cada pintada, la desmonta y la vuelve a montar: el buscador
- * se vaciaria solo y el orden por columna se perderia al tocar cualquier otra cosa
- * de la pantalla. Es un defecto de verdad, no una queja del linter.
- */
-function TablaPersonas({
-  filas,
-  cols,
-  verIdentidad,
-  conPadron,
-}: {
-  filas: FilaPersona[];
-  cols: (tope: number) => Columna<FilaPersona>[];
-  verIdentidad: boolean;
-  conPadron: boolean;
-}) {
-  if (!verIdentidad) {
-    return <p className="ti-hint">El detalle por persona lo ve el personal autorizado para operar el padrón.</p>;
-  }
-  const tope = Math.max(...filas.map((f) => f.uso.medianaMin ?? 0), 1);
-  return (
-    <TablaPro
-      filas={filas}
-      cols={cols(tope)}
-      claveFila={(f) => f.uso.tarjeta}
-      ordenInicial="mediana"
-      buscar={conPadron ? (f) => `${f.persona?.nombre ?? ""} ${f.uso.tarjeta}` : undefined}
-      etiquetaBusqueda="Buscar por nombre o credencial"
-      marcada={(f) => f.señales.some((x) => x.pendiente)}
-      scroll
-    />
-  );
-}
-
-/**
- * La lista de secciones a un lado y la gente de la elegida al otro.
- *
- * Sustituye a un acordeon: con catorce secciones y trescientas credenciales en una
- * de ellas, desplegar hacia abajo hacia que la pagina creciera sin control y que
- * comparar dos secciones obligara a recordar lo que ya no se veia. Aqui la lista
- * siempre esta a la vista y solo cambia el panel de al lado.
- */
-function VistaMaestroDetalle({
-  grupos,
-  elegida,
-  onElegir,
-  cols,
-  verIdentidad,
-  conPadron,
-}: {
-  grupos: Agrupado[];
-  elegida: string | null;
-  onElegir: (nombre: string) => void;
-  cols: (tope: number) => Columna<FilaPersona>[];
-  verIdentidad: boolean;
-  conPadron: boolean;
-}) {
-  const topeGrupo = Math.max(...grupos.map((g) => g.cajones), 1);
-  const sel = grupos.find((g) => g.nombre === elegida) ?? grupos[0];
-  if (!sel) return <p className="ti-empty">No hay credenciales que mostrar.</p>;
-
-  return (
-    <div className="md">
-      <div className="md__lista" role="list" aria-label="Secciones">
-        {grupos.map((s) => (
-          <button
-            key={s.nombre}
-            type="button"
-            role="listitem"
-            className="md__item"
-            aria-current={s.nombre === sel.nombre}
-            onClick={() => onElegir(s.nombre)}
-          >
-            <span className="md__n">
-              <span className="md__nombre">{s.nombre}</span>
-              <span className="md__v">{s.cajones} {s.cajones === 1 ? "cajón" : "cajones"}</span>
-            </span>
-            <span className="barra-celda" aria-hidden="true">
-              <i style={{ width: `${Math.round((s.cajones / topeGrupo) * 100)}%` }} />
-            </span>
-            <span className="md__sub">
-              {s.credenciales} credenciales · {s.entradas} entradas · mediana{" "}
-              {duracion((s.mediana ?? 0) * 60_000)}
-              {s.marcadas > 0 && (
-                <>
-                  {" · "}
-                  <span className="status-chip status-chip--pendiente">{s.marcadas} por revisar</span>
-                </>
-              )}
-            </span>
-          </button>
-        ))}
-      </div>
-
-      <div className="md__panel">
-        <Kpis>
-          <Kpi
-            rotulo="Cajones que ocupa a la vez"
-            valor={sel.cajones}
-            pie={<>en su propio peor momento · {sel.enPico} de ellos seguían ahí en el peor momento del estacionamiento</>}
-            marcada
-          />
-          <Kpi rotulo="Credenciales" valor={sel.credenciales} pie={`${sel.entradas} entradas en la ventana`} />
-          <Kpi
-            rotulo="Permanencia mediana"
-            valor={duracion((sel.mediana ?? 0) * 60_000)}
-            pie="de sus estancias medidas"
-          />
-        </Kpis>
-        <TablaPersonas filas={sel.filas} cols={cols} verIdentidad={verIdentidad} conPadron={conPadron} />
-      </div>
-    </div>
-  );
-}
-
 /** Las vistas del panel. Las elige la barra lateral de Consulta y llegan como prop. */
-export type VistaPanel = "resumen" | "lotes" | "secciones" | "plano" | "vialidad";
-
-/** El ultimo estacionamiento elegido en Estacionamientos: volver no lo pierde. */
-let ultimoLoteVista = "ambos";
+export type VistaPanel = "resumen" | "plano" | "vialidad";
 
 /**
  * Que dias tienen datos, como una rejilla de semanas: una columna por semana, de
@@ -408,13 +173,7 @@ export function CoberturaDias({ dias, comparables, excluidos }: { dias: string[]
 }
 
 export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionamiento; vista: VistaPanel }) {
-  const { m, eleccion, resumen, cupos, padron, fuentes, verIdentidad } = d;
-  // En Estacionamientos se mira uno, el otro o los dos juntos.
-  const [loteVista, setLoteVista] = useState(ultimoLoteVista);
-  const elegirLoteVista = (l: string) => {
-    ultimoLoteVista = l;
-    setLoteVista(l);
-  };
+  const { m, eleccion, resumen, cupos, fuentes } = d;
   // Se abre en el estacionamiento MAS LLENO contra su cupo —o contra si mismo, sin
   // cupo—, porque ese es el que trae la noticia. El otro queda a un toque.
   const [lote, setLote] = useState<string>(() => {
@@ -424,9 +183,6 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
     };
     return [...m.ocupacion].sort((a, b) => razon(b) - razon(a))[0]?.lote ?? "E2";
   });
-  // Que seccion esta elegida en cada maestro-detalle. Van por separado para que
-  // cambiar de pestana no pierda lo que se estaba mirando en la otra.
-  const [sel, setSel] = useState<Record<string, string>>({});
   // La fila abierta del resumen. Es la que se resalta en la grafica: cambiar de
   // estacionamiento la devuelve al pico, que es por donde se empieza a leer.
   const [fila, setFila] = useState<string | null>("pico");
@@ -435,160 +191,20 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
     setFila("pico");
   };
 
-  const totalEstancias = m.estancias.reduce((a, r) => a + r.estancias, 0);
-  const largas = m.estancias.reduce((a, r) => a + r.largas, 0);
-  const cortas = m.estancias.reduce((a, r) => a + r.cortas, 0);
   const sinCupos = Object.values(cupos).every((c) => c === null);
 
-  // Las señales de catálogo son BÚSQUEDAS en el padrón, no aritmética: por eso viven
-  // aquí y no en lib/. La estadística —quién se sale de la norma de su grupo— sí
-  // viene medida, en `m.fueraDeNorma`.
-  const normaRota = new Set(m.fueraDeNorma.map((u) => u.tarjeta));
-  const filaDe = (u: UsoCredencial): FilaPersona => {
-    const p = padron?.get(u.tarjeta) ?? null;
-    const señales: Señal[] = [];
-    const fu = fuentes?.get(u.tarjeta);
-    if (fuentes !== null && esHuerfana(fu)) señales.push(SEÑAL.huerfana);
-    else if (fuentes !== null && !fu!.satag) señales.push(SEÑAL.sinExpediente);
-    if (padron !== null && p === null && !(fuentes !== null && esHuerfana(fu))) señales.push(SEÑAL.sinPadron);
-    if (p?.departamentoId === DEPTO_BAJAS) señales.push(SEÑAL.deBaja);
-    if (p?.departamentoId === DEPTO_STOCK) señales.push(SEÑAL.stock);
-    if (normaRota.has(u.tarjeta)) señales.push(SEÑAL.fueraDeNorma);
-    // «Sin clasificar» no es un grupo: es que nadie sabe de que departamento es.
-    // Va como pendiente porque se resuelve —clasificar en ZK y reexportar— y
-    // mientras no se resuelva, toda proporcion por grupo que la pantalla imprima
-    // lleva esta gente dentro de un cajon que no significa nada.
-    if (u.rol === "Sin clasificar") señales.push(SEÑAL.sinDepartamento);
-    return { uso: u, persona: p, señales };
-  };
-
-  /** Agrupa credenciales por departamento, de mayor a menor uso de cajón. */
-  const agrupar = (usos: UsoCredencial[], medianas: EstanciasRol[]): Agrupado[] => {
-    const g = new Map<string, FilaPersona[]>();
-    for (const u of usos) {
-      const f = filaDe(u);
-      const clave = padron === null ? "Todas las credenciales" : f.persona?.departamento || "No está en el padrón";
-      const a = g.get(clave);
-      if (a) a.push(f);
-      else g.set(clave, [f]);
-    }
-    return [...g.entries()]
-      .map(([nombre, filas]) => ({
-        nombre,
-        filas: [...filas].sort((a, b) => b.uso.totalMin - a.uso.totalMin),
-        credenciales: filas.length,
-        entradas: filas.reduce((a, f) => a + f.uso.estancias + f.uso.censuradas, 0),
-        minutos: filas.reduce((a, f) => a + f.uso.totalMin, 0),
-        marcadas: filas.filter((f) => f.señales.some((x) => x.pendiente)).length,
-        mediana: medianas.find((r) => r.rol === nombre)?.medianaMin ?? null,
-        cajones: medianas.find((r) => r.rol === nombre)?.cajonesAlaVez ?? 0,
-        enPico: medianas.find((r) => r.rol === nombre)?.cajonesEnElPico ?? 0,
-      }))
-      .sort((a, b) => b.cajones - a.cajones || b.minutos - a.minutos);
-  };
-
-  const secciones = agrupar(m.porCredencial, m.porDepartamento);
+  // Las credenciales que no estan en ningun padron: lo unico de aqui que hay que
+  // resolver hoy, y por eso va en rojo arriba del Resumen.
   const huerfanas = fuentes === null ? [] : m.porCredencial.filter((u) => esHuerfana(fuentes.get(u.tarjeta)));
-  const sinExpediente = fuentes === null ? [] : m.porCredencial.filter((u) => {
-    const f = fuentes.get(u.tarjeta);
-    return f !== undefined && !f.satag && (f.hoja || f.zk);
-  });
   const oActivo = m.ocupacion.find((o) => o.lote === lote) ?? m.ocupacion[0];
-
-  const MIN_PARA_COMPARAR = 5;
-  const dep1 = m.ocupacion.find((o) => o.lote === "E1")?.porDepartamento ?? [];
-  const dep2 = m.ocupacion.find((o) => o.lote === "E2")?.porDepartamento ?? [];
-  const comparativa = [...new Set([...dep1, ...dep2].map((r) => r.rol))]
-    .map((depto) => ({
-      depto,
-      e1: dep1.find((r) => r.rol === depto) ?? null,
-      e2: dep2.find((r) => r.rol === depto) ?? null,
-    }))
-    .filter((c) => (c.e1?.estancias ?? 0) >= MIN_PARA_COMPARAR && (c.e2?.estancias ?? 0) >= MIN_PARA_COMPARAR)
-    .sort((a, b) => b.e1!.estancias + b.e2!.estancias - (a.e1!.estancias + a.e2!.estancias));
-
-  /* ----------------------------------------------------- la tabla de personas */
-
-  const columnasPersona = (tope: number): Columna<FilaPersona>[] => {
-    const cols: Columna<FilaPersona>[] = [];
-    if (padron) {
-      cols.push({
-        clave: "persona",
-        titulo: "Persona",
-        pie: "según el padrón de ZK",
-        celda: (f) => f.persona?.nombre || <span className="ti-hint">no está en el padrón</span>,
-        orden: (f) => f.persona?.nombre ?? "zzz",
-      });
-    }
-    cols.push(
-      { clave: "tarjeta", titulo: "Credencial", pie: "número de TAG", celda: (f) => f.uso.tarjeta, orden: (f) => f.uso.tarjeta },
-      {
-        // Para una persona, «uso» es cuantas veces vino. El tiempo acumulado se
-        // quito a proposito: era «veces x cuanto se queda» colapsado en una cifra, y
-        // al colapsarlas perdia la distincion que importa —quien viene mucho un rato
-        // y quien viene poco y se queda— que es justo lo que separan las dos columnas
-        // siguientes.
-        clave: "entradas",
-        titulo: "Entradas",
-        pie: "veces que cruzó la pluma",
-        num: true,
-        celda: (f) => f.uso.estancias + f.uso.censuradas,
-        orden: (f) => f.uso.estancias + f.uso.censuradas,
-      },
-      { clave: "dias", titulo: "Días", pie: "en cuántos días distintos vino", num: true, celda: (f) => f.uso.dias, orden: (f) => f.uso.dias },
-      {
-        // El orden por omision. «Cuanto se queda cada vez» es la pregunta que
-        // separa a quien deja y arranca de quien ocupa el cajon la jornada, y es
-        // la que distingue a una persona de otra dentro de su propio grupo.
-        // Contar visitas ordenaba por frecuencia, que es otra cosa.
-        clave: "mediana",
-        titulo: "Tiempo por visita",
-        pie: "la mediana de sus estancias",
-        num: true,
-        celda: (f) => dur(f.uso.medianaMin),
-        orden: (f) => f.uso.medianaMin ?? -1,
-        barra: (f) => (tope > 0 ? (f.uso.medianaMin ?? 0) / tope : 0),
-      },
-      {
-        clave: "max",
-        titulo: "La más larga",
-        pie: "su mayor estancia de la ventana",
-        num: true,
-        celda: (f) => dur(f.uso.maxMin),
-        orden: (f) => f.uso.maxMin ?? -1,
-      },
-      {
-        clave: "critica",
-        titulo: "En la franja crítica",
-        pie: "llegadas en el peor rato del día",
-        num: true,
-        celda: (f) => f.uso.enOleada,
-        orden: (f) => f.uso.enOleada,
-      },
-      {
-        clave: "señales",
-        titulo: "Señales",
-        pie: "lo que conviene mirar",
-        celda: (f) =>
-          f.señales.map((x) => (
-            <span key={x.clave} className={`status-chip status-chip--${x.tono}`} title={x.porque}
-              style={{ marginRight: 4 }}>
-              {x.texto}
-            </span>
-          )),
-      },
-    );
-    return cols;
-  };
 
   /* ----------------------------------------------------------------- vistas */
 
   return (
     <>
       {/* Los dos avisos de arriba solo donde importan: el hueco invalida el uso por
-          credencial (Resumen, Estacionamientos, Secciones) y las huerfanas son gente,
-          que se consulta en Resumen y Estacionamientos. En el plano y en la calle
-          solo estorbarian. */}
+          credencial y las huerfanas son gente, asi que van en el Resumen (las vistas
+          de gente traen los suyos). En el plano y en la calle solo estorbarian. */}
       {d.huecoDias !== null && d.huecoDias > 0 && vista !== "plano" && vista !== "vialidad" && (
         <p className="submit-error" role="alert">
           {d.huecoEntre
@@ -600,7 +216,7 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
         </p>
       )}
 
-      {huerfanas.length > 0 && (vista === "resumen" || vista === "lotes") && (
+      {huerfanas.length > 0 && vista === "resumen" && (
         <div className="alerta-huerfanas" role="alert">
           <p className="alerta-huerfanas__t">
             {huerfanas.length === 1
@@ -912,208 +528,6 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
         );
       })()}
 
-      {/* =========================================== ESTACIONAMIENTOS =========== */}
-      {vista === "lotes" && oActivo && (() => {
-        /* Uno, el otro o los dos juntos. Cambia QUE credenciales entran en las
-           secciones; las columnas y la lista son las mismas. */
-        const ambos = loteVista === "ambos" || !m.ocupacion.some((o) => o.lote === loteVista);
-        const o = ambos ? null : m.ocupacion.find((x) => x.lote === loteVista) ?? null;
-        const grupos = o === null ? secciones : agrupar(o.porCredencial, o.porDepartamento);
-        const claveSel = ambos ? "secciones" : `lote-${loteVista}`;
-        const marcadas = grupos.reduce((a, s) => a + s.marcadas, 0);
-        const leyenda = Object.values(SEÑAL).filter((x) =>
-          x.pendiente && grupos.some((s) => s.filas.some((f) => f.señales.some((y) => y.clave === x.clave))),
-        );
-        return (
-          <>
-            <Segmentado
-              etiqueta="Estacionamiento"
-              activa={ambos ? "ambos" : loteVista}
-              onCambio={elegirLoteVista}
-              opciones={[
-                ...m.ocupacion.map((x) => ({ clave: x.lote, titulo: `E${x.lote.slice(1)} · hasta ${x.pico.dentro} coches` })),
-                { clave: "ambos", titulo: "Los dos" },
-              ]}
-            />
-
-            <Seccion
-              rotulo={ambos ? "Los dos estacionamientos juntos" : `Estacionamiento ${loteVista.slice(1)}`}
-              titulo={ambos ? "Quién usa el estacionamiento, por sección" : "Quién lo usa, de mayor a menor ocupación"}
-              nota={
-                <>
-                  Las secciones salen del catálogo del control de acceso, no de una clasificación nuestra, y van
-                  ordenadas por <strong>cuántos cajones ocupa cada una a la vez</strong>, que es la única medida
-                  comparable contra la capacidad: «primaria llega a ocupar 24 lugares» se contrasta con cuántos
-                  hay. Elija una sección para ver a su gente.
-                  {marcadas > 0 && (
-                    <> Hay <strong>{marcadas} credenciales por revisar</strong>; cada sección dice cuántas tiene.</>
-                  )}
-                  {ambos && sinExpediente.length > 0 && (
-                    <>
-                      {" "}Aparte, <strong>{sinExpediente.length} de las {m.porCredencial.length} credenciales
-                      que abrieron la pluma todavía no tienen expediente en SATAG</strong>. Eso lo resuelve la
-                      migración de una vez, no credencial por credencial, así que no cuenta como pendiente.
-                    </>
-                  )}
-                </>
-              }
-            >
-              {leyenda.length > 0 && (
-                <ul className="detail-grid" style={{ marginBottom: 14 }}>
-                  {leyenda.map((x) => (
-                    <li key={x.clave}>
-                      <span className={`status-chip status-chip--${x.tono}`}>{x.texto}</span>{" "}
-                      <span className="ti-hint">{x.porque}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <VistaMaestroDetalle
-                grupos={grupos}
-                elegida={sel[claveSel] ?? null}
-                onElegir={(nombre) => setSel((v) => ({ ...v, [claveSel]: nombre }))}
-                cols={columnasPersona}
-                verIdentidad={verIdentidad}
-                conPadron={padron !== null}
-              />
-              <p className="ti-hint" style={{ marginTop: 12 }}>
-                <strong>«Cajones a la vez» es el máximo de coches de esa sección dentro al mismo tiempo</strong>,
-                que es lo que de verdad le cuesta al estacionamiento. Cada sección llega a su máximo a una hora
-                distinta, así que no suman el pico total; para eso está la segunda cifra, la de cuántos seguían ahí
-                en el peor momento. Las medianas salen solo de las entradas con salida leída.
-              </p>
-            </Seccion>
-
-            {ambos && comparativa.length > 0 && (
-              <Seccion
-                rotulo="Los dos lado a lado"
-                titulo="El mismo departamento se comporta casi igual en los dos"
-                nota={
-                  <>
-                    Esta tabla impide publicar una conclusión falsa. Comparar la mediana del 1 contra la del 2
-                    sin abrir por departamento daría a entender que son estacionamientos de naturaleza distinta,
-                    y no lo son: los padres de familia se quedan prácticamente lo mismo en uno que en otro. La
-                    diferencia agregada entre los dos es <strong>quién entra a cada uno</strong>, no cómo se
-                    comporta. Si alguno diverge mucho, lo que delata no es el estacionamiento sino la etiqueta:
-                    bajo ese nombre hay gente de tipos distintos.
-                  </>
-                }
-              >
-                <TablaPro
-                  filas={comparativa}
-                  claveFila={(c) => c.depto}
-                  ordenInicial="total"
-                  cols={[
-                    { clave: "depto", titulo: "Departamento", pie: "con 5 estancias o más en los dos", celda: (c) => c.depto, orden: (c) => c.depto },
-                    { clave: "m1", titulo: "Mediana en el 1", num: true, celda: (c) => dur(c.e1?.medianaMin), orden: (c) => c.e1?.medianaMin ?? 0 },
-                    { clave: "e1", titulo: "Estancias en el 1", num: true, celda: (c) => c.e1?.estancias ?? 0, orden: (c) => c.e1?.estancias ?? 0 },
-                    { clave: "m2", titulo: "Mediana en el 2", num: true, celda: (c) => dur(c.e2?.medianaMin), orden: (c) => c.e2?.medianaMin ?? 0 },
-                    { clave: "e2", titulo: "Estancias en el 2", num: true, celda: (c) => c.e2?.estancias ?? 0, orden: (c) => c.e2?.estancias ?? 0 },
-                    { clave: "total", titulo: "Total", num: true, celda: (c) => (c.e1?.estancias ?? 0) + (c.e2?.estancias ?? 0), orden: (c) => (c.e1?.estancias ?? 0) + (c.e2?.estancias ?? 0) },
-                  ]}
-                />
-              </Seccion>
-            )}
-          </>
-        );
-      })()}
-
-      {/* =============================================== SECCIONES ============== */}
-      {vista === "secciones" && (
-        <>
-          <Seccion
-            rotulo="Los dos estacionamientos juntos"
-            titulo="Cuántos lugares ocupa cada sección, y cuánto se queda"
-            nota={
-              <>
-                El reporte global, una fila por sección del control de acceso: los cajones que llega a ocupar a
-                la vez, cuántos de esos seguían ahí en el peor momento del estacionamiento, y lo que se queda la
-                mitad de su gente. Las personas de cada sección se consultan en «Estacionamientos».
-              </>
-            }
-          >
-            <TablaPro
-              filas={m.porDepartamento}
-              claveFila={(r) => r.rol}
-              ordenInicial="cajon"
-              cols={[
-                { clave: "rol", titulo: "Sección", celda: (r) => r.rol, orden: (r) => r.rol },
-                { clave: "cajon", titulo: "Cajones a la vez", pie: "máximo simultáneo de la sección", num: true, celda: (r) => r.cajonesAlaVez, orden: (r) => r.cajonesAlaVez, barra: (r) => r.cajonesAlaVez / Math.max(...m.porDepartamento.map((x) => x.cajonesAlaVez), 1) },
-                { clave: "enpico", titulo: "En el peor momento", pie: "de esos, cuántos seguían ahí", num: true, celda: (r) => r.cajonesEnElPico, orden: (r) => r.cajonesEnElPico },
-                { clave: "est", titulo: "Estancias", pie: "entradas con salida leída", num: true, celda: (r) => r.estancias, orden: (r) => r.estancias },
-                { clave: "cred", titulo: "Credenciales", pie: "personas distintas", num: true, celda: (r) => r.credenciales, orden: (r) => r.credenciales },
-                { clave: "med", titulo: "Mediana", pie: "lo que se queda la mitad", num: true, celda: (r) => dur(r.medianaMin), orden: (r) => r.medianaMin ?? 0 },
-                { clave: "iqr", titulo: "Mitad central", pie: "entre el 25% y el 75%", celda: (r) => <span className="ti-hint">{dur(r.p25Min)} – {dur(r.p75Min)}</span> },
-                { clave: "cortas", titulo: "De 30 min o menos", pie: "dejar y arrancar", num: true, celda: (r) => <>{r.cortas} <span className="ti-hint">({pct(r.cortas, r.estancias)})</span></>, orden: (r) => r.cortas },
-                { clave: "cens", titulo: "Sin salida leída", pie: "no se pudieron medir", num: true, celda: (r) => <>{r.censuradas} <span className="ti-hint">({pct(r.censuradas, r.estancias + r.censuradas)})</span></>, orden: (r) => r.censuradas },
-              ]}
-            />
-            <p className="ti-hint" style={{ marginTop: 10 }}>
-              <strong>Las medianas de las secciones de jornada larga son cotas inferiores.</strong> La última
-              columna explica por qué: cuando el lector no registra la salida, la estancia no se puede medir, y
-              eso pasa más en las secciones que se quedan más. Las que se pierden son justo las largas, así que
-              el contraste real entre secciones es mayor que el que esta tabla muestra, nunca menor.
-            </p>
-          </Seccion>
-
-          {/* La permanencia en general: antes era su propia pestana. Son dos
-              poblaciones, y la grafica lo dice mejor que cualquier promedio. */}
-          <Seccion
-            rotulo="La permanencia en general"
-            titulo="Hay dos poblaciones, y se ven separadas"
-            nota={
-              <>
-                No es una distribución con una media: son dos montones. El de la izquierda deja y arranca; el
-                de la derecha ocupa el cajón la jornada. El valle no es ruido: es donde termina una población
-                y empieza la otra. La escala es lineal, así que la desproporción que se ve es la real. En total{" "}
-                {totalEstancias.toLocaleString("es-MX")} estancias medidas, {largas} de cuatro horas o más ({pct(largas, totalEstancias)})
-                y {cortas} de media hora o menos ({pct(cortas, totalEstancias)}); la mediana de todas es {dur(m.medianaGlobalMin)}.
-              </>
-            }
-          >
-            <HistogramaEstancias grupos={m.histogramaPorRol} />
-
-            <h4 className="ti-section-title" style={{ marginTop: 18 }}>Quién compone cada barra</h4>
-            <div className="table-wrap">
-              <table className="admin-table tabla-pro">
-                <thead>
-                  <tr>
-                    <th><span style={{ display: "inline-block", padding: "10px 12px" }}>Permanencia</span></th>
-                    {m.histogramaPorRol.map((g) => (
-                      <th key={g.rol} className="num">
-                        <span style={{ display: "inline-block", padding: "10px 12px" }}>{g.rol}</span>
-                      </th>
-                    ))}
-                    <th className="num"><span style={{ display: "inline-block", padding: "10px 12px" }}>Total</span></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {m.histograma.map((c, i) => (
-                    <tr key={c.desde}>
-                      <td>
-                        {c.hasta === null
-                          ? `${dur(c.desde)} o más`
-                          : `${c.desde === 0 ? "menos de " : `${dur(c.desde)} a `}${dur(c.hasta)}`}
-                      </td>
-                      {m.histogramaPorRol.map((g) => (
-                        <td key={g.rol} className="num">
-                          {g.cubetas[i].cuantas}{" "}
-                          <span className="ti-hint">({pct(g.cubetas[i].cuantas, c.cuantas)})</span>
-                        </td>
-                      ))}
-                      <td className="num"><strong>{c.cuantas}</strong></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <h4 className="ti-section-title" style={{ marginTop: 18 }}>La mediana de cada grupo</h4>
-            <EstanciasPorRol filas={m.estancias} />
-          </Seccion>
-        </>
-      )}
-
       {/* =============================================== PLANO ================= */}
       {vista === "plano" && (
         <>
@@ -1128,7 +542,7 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
               <strong>Es un esquema, no una foto.</strong> Se trazó sobre capturas del satélite y no está a escala. A
               los dos estacionamientos se entra por Cerrada de la Asunción; el E1 es una franja con la puerta y la
               parte techada al frente, y la puerta del E2 da a la Cerrada frente a la 2a. Privada. El techo grande
-              junto al E1 es el auditorio de secundaria.
+              junto al E1 son las canchas techadas del Instituto.
             </div>
             <div>
               La ocupación a cada hora es la mediana entre los {m.diasComparables.length} días comparables

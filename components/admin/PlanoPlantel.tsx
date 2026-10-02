@@ -12,7 +12,8 @@
 //   - A los dos se entra por Cerrada de la Asuncion.
 //   - El E1 es una franja de un solo ancho que arranca en la calle; al frente estan
 //     la puerta y la parte techada, y atras sigue el resto de los cajones. El techo
-//     grande de al lado es el auditorio de secundaria, no estacionamiento.
+//     grande de al lado son las canchas techadas del Instituto, no estacionamiento
+//     (el 2-oct primero se dijo «auditorio de secundaria»; Gerardo lo corrigio).
 //   - El E2 esta debajo de las canchas; su puerta da a la Cerrada frente a la
 //     2a. Privada de la Asuncion.
 //   - Cada estacionamiento tiene UNA puerta, con la entrada de un lado y la salida
@@ -140,7 +141,7 @@ export default function PlanoPlantel({
           <polygon className="plano__contorno" points={pol([[105, 425], [160, 395], [197, 478], [142, 507]])} />
           <Rotulo en={[151, 455]} texto="Básquet" className="plano__ref" />
           <polygon className="plano__edificio plano__edificio--borde" points={pol([[205, 553], [263, 515], [408, 690], [348, 738]])} />
-          <Rotulo en={[306, 627]} texto="Auditorio de secundaria" angulo={51} className="plano__ref" />
+          <Rotulo en={[306, 627]} texto="Canchas techadas" angulo={51} className="plano__ref" />
           <path className="plano__edificio plano__edificio--borde" d={`M${sx - 18},${sy} A18,18 0 0 1 ${sx + 18},${sy} Z`} />
 
           {/* E2, bajo las canchas */}
