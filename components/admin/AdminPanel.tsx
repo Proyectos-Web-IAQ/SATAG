@@ -10,9 +10,9 @@ import VistaTi from "@/components/admin/VistaTi";
 import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import PanelInstalacion from "@/components/admin/PanelInstalacion";
-import VistaEstacionamiento from "@/components/admin/VistaEstacionamiento";
+import VistaEstacionamiento, { type VistaEstac } from "@/components/admin/VistaEstacionamiento";
 import FichaPersona from "@/components/admin/FichaPersona";
-import { Segmentado } from "@/components/admin/UiEstacionamiento";
+import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
 
 type Vista = "admin" | "ti" | "finanzas" | "consulta";
 
@@ -49,22 +49,42 @@ const ETIQUETA_VISTA: Record<Vista, string> = {
   consulta: "Consulta",
 };
 
-/** Las secciones de Consulta. El orden es fijo; cada rol ve las suyas. */
-type Seccion = "personas" | "estacionamiento" | "tablero";
-const SECCIONES_POR_ROL: Record<RolPanel, Seccion[]> = {
-  admin: ["personas"],
-  ti: ["personas", "estacionamiento", "tablero"],
-  consulta: ["personas"],
-  contador: ["personas", "estacionamiento", "tablero"],
-  super: ["personas", "estacionamiento", "tablero"],
-};
-const ETIQUETA_SECCION: Record<Seccion, string> = {
-  personas: "Personas",
-  estacionamiento: "Estacionamiento",
-  tablero: "Tablero de instalación",
-};
-// La sección elegida sobrevive a salir y volver a la pestaña.
-let ultimaSeccion: Seccion | null = null;
+/**
+ * Las vistas de Consulta, agrupadas como en la barra lateral del esqueleto que
+ * Gerardo aprobó (DISEÑO.md): Consulta, Estacionamiento y Datos. Cada rol ve las
+ * suyas: todos la ficha de personas; quienes miden (TI, Contabilidad, super) el
+ * estacionamiento y el tablero; y solo quienes cargan (TI, super) los archivos de
+ * ZK, que son trabajo y no lectura.
+ */
+function gruposDe(rol: RolPanel): GrupoLado[] {
+  const mide = rol === "ti" || rol === "contador" || rol === "super";
+  const carga = rol === "ti" || rol === "super";
+  const grupos: GrupoLado[] = [
+    {
+      titulo: "Consulta",
+      vistas: [
+        { clave: "personas", titulo: "Personas" },
+        ...(mide ? [{ clave: "tablero", titulo: "Tablero de instalación" }] : []),
+      ],
+    },
+  ];
+  if (mide) {
+    grupos.push({
+      titulo: "Estacionamiento",
+      vistas: [
+        { clave: "resumen", titulo: "Resumen" },
+        { clave: "lotes", titulo: "Estacionamientos" },
+        { clave: "secciones", titulo: "Secciones" },
+        { clave: "plano", titulo: "Plano del plantel" },
+        { clave: "vialidad", titulo: "Vialidad", nota: "beta" },
+      ],
+    });
+  }
+  if (carga) grupos.push({ titulo: "Datos", vistas: [{ clave: "archivos", titulo: "Archivos de ZK" }] });
+  return grupos;
+}
+// La vista elegida sobrevive a salir y volver a la pestaña.
+let ultimaVistaConsulta: string | null = null;
 
 const ETIQUETA_ROL: Record<RolPanel, string> = {
   admin: "Administración",
@@ -127,33 +147,38 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
 }
 
 /**
- * La pestaña de consulta: un selector de sección y, debajo, la sección. Es un
- * control segmentado y no otra fila de pestañas porque el Estacionamiento ya
- * trae la suya adentro, y dos filas de pestañas pegadas arriba se encimaban.
+ * La pestaña de consulta: la barra lateral de vistas a la izquierda y, al lado, la
+ * vista elegida en una columna de lectura. Es el esqueleto que Gerardo aprobó el
+ * 2-oct (estilo Things): UNA lista de vistas en vez de tres niveles de pestañas
+ * (las del panel, el segmentado de Consulta y las del Estacionamiento). Quien solo
+ * tiene una vista no ve barra. Las vistas del estacionamiento comparten el mismo
+ * contenedor, así que cambiar entre ellas no vuelve a bajar la bitácora.
  */
 function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
-  const secciones = SECCIONES_POR_ROL[rol];
-  const [seccion, setSeccion] = useState<Seccion>(
-    ultimaSeccion !== null && secciones.includes(ultimaSeccion) ? ultimaSeccion : secciones[0],
+  const grupos = useMemo(() => gruposDe(rol), [rol]);
+  const claves = grupos.flatMap((g) => g.vistas.map((v) => v.clave));
+  const [vista, setVista] = useState<string>(
+    ultimaVistaConsulta !== null && claves.includes(ultimaVistaConsulta) ? ultimaVistaConsulta : claves[0],
   );
-  const elegir = (s: string) => {
-    ultimaSeccion = s as Seccion;
-    setSeccion(s as Seccion);
+  const elegir = (v: string) => {
+    ultimaVistaConsulta = v;
+    setVista(v);
   };
+  const contenido =
+    vista === "personas" ? <VistaConsulta rol={rol} />
+    : vista === "tablero" ? <PanelInstalacion rol={rol} email={email} />
+    : <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />;
+  if (claves.length === 1) return contenido;
   return (
-    <>
-      {secciones.length > 1 && (
-        <Segmentado
-          etiqueta="Qué consultar"
-          activa={seccion}
-          onCambio={elegir}
-          opciones={secciones.map((s) => ({ clave: s, titulo: ETIQUETA_SECCION[s] }))}
-        />
-      )}
-      {seccion === "personas" && <VistaConsulta rol={rol} />}
-      {seccion === "estacionamiento" && <VistaEstacionamiento rol={rol} email={email} />}
-      {seccion === "tablero" && <PanelInstalacion rol={rol} email={email} />}
-    </>
+    <div className="consulta">
+      <LadoVistas
+        grupos={grupos}
+        activa={vista}
+        onCambio={elegir}
+        nota="Vista de solo consulta: las acciones se ejecutan desde Administración o TI, según corresponda."
+      />
+      <div className="consulta__col">{contenido}</div>
+    </div>
   );
 }
 

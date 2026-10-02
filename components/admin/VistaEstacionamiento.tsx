@@ -27,7 +27,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Loader from "@/components/Loader";
-import PanelEstacionamiento, { type DatosEstacionamiento } from "@/components/admin/PanelEstacionamiento";
+import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
 import {
   cargarEventosZk,
   cargarPadronZk,
@@ -104,7 +104,10 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; email: string | null }) {
+/** Las vistas que atiende este contenedor: las del panel, y la de los archivos de ZK. */
+export type VistaEstac = VistaPanel | "archivos";
+
+export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPanel; email: string | null; vista: VistaEstac }) {
   const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
   const [importaciones, setImportaciones] = useState<ImportacionZk[]>(memoria.importaciones ?? []);
   // Cajones contados por estacionamiento (bloque 79). Sin ellos la pantalla dice
@@ -454,41 +457,75 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
       })()
     : null;
 
-  return (
-    <>
-      <div className="panel">
-        <p className="panel-title">
-          {serie && origen === "base"
-            ? `Bitácora guardada: ${serie.ventanas.length} ${serie.ventanas.length === 1 ? "ventana" : "ventanas"}${lectura?.resumen.desde ? `, del ${lectura.resumen.desde.slice(0, 10).split("-").reverse().join("/")} al ${lectura.resumen.hasta?.slice(0, 10).split("-").reverse().join("/") ?? "—"}` : ""}`
-            : `«${GLOSARIO.todosLosEventos.ui}»: ${GLOSARIO.todosLosEventos.que}`}
+  const puedeCargar = CARGAN.includes(rol);
+  const rango = lectura?.resumen.desde
+    ? `del ${fechaCorta(lectura.resumen.desde)} al ${fechaCorta(lectura.resumen.hasta)}`
+    : null;
+
+  // El avance se ve en cualquier vista: leer la base tarda y hay que saber que pasa.
+  const progreso = procesando && (
+    <div className="carga">
+      <p className="carga__t">
+        <span role="status">{procesando}</span>
+        {avance && (
+          <span className="carga__n">
+            {avance.hechas.toLocaleString("es-MX")} de {avance.total.toLocaleString("es-MX")} eventos
+          </span>
+        )}
+      </p>
+      <div
+        className={`carga__b${avance ? "" : " carga__b--vaga"}`}
+        role="progressbar"
+        aria-label={procesando}
+        aria-valuemin={avance ? 0 : undefined}
+        aria-valuemax={avance ? avance.total : undefined}
+        aria-valuenow={avance ? avance.hechas : undefined}
+      >
+        <i style={avance ? { width: `${Math.round((avance.hechas / Math.max(avance.total, 1)) * 100)}%` } : undefined} />
+      </div>
+    </div>
+  );
+
+  /* ============================================ ARCHIVOS DE ZK ============= */
+  // La vista de carga, aparte de la medicion: es trabajo de TI, no lectura de todos.
+  if (vista === "archivos") {
+    return (
+      <>
+        <p className="titular__migas">
+          <span>Datos</span>
+          <span>›</span>
+          <span>Archivos de ZK</span>
         </p>
-        <p className="ti-hint">
-          {serie && origen === "base" ? (
+        <h2 className="titular">
+          {serie && origen === "base"
+            ? `${serie.ventanas.length} ${serie.ventanas.length === 1 ? "archivo guardado" : "archivos guardados"}${rango ? `, ${rango}` : ""}.`
+            : lectura && origen === "archivo"
+              ? "Este archivo todavía no está guardado."
+              : "Todavía no hay ninguna bitácora guardada."}
+        </h2>
+        <p className="titular__sub">
+          {puedeCargar ? (
             <>
-              Lo que se mide abajo es lo guardado en SATAG, igual para quien lo abra.{" "}
-              {CARGAN.includes(rol)
-                ? <>Para agregar una ventana, exporte en ZKBioSecurity <strong>{GLOSARIO.todosLosEventos.ruta}</strong> y
-                  elija el archivo aquí: se revisa primero y se guarda con el botón.</>
-                : "Las ventanas nuevas las carga TI."}
-              {serie.truncada && " La serie se cortó por tamaño: se muestran las filas más antiguas del rango."}
+              Lo que mide el Estacionamiento es lo guardado en SATAG, igual para quien lo abra. Para agregar una
+              semana, exporte en ZKBioSecurity <strong>{GLOSARIO.todosLosEventos.ruta}</strong> y elija el archivo
+              aquí: se lee en este navegador, se guarda y la medición se actualiza sola. Del archivo solo viaja su
+              huella digital, que es lo que impide procesarlo dos veces.
+            </>
+          ) : (
+            <>Lo que se mide es lo guardado en SATAG. Las ventanas las carga TI.</>
+          )}
+          {serie && origen === "base" && (
+            <>
               {" "}
               <button type="button" className="link-action" disabled={procesando !== null} onClick={() => cargar()}>
                 Volver a leer de la base
               </button>
             </>
-          ) : CARGAN.includes(rol) ? (
-            <>
-              En ZKBioSecurity: <strong>{GLOSARIO.todosLosEventos.ruta}</strong>. Es {GLOSARIO.todosLosEventos.detalle}.
-              Sirve tal como ZK lo entrega, en Excel o en CSV. Se lee en este navegador y lo que trae se guarda en
-              SATAG para todos; del archivo mismo solo viaja su huella digital, que es lo que impide procesarlo dos veces.
-            </>
-          ) : (
-            <>Lo que se mide aquí es lo guardado en SATAG. Las ventanas las carga TI.</>
           )}
         </p>
 
         <div className="grid-2">
-          {CARGAN.includes(rol) && <div className="field">
+          {puedeCargar && <div className="field">
             <label className="label" htmlFor="arch-eventos">Archivo «{GLOSARIO.todosLosEventos.ui}» de ZK</label>
             <input
               id="arch-eventos"
@@ -502,15 +539,14 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
                 elegirBitacora(f);
               }}
             />
-            {archivo && (
-              <p className="hint">
-                {archivo} · {lectura?.resumen.filasArchivo.toLocaleString("es-MX")} filas ·{" "}
-                {lectura?.resumen.diasConActividad} días
-              </p>
-            )}
+            <p className="hint">
+              {archivo
+                ? <>{archivo} · {lectura?.resumen.filasArchivo.toLocaleString("es-MX")} filas · {lectura?.resumen.diasConActividad} días</>
+                : <>{GLOSARIO.todosLosEventos.que}. Sirve tal como ZK lo entrega, en Excel o en CSV.</>}
+            </p>
           </div>}
 
-          {CARGAN.includes(rol) && <div className="field">
+          {puedeCargar && <div className="field">
             <label className="label" htmlFor="arch-personas">Archivo «{GLOSARIO.personasZk.ui}» de ZK (opcional)</label>
             <input
               id="arch-personas"
@@ -533,7 +569,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
             </p>
           </div>}
         </div>
-        {!CARGAN.includes(rol) && (
+        {!puedeCargar && (
           <p className="ti-hint">
             {cargaPadron
               ? `Padrón de personas de ZK: ${(personas?.size ?? cargaPadron.personas).toLocaleString("es-MX")} personas, cargado por TI el ${fechaCorta(cargaPadron.cargadoEn)}.`
@@ -541,28 +577,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           </p>
         )}
 
-        {procesando && (
-          <div className="carga">
-            <p className="carga__t">
-              <span role="status">{procesando}</span>
-              {avance && (
-                <span className="carga__n">
-                  {avance.hechas.toLocaleString("es-MX")} de {avance.total.toLocaleString("es-MX")} eventos
-                </span>
-              )}
-            </p>
-            <div
-              className={`carga__b${avance ? "" : " carga__b--vaga"}`}
-              role="progressbar"
-              aria-label={procesando}
-              aria-valuemin={avance ? 0 : undefined}
-              aria-valuemax={avance ? avance.total : undefined}
-              aria-valuenow={avance ? avance.hechas : undefined}
-            >
-              <i style={avance ? { width: `${Math.round((avance.hechas / Math.max(avance.total, 1)) * 100)}%` } : undefined} />
-            </div>
-          </div>
-        )}
+        {progreso}
         {error && <p className="submit-error" role="alert">{error}</p>}
         {avisoCarga && <p className="notice" style={{ margin: "10px 0 0", padding: "10px 12px" }}>{avisoCarga}</p>}
         {pendiente && (
@@ -599,36 +614,62 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
             )}
             <span className="ti-hint" style={{ alignSelf: "center" }}>
               {importaciones.length === 0
-                ? "Este archivo no se pudo guardar y abajo se mide solo él. Todavía no hay ninguna ventana guardada."
-                : `Este archivo no se pudo guardar y abajo se mide solo él. Hay ${importaciones.length} ${importaciones.length === 1 ? "ventana guardada" : "ventanas guardadas"}; al guardar se juntan.`}
+                ? "Este archivo no se pudo guardar y el Estacionamiento mide solo él. Todavía no hay ninguna ventana guardada."
+                : `Este archivo no se pudo guardar y el Estacionamiento mide solo él. Hay ${importaciones.length} ${importaciones.length === 1 ? "ventana guardada" : "ventanas guardadas"}; al guardar se juntan.`}
             </span>
           </div>
         )}
-      </div>
 
+        {datos && (
+          <div className="firme">
+            <div>
+              <strong>Lo que hay.</strong> {datos.m.dias.length} {datos.m.dias.length === 1 ? "día" : "días"} con datos, del{" "}
+              {fechaCorta(datos.m.dias[0])} al {fechaCorta(datos.m.dias[datos.m.dias.length - 1])};{" "}
+              {datos.m.diasComparables.length} describen un día normal. Cada archivo que se suba se suma aquí.
+            </div>
+            <div className="cobertura__fila">
+              <CoberturaDias dias={datos.m.dias} comparables={datos.m.diasComparables} excluidos={datos.m.diasExcluidos} />
+              <span className="cobertura__leyenda">
+                <span><i className="cobertura__muestra cobertura__muestra--normal" aria-hidden="true" /> día normal</span>
+                <span><i className="cobertura__muestra cobertura__muestra--parcial" aria-hidden="true" /> no cuenta para la curva</span>
+                <span>sin cuadro: sin bitácora</span>
+              </span>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  /* ============================================ LA MEDICION ================ */
+  return (
+    <>
+      {progreso}
+      {error && !datos && (
+        <p className="submit-error" role="alert">
+          {error}{" "}
+          <button type="button" className="link-action" onClick={() => cargar()}>Reintentar</button>
+        </p>
+      )}
       {datos ? (
-        <PanelEstacionamiento d={datos} />
+        <PanelEstacionamiento d={datos} vista={vista} />
       ) : procesando ? null : importaciones.length > 0 ? (
-        <div className="panel">
-          <p className="ti-empty">
-            No se pudo leer la bitácora guardada.{" "}
-            <button type="button" className="link-action" onClick={() => leerDeLaBase(importaciones)}>Reintentar</button>
-          </p>
-        </div>
+        <p className="ti-empty">
+          No se pudo leer la bitácora guardada.{" "}
+          <button type="button" className="link-action" onClick={() => leerDeLaBase(importaciones)}>Reintentar</button>
+        </p>
       ) : (
-        <div className="panel">
-          <p className="ti-empty">
-            {CARGAN.includes(rol) ? (
-              <>
-                Todavía no hay ninguna bitácora guardada. Para ver la medición hace falta el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity:{" "}
-                {GLOSARIO.todosLosEventos.ruta}. Sirve en Excel o en CSV, tal como lo entrega, y una vez guardado se
-                queda para todos.
-              </>
-            ) : (
-              <>Todavía no hay ninguna bitácora guardada. Las ventanas las carga TI desde el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity.</>
-            )}
-          </p>
-        </div>
+        <p className="ti-empty">
+          {puedeCargar ? (
+            <>
+              Todavía no hay ninguna bitácora guardada. Elija el archivo «{GLOSARIO.todosLosEventos.ui}» de
+              ZKBioSecurity en «Archivos de ZK»: {GLOSARIO.todosLosEventos.ruta}. Sirve en Excel o en CSV, tal como lo
+              entrega, y una vez guardado se queda para todos.
+            </>
+          ) : (
+            <>Todavía no hay ninguna bitácora guardada. Las ventanas las carga TI desde el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity.</>
+          )}
+        </p>
       )}
     </>
   );

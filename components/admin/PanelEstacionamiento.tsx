@@ -21,18 +21,22 @@
 // cifra. Cierra con cuantos dias de datos hay: es lo que confirma, semana a semana,
 // que cada archivo que se sube se esta sumando.
 //
-// CUATRO VISTAS, cada una con un trabajo (Gerardo, 2-oct):
-//   Resumen           la noticia, y la cobertura de datos.
+// CINCO VISTAS, cada una con un trabajo (Gerardo, 2-oct). La vista la elige la barra
+// lateral de Consulta —el esqueleto que aprobo— y llega como prop; aqui no hay
+// pestanas:
+//   Resumen           la noticia; cierra con que tan firme es y cuantos dias hay.
 //   Estacionamientos  uno, el otro o los dos; sus secciones, y la gente de cada una.
 //   Secciones         el reporte global por seccion —lugares que ocupa y cuanto se
 //                     queda— con la distribucion de permanencias. Sin personas: esas
 //                     se consultan en Estacionamientos.
+//   Plano del plantel el esquema con la ocupacion a la hora que se elija. Es vista
+//                     propia porque al final de un informe largo nadie llegaba a verlo.
 //   Vialidad · beta   la calle.
 // «Permanencia» y «Que tan firme es esto» dejaron de ser pestanas: lo primero vive en
 // Secciones, y de los limites quedan los que cambian una decision (dias comparables,
-// cajones, el tope de ZK), dichos en el Resumen junto a los datos cargados. El resto
-// de aquel inventario de bordes era para quien construye la medicion, no para quien
-// la consulta.
+// el corte, los cajones, el tope de ZK), en el pie del Resumen. El resto de aquel
+// inventario de bordes era para quien construye la medicion, no para quien la
+// consulta.
 //
 // ES PRESENTACIONAL A PROPOSITO. Recibe las cifras ya medidas y no consulta nada. NI
 // UNA MEDIANA SE CALCULA AQUI: la version anterior sacaba la mediana global
@@ -69,7 +73,7 @@ import { esHuerfana, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import { EstanciasPorRol, HistogramaEstancias, MiniDia, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
 import PlanoPlantel from "@/components/admin/PlanoPlantel";
 import VialidadBeta from "@/components/admin/VialidadBeta";
-import { Kpi, Kpis, Seccion, Segmentado, TablaPro, Vistas, type Columna } from "@/components/admin/UiEstacionamiento";
+import { Kpi, Kpis, Seccion, Segmentado, TablaPro, type Columna } from "@/components/admin/UiEstacionamiento";
 
 // Con espacio fino antes del signo, como se escribe en español; y el mismo en toda la pantalla.
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}\u202f%` : "—");
@@ -350,8 +354,10 @@ function VistaMaestroDetalle({
   );
 }
 
-/** La ultima vista y el ultimo estacionamiento elegidos: volver a la pestana no los pierde. */
-let ultimaVista = "resumen";
+/** Las vistas del panel. Las elige la barra lateral de Consulta y llegan como prop. */
+export type VistaPanel = "resumen" | "lotes" | "secciones" | "plano" | "vialidad";
+
+/** El ultimo estacionamiento elegido en Estacionamientos: volver no lo pierde. */
 let ultimoLoteVista = "ambos";
 
 /**
@@ -361,7 +367,7 @@ let ultimoLoteVista = "ambos";
  * sin bitacora: fin de semana, vacaciones o un hueco entre archivos. Es la grafica
  * que crece cada vez que TI sube un archivo, y por eso vive en el Resumen.
  */
-function CoberturaDias({ dias, comparables, excluidos }: { dias: string[]; comparables: string[]; excluidos: Medicion["diasExcluidos"] }) {
+export function CoberturaDias({ dias, comparables, excluidos }: { dias: string[]; comparables: string[]; excluidos: Medicion["diasExcluidos"] }) {
   if (dias.length === 0) return null;
   const DIA = 86_400_000;
   const t0 = Date.parse(`${dias[0]}T00:00:00Z`);
@@ -401,15 +407,10 @@ function CoberturaDias({ dias, comparables, excluidos }: { dias: string[]; compa
   );
 }
 
-export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento }) {
+export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionamiento; vista: VistaPanel }) {
   const { m, eleccion, resumen, cupos, padron, fuentes, verIdentidad } = d;
-  const [vista, setVista] = useState(ultimaVista);
   // En Estacionamientos se mira uno, el otro o los dos juntos.
   const [loteVista, setLoteVista] = useState(ultimoLoteVista);
-  const elegirVista = (v: string) => {
-    ultimaVista = v;
-    setVista(v);
-  };
   const elegirLoteVista = (l: string) => {
     ultimoLoteVista = l;
     setLoteVista(l);
@@ -492,7 +493,6 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
     const f = fuentes.get(u.tarjeta);
     return f !== undefined && !f.satag && (f.hoja || f.zk);
   });
-  const totalMarcadas = secciones.reduce((a, s) => a + s.marcadas, 0);
   const oActivo = m.ocupacion.find((o) => o.lote === lote) ?? m.ocupacion[0];
 
   const MIN_PARA_COMPARAR = 5;
@@ -583,19 +583,13 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
 
   /* ----------------------------------------------------------------- vistas */
 
-  const VISTAS = [
-    { clave: "resumen", titulo: "Resumen" },
-    // Las credenciales por revisar se cuentan aqui porque aqui esta la gente.
-    { clave: "lotes", titulo: "Estacionamientos", cuenta: totalMarcadas },
-    { clave: "secciones", titulo: "Secciones" },
-    // La ultima y en beta a proposito: es el porque de todo esto —la calle—, pero
-    // la mitad de sus datos se capturan a mano y viven en el navegador.
-    { clave: "vialidad", titulo: "Vialidad · beta" },
-  ];
-
   return (
     <>
-      {d.huecoDias !== null && d.huecoDias > 0 && (
+      {/* Los dos avisos de arriba solo donde importan: el hueco invalida el uso por
+          credencial (Resumen, Estacionamientos, Secciones) y las huerfanas son gente,
+          que se consulta en Resumen y Estacionamientos. En el plano y en la calle
+          solo estorbarian. */}
+      {d.huecoDias !== null && d.huecoDias > 0 && vista !== "plano" && vista !== "vialidad" && (
         <p className="submit-error" role="alert">
           {d.huecoEntre
             ? <>Entre la ventana que termina el {diaCorto(d.huecoEntre.hastaAnterior.slice(0, 10))} y la que empieza el{" "}
@@ -606,7 +600,7 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
         </p>
       )}
 
-      {huerfanas.length > 0 && (
+      {huerfanas.length > 0 && (vista === "resumen" || vista === "lotes") && (
         <div className="alerta-huerfanas" role="alert">
           <p className="alerta-huerfanas__t">
             {huerfanas.length === 1
@@ -628,28 +622,6 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
             ))}
           </ul>
         </div>
-      )}
-
-      <Vistas vistas={VISTAS} activa={vista} onCambio={elegirVista} />
-
-      {/* Hasta donde sabe el archivo. Va arriba de todas las vistas porque toda cifra
-          de la pantalla se lee «al corte de…»: el dia de la exportacion la jornada
-          seguia corriendo, y quien estaba dentro no es un defecto del archivo. */}
-      {m.corte && (
-        <p className="corte" role="status">
-          <strong>
-            Corte: {diaCorto(m.corte.dia)} a las {horaCorta(m.corte.minuto)}.
-          </strong>{" "}
-          {m.corte.aunDentro > 0
-            ? `${m.corte.aunDentro} coches seguían dentro a esa hora: no cuentan como «sin salida» ni entran en ninguna mediana.`
-            : d.serie ? "Ahí termina lo que la bitácora guardada sabe." : "Ahí termina lo que el archivo sabe."}
-          {m.corte.retrasoMin !== null && m.corte.retrasoMin >= 5 && (
-            <>
-              {" "}{d.serie ? "La última ventana" : "El archivo"} se exportó {duracion(m.corte.retrasoMin * 60_000)} después del último evento: ZK iba
-              atrasado al recoger los pasos de los controladores.
-            </>
-          )}
-        </p>
       )}
 
       {/* =============================================== RESUMEN =============== */}
@@ -889,34 +861,32 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
               </section>
             )}
 
-            <section className="seccion-plana">
-              <h3>El plantel a lo largo del día</h3>
-              <p className="sub">Mueva la hora y vea cómo cambia cada estacionamiento sobre el mismo plano.</p>
-              <PlanoPlantel ocupacion={m.ocupacion} cupos={cupos} minutoInicial={m.picoTotal.minuto} />
-            </section>
-
-            {/* Lo que sostiene todo lo de arriba: cuantos dias hay, y cuales cuentan.
-                Es tambien el contador que crece con cada archivo que TI sube. */}
-            <section className="seccion-plana">
-              <h3>
-                {m.dias.length} {m.dias.length === 1 ? "día" : "días"} con datos{d.serie ? " guardados en SATAG" : " en este archivo"}
-              </h3>
-              <p className="sub">
-                Del {diaCorto(m.dias[0])} al {diaCorto(m.dias[m.dias.length - 1])}
+            {/* Que tan firme es esto (DISEÑO.md): el pie con lo que sostiene las cifras.
+                Lleva el contador de dias con datos, que crece con cada archivo que TI
+                sube: es lo que confirma, semana a semana, que la serie se esta formando. */}
+            <div className="firme">
+              <div>
+                <strong>Qué tan firme es esto.</strong>{" "}
+                {m.dias.length} {m.dias.length === 1 ? "día" : "días"} con datos{d.serie ? " guardados en SATAG" : ""}, del{" "}
+                {diaCorto(m.dias[0])} al {diaCorto(m.dias[m.dias.length - 1])}
                 {d.serie ? `, en ${d.serie.ventanas} ${d.serie.ventanas === 1 ? "archivo" : "archivos"}` : ""}.{" "}
                 {m.diasComparables.length === m.dias.length
                   ? "Todos describen un día normal."
                   : `${m.diasComparables.length} describen un día normal; los demás entraron, pero no cuentan para la curva.`}
-                {d.serie ? " Cada archivo que se suba se suma aquí." : ""}
-              </p>
-              <CoberturaDias dias={m.dias} comparables={m.diasComparables} excluidos={m.diasExcluidos} />
-              <p className="ti-hint cobertura__leyenda">
-                <span><i className="cobertura__muestra cobertura__muestra--normal" aria-hidden="true" /> día normal</span>
-                <span><i className="cobertura__muestra cobertura__muestra--parcial" aria-hidden="true" /> incompleto o atípico; el cursor encima dice por qué</span>
-                <span>sin cuadro: sin bitácora ese día</span>
-              </p>
+                {m.corte
+                  ? ` El corte es el ${diaCorto(m.corte.dia)} a las ${horaCorta(m.corte.minuto)}${m.corte.aunDentro > 0 ? `, con ${m.corte.aunDentro} coches todavía dentro` : ""}.`
+                  : ""}
+              </div>
+              <div className="cobertura__fila">
+                <CoberturaDias dias={m.dias} comparables={m.diasComparables} excluidos={m.diasExcluidos} />
+                <span className="cobertura__leyenda">
+                  <span><i className="cobertura__muestra cobertura__muestra--normal" aria-hidden="true" /> día normal</span>
+                  <span><i className="cobertura__muestra cobertura__muestra--parcial" aria-hidden="true" /> no cuenta para la curva; el cursor encima dice por qué</span>
+                  <span>sin cuadro: sin bitácora</span>
+                </span>
+              </div>
               {(resumen.topeAlcanzado || (d.serie !== null && d.serie !== undefined && d.serie.truncadas > 0)) && (
-                <p className="notice" style={{ margin: "12px 0 0", padding: "10px 12px" }}>
+                <div>
                   {/* ZK se queda con las 40,000 filas MAS RECIENTES: a una ventana truncada
                       le falta su arranque, no su final. Decirlo al reves mandaba a exportar
                       despues de la ultima fecha, y eso nunca cierra el hueco. */}
@@ -930,14 +900,14 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
                         ZKBioSecurity: a cada una le falta su arranque, no su final.</>
                     : <>El archivo llegó a las <strong>40,000 filas</strong> donde ZKBioSecurity corta y solo cubre{" "}
                       {resumen.diasConActividad} días. Para cubrir más, exporte por rango de fechas.</>}
-                </p>
+                </div>
               )}
-              <p className="ti-hint" style={{ marginTop: 12 }}>
+              <div>
                 {sinCupos
                   ? "Estas curvas dicen cuántos coches hay dentro, no si sobró lugar: falta contar los cajones de cada estacionamiento."
                   : `Los cajones son los contados por el Instituto: ${m.ocupacion.map((x) => `${cupos[x.lote] ?? "sin contar"} en el E${x.lote.slice(1)}`).join(" y ")}.`}
-              </p>
-            </section>
+              </div>
+            </div>
           </>
         );
       })()}
@@ -1141,6 +1111,30 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
             <h4 className="ti-section-title" style={{ marginTop: 18 }}>La mediana de cada grupo</h4>
             <EstanciasPorRol filas={m.estancias} />
           </Seccion>
+        </>
+      )}
+
+      {/* =============================================== PLANO ================= */}
+      {vista === "plano" && (
+        <>
+          <p className="titular__migas">
+            <span>Estacionamiento</span>
+            <span>›</span>
+            <span>Plano del plantel</span>
+          </p>
+          <PlanoPlantel ocupacion={m.ocupacion} cupos={cupos} minutoInicial={m.picoTotal.minuto} encabezado />
+          <div className="firme">
+            <div>
+              <strong>Es un esquema, no una foto.</strong> Se trazó sobre capturas del satélite y no está a escala. A
+              los dos estacionamientos se entra por Cerrada de la Asunción; el E1 es una franja con la puerta y la
+              parte techada al frente, y la puerta del E2 da a la Cerrada frente a la 2a. Privada. El techo grande
+              junto al E1 es el auditorio de secundaria.
+            </div>
+            <div>
+              La ocupación a cada hora es la mediana entre los {m.diasComparables.length} días comparables
+              {sinCupos ? ", contra el propio máximo de cada estacionamiento porque faltan sus cajones" : ""}.
+            </div>
+          </div>
         </>
       )}
 

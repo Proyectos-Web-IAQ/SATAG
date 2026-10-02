@@ -53,11 +53,14 @@ export default function PlanoPlantel({
   ocupacion,
   cupos,
   minutoInicial,
+  encabezado = false,
 }: {
   ocupacion: OcupacionLote[];
   cupos: Record<string, number | null>;
   /** Donde arranca el deslizador: la hora del pico, que es lo que todos quieren ver. */
   minutoInicial: number | null;
+  /** Como vista propia: la frase es el titular de la pagina y no un pie del plano. */
+  encabezado?: boolean;
 }) {
   const [minuto, setMinuto] = useState(() => Math.min(20 * 60, Math.max(6 * 60, Math.round((minutoInicial ?? 7 * 60 + 30) / 15) * 15)));
   const id = useId();
@@ -97,7 +100,18 @@ export default function PlanoPlantel({
 
   return (
     <div className="plano">
-      <p className="plano__frase" aria-live="polite">{frase}</p>
+      {encabezado ? (
+        <>
+          <h2 className="titular" aria-live="polite">{frase}</h2>
+          <p className="titular__sub">
+            Mueva la hora y vea cómo cambia cada estacionamiento sobre el mismo plano. Más oscuro es más
+            lleno, según la mediana entre los días comparables. Cada puerta tiene la entrada de un lado y
+            la salida del otro.
+          </p>
+        </>
+      ) : (
+        <p className="plano__frase" aria-live="polite">{frase}</p>
+      )}
       <div className="plano__hora">
         <label htmlFor={`${id}-hora`}>Hora</label>
         <input id={`${id}-hora`} type="range" min={6 * 60} max={20 * 60} step={15} value={minuto}
@@ -152,10 +166,12 @@ export default function PlanoPlantel({
           <text className="plano__ref" x={592} y={722} textAnchor="end">N ↑ · esquema, no a escala</text>
         </svg>
       </div>
-      <p className="ti-hint">
-        Cada puerta tiene la entrada de un lado y la salida del otro. Más oscuro es más lleno, según la
-        mediana entre los días comparables.
-      </p>
+      {!encabezado && (
+        <p className="ti-hint">
+          Cada puerta tiene la entrada de un lado y la salida del otro. Más oscuro es más lleno, según la
+          mediana entre los días comparables.
+        </p>
+      )}
     </div>
   );
 }
