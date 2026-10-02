@@ -39,8 +39,11 @@ import {
   idsEventosGuardados,
   listPadronZk,
   type CargaPadronZk,
+  type FilaPadronZk,
   type ImportacionZk,
+  type MetaPadronZk,
   type PadronEstacionamiento,
+  type RespuestaCargaPadronZk,
 } from "@/lib/supabase/apiPanel";
 import { corteDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
 import { GLOSARIO } from "@/lib/glosario";
@@ -86,6 +89,8 @@ const memoria: {
 
 /** «2026-10-02T18:55:00+00:00» a «02/10/2026». */
 const fechaCorta = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—");
+/** «2026-10-02T09:29:57» a «02/10/2026 09:29», que es la hora de pared de ZK. */
+const fechaHora = (iso: string | null | undefined): string => (iso ? `${fechaCorta(iso)} ${iso.slice(11, 16)}` : "—");
 
 /** «2026-09-22 18:42:00» menos N dias, a medianoche, con la misma forma. */
 function restarDias(hasta: string, dias: number): string {
@@ -122,6 +127,14 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   /** Avance de la carga: `null` mientras no se sepa cuanto falta. */
   const [avance, setAvance] = useState<{ hechas: number; total: number } | null>(null);
   const [avisoCarga, setAvisoCarga] = useState<string | null>(null);
+  // El padron que el RPC freno sin escribir, con la pregunta que hay que contestar.
+  // No va a la memoria del modulo a proposito: cambiar de pestana la cancela, y
+  // cancelar es lo seguro porque no se escribio nada.
+  const [pendiente, setPendiente] = useState<{
+    meta: MetaPadronZk;
+    filas: FilaPadronZk[];
+    respuesta: Extract<RespuestaCargaPadronZk, { requiereConfirmacion: true }>;
+  } | null>(null);
   const bytesRef = useRef<ArrayBuffer | null>(memoria.bytes ?? null);
 
   // Cada cambio de estado que cuesta reconstruir se anota en la memoria del modulo.
@@ -226,27 +239,56 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     setProcesando("Leyendo el padrón de personas…");
     setError(null);
     setAvisoCarga(null);
+    setPendiente(null);
     try {
       const bytes = await f.arrayBuffer();
       const l = await leerPadronZk(f);
-      setPersonas(indexarPadron(l.personas));
-      if (CARGAN.includes(rol)) {
-        // Va entero en una llamada: el RPC escribe solo lo que cambia (bloque 83).
-        setProcesando("Guardando el padrón de personas en SATAG…");
-        const r = await cargarPadronZk(
-          { archivo: f.name, sha256: await huella(bytes), filasArchivo: l.filasArchivo, exportadoEn: exportadoEnDe(f.name) },
-          l.personas.map((p) => ({ tarjeta: p.tarjeta, nombre: p.nombre, departamentoId: p.departamentoId, departamento: p.departamento })),
-          email,
-        );
-        setAvisoCarga(
-          r.yaEstaba
-            ? `Ese padrón ya estaba guardado: ${r.vigentes.toLocaleString("es-MX")} personas vigentes, nada que cambiar.`
-            : `Padrón guardado: ${r.insertadas.toLocaleString("es-MX")} personas nuevas, ${r.actualizadas.toLocaleString("es-MX")} actualizadas y ${r.retiradas.toLocaleString("es-MX")} que ya no vienen en el export. ${r.vigentes.toLocaleString("es-MX")} vigentes.`,
-        );
-        setCargaPadron(await getUltimaCargaPadronZk());
+      if (!CARGAN.includes(rol)) {
+        // Quien no carga lo usa solo en esta sesion, como antes del bloque 83.
+        setPersonas(indexarPadron(l.personas));
+        return;
       }
+      // Quien carga NO ve el archivo: ve lo que quede en la base despues de mandarlo.
+      // Si el RPC frena, la pantalla sigue mostrando el padron guardado, que es lo
+      // que vale para todos, y pregunta.
+      await enviarPadron(
+        { archivo: f.name, sha256: await huella(bytes), filasArchivo: l.filasArchivo, exportadoEn: exportadoEnDe(f.name) },
+        l.personas.map((p) => ({ tarjeta: p.tarjeta, nombre: p.nombre, departamentoId: p.departamentoId, departamento: p.departamento })),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo leer el padrón de personas.");
+    } finally {
+      setProcesando(null);
+    }
+  }
+
+  /**
+   * Manda el padron entero en una llamada; el RPC escribe solo lo que cambia (bloques
+   * 83 y 84). Si el RPC FRENA —el archivo dejaria fuera a muchas personas vigentes,
+   * o es mas viejo que el ultimo cargado— no escribio nada y aqui se guarda la
+   * pregunta; «Aplicar de todos modos» repite la llamada con `forzar`. Al terminar
+   * se relee la base: lo que se muestra es lo guardado, no lo que traia el archivo.
+   */
+  async function enviarPadron(meta: MetaPadronZk, filas: FilaPadronZk[]) {
+    setProcesando("Guardando el padrón de personas en SATAG…");
+    setError(null);
+    try {
+      const r = await cargarPadronZk(meta, filas, email);
+      if (r.requiereConfirmacion) {
+        setPendiente({ meta, filas, respuesta: r });
+        return;
+      }
+      setPendiente(null);
+      setAvisoCarga(
+        r.yaEstaba
+          ? `Ese padrón ya está guardado tal cual: ${r.vigentes.toLocaleString("es-MX")} personas vigentes, nada que cambiar.`
+          : `Padrón guardado: ${r.insertadas.toLocaleString("es-MX")} personas nuevas, ${r.actualizadas.toLocaleString("es-MX")} actualizadas y ${r.retiradas.toLocaleString("es-MX")} que ya no vienen en el export. ${r.vigentes.toLocaleString("es-MX")} vigentes.`,
+      );
+      const [zk, carga] = await Promise.all([listPadronZk(), getUltimaCargaPadronZk()]);
+      setPersonas(zk.length > 0 ? indexarPadron(zk) : null);
+      setCargaPadron(carga);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar el padrón de personas.");
     } finally {
       setProcesando(null);
     }
@@ -523,6 +565,27 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         )}
         {error && <p className="submit-error" role="alert">{error}</p>}
         {avisoCarga && <p className="notice" style={{ margin: "10px 0 0", padding: "10px 12px" }}>{avisoCarga}</p>}
+        {pendiente && (
+          <div className="notice" role="group" aria-labelledby="padron-pregunta" style={{ margin: "10px 0 0", padding: "12px 14px" }}>
+            <p id="padron-pregunta" style={{ margin: 0 }}>
+              <strong>No se guardó nada todavía.</strong>{" "}
+              {pendiente.respuesta.motivos.includes("retira_muchos") &&
+                `El archivo ${pendiente.meta.archivo} dejaría fuera a ${pendiente.respuesta.retiraria.toLocaleString("es-MX")} de las ${pendiente.respuesta.vigentes.toLocaleString("es-MX")} personas vigentes. Suele pasar cuando el export se hizo con un filtro, por ejemplo un solo departamento. `}
+              {pendiente.respuesta.motivos.includes("export_anterior") &&
+                `El archivo se exportó de ZK el ${fechaHora(pendiente.respuesta.exportadoEn)}, antes que el último guardado (${fechaHora(pendiente.respuesta.ultimoExportadoEn)}). Puede ser el archivo correcto para deshacer una carga equivocada, o uno viejo elegido por error. `}
+              Si es el archivo correcto, aplíquelo; si no, cancele y exporte el padrón completo de nuevo.
+            </p>
+            <div className="chip-row" style={{ marginTop: 10 }}>
+              <button type="button" className="btn" disabled={procesando !== null}
+                onClick={() => enviarPadron({ ...pendiente.meta, forzar: true }, pendiente.filas)}>
+                Aplicar de todos modos
+              </button>
+              <button type="button" className="link-action" disabled={procesando !== null} onClick={() => setPendiente(null)}>
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
 
         {lectura && origen === "archivo" && (
           <div className="chip-row" style={{ marginTop: 12 }}>
