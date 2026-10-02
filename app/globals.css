@@ -1335,6 +1335,16 @@ a { color: var(--primary-strong); }
 .plano__hora output { color: var(--primary); font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 3.5rem; }
 .plano__lienzo { max-width: 640px; }
 .plano__lienzo svg { display: block; height: auto; width: 100%; }
+/* Como vista propia: dos columnas en escritorio y el plano acotado a la altura de la
+   ventana, para verlo completo sin desplazar. En angosto, una columna como siempre. */
+.plano--pagina { display: grid; gap: 8px 40px; grid-template-columns: minmax(0, 1fr); }
+.plano--pagina .plano__texto { min-width: 0; }
+.plano--pagina .firme { margin-top: 26px; }
+@media (min-width: 1100px) {
+  .plano--pagina { align-items: start; grid-template-columns: minmax(320px, 0.85fr) minmax(0, 1.15fr); }
+  .plano--pagina .plano__lienzo { justify-self: center; max-width: none; }
+  .plano--pagina .plano__lienzo svg { height: min(calc(100dvh - 190px), 820px); max-width: 100%; width: auto; }
+}
 .plano__via { fill: none; stroke: #e9edf3; stroke-linecap: round; stroke-linejoin: round; }
 .plano__calle { fill: var(--muted); font-size: 12px; }
 .plano__ref { fill: #8a94a6; font-size: 10.5px; }
