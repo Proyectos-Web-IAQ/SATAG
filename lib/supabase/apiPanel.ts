@@ -39,6 +39,7 @@ import type {
   TramiteSolicitado,
 } from "@/lib/mock/types";
 import type { EventoZk } from "@/lib/zk/eventos";
+import type { PersonaZk } from "@/lib/zk/padron";
 
 export interface AccionResultado {
   id: string;
@@ -1084,8 +1085,8 @@ export async function listPasosDeTarjetas(tarjetas: string[], tope = 400): Promi
 /**
  * Los eventos guardados, para medir SIN el archivo (2-oct-2026).
  *
- * Pagina de mil en mil con `.range()` y sigue hasta una pagina vacia, no hasta una
- * «corta»: si PostgREST tuviera un tope menor que mil, una pagina corta no seria la
+ * Pagina con `.range()` y sigue hasta una pagina VACIA, no hasta una «corta»: si
+ * PostgREST tuviera un tope menor que la pagina pedida, una pagina corta no seria la
  * ultima y el panel mediria media ventana sin avisar. Trae solo lo que la medicion
  * usa; `descripcion` no se guarda y se devuelve vacia.
  *
@@ -1099,7 +1100,10 @@ export async function listEventosZk(
   onAvance?: (filas: number) => void,
   topePaginas = 120,
 ): Promise<{ eventos: EventoZk[]; truncado: boolean }> {
-  const PAGINA = 1000;
+  // Produccion sirve hasta 5,000 filas por peticion y local 1,000: se pide el
+  // maximo y se avanza por lo que de verdad llego, asi que el tope que aplique no
+  // cambia el resultado, solo cuantas vueltas da.
+  const PAGINA = 5000;
   const eventos: EventoZk[] = [];
   let truncado = false;
   for (let pagina = 0; ; pagina += 1) {
@@ -1139,4 +1143,91 @@ export async function listEventosZk(
     onAvance?.(eventos.length);
   }
   return { eventos, truncado };
+}
+
+// ---- El padron de personas de ZK, guardado (bloque 83) ----
+
+/** El ultimo export «Personas» que se cargo: lo que la pantalla dice de donde viene el padron. */
+export interface CargaPadronZk {
+  id: string;
+  archivo: string;
+  personas: number;
+  exportadoEn: string | null;
+  cargadoPor: string;
+  cargadoEn: string;
+}
+
+export async function getUltimaCargaPadronZk(): Promise<CargaPadronZk | null> {
+  const { data, error } = await supabaseAuth
+    .from("zk_padron_cargas")
+    .select("id, archivo, personas, exportado_en, cargado_por, cargado_en")
+    .order("cargado_en", { ascending: false })
+    .limit(1);
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data as { id: string; archivo: string; personas: number; exportado_en: string | null; cargado_por: string; cargado_en: string }[])[0];
+  return r ? { id: r.id, archivo: r.archivo, personas: r.personas, exportadoEn: r.exportado_en, cargadoPor: r.cargado_por, cargadoEn: r.cargado_en } : null;
+}
+
+/**
+ * Las personas vigentes del padron guardado. Son ~2,900 filas chicas: cabe en una
+ * peticion en produccion (tope 5,000) y en tres en local; se pagina igual que la
+ * bitacora, hasta una pagina vacia. Sin placa: la base no la guarda.
+ */
+export async function listPadronZk(): Promise<PersonaZk[]> {
+  const PAGINA = 5000;
+  const out: PersonaZk[] = [];
+  for (let pagina = 0; pagina < 20; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("zk_padron")
+      .select("tarjeta, nombre, departamento_id, departamento")
+      .eq("vigente", true)
+      .order("tarjeta", { ascending: true })
+      .range(out.length, out.length + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as { tarjeta: string; nombre: string; departamento_id: string; departamento: string }[];
+    if (filas.length === 0) break;
+    for (const r of filas) out.push({ tarjeta: r.tarjeta, nombre: r.nombre, departamentoId: r.departamento_id, departamento: r.departamento, placa: "" });
+  }
+  return out;
+}
+
+/** Manda el export entero en una llamada; el RPC escribe solo lo que cambia (rol ti). */
+export async function cargarPadronZk(
+  meta: { archivo: string; sha256: string; filasArchivo: number; exportadoEn: string | null },
+  filas: { tarjeta: string; nombre: string; departamentoId: string; departamento: string }[],
+  hechoPor: string | null,
+): Promise<{ yaEstaba: boolean; insertadas: number; actualizadas: number; retiradas: number; vigentes: number }> {
+  const { data, error } = await supabaseAuth.rpc("cargar_padron_zk", { p_meta: meta, p_filas: filas, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as { yaEstaba?: boolean; insertadas?: number; actualizadas?: number; retiradas?: number; vigentes?: number };
+  return { yaEstaba: r.yaEstaba ?? false, insertadas: r.insertadas ?? 0, actualizadas: r.actualizadas ?? 0, retiradas: r.retiradas ?? 0, vigentes: r.vigentes ?? 0 };
+}
+
+/**
+ * Que ids de evento, dentro de un rango, ya estan guardados. Es lo que permite mandar
+ * de un archivo solo lo que la base no tiene.
+ *
+ * POR RANGO Y NO «MAYOR QUE EL ULTIMO»: ZK numera los eventos al recogerlos, pero un
+ * export viejo que nunca se guardo trae ids menores que el ultimo guardado, y un
+ * filtro por «mayor que» lo habria descartado entero sin avisar. Leer los ids que
+ * ya estan cuesta una o dos peticiones (solo el id, 5,000 por pagina) y deja mandar
+ * exactamente lo que falta, venga de donde venga.
+ */
+export async function idsEventosGuardados(desdeId: number, hastaId: number): Promise<Set<number>> {
+  const PAGINA = 5000;
+  const ids = new Set<number>();
+  for (let pagina = 0; pagina < 200; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("zk_eventos")
+      .select("id_evento")
+      .gte("id_evento", desdeId)
+      .lte("id_evento", hastaId)
+      .order("id_evento", { ascending: true })
+      .range(ids.size, ids.size + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as { id_evento: number }[];
+    if (filas.length === 0) break;
+    for (const r of filas) ids.add(Number(r.id_evento));
+  }
+  return ids;
 }

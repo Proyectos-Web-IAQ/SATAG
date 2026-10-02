@@ -207,8 +207,16 @@ export interface DatosEstacionamiento {
   verIdentidad: boolean;
   /** Ventanas de ocho días ya cargadas, para saber si la serie alcanza. */
   ventanas: number;
-  /** Días que faltan entre esta ventana y la anterior. Un hueco invalida la serie. */
+  /** Días que faltan entre dos ventanas consecutivas. Un hueco invalida el uso por credencial. */
   huecoDias: number | null;
+  /** Entre qué dos ventanas está ese hueco, para decirlo con fechas. */
+  huecoEntre?: { hastaAnterior: string; desdeSiguiente: string } | null;
+  /**
+   * La serie leída de la base: cuántas ventanas entraron y cuántas se truncaron en
+   * las 40,000 filas de ZK. `null` cuando se mide un archivo recién elegido, que
+   * es una sola ventana y se describe como tal.
+   */
+  serie?: { ventanas: number; truncadas: number } | null;
 }
 
 /**
@@ -518,8 +526,11 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
     <>
       {d.huecoDias !== null && d.huecoDias > 0 && (
         <p className="submit-error" role="alert">
-          Entre esta ventana y la anterior falta <strong>{duracion(d.huecoDias * 86_400_000)}</strong> de
-          bitácora. Las cifras de tráfico son válidas, pero el uso por credencial no: una credencial
+          {d.huecoEntre
+            ? <>Entre la ventana que termina el {diaCorto(d.huecoEntre.hastaAnterior.slice(0, 10))} y la que empieza el{" "}
+              {diaCorto(d.huecoEntre.desdeSiguiente.slice(0, 10))} falta <strong>{duracion(d.huecoDias * 86_400_000)}</strong> de bitácora.</>
+            : <>Entre esta ventana y la anterior falta <strong>{duracion(d.huecoDias * 86_400_000)}</strong> de bitácora.</>}
+          {" "}Las cifras de tráfico son válidas, pero el uso por credencial no: una credencial
           que sí pasó en ese hueco aparece aquí como si no se hubiera usado.
         </p>
       )}
@@ -560,10 +571,10 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
           </strong>{" "}
           {m.corte.aunDentro > 0
             ? `${m.corte.aunDentro} coches seguían dentro a esa hora: no cuentan como «sin salida» ni entran en ninguna mediana.`
-            : "Ahí termina lo que el archivo sabe."}
+            : d.serie ? "Ahí termina lo que la bitácora guardada sabe." : "Ahí termina lo que el archivo sabe."}
           {m.corte.retrasoMin !== null && m.corte.retrasoMin >= 5 && (
             <>
-              {" "}El archivo se exportó {duracion(m.corte.retrasoMin * 60_000)} después del último evento: ZK iba
+              {" "}{d.serie ? "La última ventana" : "El archivo"} se exportó {duracion(m.corte.retrasoMin * 60_000)} después del último evento: ZK iba
               atrasado al recoger los pasos de los controladores.
             </>
           )}
@@ -579,9 +590,11 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
         const picoMin = o.pico.minuto;
         const pctPico = cupo !== null && cupo > 0 ? Math.round((o.pico.dentro / cupo) * 100) : null;
         const umbral = cupo !== null ? Math.round(cupo * 0.9) : Math.round(o.pico.dentro * SHARE_SATURACION);
-        const minDiaMax = minutosPorEncima(o.diaPico, umbral);
+        // Los escalones traen segundos; en pantalla van minutos enteros, redondeados
+        // hacia arriba: 26 minutos y 43 segundos por encima son 27 minutos, no 26.
+        const minDiaMax = Math.ceil(minutosPorEncima(o.diaPico, umbral));
         const minTipico = minutosTipicosPorEncima(o.franjas, umbral);
-        const minSinLugar = cupo !== null ? minutosPorEncima(o.diaPico, cupo - 1) : 0;
+        const minSinLugar = cupo !== null ? Math.ceil(minutosPorEncima(o.diaPico, cupo - 1)) : 0;
         const mesetaTipica = medianaEn(o.franjas, MINUTO_MESETA);
         const salida = picoDeLaMediana(o.franjas, 12 * 60, FRANJA_HASTA);
         const oleadaLote = m.oleada.porLote.find((x) => x.lote === o.lote)?.coches ?? 0;
@@ -1036,11 +1049,21 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
           titulo="Qué falta para saber si falta espacio"
           nota="Todo tablero tiene un borde. Estos son los de este, con su tamaño y su dirección: un error acotado y con signo es un error controlado."
         >
-          {resumen.topeAlcanzado && (
+          {resumen.topeAlcanzado && !d.serie && (
             <p className="notice" style={{ margin: "0 0 14px", padding: "10px 12px" }}>
               El archivo llegó a las <strong>40,000 filas</strong>, que es donde ZKBioSecurity corta. La
               exportación quedó truncada y solo cubre <strong>{resumen.diasConActividad} días</strong>. Para
               cubrir un mes hacen falta varias exportaciones por rango de fechas.
+            </p>
+          )}
+          {d.serie && (resumen.topeAlcanzado || d.serie.truncadas > 0) && (
+            <p className="notice" style={{ margin: "0 0 14px", padding: "10px 12px" }}>
+              {resumen.topeAlcanzado
+                ? <>La última ventana llegó a las <strong>40,000 filas</strong>, que es donde ZKBioSecurity corta: lo
+                  que pasó después de su último evento todavía no está en SATAG.</>
+                : <>{d.serie.truncadas} de las {d.serie.ventanas} ventanas guardadas llegaron a las <strong>40,000 filas</strong> de
+                  ZKBioSecurity y quedaron truncadas.</>}
+              {" "}Si entre dos ventanas faltan días, el aviso de arriba lo dice con fechas.
             </p>
           )}
           <ul className="detail-grid">
@@ -1065,7 +1088,9 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
             </li>
             <li>
               <strong>
-                El archivo traía {resumen.filasArchivo.toLocaleString("es-MX")} filas y solo{" "}
+                {d.serie
+                  ? `${d.serie.ventanas === 1 ? "El archivo guardado traía" : `Los ${d.serie.ventanas} archivos guardados sumaban`} ${resumen.filasArchivo.toLocaleString("es-MX")} filas y solo`
+                  : `El archivo traía ${resumen.filasArchivo.toLocaleString("es-MX")} filas y solo`}{" "}
                 {resumen.accesos.toLocaleString("es-MX")} son accesos.
               </strong>{" "}
               {resumen.filasSinTarjeta.toLocaleString("es-MX")} ({pct(resumen.filasSinTarjeta, resumen.filasArchivo)})
@@ -1090,9 +1115,9 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
                 </>
               )}{" "}
               De los dos lados: {m.entradasSinSalida} entradas no cerraron y {m.salidasSinEntrada} salidas no
-              tenían entrada en el archivo
+              tenían entrada en {d.serie ? "la bitácora" : "el archivo"}
               {m.corte && m.corte.aunDentro > 0
-                ? `, y ${m.corte.aunDentro} coches seguían dentro cuando el archivo termina, el ${diaCorto(m.corte.dia)} a las ${horaCorta(m.corte.minuto)}: esos no son un defecto, son el día corriendo`
+                ? `, y ${m.corte.aunDentro} coches seguían dentro cuando ${d.serie ? "la bitácora" : "el archivo"} termina, el ${diaCorto(m.corte.dia)} a las ${horaCorta(m.corte.minuto)}: esos no son un defecto, son el día corriendo`
                 : ""}
               . En total {censuradas} estancias quedaron sin medir.
             </li>
@@ -1103,9 +1128,10 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
             </li>
             <li>
               <strong>Esto es uso, no antigüedad.</strong> Una credencial que no aparece aquí no está
-              abandonada: pudo no venir esta semana. Con una sola ventana no se puede afirmar que una
-              credencial no se use — solo acotar cada cuánto — y el panel de bajas sigue apagado hasta que
-              haya serie suficiente.
+              abandonada: pudo no venir esta semana.{" "}
+              {d.ventanas <= 1
+                ? "Con una sola ventana no se puede afirmar que una credencial no se use, solo acotar cada cuánto, y el panel de bajas sigue apagado hasta que haya serie suficiente."
+                : `Hay ${d.ventanas} ventanas guardadas; el panel de bajas sigue apagado hasta que la serie sea continua y suficiente.`}
             </li>
           </ul>
         </Seccion>

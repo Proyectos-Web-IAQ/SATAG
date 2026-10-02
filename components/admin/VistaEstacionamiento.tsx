@@ -30,21 +30,28 @@ import Loader from "@/components/Loader";
 import PanelEstacionamiento, { type DatosEstacionamiento } from "@/components/admin/PanelEstacionamiento";
 import {
   cargarEventosZk,
+  cargarPadronZk,
   getEstacionamientos,
+  getUltimaCargaPadronZk,
   listEventosZk,
   listImportacionesZk,
   listPadronEstacionamiento,
+  idsEventosGuardados,
+  listPadronZk,
+  type CargaPadronZk,
   type ImportacionZk,
   type PadronEstacionamiento,
 } from "@/lib/supabase/apiPanel";
 import { corteDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
 import { GLOSARIO } from "@/lib/glosario";
-import { huecoEnDias, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
+import { exportadoEnDe, huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
 import { GRUPO_POR_TIPO, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import type { RolPanel } from "@/lib/supabase/auth";
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
 const VEN_IDENTIDAD: RolPanel[] = ["ti", "contador", "super"];
+/** Quien puede AGREGAR ventanas: los mismos que pasa `panel_exigir_rol` en cargar_eventos_zk (bloque 78). */
+const CARGAN: RolPanel[] = ["ti", "super"];
 
 /**
  * Cuantos dias hacia atras se bajan de la base al abrir la pestana.
@@ -56,6 +63,29 @@ const VEN_IDENTIDAD: RolPanel[] = ["ti", "contador", "super"];
  * producto, no una constante que subir a ciegas.
  */
 const DIAS_SERIE = 56;
+
+/**
+ * LO QUE SE CONSERVA AL CAMBIAR DE PESTANA. El panel desmonta esta vista cuando se
+ * va a otra pestana, y sin esto volver significaba bajar otra vez toda la bitacora
+ * y perder el padron de personas de ZK y el archivo recien elegido: paso el 2-oct,
+ * con los archivos ya subidos. Vive fuera del componente, dura lo que la sesion
+ * del navegador, y se vacia sola al volver a leer de la base.
+ */
+const memoria: {
+  padron?: PadronEstacionamiento[];
+  importaciones?: ImportacionZk[];
+  cupos?: Record<string, number | null>;
+  lectura?: LecturaEventos | null;
+  origen?: "base" | "archivo";
+  serie?: { ventanas: ImportacionZk[]; truncada: boolean; desde: string | null } | null;
+  personas?: Map<string, PersonaZk> | null;
+  cargaPadron?: CargaPadronZk | null;
+  archivo?: string | null;
+  bytes?: ArrayBuffer | null;
+} = {};
+
+/** «2026-10-02T18:55:00+00:00» a «02/10/2026». */
+const fechaCorta = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—");
 
 /** «2026-09-22 18:42:00» menos N dias, a medianoche, con la misma forma. */
 function restarDias(hasta: string, dias: number): string {
@@ -70,27 +100,34 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
 }
 
 export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; email: string | null }) {
-  const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(null);
-  const [importaciones, setImportaciones] = useState<ImportacionZk[]>([]);
+  const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
+  const [importaciones, setImportaciones] = useState<ImportacionZk[]>(memoria.importaciones ?? []);
   // Cajones contados por estacionamiento (bloque 79). Sin ellos la pantalla dice
   // ocupacion pero no saturacion; un lote sin contar se queda en `null`.
-  const [cupos, setCupos] = useState<Record<string, number | null>>({ E1: null, E2: null });
+  const [cupos, setCupos] = useState<Record<string, number | null>>(memoria.cupos ?? { E1: null, E2: null });
   const [error, setError] = useState<string | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(memoria.padron === undefined);
 
-  const [lectura, setLectura] = useState<LecturaEventos | null>(null);
+  const [lectura, setLectura] = useState<LecturaEventos | null>(memoria.lectura ?? null);
   // De donde salio lo que se esta midiendo: la base (lo guardado, igual para todos)
   // o un archivo que alguien acaba de elegir y todavia no guarda.
-  const [origen, setOrigen] = useState<"base" | "archivo">("base");
+  const [origen, setOrigen] = useState<"base" | "archivo">(memoria.origen ?? "base");
   // Las ventanas que entraron en la lectura de la base y si se corto la serie.
-  const [serie, setSerie] = useState<{ ventanas: ImportacionZk[]; truncada: boolean; desde: string | null } | null>(null);
-  const [personas, setPersonas] = useState<Map<string, PersonaZk> | null>(null);
-  const [archivo, setArchivo] = useState<string | null>(null);
+  const [serie, setSerie] = useState<{ ventanas: ImportacionZk[]; truncada: boolean; desde: string | null } | null>(memoria.serie ?? null);
+  const [personas, setPersonas] = useState<Map<string, PersonaZk> | null>(memoria.personas ?? null);
+  // De que archivo viene el padron de ZK guardado en la base (bloque 83).
+  const [cargaPadron, setCargaPadron] = useState<CargaPadronZk | null>(memoria.cargaPadron ?? null);
+  const [archivo, setArchivo] = useState<string | null>(memoria.archivo ?? null);
   const [procesando, setProcesando] = useState<string | null>(null);
   /** Avance de la carga: `null` mientras no se sepa cuanto falta. */
   const [avance, setAvance] = useState<{ hechas: number; total: number } | null>(null);
   const [avisoCarga, setAvisoCarga] = useState<string | null>(null);
-  const bytesRef = useRef<ArrayBuffer | null>(null);
+  const bytesRef = useRef<ArrayBuffer | null>(memoria.bytes ?? null);
+
+  // Cada cambio de estado que cuesta reconstruir se anota en la memoria del modulo.
+  useEffect(() => {
+    Object.assign(memoria, { padron: padron ?? undefined, importaciones, cupos, lectura, origen, serie, personas, cargaPadron, archivo, bytes: bytesRef.current });
+  }, [padron, importaciones, cupos, lectura, origen, serie, personas, cargaPadron, archivo]);
 
   /**
    * Baja de la base las ventanas de las ultimas DIAS_SERIE y mide con ellas. Es lo
@@ -106,15 +143,21 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     const desde = restarDias(ultima, DIAS_SERIE);
     // Las ventanas que caen en el rango, para reconstruir el resumen con sus cifras.
     const ventanas = imps.filter((i) => (i.hasta ?? "") >= desde);
+    // Sin total: la base no sabe cuantas filas van a venir (los traslapes y las
+    // filas sin sentido no estan), y una barra que nunca llega al 100% miente.
     setProcesando("Leyendo la bitácora guardada…");
     setAvance(null);
     try {
-      const { eventos, truncado } = await listEventosZk(desde, (n) => setAvance({ hechas: n, total: Math.max(n, ventanas.reduce((s, v) => s + v.filasConTarjeta, 0)) }));
+      const { eventos, truncado } = await listEventosZk(desde, (n) =>
+        setProcesando(`Leyendo la bitácora guardada… ${n.toLocaleString("es-MX")} eventos`),
+      );
       setLectura(lecturaDesdeBase(eventos, ventanas));
       setSerie({ ventanas, truncada: truncado, desde });
       setOrigen("base");
       setArchivo(null);
       bytesRef.current = null;
+    } catch (err) {
+      setError(`No se pudo leer la bitácora guardada. ${err instanceof Error ? err.message : ""}`.trim());
     } finally {
       setProcesando(null);
       setAvance(null);
@@ -125,10 +168,18 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     setCargando(true);
     setError(null);
     try {
-      const [p, i, e] = await Promise.all([listPadronEstacionamiento(), listImportacionesZk(), getEstacionamientos()]);
+      // El padron de ZK (bloque 83) es OPCIONAL y puede no existir todavia en la
+      // base: si sus lecturas fallan, la pestana sigue sin el en vez de caerse.
+      const [p, i, e, zk, carga] = await Promise.all([
+        listPadronEstacionamiento(), listImportacionesZk(), getEstacionamientos(),
+        listPadronZk().catch(() => [] as PersonaZk[]),
+        getUltimaCargaPadronZk().catch(() => null),
+      ]);
       setPadron(p);
       setImportaciones(i);
       setCupos(Object.fromEntries([["E1", null], ["E2", null], ...e.map((x) => [x.clave, x.cupoLugares] as const)]));
+      if (zk.length > 0) setPersonas(indexarPadron(zk));
+      setCargaPadron(carga);
       setCargando(false);
       await leerDeLaBase(i);
     } catch (err) {
@@ -139,9 +190,9 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   }
 
   useEffect(() => {
-    cargar();
-    // Solo al montar: el padrón no cambia mientras se mira la pantalla, y recargarlo
-    // en cada render bajaría ~2,900 filas y toda la bitácora por nada.
+    // Solo al montar, y solo si la memoria del modulo no trae ya lo de esta sesion:
+    // volver de otra pestana no vuelve a bajar ~2,900 expedientes y toda la bitacora.
+    if (memoria.padron === undefined) cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -156,6 +207,10 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
       setLectura(l);
       setOrigen("archivo");
       setArchivo(f.name);
+      // Se guarda en cuanto se lee: lo que vale es lo que queda en la base para
+      // todos, no lo que se ve en este navegador. Si falla, el archivo queda en
+      // pantalla con el boton para reintentar.
+      if (CARGAN.includes(rol)) await guardar(l, bytesRef.current, f.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo leer la bitácora.");
     } finally {
@@ -167,9 +222,26 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     if (!f) return;
     setProcesando("Leyendo el padrón de personas…");
     setError(null);
+    setAvisoCarga(null);
     try {
+      const bytes = await f.arrayBuffer();
       const l = await leerPadronZk(f);
       setPersonas(indexarPadron(l.personas));
+      if (CARGAN.includes(rol)) {
+        // Va entero en una llamada: el RPC escribe solo lo que cambia (bloque 83).
+        setProcesando("Guardando el padrón de personas en SATAG…");
+        const r = await cargarPadronZk(
+          { archivo: f.name, sha256: await huella(bytes), filasArchivo: l.filasArchivo, exportadoEn: exportadoEnDe(f.name) },
+          l.personas.map((p) => ({ tarjeta: p.tarjeta, nombre: p.nombre, departamentoId: p.departamentoId, departamento: p.departamento })),
+          email,
+        );
+        setAvisoCarga(
+          r.yaEstaba
+            ? `Ese padrón ya estaba guardado: ${r.vigentes.toLocaleString("es-MX")} personas vigentes, nada que cambiar.`
+            : `Padrón guardado: ${r.insertadas.toLocaleString("es-MX")} personas nuevas, ${r.actualizadas.toLocaleString("es-MX")} actualizadas y ${r.retiradas.toLocaleString("es-MX")} que ya no vienen en el export. ${r.vigentes.toLocaleString("es-MX")} vigentes.`,
+        );
+        setCargaPadron(await getUltimaCargaPadronZk());
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo leer el padrón de personas.");
     } finally {
@@ -177,29 +249,41 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     }
   }
 
-  /** Manda la ventana a la base. Es lo que hace que mañana haya serie. */
-  async function guardar() {
-    if (!lectura || !bytesRef.current) return;
+  /**
+   * Manda la ventana a la base. Es lo que hace que mañana haya serie.
+   *
+   * SOLO LO NUEVO: antes de mandar se pregunta que ids del rango del archivo ya estan
+   * guardados y se mandan solo los que faltan. Un archivo que traslapa con la ventana
+   * anterior deja de costar diez peticiones para costar una o dos, uno repetido no
+   * manda filas, y un export viejo que nunca se guardo entra completo.
+   */
+  async function guardar(l: LecturaEventos | null = lectura, bytes: ArrayBuffer | null = bytesRef.current, nombre: string | null = archivo) {
+    if (!l || !bytes) return;
     setProcesando("Guardando la bitácora en SATAG…");
     setError(null);
     try {
-      const sha = await huella(bytesRef.current);
+      const sha = await huella(bytes);
       const anterior = importaciones[0]?.hasta ?? null;
       const meta = {
-        archivo: archivo ?? "sin nombre",
+        archivo: nombre ?? "sin nombre",
         sha256: sha,
-        filasArchivo: lectura.resumen.filasArchivo,
-        filasConTarjeta: lectura.resumen.filasConTarjeta,
-        topeAlcanzado: lectura.resumen.topeAlcanzado,
-        desde: lectura.resumen.desde,
-        hasta: lectura.resumen.hasta,
+        filasArchivo: l.resumen.filasArchivo,
+        filasConTarjeta: l.resumen.filasConTarjeta,
+        topeAlcanzado: l.resumen.topeAlcanzado,
+        desde: l.resumen.desde,
+        hasta: l.resumen.hasta,
         // La hora del nombre del archivo. El RPC la guarda desde el bloque 82; antes
         // la ignora, asi que mandarla no depende del orden de publicacion.
-        exportadoEn: lectura.resumen.exportadoEn,
-        huecoDias: huecoEnDias(anterior, lectura.resumen.desde),
+        exportadoEn: l.resumen.exportadoEn,
+        huecoDias: huecoEnDias(anterior, l.resumen.desde),
       };
-      const filas = lectura.eventos
-        .filter((e) => e.sentido !== null)
+      const conSentido = l.eventos.filter((e) => e.sentido !== null);
+      const yaGuardados =
+        conSentido.length > 0
+          ? await idsEventosGuardados(Math.min(...conSentido.map((e) => e.idEvento)), Math.max(...conSentido.map((e) => e.idEvento)))
+          : new Set<number>();
+      const filas = conSentido
+        .filter((e) => !yaGuardados.has(e.idEvento))
         .map((e) => ({
           idEvento: String(e.idEvento),
           ocurrioEn: e.ocurrioEn,
@@ -210,14 +294,16 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           repeticion: e.repeticion,
           departamentoEvento: e.departamentoEvento,
         }));
+      const omitidos = conSentido.length - filas.length;
       setAvance({ hechas: 0, total: filas.length });
       const r = await cargarEventosZk(meta, filas, email, (hechas, total) =>
         setAvance({ hechas, total }),
       );
+      const yaEstaban = r.yaEstaban + omitidos;
       setAvisoCarga(
         r.insertados === 0
-          ? `Esta ventana ya estaba guardada: ${r.yaEstaban.toLocaleString("es-MX")} eventos ya existían y no se duplicó ninguno.`
-          : `Se guardaron ${r.insertados.toLocaleString("es-MX")} eventos nuevos${r.yaEstaban > 0 ? ` y ${r.yaEstaban.toLocaleString("es-MX")} ya estaban` : ""}.`,
+          ? `Esta ventana ya estaba guardada: ${yaEstaban.toLocaleString("es-MX")} eventos ya existían y no se mandó ninguno de más.`
+          : `Se guardaron ${r.insertados.toLocaleString("es-MX")} eventos nuevos${yaEstaban > 0 ? ` y ${yaEstaban.toLocaleString("es-MX")} ya estaban, así que no se volvieron a mandar` : ""}.`,
       );
       const imps = await listImportacionesZk();
       setImportaciones(imps);
@@ -293,12 +379,23 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           verIdentidad: VEN_IDENTIDAD.includes(rol),
           ventanas: origen === "base" ? (serie?.ventanas.length ?? 0) : importaciones.length,
           // Con un archivo, el hueco es contra la ultima ventana guardada. Con la
-          // base, es el mayor hueco entre las ventanas que entraron en la serie:
-          // uno solo basta para invalidar el uso por credencial.
-          huecoDias:
-            origen === "base"
-              ? (serie?.ventanas ?? []).reduce<number | null>((peor, v) => (v.huecoDias !== null && (peor === null || v.huecoDias > peor) ? v.huecoDias : peor), null)
-              : huecoEnDias(importaciones[0]?.hasta ?? null, lectura.resumen.desde),
+          // base, es el mayor hueco entre ventanas CONSECUTIVAS, recalculado con sus
+          // fechas: el hueco_dias guardado se midio al subir y queda mal si una
+          // ventana llego fuera de orden. Uno solo basta para invalidar el uso por
+          // credencial, y se dice entre que dos fechas esta.
+          ...(() => {
+            if (origen === "base") {
+              const h = huecoMayor(serie?.ventanas ?? []);
+              return { huecoDias: h?.dias ?? null, huecoEntre: h ? { hastaAnterior: h.hastaAnterior, desdeSiguiente: h.desdeSiguiente } : null };
+            }
+            const ultima = importaciones[0]?.hasta ?? null;
+            const d = huecoEnDias(ultima, lectura.resumen.desde);
+            return {
+              huecoDias: d,
+              huecoEntre: d !== null && d > 0 && ultima && lectura.resumen.desde ? { hastaAnterior: ultima, desdeSiguiente: lectura.resumen.desde } : null,
+            };
+          })(),
+          serie: origen === "base" && serie ? { ventanas: serie.ventanas.length, truncadas: serie.ventanas.filter((v) => v.topeAlcanzado).length } : null,
         };
       })()
     : null;
@@ -314,10 +411,16 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         <p className="ti-hint">
           {serie && origen === "base" ? (
             <>
-              Lo que se mide abajo es lo guardado en SATAG, igual para quien lo abra. Para agregar una ventana,
-              exporte en ZKBioSecurity <strong>{GLOSARIO.todosLosEventos.ruta}</strong> y elija el archivo aquí:
-              se revisa primero y se guarda con el botón.
+              Lo que se mide abajo es lo guardado en SATAG, igual para quien lo abra.{" "}
+              {CARGAN.includes(rol)
+                ? <>Para agregar una ventana, exporte en ZKBioSecurity <strong>{GLOSARIO.todosLosEventos.ruta}</strong> y
+                  elija el archivo aquí: se revisa primero y se guarda con el botón.</>
+                : "Las ventanas nuevas las carga TI."}
               {serie.truncada && " La serie se cortó por tamaño: se muestran las filas más antiguas del rango."}
+              {" "}
+              <button type="button" className="link-action" disabled={procesando !== null} onClick={() => cargar()}>
+                Volver a leer de la base
+              </button>
             </>
           ) : (
             <>
@@ -329,7 +432,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         </p>
 
         <div className="grid-2">
-          <div className="field">
+          {CARGAN.includes(rol) && <div className="field">
             <label className="label" htmlFor="arch-eventos">Archivo «{GLOSARIO.todosLosEventos.ui}» de ZK</label>
             <input
               id="arch-eventos"
@@ -349,9 +452,9 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
                 {lectura?.resumen.diasConActividad} días
               </p>
             )}
-          </div>
+          </div>}
 
-          <div className="field">
+          {CARGAN.includes(rol) && <div className="field">
             <label className="label" htmlFor="arch-personas">Archivo «{GLOSARIO.personasZk.ui}» de ZK (opcional)</label>
             <input
               id="arch-personas"
@@ -366,12 +469,21 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
               }}
             />
             <p className="hint">
-              {personas
-                ? `${personas.size.toLocaleString("es-MX")} personas · ya se puede ver el desglose por departamento`
-                : `Sin él la pantalla funciona igual; con él aparece el desglose por departamento de ZK. Se exporta desde ${GLOSARIO.personasZk.ruta}.`}
+              {cargaPadron
+                ? `Guardado en SATAG: ${(personas?.size ?? cargaPadron.personas).toLocaleString("es-MX")} personas, del archivo ${cargaPadron.archivo} cargado el ${fechaCorta(cargaPadron.cargadoEn)}. Suba el export nuevo para actualizarlo; solo se escribe lo que cambie.`
+                : personas
+                  ? `${personas.size.toLocaleString("es-MX")} personas, solo en esta sesión.`
+                  : `Sin él la pantalla funciona igual; con él aparece el desglose por departamento de ZK. Se exporta desde ${GLOSARIO.personasZk.ruta} y queda guardado para todos.`}
             </p>
-          </div>
+          </div>}
         </div>
+        {!CARGAN.includes(rol) && (
+          <p className="ti-hint">
+            {cargaPadron
+              ? `Padrón de personas de ZK: ${(personas?.size ?? cargaPadron.personas).toLocaleString("es-MX")} personas, cargado por TI el ${fechaCorta(cargaPadron.cargadoEn)}.`
+              : "Todavía no hay padrón de personas de ZK guardado; lo carga TI. Sin él la pantalla agrupa por los cinco grupos del padrón de SATAG."}
+          </p>
+        )}
 
         {procesando && (
           <div className="carga">
@@ -401,7 +513,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         {lectura && origen === "archivo" && (
           <div className="chip-row" style={{ marginTop: 12 }}>
             <button type="button" className="btn" disabled={procesando !== null} onClick={() => guardar()}>
-              Guardar esta ventana en SATAG
+              Reintentar guardar esta ventana en SATAG
             </button>
             {importaciones.length > 0 && (
               <button type="button" className="link-action" disabled={procesando !== null} onClick={() => leerDeLaBase(importaciones)}>
@@ -410,8 +522,8 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
             )}
             <span className="ti-hint" style={{ alignSelf: "center" }}>
               {importaciones.length === 0
-                ? "Abajo se mide solo este archivo. Todavía no hay ninguna ventana guardada."
-                : `Abajo se mide solo este archivo. Hay ${importaciones.length} ${importaciones.length === 1 ? "ventana guardada" : "ventanas guardadas"}; al guardar se juntan.`}
+                ? "Este archivo no se pudo guardar y abajo se mide solo él. Todavía no hay ninguna ventana guardada."
+                : `Este archivo no se pudo guardar y abajo se mide solo él. Hay ${importaciones.length} ${importaciones.length === 1 ? "ventana guardada" : "ventanas guardadas"}; al guardar se juntan.`}
             </span>
           </div>
         )}
@@ -419,7 +531,14 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
 
       {datos ? (
         <PanelEstacionamiento d={datos} />
-      ) : procesando ? null : (
+      ) : procesando ? null : importaciones.length > 0 ? (
+        <div className="panel">
+          <p className="ti-empty">
+            No se pudo leer la bitácora guardada.{" "}
+            <button type="button" className="link-action" onClick={() => leerDeLaBase(importaciones)}>Reintentar</button>
+          </p>
+        </div>
+      ) : (
         <div className="panel">
           <p className="ti-empty">
             Todavía no hay ninguna bitácora guardada. Para ver la medición hace falta el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity:{" "}
