@@ -1214,3 +1214,53 @@ export function horaCorta(min: number | null): string {
   const m = Math.round(min % 60);
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
+
+/* ------------------------------------------------------------------ lecturas puntuales
+   Lo que la pantalla nueva (DISEÑO.md §3.3) necesita para sus filas: leer la curva en
+   un minuto y medir cuanto dura por encima de un umbral. Viven aqui y no en el
+   componente por la misma regla de siempre: el panel no calcula, lee. */
+
+/** Cuantos coches dice la escalera de un dia en `minuto`. */
+export function dentroEn(pasos: PasoOcupacion[], minuto: number): number {
+  let v = 0;
+  for (const p of pasos) {
+    if (p.minuto > minuto) break;
+    v = p.dentro;
+  }
+  return v;
+}
+
+/** La mediana entre dias en `minuto`: la franja mas cercana. */
+export function medianaEn(franjas: PuntoFranja[], minuto: number): number {
+  if (franjas.length === 0) return 0;
+  let mejor = franjas[0];
+  for (const f of franjas) if (Math.abs(f.minuto - minuto) < Math.abs(mejor.minuto - minuto)) mejor = f;
+  return mejor.p50;
+}
+
+/**
+ * Minutos de la escalera con MAS de `umbral` coches dentro. Cada escalon dura hasta
+ * el siguiente; el ultimo no dura nada, porque ahi termina lo que se sabe.
+ */
+export function minutosPorEncima(pasos: PasoOcupacion[], umbral: number): number {
+  let total = 0;
+  for (let i = 0; i + 1 < pasos.length; i += 1) {
+    if (pasos[i].dentro > umbral) total += pasos[i + 1].minuto - pasos[i].minuto;
+  }
+  return total;
+}
+
+/** Lo mismo sobre la mediana entre dias: franjas por encima, en minutos. */
+export function minutosTipicosPorEncima(franjas: PuntoFranja[], umbral: number): number {
+  return franjas.filter((f) => f.p50 > umbral).length * PASO_FRANJA;
+}
+
+/** El punto mas alto de la mediana entre `desde` y `hasta`; null si la curva esta en cero. */
+export function picoDeLaMediana(franjas: PuntoFranja[], desde: number, hasta: number): PuntoFranja | null {
+  let mejor: PuntoFranja | null = null;
+  for (const f of franjas) {
+    if (f.minuto < desde || f.minuto > hasta) continue;
+    if (mejor === null || f.p50 > mejor.p50) mejor = f;
+  }
+  return mejor !== null && mejor.p50 > 0 ? mejor : null;
+}

@@ -1194,3 +1194,146 @@ a { color: var(--primary-strong); }
 /* Verde cuando el record lo tiene quien mira: es la unica celebracion de la
    pantalla y conviene que se note. */
 .marcador__record--suyo { background: #eaf6ee; border-color: #b7e0c4; }
+
+/* =====================================================================
+   La capa de octubre de 2026: tipografia como estructura (DISEÑO.md).
+   La regla en una linea: tamaño, peso, gris y espacio ordenan la pagina; el
+   color aparece solo donde significa algo. Nada de aqui lleva sombra ni degradado.
+   ===================================================================== */
+
+/* ---------- El titular que afirma algo (§3.1) ---------- */
+.titular { color: var(--primary); font-size: clamp(1.45rem, 3.2vw, 2.1rem); font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; margin: 0 0 8px; max-width: 30ch; text-wrap: balance; }
+.titular__sub { color: var(--muted); font-size: 1.02rem; line-height: 1.5; margin: 0 0 18px; max-width: 64ch; }
+.titular__migas { color: var(--muted); display: flex; flex-wrap: wrap; font-size: 0.82rem; gap: 8px; margin: 0 0 10px; }
+
+/* ---------- Las cifras como filas, no tarjetas (§3.3) ----------
+   Pregunta a la izquierda, cifra a la derecha, 44px de alto por lo menos. La fila
+   abierta resalta su rango en la grafica de arriba: es la misma cosa vista dos veces. */
+.filas { border-top: 1px solid var(--line); margin: 22px 0 0; }
+.fila { border-bottom: 1px solid var(--line); }
+.fila__b { align-items: baseline; background: none; border: 0; color: inherit; cursor: pointer; display: grid; font: inherit; gap: 16px; grid-template-columns: minmax(0, 1fr) auto 14px; padding: 13px 4px; text-align: left; width: 100%; }
+.fila__b:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.fila__q { color: var(--muted); font-size: 0.98rem; }
+.fila[data-abierta="true"] .fila__q { color: var(--ink); }
+.fila__a { color: var(--primary); font-size: 1.12rem; font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.fila__flecha { color: var(--muted); font-size: 1rem; transition: transform 0.15s ease; }
+.fila[data-abierta="true"] .fila__flecha { transform: rotate(90deg); }
+.fila__det { color: var(--ink); display: grid; font-size: 0.95rem; gap: 10px; line-height: 1.5; max-width: 66ch; padding: 0 4px 18px; }
+.fila__det p { margin: 0; }
+@media (prefers-reduced-motion: reduce) { .fila__flecha { transition: none; } }
+/* En el telefono la cifra baja a su propio renglon, alineada a la izquierda: dos
+   columnas de texto en 360px parten la pregunta palabra por palabra. */
+@media (max-width: 560px) {
+  .fila__b { grid-template-columns: minmax(0, 1fr) 14px; row-gap: 2px; }
+  .fila__q, .fila__a { grid-column: 1; }
+  .fila__a { text-align: left; }
+  .fila__flecha { align-self: center; grid-column: 2; grid-row: 1 / span 2; }
+}
+
+/* Barras de texto para un reparto (quien, por donde): una fila por categoria. */
+.barras { display: grid; gap: 8px; max-width: 520px; }
+.barra { align-items: center; display: grid; font-size: 0.9rem; gap: 10px; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr) 3.6rem; }
+.barra__t { background: var(--field-bg); border-radius: 2px; height: 10px; overflow: hidden; }
+.barra__t i { background: var(--viz-serie-1); display: block; height: 100%; }
+.barra__v { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+
+/* El resalte de la fila abierta y las guias de anotacion, dentro del SVG. */
+.viz-resalte { fill: var(--field-bg); }
+.viz-guia { stroke: var(--line); stroke-width: 1; }
+
+/* ---------- Los dos estacionamientos lado a lado ---------- */
+.par { display: grid; gap: 28px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 14px; }
+@media (max-width: 640px) { .par { grid-template-columns: minmax(0, 1fr); } }
+.par h4 { color: var(--ink); font-size: 0.95rem; font-weight: 700; margin: 0 0 2px; }
+.par p { color: var(--muted); font-size: 0.88rem; margin: 0 0 6px; }
+.mini-dia { display: block; height: auto; width: 100%; }
+
+/* ---------- Que tan firme es esto: el pie con los limites ---------- */
+.firme { border-top: 1px solid var(--ink); color: var(--muted); display: grid; font-size: 0.9rem; gap: 6px; line-height: 1.5; margin-top: 40px; max-width: 70ch; padding-top: 12px; }
+.firme strong { color: var(--ink); font-weight: 700; }
+
+/* ---------- Secciones sin caja ---------- */
+.seccion-plana { margin-top: 44px; }
+.seccion-plana > h3 { border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 1.2rem; font-weight: 800; line-height: 1.25; margin: 0 0 4px; padding-bottom: 8px; }
+.seccion-plana > .sub { color: var(--muted); font-size: 0.95rem; margin: 0 0 14px; max-width: 64ch; }
+
+/* ---------- Las tarjetas de cifra que quedan, ahora planas (§2) ----------
+   Siguen existiendo en Secciones y Permanencia. Pierden el degradado, el borde de
+   color y el radio grande: un filete arriba y la cifra. */
+.kpi { background: none; border: 0; border-top: 2px solid var(--line); border-radius: 0; padding: 10px 2px 0; }
+.kpi--marca { background: none; border-top-color: var(--primary); }
+
+/* ---------- El plano del plantel (§3.6) ---------- */
+.plano { margin-top: 6px; }
+.plano__frase { color: var(--ink); font-size: 1.05rem; font-weight: 700; line-height: 1.35; margin: 0 0 10px; max-width: 48ch; text-wrap: balance; }
+.plano__hora { align-items: center; display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 0 0 6px; }
+.plano__hora label { color: var(--muted); font-size: 0.88rem; }
+.plano__hora input[type="range"] { accent-color: var(--primary); flex: 1 1 180px; min-height: 44px; }
+.plano__hora output { color: var(--primary); font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 3.5rem; }
+.plano__lienzo { max-width: 640px; }
+.plano__lienzo svg { display: block; height: auto; width: 100%; }
+.plano__via { fill: none; stroke: #e9edf3; stroke-linecap: round; stroke-linejoin: round; }
+.plano__calle { fill: var(--muted); font-size: 12px; }
+.plano__ref { fill: #8a94a6; font-size: 10.5px; }
+.plano__edificio { fill: var(--field-bg); }
+.plano__edificio--borde { stroke: #c9d2df; stroke-width: 1; }
+.plano__contorno { fill: none; stroke: #c9d2df; stroke-width: 1; }
+.plano__lote { fill: var(--primary); stroke: var(--primary); stroke-width: 1.5; }
+.plano__lote--e2 { stroke-dasharray: 6 4; }
+.plano__techado { fill: none; stroke: var(--primary); stroke-dasharray: 3 3; stroke-width: 1; }
+.plano__techado.plano__txt--claro { stroke: #fff; }
+.plano__nombre { fill: var(--primary); font-family: var(--font-raleway), sans-serif; font-size: 20px; font-weight: 800; }
+.plano__cifra { fill: var(--ink); font-size: 13px; font-weight: 600; }
+.plano__cifra--chica { font-size: 12px; }
+.plano__txt--claro { fill: #fff; }
+.plano__puerta { fill: none; stroke: var(--ink); stroke-linecap: round; stroke-width: 5; }
+.plano__puerta-t { fill: var(--ink); font-size: 11px; font-weight: 700; }
+
+/* ---------- La ficha de persona (§3.4) ---------- */
+.ficha-app { border-top: 1px solid var(--line); display: grid; gap: 0; grid-template-columns: 280px minmax(0, 1fr); margin-top: 14px; }
+@media (max-width: 900px) { .ficha-app { grid-template-columns: minmax(0, 1fr); } }
+.ficha-lista { border-right: 1px solid var(--line); min-width: 0; padding: 12px 12px 12px 0; }
+@media (max-width: 900px) { .ficha-lista { border-bottom: 1px solid var(--line); border-right: 0; padding-right: 0; } }
+.ficha-lista__n { color: var(--muted); font-size: 0.82rem; margin: 8px 0 0; }
+.ficha-lista ul { display: grid; gap: 1px; list-style: none; margin: 8px 0 0; max-height: 62vh; overflow-y: auto; padding: 0; }
+@media (max-width: 900px) { .ficha-lista ul { grid-auto-columns: minmax(220px, 1fr); grid-auto-flow: column; max-height: none; overflow-x: auto; padding-bottom: 6px; } }
+.persona { background: none; border: 0; border-radius: 6px; color: inherit; cursor: pointer; display: block; font: inherit; min-height: 44px; padding: 8px 10px; text-align: left; width: 100%; }
+.persona:hover { background: var(--field-bg); }
+.persona:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+.persona[aria-current="true"] { background: var(--field-bg); box-shadow: inset 3px 0 0 var(--primary); }
+.persona__nm { align-items: baseline; display: flex; font-size: 0.95rem; font-weight: 700; gap: 8px; justify-content: space-between; }
+.persona__mt { color: var(--muted); font-size: 0.82rem; }
+.persona__mt code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.8rem; }
+.persona__punto { background: var(--rose); border-radius: 50%; display: inline-block; flex: none; height: 7px; width: 7px; }
+.ficha { min-width: 0; padding: 18px 0 0 28px; }
+@media (max-width: 900px) { .ficha { padding-left: 0; } }
+.ficha__ident { align-items: baseline; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.ficha__ident h2 { color: var(--primary); font-size: 1.6rem; font-weight: 800; line-height: 1.2; margin: 0; }
+.ficha__rol { color: var(--muted); font-size: 1rem; }
+.ficha__cifras { color: var(--muted); display: flex; flex-wrap: wrap; font-size: 0.9rem; gap: 6px 22px; margin-top: 8px; }
+.ficha__cifras b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 700; }
+.ficha__cifras code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86rem; }
+.ficha__cuerpo { display: grid; gap: 36px; grid-template-columns: minmax(0, 1fr) 250px; margin-top: 24px; }
+@media (max-width: 1100px) { .ficha__cuerpo { grid-template-columns: minmax(0, 1fr); } }
+.ficha__cuerpo h3 { color: var(--muted); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.08em; margin: 0 0 8px; text-transform: uppercase; }
+.ficha__bloque + .ficha__bloque { margin-top: 30px; }
+.ficha__vacio { color: var(--muted); font-size: 0.92rem; margin: 0; }
+.props { display: grid; font-size: 0.92rem; gap: 10px; margin: 0; }
+.props div { display: grid; gap: 8px; grid-template-columns: 6rem minmax(0, 1fr); }
+.props dt { color: var(--muted); }
+.props dd { margin: 0; overflow-wrap: anywhere; }
+.props code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86rem; }
+.aviso-ficha { border-left: 2px solid var(--ink); font-size: 0.9rem; line-height: 1.45; margin: 0; padding: 2px 0 2px 10px; }
+.aviso-ficha + .aviso-ficha { margin-top: 10px; }
+/* Tablas tipograficas (§3.5): solo filetes horizontales. */
+.tabla-tipo { border-collapse: collapse; font-size: 0.92rem; width: 100%; }
+.tabla-tipo th { border-bottom: 1px solid var(--line); color: var(--muted); font-size: 0.8rem; font-weight: 500; padding: 6px 10px 6px 0; text-align: left; }
+.tabla-tipo td { border-bottom: 1px solid var(--line); padding: 9px 10px 9px 0; vertical-align: top; }
+.tabla-tipo td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86rem; }
+.tabla-tipo tr.baja td { color: var(--muted); }
+.tabla-tipo tr.baja td.mono { text-decoration: line-through; text-decoration-color: var(--line); }
+.pasos svg { display: block; height: auto; min-width: 520px; width: 100%; }
+.pasos__nota { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
+.actividad { list-style: none; margin: 0; padding: 0; }
+.actividad li { border-bottom: 1px solid var(--line); display: grid; font-size: 0.92rem; gap: 12px; grid-template-columns: 7.5rem minmax(0, 1fr); padding: 8px 0; }
+.actividad time { color: var(--muted); font-size: 0.86rem; font-variant-numeric: tabular-nums; }
