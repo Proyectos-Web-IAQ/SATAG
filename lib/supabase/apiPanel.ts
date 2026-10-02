@@ -351,7 +351,6 @@ interface IncompletoRow {
 const SELECT_INCOMPLETO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
-  origen_expediente, evidencia_aceptacion,
   estado, folio_recibo, created_at, dias_desde_alta, dias_desde_pago, motivos
 `;
 
