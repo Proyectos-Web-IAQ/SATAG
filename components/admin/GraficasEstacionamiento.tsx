@@ -32,11 +32,31 @@ function etiquetaHoras(desde: number, hasta: number, paso = 120): number[] {
 /**
  * Cuantos coches hay dentro a lo largo del dia, en un estacionamiento.
  *
- * La curva es la mediana entre los dias de la ventana; el pico que se rotula es el
- * mayor de un dia real, no el de la curva suavizada, porque un pico suavizado ya no
- * es un pico.
+ * DOS CAPAS, UN COLOR, Y CADA UNA DE UNA SOLA POBLACION:
+ *
+ *   - El dia mas lleno, como escalera exacta del barrido (linea continua). Es lo
+ *     OBSERVADO, y es la capa sobre la que va el punto del pico: salen del mismo
+ *     acumulado, asi que el punto cae sobre la linea por construccion.
+ *   - La mitad de los dias comparables: la mediana entre dias (linea punteada) con
+ *     su banda entre cuartiles. Es un CALCULO, no un dia que haya ocurrido, y el
+ *     punteado lo dice sin pedir un segundo color.
+ *
+ * Antes el punto del pico se dibujaba sobre la mediana, y quedaba flotando a once
+ * coches de la linea que decia explicar: el maximo de UN dia encima de la mediana de
+ * seis. Un rotulo que contradice a su propia curva destruye la confianza en todo lo
+ * demas, y la regla que lo evita es esta: una poblacion por capa, y la leyenda nombra
+ * las capas.
  */
-export function OcupacionDelDia({ o, cupo }: { o: OcupacionLote; cupo: number | null }) {
+export function OcupacionDelDia({
+  o,
+  cupo,
+  comparables,
+}: {
+  o: OcupacionLote;
+  cupo: number | null;
+  /** Cuantos dias entran en la mediana. Va en la leyenda: una mediana sin su n es una cifra sin poblacion. */
+  comparables: number;
+}) {
   const izq = 46, der = 14, arriba = 26, alto = 168, abajo = 28;
   const H = arriba + alto + abajo;
   const ancho = W - izq - der;
@@ -51,7 +71,23 @@ export function OcupacionDelDia({ o, cupo }: { o: OcupacionLote; cupo: number | 
   const x = (m: number) => r(izq + ((m - FRANJA_DESDE) / (FRANJA_HASTA - FRANJA_DESDE)) * ancho);
   const y = (n: number) => r(arriba + alto - (n / techo) * alto);
 
-  const linea = o.franjas.map((f, i) => `${i === 0 ? "M" : "L"} ${x(f.minuto)} ${y(f.p50)}`).join(" ");
+  const mediana = o.franjas.map((f, i) => `${i === 0 ? "M" : "L"} ${x(f.minuto)} ${y(f.p50)}`).join(" ");
+
+  // La capa del dia es escalera, no curva: entre un cambio y el siguiente el numero
+  // de coches dentro es constante, y dibujarlo como pendiente inventaria coches a
+  // medias. Termina donde termina el dia, o donde termina el archivo.
+  const escalera = o.diaPico
+    .map((p, i) => (i === 0 ? `M ${x(p.minuto)} ${y(p.dentro)}` : `H ${x(p.minuto)} V ${y(p.dentro)}`))
+    .join(" ");
+  const finDia = o.diaPico.length > 0 ? o.diaPico[o.diaPico.length - 1].minuto : FRANJA_HASTA;
+  const enElDia = (m: number): number => {
+    let v = 0;
+    for (const p of o.diaPico) {
+      if (p.minuto > m) break;
+      v = p.dentro;
+    }
+    return v;
+  };
 
   // La banda entre cuartiles sustituye al area bajo la curva. El area decia «esto
   // paso»; la banda dice «esto pasa en la mitad de los dias», que es lo unico que
@@ -65,6 +101,7 @@ export function OcupacionDelDia({ o, cupo }: { o: OcupacionLote; cupo: number | 
 
   const marcas = [0, Math.round(techo / 2), techo];
   const horas = etiquetaHoras(FRANJA_DESDE, FRANJA_HASTA);
+  const diaRotulo = o.pico.dia ? diaLegible(o.pico.dia) : "el día más lleno";
 
   // La serie completa en texto: quien use lector de pantalla recibe el dato, no
   // la noticia de que hay una grafica.
@@ -75,9 +112,17 @@ export function OcupacionDelDia({ o, cupo }: { o: OcupacionLote; cupo: number | 
 
   return (
     <div className="viz">
+      {/* La leyenda es HTML y no SVG: un lector de pantalla la lee como lista. Y
+          nombra las POBLACIONES, no los trazos: «el día más lleno» y «la mitad de
+          los días» son dos cosas distintas aunque compartan color. */}
+      <ul className="viz-leyenda" aria-label="Qué dibuja cada línea">
+        <li><i className="viz-sw viz-sw--dia" aria-hidden="true" />El día más lleno, {diaRotulo}</li>
+        <li><i className="viz-sw viz-sw--tipico" aria-hidden="true" />La mitad de los {comparables} días comparables</li>
+        <li><i className="viz-sw viz-sw--banda" aria-hidden="true" />Entre su cuartil bajo y el alto</li>
+      </ul>
       <div className="viz-scroll">
         <svg className="viz-svg" viewBox={`0 0 ${W} ${H}`} role="img"
-          aria-label={`Coches dentro del estacionamiento ${o.lote} a lo largo del día, mediana de los días comparables con su banda de cuartiles. Momento más lleno: ${o.pico.dentro} a las ${horaCorta(o.pico.minuto)}${o.pico.hasta > o.pico.dentro ? `, hasta ${o.pico.hasta} contando las entradas que no cerraron` : ""}. Serie cada hora: ${serie}.`}>
+          aria-label={`Coches dentro del estacionamiento ${o.lote} a lo largo del día. Línea continua: el día más lleno, ${diaRotulo}, con su momento más lleno de ${o.pico.dentro} coches a las ${horaCorta(o.pico.minuto)}${o.pico.hasta > o.pico.dentro ? `, hasta ${o.pico.hasta} contando las entradas que no cerraron` : ""}. Línea punteada: la mediana de los ${comparables} días comparables, con su banda de cuartiles. Serie de la mediana cada hora: ${serie}.`}>
 
           {marcas.map((n) => (
             <g key={n}>
@@ -94,7 +139,8 @@ export function OcupacionDelDia({ o, cupo }: { o: OcupacionLote; cupo: number | 
           )}
 
           <path className="viz-area" d={banda} />
-          <path className="viz-linea" d={linea} />
+          <path className="viz-linea-tipica" d={mediana} />
+          {o.diaPico.length > 0 && <path className="viz-linea" d={escalera} />}
 
           {o.pico.minuto !== null && (
             <g>
@@ -111,21 +157,34 @@ export function OcupacionDelDia({ o, cupo }: { o: OcupacionLote; cupo: number | 
           ))}
 
           {/* Blanco por hora: mas grande que cualquier marca, y el foco por teclado
-              entrega el mismo dato que el puntero. */}
+              entrega el mismo dato que el puntero: las dos capas, con su nombre. */}
           {horas.map((m) => {
             const f = o.franjas.reduce((mejor, c) => (Math.abs(c.minuto - m) < Math.abs(mejor.minuto - m) ? c : mejor), o.franjas[0]);
+            const d = enElDia(m);
             return (
               <rect key={`b${m}`} className="viz-blanco" x={x(m) - 30} y={arriba} width={60} height={alto}
                 fill="transparent" tabIndex={0} role="img"
-                aria-label={`A las ${horaCorta(m)}, ${f.p50} coches dentro de ${o.lote} en la mitad de los días, entre ${f.p25} y ${f.p75}`}>
-                <title>{`${horaCorta(m)} · ${f.p50} coches (${f.p25}–${f.p75})`}</title>
+                aria-label={`A las ${horaCorta(m)}: ${d} coches dentro de ${o.lote} el día más lleno; ${f.p50} en la mitad de los días, entre ${f.p25} y ${f.p75}`}>
+                <title>{`${horaCorta(m)} · día más lleno ${d} · mitad de los días ${f.p50} (${f.p25}–${f.p75})`}</title>
               </rect>
             );
           })}
         </svg>
       </div>
+      {finDia < FRANJA_HASTA && (
+        <p className="ti-hint" style={{ margin: "6px 0 0" }}>
+          La línea del día termina a las {horaCorta(finDia)} porque ahí termina el archivo: el día seguía
+          corriendo.
+        </p>
+      )}
     </div>
   );
+}
+
+/** «mar, 22 sep», construida en hora local: ZK da hora local y aqui se respeta. */
+function diaLegible(dia: string): string {
+  const [a, m, d] = dia.split("-").map(Number);
+  return new Date(a, m - 1, d, 12).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
 }
 
 /** Un rotulo de eje corto para una duracion en minutos: «15m», «4h». */

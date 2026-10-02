@@ -113,6 +113,14 @@ const SEÑAL: Record<string, Señal> = {
     porque:
       "El control de acceso le abrió, pero el export de personas no la conoce. O el padrón está desactualizado, o es una credencial que nadie administra.",
   },
+  sinDepartamento: {
+    clave: "sinDepartamento",
+    pendiente: true,
+    texto: "falta su departamento",
+    tono: "pendiente",
+    porque:
+      "Ni SATAG ni el control de acceso dicen a qué departamento pertenece: en ZK está en «General», que no es un departamento sino el cajón de sastre de la configuración vieja. Clasificarla en ZK y volver a exportar el padrón la acomoda sola.",
+  },
   sinExpediente: {
     clave: "sinExpediente",
     pendiente: false,
@@ -343,6 +351,11 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
     if (p?.departamentoId === DEPTO_BAJAS) señales.push(SEÑAL.deBaja);
     if (p?.departamentoId === DEPTO_STOCK) señales.push(SEÑAL.stock);
     if (normaRota.has(u.tarjeta)) señales.push(SEÑAL.fueraDeNorma);
+    // «Sin clasificar» no es un grupo: es que nadie sabe de que departamento es.
+    // Va como pendiente porque se resuelve —clasificar en ZK y reexportar— y
+    // mientras no se resuelva, toda proporcion por grupo que la pantalla imprima
+    // lleva esta gente dentro de un cajon que no significa nada.
+    if (u.rol === "Sin clasificar") señales.push(SEÑAL.sinDepartamento);
     return { uso: u, persona: p, señales };
   };
 
@@ -513,6 +526,26 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
 
       <Vistas vistas={VISTAS} activa={vista} onCambio={setVista} />
 
+      {/* Hasta donde sabe el archivo. Va arriba de todas las vistas porque toda cifra
+          de la pantalla se lee «al corte de…»: el dia de la exportacion la jornada
+          seguia corriendo, y quien estaba dentro no es un defecto del archivo. */}
+      {m.corte && (
+        <p className="corte" role="status">
+          <strong>
+            Corte: {diaCorto(m.corte.dia)} a las {horaCorta(m.corte.minuto)}.
+          </strong>{" "}
+          {m.corte.aunDentro > 0
+            ? `${m.corte.aunDentro} coches seguían dentro a esa hora: no cuentan como «sin salida» ni entran en ninguna mediana.`
+            : "Ahí termina lo que el archivo sabe."}
+          {m.corte.retrasoMin !== null && m.corte.retrasoMin >= 5 && (
+            <>
+              {" "}El archivo se exportó {duracion(m.corte.retrasoMin * 60_000)} después del último evento: ZK iba
+              atrasado al recoger los pasos de los controladores.
+            </>
+          )}
+        </p>
+      )}
+
       {/* =============================================== RESUMEN =============== */}
       {vista === "resumen" && (
         <>
@@ -563,9 +596,10 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
                 Entre las {horaCorta(m.ventana.desde)} y las {horaCorta(m.ventana.hasta)} hubo{" "}
                 {m.ventana.umbral} coches o más dentro durante {m.ventana.minutos} de esos{" "}
                 {Math.round((m.ventana.hasta ?? 0) - (m.ventana.desde ?? 0))} minutos: el lleno va y viene.
-                El resto del día la ocupación es una meseta plana. La curva es la mediana de los{" "}
-                {m.diasComparables.length} días comparables y la banda son sus cuartiles: si la banda es
-                estrecha, el día típico existe de verdad.
+                El resto del día la ocupación es una meseta plana. La línea continua es el día más lleno
+                de cada estacionamiento; la punteada, la mitad de los {m.diasComparables.length} días
+                comparables, con la banda entre sus cuartiles: si la banda es estrecha, el día típico
+                existe de verdad.
               </>
             }
           >
@@ -575,7 +609,7 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
                   Estacionamiento {o.lote.slice(1)} · lo más lleno que se le vio fueron {o.pico.dentro} coches,
                   el {o.pico.dia ? diaCorto(o.pico.dia) : "—"} a las {horaCorta(o.pico.minuto)}
                 </h4>
-                <OcupacionDelDia o={o} cupo={cupos[o.lote] ?? null} />
+                <OcupacionDelDia o={o} cupo={cupos[o.lote] ?? null} comparables={m.diasComparables.length} />
               </div>
             ))}
             {/* Sumar los dos maximos da mas que el titular, y la razon no es un error:
@@ -990,7 +1024,11 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
                 </>
               )}{" "}
               De los dos lados: {m.entradasSinSalida} entradas no cerraron y {m.salidasSinEntrada} salidas no
-              tenían entrada en el archivo. En total {censuradas} estancias quedaron sin medir.
+              tenían entrada en el archivo
+              {m.corte && m.corte.aunDentro > 0
+                ? `, y ${m.corte.aunDentro} coches seguían dentro cuando el archivo termina, el ${diaCorto(m.corte.dia)} a las ${horaCorta(m.corte.minuto)}: esos no son un defecto, son el día corriendo`
+                : ""}
+              . En total {censuradas} estancias quedaron sin medir.
             </li>
             <li>
               <strong>{resumen.rechazos.toLocaleString("es-MX")} intentos fueron rechazados</strong>{" "}

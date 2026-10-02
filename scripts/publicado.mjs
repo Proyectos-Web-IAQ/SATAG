@@ -57,6 +57,9 @@ const RUTAS = [
       // su lugar el valor de una clave del catalogo de senales, que es una cadena del
       // panel y viaja en el chunk.
       { texto: "fueraDeNorma", que: "la pestana Estacionamiento y sus senales por credencial" },
+      // La hora del corte viaja como clave del meta de la importacion: sobrevive a la
+      // minificacion igual que un nombre de parametro, y solo existe desde el 2-oct.
+      { texto: "exportadoEn", que: "la hora del corte, la curva en dos capas y el .xls aceptado tal cual (2-oct)" },
       // Clase CSS que solo existe en el JS de las graficas: prueba que la pestana
       // Tablero (columnas y dispersion) esta publicada, no solo su consulta.
       { texto: "viz-mediana", que: "las graficas del tablero (pestana Tablero)" },

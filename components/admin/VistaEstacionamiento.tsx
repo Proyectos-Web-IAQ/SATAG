@@ -32,9 +32,10 @@ import {
   type ImportacionZk,
   type PadronEstacionamiento,
 } from "@/lib/supabase/apiPanel";
-import { medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
+import { corteDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
+import { GLOSARIO } from "@/lib/glosario";
 import { huecoEnDias, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
-import { GRUPO_POR_TIPO, SIN_CLASIFICAR, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
+import { GRUPO_POR_TIPO, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import type { RolPanel } from "@/lib/supabase/auth";
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
@@ -129,6 +130,9 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         topeAlcanzado: lectura.resumen.topeAlcanzado,
         desde: lectura.resumen.desde,
         hasta: lectura.resumen.hasta,
+        // La hora del nombre del archivo. El RPC la guarda desde el bloque 82; antes
+        // la ignora, asi que mandarla no depende del orden de publicacion.
+        exportadoEn: lectura.resumen.exportadoEn,
         huecoDias: huecoEnDias(anterior, lectura.resumen.desde),
       };
       const filas = lectura.eventos
@@ -178,11 +182,22 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   // contra el departamento que trae el evento. Las instalaciones del día cruzan la
   // pluma antes de que se suba el padrón a ZK —que se sube al cierre— así que
   // aparecen como STOCK SATAG; agrupar por ese texto las clasificaría mal todas.
+  //
+  // SATAG manda, pero «otro» no es una respuesta: es la ausencia de una. Cuando el
+  // expediente no dice a que grupo pertenece —son 37, los que ZK tenia en «General»
+  // cuando se migraron— se consulta el export de personas, que es estado de hoy. Asi
+  // basta volver a exportar «Usuarios» despues de reclasificar a alguien en ZK para
+  // que la pantalla lo refleje, sin tocar la base.
+  //
+  // Antes esta linea usaba GRUPO_POR_TIPO con un id de departamento, y ese mapa
+  // traduce 'padres' y 'maestro', no '4' ni '15': el respaldo nunca llego a
+  // funcionar. Lo corrige grupoDeDepto, que es el mapa del catalogo de ZK.
   const rolDe = (tarjeta: string) => {
     const r = porTag.get(tarjeta);
-    if (r) return GRUPO_POR_TIPO[r.tipoUsuario] ?? SIN_CLASIFICAR;
+    const deSatag = r ? GRUPO_POR_TIPO[r.tipoUsuario] : undefined;
+    if (deSatag) return deSatag;
     const p = personas?.get(tarjeta);
-    return p ? (GRUPO_POR_TIPO[p.departamentoId] ?? SIN_CLASIFICAR) : SIN_CLASIFICAR;
+    return p ? grupoDeDepto(p.departamentoId) : SIN_CLASIFICAR;
   };
   const deptoDe = personas
     ? (tarjeta: string) => personas.get(tarjeta)?.departamento || "No está en el padrón de ZK"
@@ -191,7 +206,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
 
   const datos: DatosEstacionamiento | null = lectura
     ? (() => {
-        const m = medirEstacionamiento(lectura.eventos, rolDe, { deptoDe });
+        const m = medirEstacionamiento(lectura.eventos, rolDe, { deptoDe, corte: corteDe(lectura.resumen) });
         const fuentes = new Map<string, Fuentes>();
         for (const u of m.porCredencial) {
           const r = porTag.get(u.tarjeta);
@@ -218,21 +233,21 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   return (
     <>
       <div className="panel">
-        <p className="panel-title">La bitácora de accesos</p>
+        <p className="panel-title">«{GLOSARIO.todosLosEventos.ui}»: {GLOSARIO.todosLosEventos.que}</p>
         <p className="ti-hint">
-          En ZKBioSecurity: <strong>Acceso → Reportes → Todos los Eventos → Exportar</strong>, en formato
-          CSV. El archivo se lee en este navegador y no se sube a ningún lado: de él solo viaja su huella
-          digital, que es lo que impide procesarlo dos veces.
+          En ZKBioSecurity: <strong>{GLOSARIO.todosLosEventos.ruta}</strong>. Es {GLOSARIO.todosLosEventos.detalle}.
+          Sirve tal como ZK lo entrega, en Excel o en CSV. El archivo se lee en este navegador y no se sube a
+          ningún lado: de él solo viaja su huella digital, que es lo que impide procesarlo dos veces.
         </p>
 
         <div className="grid-2">
           <div className="field">
-            <label className="label" htmlFor="arch-eventos">Bitácora de accesos</label>
+            <label className="label" htmlFor="arch-eventos">Archivo «{GLOSARIO.todosLosEventos.ui}» de ZK</label>
             <input
               id="arch-eventos"
               className="input"
               type="file"
-              accept=".csv,.txt"
+              accept=".csv,.txt,.xls,.xlsx"
               disabled={procesando !== null}
               onChange={(e) => {
                 const f = e.target.files?.[0] ?? null;
@@ -249,12 +264,12 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="arch-personas">Padrón de personas de ZK (opcional)</label>
+            <label className="label" htmlFor="arch-personas">Archivo «{GLOSARIO.personasZk.ui}» de ZK (opcional)</label>
             <input
               id="arch-personas"
               className="input"
               type="file"
-              accept=".csv,.txt"
+              accept=".csv,.txt,.xls,.xlsx"
               disabled={procesando !== null}
               onChange={(e) => {
                 const f = e.target.files?.[0] ?? null;
@@ -265,7 +280,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
             <p className="hint">
               {personas
                 ? `${personas.size.toLocaleString("es-MX")} personas · ya se puede ver el desglose por departamento`
-                : "Sin él la pantalla funciona igual; con él aparece el desglose por departamento de ZK."}
+                : `Sin él la pantalla funciona igual; con él aparece el desglose por departamento de ZK. Se exporta desde ${GLOSARIO.personasZk.ruta}.`}
             </p>
           </div>
         </div>
@@ -314,8 +329,8 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
       ) : (
         <div className="panel">
           <p className="ti-empty">
-            Para ver la medición hace falta la bitácora de accesos. Es el archivo que ZKBioSecurity exporta
-            desde Acceso → Reportes → Todos los Eventos.
+            Para ver la medición hace falta el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity:{" "}
+            {GLOSARIO.todosLosEventos.ruta}. Sirve en Excel o en CSV, tal como lo entrega.
           </p>
         </div>
       )}

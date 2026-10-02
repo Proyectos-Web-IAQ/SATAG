@@ -134,6 +134,12 @@ export interface PuntoFranja {
   p75: number;
 }
 
+/** Un escalon del barrido exacto: cuantos coches hay dentro a partir de ese minuto. */
+export interface PasoOcupacion {
+  minuto: number;
+  dentro: number;
+}
+
 /**
  * El momento mas lleno que se observo: cuantos coches, a que hora y QUE DIA.
  *
@@ -158,6 +164,20 @@ export interface OcupacionLote {
   lote: Lote;
   franjas: PuntoFranja[];
   pico: Pico;
+  /**
+   * EL DIA DEL PICO, EXACTO: el acumulado del barrido en cada cambio, para dibujarlo
+   * como escalera encima de la envolvente.
+   *
+   * Es la capa sobre la que va el punto del pico, y la unica sobre la que PUEDE ir:
+   * `franjas` es la mediana entre dias y el pico es el maximo de UN dia. Dibujar el
+   * punto sobre la mediana lo dejaba flotando a once coches de la linea que decia
+   * explicar. Una poblacion por capa, y cada capa con su nombre.
+   *
+   * Solo confirmadas, igual que `pico.dentro`: por eso coinciden por construccion y
+   * hay una prueba que lo fija. Si el dia del pico es el del corte, termina en el
+   * minuto del corte. Vacio si no hubo pico.
+   */
+  diaPico: PasoOcupacion[];
   entradas: number;
   salidas: number;
   tarjetas: number;
@@ -392,6 +412,12 @@ export interface Medicion {
    * permanencia, porque no se sabe cuando entro. Antes se descartaban en silencio.
    */
   salidasSinEntrada: number;
+  /**
+   * Hasta donde sabe el archivo, y cuantos coches seguian dentro a esa hora. Esos NO
+   * estan en `entradasSinSalida`: no les falta la salida, les falta el dia.
+   * `null` si la lectura no trae fechas.
+   */
+  corte: (Corte & { aunDentro: number }) | null;
 }
 
 /**
@@ -402,8 +428,12 @@ export interface Medicion {
  * y es una COTA INFERIOR.
  * «izquierda»: salio y no se leyo su entrada, porque el coche ya estaba dentro cuando
  * arranca la ventana del archivo. No se sabe cuando entro.
+ * «corte»: entro el dia en que el archivo termina y todavia no habia salido cuando
+ * termino. No es un coche sin salida: es un coche que sigue dentro. Su duracion se
+ * corta en el ultimo instante del que el archivo sabe algo, cuenta para la ocupacion
+ * y no para la permanencia.
  */
-export type Censura = null | "izquierda" | "derecha";
+export type Censura = null | "izquierda" | "derecha" | "corte";
 
 export interface Estancia {
   tarjeta: string;
@@ -424,6 +454,45 @@ export interface Estancia {
  * la hora de cierre del recinto, no en el fin del registro.
  */
 export const MINUTO_CIERRE_POR_DEFECTO = 21 * 60;
+
+/**
+ * HASTA DONDE SABE EL ARCHIVO.
+ *
+ * El dia en que se exporto, la jornada seguia corriendo: quien estaba dentro no es
+ * un coche «sin salida», es un coche que todavia no sale. Y el instante del corte NO
+ * es la hora que trae el nombre del archivo, sino la del ULTIMO EVENTO: el servidor
+ * de ZK recoge los pasos de los controladores con retraso, y el archivo del 2-oct,
+ * exportado a las 09:26, termina a las 08:19. Entre las dos horas no hubo silencio en
+ * una escuela a esa hora: hubo pasos que ZK todavia no habia recogido. Cortar en la
+ * hora del nombre habria supuesto dentro, durante una hora, a gente que a lo mejor
+ * ya habia salido. El retraso se guarda porque es un dato de calidad del archivo.
+ */
+export interface Corte {
+  dia: string;
+  minuto: number;
+  /** La hora del nombre del archivo, si la trae: cuando ZK lo exporto. */
+  exportadoEn: string | null;
+  /** Minutos entre el ultimo evento y la exportacion: lo que ZK iba atras. */
+  retrasoMin: number | null;
+}
+
+/** El corte de una lectura, a partir de su resumen. `null` si el archivo no trae fechas. */
+export function corteDe(resumen: { hasta: string | null; exportadoEn: string | null }): Corte | null {
+  const ultimo = resumen.hasta;
+  if (!ultimo) return null;
+  let retrasoMin: number | null = null;
+  if (resumen.exportadoEn) {
+    const a = Date.parse(ultimo.replace(" ", "T") + "Z");
+    const b = Date.parse(resumen.exportadoEn.replace(" ", "T") + "Z");
+    if (Number.isFinite(a) && Number.isFinite(b)) retrasoMin = Math.max(0, Math.round((b - a) / 60_000));
+  }
+  return {
+    dia: ultimo.slice(0, 10),
+    minuto: Number(ultimo.slice(11, 13)) * 60 + Number(ultimo.slice(14, 16)) + Number(ultimo.slice(17, 19)) / 60,
+    exportadoEn: resumen.exportadoEn,
+    retrasoMin,
+  };
+}
 
 const dia = (e: EventoZk) => e.ocurrioEn.slice(0, 10);
 const minuto = (e: EventoZk) =>
@@ -470,7 +539,8 @@ export function accesos(eventos: EventoZk[]): EventoZk[] {
 export function emparejarEstancias(
   eventos: EventoZk[],
   minutoCierre: number = MINUTO_CIERRE_POR_DEFECTO,
-): { estancias: Estancia[]; entradasSinSalida: number; salidasSinEntrada: number } {
+  corte: Corte | null = null,
+): { estancias: Estancia[]; entradasSinSalida: number; salidasSinEntrada: number; aunDentro: number } {
   const porTarjetaDiaLote = new Map<string, EventoZk[]>();
   for (const e of accesos(eventos)) {
     const k = `${e.tarjeta}|${dia(e)}|${e.lote}`;
@@ -482,16 +552,22 @@ export function emparejarEstancias(
   const estancias: Estancia[] = [];
   let entradasSinSalida = 0;
   let salidasSinEntrada = 0;
+  let aunDentro = 0;
 
-  // Una entrada que no cerro se corta en la hora de cierre y queda marcada.
-  const porDerecha = (e: EventoZk): Estancia => ({
-    tarjeta: e.tarjeta,
-    dia: dia(e),
-    lote: e.lote,
-    entro: minuto(e),
-    dur: Math.max(0, minutoCierre - minuto(e)),
-    censura: "derecha",
-  });
+  // Una entrada que no cerro se corta en la hora de cierre y queda marcada. SALVO EL
+  // DIA DEL CORTE: ahi el archivo termina antes que la jornada, asi que quien no
+  // habia salido no es «sin salida», es «aun dentro», y su estancia se corta en el
+  // ultimo instante del que el archivo sabe algo, no a las nueve de la noche. Son
+  // dos hechos distintos y se cuentan por separado.
+  const porDerecha = (e: EventoZk): Estancia => {
+    const base = { tarjeta: e.tarjeta, dia: dia(e), lote: e.lote, entro: minuto(e) };
+    if (corte !== null && dia(e) === corte.dia && corte.minuto < minutoCierre) {
+      aunDentro += 1;
+      return { ...base, dur: Math.max(0, corte.minuto - minuto(e)), censura: "corte" };
+    }
+    entradasSinSalida += 1;
+    return { ...base, dur: Math.max(0, minutoCierre - minuto(e)), censura: "derecha" };
+  };
 
   for (const grupo of porTarjetaDiaLote.values()) {
     const orden = [...grupo].sort((a, b) => minuto(a) - minuto(b));
@@ -499,10 +575,7 @@ export function emparejarEstancias(
     for (const e of orden) {
       if (e.sentido === "entrada") {
         // Dos entradas seguidas: la primera nunca cerro.
-        if (abierta !== null) {
-          estancias.push(porDerecha(abierta));
-          entradasSinSalida += 1;
-        }
+        if (abierta !== null) estancias.push(porDerecha(abierta));
         abierta = e;
       } else if (abierta !== null) {
         estancias.push({
@@ -531,13 +604,10 @@ export function emparejarEstancias(
         salidasSinEntrada += 1;
       }
     }
-    if (abierta !== null) {
-      estancias.push(porDerecha(abierta));
-      entradasSinSalida += 1;
-    }
+    if (abierta !== null) estancias.push(porDerecha(abierta));
   }
 
-  return { estancias, entradasSinSalida, salidasSinEntrada };
+  return { estancias, entradasSinSalida, salidasSinEntrada, aunDentro };
 }
 
 /** Las estancias con los dos extremos leidos: las unicas que miden permanencia. */
@@ -606,6 +676,14 @@ export function medirPorClave(
  */
 export interface UsoCredencial {
   tarjeta: string;
+  /**
+   * El grupo al que pertenece, ya resuelto contra el padron.
+   *
+   * Viene aqui y no se deduce en la pantalla porque la pantalla no tiene con que:
+   * recibe la medicion hecha, y resolver el dueno exige el padron. Ademas deja ver
+   * de un vistazo a quien el padron no sabe clasificar, que es una tarea, no un grupo.
+   */
+  rol: string;
   /** Estancias confirmadas: con entrada y salida leidas. */
   estancias: number;
   censuradas: number;
@@ -626,6 +704,7 @@ export function medirPorCredencial(
   estancias: Estancia[],
   oleadaDesde: number,
   oleadaHasta: number,
+  rolDe: RolDe = () => "Sin clasificar",
 ): UsoCredencial[] {
   const porTarjeta = new Map<string, Estancia[]>();
   for (const s of estancias) {
@@ -641,6 +720,7 @@ export function medirPorCredencial(
       const dias = [...new Set(g.map((s) => s.dia))].sort();
       return {
         tarjeta,
+        rol: rolDe(tarjeta) || "Sin clasificar",
         estancias: ok.length,
         censuradas: g.length - ok.length,
         medianaMin: mediana(durs),
@@ -725,6 +805,34 @@ function muestrear(marcas: Marca[]): Map<number, number> {
 }
 
 /**
+ * El barrido completo como ESCALERA: un punto por cada minuto en que cambia el
+ * acumulado, recortado a la franja de dibujo y a `hasta`.
+ *
+ * Es exacto —sin reja— y es lo que permite dibujar el dia del pico de modo que el
+ * punto del pico caiga SOBRE la linea: los dos salen del mismo acumulado.
+ */
+function pasosDe(marcas: Marca[], hasta: number = FRANJA_HASTA): PasoOcupacion[] {
+  const pasos: PasoOcupacion[] = [];
+  let dentro = 0;
+  let i = 0;
+  while (i < marcas.length && marcas[i].minuto <= FRANJA_DESDE) {
+    dentro += marcas[i].delta;
+    i += 1;
+  }
+  pasos.push({ minuto: FRANJA_DESDE, dentro });
+  while (i < marcas.length && marcas[i].minuto <= hasta) {
+    const m = marcas[i].minuto;
+    while (i < marcas.length && marcas[i].minuto === m) {
+      dentro += marcas[i].delta;
+      i += 1;
+    }
+    pasos.push({ minuto: m, dentro });
+  }
+  if (pasos[pasos.length - 1].minuto < hasta) pasos.push({ minuto: hasta, dentro });
+  return pasos;
+}
+
+/**
  * Cual de los dias de la ventana describe un dia normal y cual no.
  *
  * Dos motivos de exclusion, y los dos se dicen en pantalla:
@@ -742,14 +850,25 @@ function muestrear(marcas: Marca[]): Map<number, number> {
 export function clasificarDias(
   ok: EventoZk[],
   dias: string[],
+  corte: Corte | null = null,
 ): { comparables: string[]; excluidos: DiaExcluido[] } {
   if (dias.length < 3) return { comparables: [...dias], excluidos: [] };
 
-  const excluidos: DiaExcluido[] = [
-    { dia: dias[0], motivo: "la ventana del archivo lo corta por el principio" },
-    { dia: dias[dias.length - 1], motivo: "la ventana del archivo lo corta por el final" },
-  ];
-  const enMedio = dias.slice(1, -1);
+  const ultimo = dias[dias.length - 1];
+  // Si el archivo termina DESPUES del fin de la franja de dibujo, el ultimo dia esta
+  // completo y describe un dia normal como cualquier otro.
+  const ultimoCompleto = corte !== null && corte.dia === ultimo && corte.minuto >= FRANJA_HASTA;
+  const excluidos: DiaExcluido[] = [{ dia: dias[0], motivo: "la ventana del archivo lo corta por el principio" }];
+  if (!ultimoCompleto) {
+    excluidos.push({
+      dia: ultimo,
+      motivo:
+        corte !== null && corte.dia === ultimo
+          ? `el archivo termina a las ${horaCorta(corte.minuto)}: el dia seguia corriendo`
+          : "la ventana del archivo lo corta por el final",
+    });
+  }
+  const enMedio = ultimoCompleto ? dias.slice(1) : dias.slice(1, -1);
 
   const cuenta = new Map<string, number>();
   for (const e of ok) cuenta.set(dia(e), (cuenta.get(dia(e)) ?? 0) + 1);
@@ -827,6 +946,7 @@ function ocupacionDe(
   rolDe: RolDe,
   deptoDe: RolDe | undefined,
   oleada: { desde: number; hasta: number },
+  corte: Corte | null,
 ): OcupacionLote {
   const delLote = estancias.filter((s) => s.lote === lote);
 
@@ -861,19 +981,31 @@ function ocupacionDe(
   // es un pico.
   const pico = picoPorDia(delLote);
 
+  // La capa del dia: el barrido exacto del dia del pico, para que el punto que lo
+  // rotula tenga debajo una linea que sea SUYA. Si ese dia es el del corte, la
+  // escalera termina donde termina el archivo.
+  const diaPico =
+    pico.dia === null
+      ? []
+      : pasosDe(
+          marcasDe(confirmadas(delLote.filter((s) => s.dia === pico.dia))),
+          corte !== null && corte.dia === pico.dia ? Math.min(FRANJA_HASTA, corte.minuto) : FRANJA_HASTA,
+        );
+
   const entradas = eventosDelLote.filter((e) => e.sentido === "entrada").length;
   const salidas = eventosDelLote.filter((e) => e.sentido === "salida").length;
   return {
     lote,
     franjas,
     pico,
+    diaPico,
     entradas,
     salidas,
     tarjetas: new Set(eventosDelLote.map((e) => e.tarjeta)).size,
     minutosOcupados: Math.round(confirmadas(delLote).reduce((a, s) => a + s.dur, 0)),
     porRol: medirPorClave(delLote, rolDe, pico),
     porDepartamento: deptoDe ? medirPorClave(delLote, deptoDe, pico) : [],
-    porCredencial: medirPorCredencial(delLote, oleada.desde, oleada.hasta),
+    porCredencial: medirPorCredencial(delLote, oleada.desde, oleada.hasta, rolDe),
     desbalance: entradas > 0 ? (entradas - salidas) / entradas : null,
   };
 }
@@ -896,14 +1028,21 @@ export interface OpcionesMedicion {
    * departamentos reales son con lo que se opera.
    */
   deptoDe?: RolDe;
+  /**
+   * Hasta donde sabe el archivo (ver `Corte`). Lo arma el llamador con `corteDe`
+   * sobre el resumen de la lectura; sin el, todo lo que no cerro se corta en la hora
+   * de cierre, como antes.
+   */
+  corte?: Corte | null;
 }
 
 export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: OpcionesMedicion = {}): Medicion {
   const minutoCierre = op.minutoCierre ?? MINUTO_CIERRE_POR_DEFECTO;
+  const corte = op.corte ?? null;
   const ok = accesos(eventos);
   const dias = [...new Set(ok.map(dia))].sort();
-  const { estancias, entradasSinSalida, salidasSinEntrada } = emparejarEstancias(eventos, minutoCierre);
-  const { comparables, excluidos } = clasificarDias(ok, dias);
+  const { estancias, entradasSinSalida, salidasSinEntrada, aunDentro } = emparejarEstancias(eventos, minutoCierre, corte);
+  const { comparables, excluidos } = clasificarDias(ok, dias, corte);
 
   const picoTotal = picoPorDia(estancias);
 
@@ -967,10 +1106,16 @@ export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: Opci
   // La ocupacion por lote va DESPUES de conocer la franja critica: cada lote reporta
   // cuantas de sus entradas cayeron en ella, y para eso necesita sus minutos.
   const ocupacion: OcupacionLote[] = (["E1", "E2"] as Lote[]).map((l) =>
-    ocupacionDe(estancias, l, ok.filter((e) => e.lote === l), comparables, rolDe, op.deptoDe, {
-      desde: oDesde,
-      hasta: oHasta,
-    }),
+    ocupacionDe(
+      estancias,
+      l,
+      ok.filter((e) => e.lote === l),
+      comparables,
+      rolDe,
+      op.deptoDe,
+      { desde: oDesde, hasta: oHasta },
+      corte,
+    ),
   );
 
   const oleada: Oleada = {
@@ -984,7 +1129,7 @@ export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: Opci
 
   // Quien se sale de la norma de su propio grupo. La norma la fija el grupo, asi que
   // no hay ninguna lista escrita a mano de quien «deberia» rotar.
-  const usoPorCredencial = medirPorCredencial(estancias, oDesde, oHasta);
+  const usoPorCredencial = medirPorCredencial(estancias, oDesde, oHasta, rolDe);
   const medianaDelGrupo = new Map(porRolLista.map((r) => [r.rol, r.medianaMin]));
   const fueraDeNorma = usoPorCredencial
     .filter((u) => {
@@ -1025,6 +1170,7 @@ export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: Opci
     enLaMeseta: [...enMeseta.entries()].map(([rol, coches]) => ({ rol, coches })).sort((a, b) => b.coches - a.coches),
     entradasSinSalida,
     salidasSinEntrada,
+    corte: corte === null ? null : { ...corte, aunDentro },
   };
 }
 

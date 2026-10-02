@@ -17,7 +17,7 @@
 // el pico de las 14:00 a las 20:00, que es la misma clase de error que ya esta en la
 // matriz de riesgos por `registros.fecha_instalacion`. Aqui se manda la cadena tal
 // como vino y la conversion se hace en un solo lugar, al insertar.
-import { decodificarExportZk, esArchivoBinario, normalizarTag, tablaZk, TOPE_EXPORT_ZK } from "@/lib/zk/texto";
+import { normalizarTag, tablaZk, textoDeExportZk, TOPE_EXPORT_ZK } from "@/lib/zk/texto";
 
 export { TOPE_EXPORT_ZK };
 
@@ -88,6 +88,12 @@ export interface ResumenEventos {
   desbalance: number | null;
   desde: string | null;
   hasta: string | null;
+  /**
+   * Cuando ZK exporto el archivo, leido de su nombre («Todos los Eventos_20261002092612»).
+   * NO es hasta donde llega el archivo —eso es `hasta`— sino cuando se pidio: la
+   * diferencia entre los dos es lo que ZK iba atrasado al recoger los pasos.
+   */
+  exportadoEn: string | null;
   diasConActividad: number;
   topeAlcanzado: boolean;
 }
@@ -180,7 +186,7 @@ export function marcarRepeticiones(eventos: EventoZk[], minutos: number = DEDUP_
  * cuentan: una tasa de ruido que sube es una antena que empieza a fallar, y eso es
  * mantenimiento preventivo que hoy nadie ve.
  */
-export function parsearEventosZk(texto: string): LecturaEventos {
+export function parsearEventosZk(texto: string, nombreArchivo: string | null = null): LecturaEventos {
   const tabla = tablaZk(texto, ROTULOS);
 
   const conTarjeta: EventoZk[] = [];
@@ -238,6 +244,7 @@ export function parsearEventosZk(texto: string): LecturaEventos {
       desbalance: entradas > 0 ? Math.abs(entradas - salidas) / entradas : null,
       desde: tiempos[0] ?? null,
       hasta: tiempos[tiempos.length - 1] ?? null,
+      exportadoEn: nombreArchivo === null ? null : exportadoEnDe(nombreArchivo),
       diasConActividad: new Set(tiemposArchivo.map(dia)).size,
       topeAlcanzado: tabla.topeAlcanzado,
     },
@@ -261,21 +268,31 @@ export function huecoEnDias(hastaAnterior: string | null, desdeNuevo: string | n
 }
 
 /**
- * Lee el archivo que el usuario eligio. Rechaza un Excel antes de decodificarlo,
- * porque decodificar un binario como UTF-16 no falla: produce basura y el error
- * aparece despues, disfrazado de «el archivo no trae datos».
+ * La marca de tiempo que ZK pone en el nombre de todo lo que exporta:
+ * «Todos los Eventos_20261002092612.xls» es el 2 de octubre de 2026 a las 09:26:12.
+ * Se devuelve con la misma forma que `ocurrioEn` para poder compararla con `hasta`.
+ * Un nombre sin marca, o con una marca imposible, da `null`: no se inventa una fecha.
+ */
+export function exportadoEnDe(nombre: string): string | null {
+  const m = /_(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\.[A-Za-z0-9]+$/.exec(nombre.trim());
+  if (!m) return null;
+  const [, a, mes, d, h, mi, s] = m;
+  const fuera =
+    Number(mes) < 1 || Number(mes) > 12 || Number(d) < 1 || Number(d) > 31 ||
+    Number(h) > 23 || Number(mi) > 59 || Number(s) > 59;
+  return fuera ? null : `${a}-${mes}-${d} ${h}:${mi}:${s}`;
+}
+
+/**
+ * Lee el archivo que el usuario eligio, venga en Excel —que es lo que ZK propone por
+ * defecto— o en CSV/TXT. La deteccion vive en `textoDeExportZk`.
  */
 export async function leerEventosZk(archivo: File): Promise<LecturaEventos> {
   const bytes = new Uint8Array(await archivo.arrayBuffer());
-  if (esArchivoBinario(bytes)) {
-    throw new Error(
-      "Ese archivo es un Excel. Exporte la bitácora en formato CSV/TXT (Acceso → Reportes → Todos los Eventos → Exportar): Todos los Eventos_….csv.",
-    );
-  }
-  const lectura = parsearEventosZk(decodificarExportZk(bytes));
+  const lectura = parsearEventosZk(await textoDeExportZk(bytes), archivo.name);
   if (lectura.resumen.filasArchivo === 0) {
     throw new Error(
-      "El archivo no trae la bitácora de accesos de ZK (columnas ID de Evento, Tiempo y Tarjeta). Revise que haya exportado «Todos los Eventos».",
+      "El archivo no trae «Todos los Eventos» de ZK (columnas ID de Evento, Tiempo y Tarjeta). Revise que haya exportado ese reporte, en Excel o en CSV.",
     );
   }
   return lectura;

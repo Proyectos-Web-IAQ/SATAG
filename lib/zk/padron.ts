@@ -19,7 +19,7 @@
 // seguridad, la trazabilidad, la auditoria y el control interno», con la comunicacion
 // limitada a «personal del Instituto expresamente autorizado».
 
-import { decodificarExportZk, esArchivoBinario, normalizarTag, tablaZk } from "@/lib/zk/texto";
+import { normalizarTag, tablaZk, textoDeExportZk } from "@/lib/zk/texto";
 
 /**
  * En que padrones aparece una credencial.
@@ -164,10 +164,6 @@ export function indexarPadron(personas: PersonaZk[]): Map<string, PersonaZk> {
 /** Lee el archivo tal como lo entrega el navegador, con los mismos rechazos. */
 export async function leerPadronZk(archivo: File): Promise<LecturaPadron> {
   const bytes = new Uint8Array(await archivo.arrayBuffer());
-  if (esArchivoBinario(bytes)) {
-    throw new Error(
-      "Ese archivo parece un Excel o un comprimido. Exporte el padrón de ZKBioSecurity como CSV y vuelva a intentarlo.",
-    );
-  }
-  return parsearPadronZk(decodificarExportZk(bytes));
+  // Venga en Excel —que es lo que ZK propone por defecto— o en CSV.
+  return parsearPadronZk(await textoDeExportZk(bytes));
 }

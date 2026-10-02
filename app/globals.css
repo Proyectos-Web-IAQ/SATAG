@@ -866,6 +866,21 @@ a { color: var(--primary-strong); }
    de arriba prohibe. */
 .viz-area { fill: var(--viz-serie-1); fill-opacity: 0.14; stroke: none; }
 .viz-linea { fill: none; stroke: var(--viz-serie-1); stroke-width: 2; stroke-linejoin: round; }
+/* Dos capas, un color: lo OBSERVADO va continuo y lo DERIVADO va punteado. La mediana
+   entre dias es un calculo, no un dia que haya ocurrido, y el trazo lo dice sin pedir
+   un segundo color (que significaria «la otra cosa»). */
+.viz-linea-tipica { fill: none; stroke: var(--viz-serie-1); stroke-width: 1.5; stroke-dasharray: 3 4; stroke-linejoin: round; }
+/* Muestras de leyenda para lineas: la muestra cuadrada de .viz-leyenda i es para
+   rellenos. Van despues para ganar en especificidad sin !important. */
+.viz-leyenda .viz-sw { border-radius: 0; height: 0; width: 18px; }
+.viz-leyenda .viz-sw--dia { border-top: 2.5px solid var(--viz-serie-1); }
+.viz-leyenda .viz-sw--tipico { border-top: 2px dashed var(--viz-serie-1); }
+.viz-leyenda .viz-sw--banda { background: var(--viz-serie-1); border-radius: 2px; height: 12px; opacity: 0.18; }
+
+/* La linea del corte: un hecho sobre el archivo, no una alerta. Filete a la izquierda
+   y fondo de campo; sin tarjeta y sin color de estado, para no gastar el canal de
+   alerta en un dato neutro. */
+.corte { background: var(--field-bg); border-left: 3px solid var(--primary); color: var(--ink); font-size: 0.9rem; line-height: 1.45; margin: 0 0 14px; padding: 9px 12px; }
 /* El aforo SI va discontinuo, y no contradice la regla de la reja solida: la reja
    es referencia y tiene que ser muda, mientras el aforo es un umbral y el
    discontinuo es justo como se lee un umbral. */

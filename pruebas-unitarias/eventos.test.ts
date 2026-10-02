@@ -8,6 +8,7 @@ import {
   MIN_ESTANCIA_LARGA,
   TOPE_EXPORT_ZK,
   VENTANAS_PARA_BAJA,
+  exportadoEnDe,
   huecoEnDias,
   marcarRepeticiones,
   parsearEventosZk,
@@ -318,5 +319,24 @@ describe("las constantes · estan aqui a proposito y con su medicion detras", ()
     // Decision de Gerardo del 1-oct. Tres ventanas son unos 24 dias: absorbe una
     // incapacidad o un viaje sin que nadie salga en la lista por haber faltado.
     expect(VENTANAS_PARA_BAJA).toBe(3);
+  });
+});
+
+describe("exportadoEnDe · la hora en el nombre del archivo", () => {
+  it("lee la marca de tiempo que ZK pone en el nombre, venga en xls o en csv", () => {
+    expect(exportadoEnDe("Todos los Eventos_20261002092612.xls")).toBe("2026-10-02 09:26:12");
+    expect(exportadoEnDe("Todos los Eventos_20260929165910.csv")).toBe("2026-09-29 16:59:10");
+  });
+  it("un nombre sin marca da null, no una fecha inventada", () => {
+    expect(exportadoEnDe("eventos.csv")).toBeNull();
+    expect(exportadoEnDe("Todos los Eventos_2026100.csv")).toBeNull();
+  });
+  it("una marca imposible tampoco pasa", () => {
+    expect(exportadoEnDe("x_20261345996161.csv")).toBeNull();
+  });
+  it("el parser la deja en el resumen cuando conoce el nombre, y en null cuando no", () => {
+    const texto = archivo([cruda()]);
+    expect(parsearEventosZk(texto, "Todos los Eventos_20260929165910.csv").resumen.exportadoEn).toBe("2026-09-29 16:59:10");
+    expect(parsearEventosZk(texto).resumen.exportadoEn).toBeNull();
   });
 });
