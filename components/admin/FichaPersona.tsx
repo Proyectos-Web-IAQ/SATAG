@@ -350,7 +350,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
 
 /* ------------------------------------------------------------------ lista y ficha */
 
-export default function FichaPersona({ registros, todos, rol, vacio, linea, avisosExtra }: {
+export default function FichaPersona({ registros, todos, rol, vacio, linea, avisosExtra, orden }: {
   /** Los expedientes que pasan el buscador y los filtros de Consulta. */
   registros: Registro[];
   /** El padrón completo, para enlazar a la misma familia aunque el filtro la deje fuera. */
@@ -361,6 +361,8 @@ export default function FichaPersona({ registros, todos, rol, vacio, linea, avis
   linea?: (r: Registro) => ReactNode;
   /** Avisos que el expediente solo no sabe, para «Lo que no cuadra»; tambien encienden el punto de la lista. */
   avisosExtra?: (r: Registro) => string[];
+  /** Como viene ordenada la lista, dicho junto a la cuenta: «por entradas, de más a menos». */
+  orden?: string;
 }) {
   const [elegido, setElegido] = useState<string | null>(null);
   const id = useId();
@@ -380,7 +382,7 @@ export default function FichaPersona({ registros, todos, rol, vacio, linea, avis
     <div className="ficha-app">
       <div className="ficha-lista">
         <p className="ficha-lista__n" id={`${id}-n`}>
-          {registros.length === 0 ? vacio : `${registros.length.toLocaleString("es-MX")} ${registros.length === 1 ? "expediente" : "expedientes"}`}
+          {registros.length === 0 ? vacio : `${registros.length.toLocaleString("es-MX")} ${registros.length === 1 ? "expediente" : "expedientes"}${orden ? ` · ${orden}` : ""}`}
         </p>
         <ul aria-labelledby={`${id}-n`}>
           {registros.slice(0, 300).map((r) => (
