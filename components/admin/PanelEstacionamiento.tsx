@@ -590,9 +590,11 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
         const picoMin = o.pico.minuto;
         const pctPico = cupo !== null && cupo > 0 ? Math.round((o.pico.dentro / cupo) * 100) : null;
         const umbral = cupo !== null ? Math.round(cupo * 0.9) : Math.round(o.pico.dentro * SHARE_SATURACION);
-        const minDiaMax = minutosPorEncima(o.diaPico, umbral);
+        // Los escalones traen segundos; en pantalla van minutos enteros, redondeados
+        // hacia arriba: 26 minutos y 43 segundos por encima son 27 minutos, no 26.
+        const minDiaMax = Math.ceil(minutosPorEncima(o.diaPico, umbral));
         const minTipico = minutosTipicosPorEncima(o.franjas, umbral);
-        const minSinLugar = cupo !== null ? minutosPorEncima(o.diaPico, cupo - 1) : 0;
+        const minSinLugar = cupo !== null ? Math.ceil(minutosPorEncima(o.diaPico, cupo - 1)) : 0;
         const mesetaTipica = medianaEn(o.franjas, MINUTO_MESETA);
         const salida = picoDeLaMediana(o.franjas, 12 * 60, FRANJA_HASTA);
         const oleadaLote = m.oleada.porLote.find((x) => x.lote === o.lote)?.coches ?? 0;

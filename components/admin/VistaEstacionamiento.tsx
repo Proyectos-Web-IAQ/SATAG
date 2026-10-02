@@ -59,6 +59,25 @@ const CARGAN: RolPanel[] = ["ti", "super"];
  */
 const DIAS_SERIE = 56;
 
+/**
+ * LO QUE SE CONSERVA AL CAMBIAR DE PESTANA. El panel desmonta esta vista cuando se
+ * va a otra pestana, y sin esto volver significaba bajar otra vez toda la bitacora
+ * y perder el padron de personas de ZK y el archivo recien elegido: paso el 2-oct,
+ * con los archivos ya subidos. Vive fuera del componente, dura lo que la sesion
+ * del navegador, y se vacia sola al volver a leer de la base.
+ */
+const memoria: {
+  padron?: PadronEstacionamiento[];
+  importaciones?: ImportacionZk[];
+  cupos?: Record<string, number | null>;
+  lectura?: LecturaEventos | null;
+  origen?: "base" | "archivo";
+  serie?: { ventanas: ImportacionZk[]; truncada: boolean; desde: string | null } | null;
+  personas?: Map<string, PersonaZk> | null;
+  archivo?: string | null;
+  bytes?: ArrayBuffer | null;
+} = {};
+
 /** «2026-09-22 18:42:00» menos N dias, a medianoche, con la misma forma. */
 function restarDias(hasta: string, dias: number): string {
   const t = Date.parse(hasta.slice(0, 10) + "T00:00:00Z") - dias * 86_400_000;
@@ -72,27 +91,32 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
 }
 
 export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; email: string | null }) {
-  const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(null);
-  const [importaciones, setImportaciones] = useState<ImportacionZk[]>([]);
+  const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
+  const [importaciones, setImportaciones] = useState<ImportacionZk[]>(memoria.importaciones ?? []);
   // Cajones contados por estacionamiento (bloque 79). Sin ellos la pantalla dice
   // ocupacion pero no saturacion; un lote sin contar se queda en `null`.
-  const [cupos, setCupos] = useState<Record<string, number | null>>({ E1: null, E2: null });
+  const [cupos, setCupos] = useState<Record<string, number | null>>(memoria.cupos ?? { E1: null, E2: null });
   const [error, setError] = useState<string | null>(null);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(memoria.padron === undefined);
 
-  const [lectura, setLectura] = useState<LecturaEventos | null>(null);
+  const [lectura, setLectura] = useState<LecturaEventos | null>(memoria.lectura ?? null);
   // De donde salio lo que se esta midiendo: la base (lo guardado, igual para todos)
   // o un archivo que alguien acaba de elegir y todavia no guarda.
-  const [origen, setOrigen] = useState<"base" | "archivo">("base");
+  const [origen, setOrigen] = useState<"base" | "archivo">(memoria.origen ?? "base");
   // Las ventanas que entraron en la lectura de la base y si se corto la serie.
-  const [serie, setSerie] = useState<{ ventanas: ImportacionZk[]; truncada: boolean; desde: string | null } | null>(null);
-  const [personas, setPersonas] = useState<Map<string, PersonaZk> | null>(null);
-  const [archivo, setArchivo] = useState<string | null>(null);
+  const [serie, setSerie] = useState<{ ventanas: ImportacionZk[]; truncada: boolean; desde: string | null } | null>(memoria.serie ?? null);
+  const [personas, setPersonas] = useState<Map<string, PersonaZk> | null>(memoria.personas ?? null);
+  const [archivo, setArchivo] = useState<string | null>(memoria.archivo ?? null);
   const [procesando, setProcesando] = useState<string | null>(null);
   /** Avance de la carga: `null` mientras no se sepa cuanto falta. */
   const [avance, setAvance] = useState<{ hechas: number; total: number } | null>(null);
   const [avisoCarga, setAvisoCarga] = useState<string | null>(null);
-  const bytesRef = useRef<ArrayBuffer | null>(null);
+  const bytesRef = useRef<ArrayBuffer | null>(memoria.bytes ?? null);
+
+  // Cada cambio de estado que cuesta reconstruir se anota en la memoria del modulo.
+  useEffect(() => {
+    Object.assign(memoria, { padron: padron ?? undefined, importaciones, cupos, lectura, origen, serie, personas, archivo, bytes: bytesRef.current });
+  }, [padron, importaciones, cupos, lectura, origen, serie, personas, archivo]);
 
   /**
    * Baja de la base las ventanas de las ultimas DIAS_SERIE y mide con ellas. Es lo
@@ -147,9 +171,9 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
   }
 
   useEffect(() => {
-    cargar();
-    // Solo al montar: el padrón no cambia mientras se mira la pantalla, y recargarlo
-    // en cada render bajaría ~2,900 filas y toda la bitácora por nada.
+    // Solo al montar, y solo si la memoria del modulo no trae ya lo de esta sesion:
+    // volver de otra pestana no vuelve a bajar ~2,900 expedientes y toda la bitacora.
+    if (memoria.padron === undefined) cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -339,6 +363,10 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
                   elija el archivo aquí: se revisa primero y se guarda con el botón.</>
                 : "Las ventanas nuevas las carga TI."}
               {serie.truncada && " La serie se cortó por tamaño: se muestran las filas más antiguas del rango."}
+              {" "}
+              <button type="button" className="link-action" disabled={procesando !== null} onClick={() => cargar()}>
+                Volver a leer de la base
+              </button>
             </>
           ) : (
             <>
