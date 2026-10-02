@@ -264,12 +264,45 @@ export function resumirEventos(eventos: EventoZk[]) {
 
 /** Lo que `zk_importaciones` sabe de cada ventana guardada y el resumen necesita. */
 export interface VentanaGuardada {
+  /** El nombre del archivo: de ahi sale la hora de exportacion mientras la base no la guarde (bloque 82). */
+  archivo?: string;
   filasArchivo: number;
   filasConTarjeta: number;
   topeAlcanzado: boolean;
   desde: string | null;
   hasta: string | null;
   exportadoEn?: string | null;
+}
+
+/** Fecha de PostgREST («2026-09-22T06:00:00») o del parser, a la forma del parser. */
+const formaParser = (v: string | null | undefined): string | null => (v ? v.replace("T", " ").slice(0, 19) : null);
+
+/**
+ * El mayor hueco entre ventanas CONSECUTIVAS, ordenadas por donde empiezan.
+ *
+ * No sirve el `hueco_dias` guardado: se calculo al subir, contra la ventana mas
+ * reciente de ese momento, asi que una ventana subida fuera de orden lo deja mal
+ * para siempre y una ventana vieja que cierra el hueco no lo apaga. Aqui se
+ * recalcula con lo que la base si sabe de todas: `desde` y `hasta`. Devuelve
+ * tambien entre que dos ventanas esta, para poder decirlo en pantalla.
+ */
+export function huecoMayor(ventanas: VentanaGuardada[]): { dias: number; hastaAnterior: string; desdeSiguiente: string } | null {
+  const conFechas = ventanas
+    .map((v) => ({ desde: formaParser(v.desde), hasta: formaParser(v.hasta) }))
+    .filter((v): v is { desde: string; hasta: string } => v.desde !== null && v.hasta !== null)
+    .sort((a, b) => (a.desde < b.desde ? -1 : a.desde > b.desde ? 1 : 0));
+  let peor: { dias: number; hastaAnterior: string; desdeSiguiente: string } | null = null;
+  let hastaCubierto: string | null = null;
+  for (const v of conFechas) {
+    if (hastaCubierto !== null) {
+      const d = huecoEnDias(hastaCubierto, v.desde) ?? 0;
+      if (d > 0 && (peor === null || d > peor.dias)) peor = { dias: d, hastaAnterior: hastaCubierto, desdeSiguiente: v.desde };
+    }
+    // Lo cubierto crece con la ventana que llega mas lejos, no con la ultima en
+    // empezar: una ventana corta dentro de otra larga no abre un hueco.
+    if (hastaCubierto === null || v.hasta > hastaCubierto) hastaCubierto = v.hasta;
+  }
+  return peor;
 }
 
 /**
@@ -283,14 +316,22 @@ export interface VentanaGuardada {
  * no los de los eventos: la cobertura real es la del archivo, igual que al parsear.
  */
 export function lecturaDesdeBase(eventos: EventoZk[], ventanas: VentanaGuardada[]): LecturaEventos {
-  const ordenados = [...eventos].sort((a, b) =>
+  // Las repeticiones se vuelven a marcar sobre la UNION, no se toma la marca
+  // guardada: cada archivo las marco por su cuenta, y una rafaga partida entre el
+  // final de uno y el principio del siguiente dejaria dos «primeras lecturas». La
+  // funcion es pura y la base trae concedidos y rechazados completos, asi que el
+  // resultado es el mismo que si todo hubiera venido en un solo archivo.
+  const ordenados = marcarRepeticiones(eventos).sort((a, b) =>
     a.ocurrioEn < b.ocurrioEn ? -1 : a.ocurrioEn > b.ocurrioEn ? 1 : a.idEvento - b.idEvento,
   );
+  // Sumas de archivos, no de eventos: con ventanas traslapadas son cotas superiores
+  // (la fila del traslape esta en dos archivos y una vez en la base). La pantalla
+  // lo dice como «los archivos sumaban», no como «habia».
   const filasArchivo = ventanas.reduce((s, v) => s + v.filasArchivo, 0);
   const filasConTarjeta = ventanas.reduce((s, v) => s + v.filasConTarjeta, 0);
-  const desdes = ventanas.map((v) => v.desde).filter((x): x is string => x !== null).sort();
-  const hastas = ventanas.map((v) => v.hasta).filter((x): x is string => x !== null).sort();
-  const ultima = [...ventanas].sort((a, b) => ((a.hasta ?? "") < (b.hasta ?? "") ? 1 : -1))[0];
+  const desdes = ventanas.map((v) => formaParser(v.desde)).filter((x): x is string => x !== null).sort();
+  const hastas = ventanas.map((v) => formaParser(v.hasta)).filter((x): x is string => x !== null).sort();
+  const ultima = [...ventanas].sort((a, b) => ((formaParser(a.hasta) ?? "") < (formaParser(b.hasta) ?? "") ? 1 : -1))[0];
   return {
     eventos: ordenados,
     resumen: {
@@ -300,9 +341,13 @@ export function lecturaDesdeBase(eventos: EventoZk[], ventanas: VentanaGuardada[
       filasConTarjeta: ordenados.length,
       desde: desdes[0] ?? null,
       hasta: hastas[hastas.length - 1] ?? null,
-      exportadoEn: ultima?.exportadoEn ?? null,
+      // La hora de exportacion sale del nombre del archivo mientras la base no la
+      // guarde (bloque 82, sin aplicar): asi no hay orden de despliegue que cuidar.
+      exportadoEn: ultima ? (ultima.exportadoEn ?? (ultima.archivo ? exportadoEnDe(ultima.archivo) : null)) : null,
       diasConActividad: new Set(ordenados.map((e) => dia(e.ocurrioEn))).size,
-      topeAlcanzado: ventanas.some((v) => v.topeAlcanzado),
+      // Solo la ULTIMA ventana: es la unica cuyo tope no esta ya contado como hueco
+      // por la siguiente. Cuantas se truncaron en total lo dice la pantalla aparte.
+      topeAlcanzado: ultima?.topeAlcanzado ?? false,
     },
   };
 }

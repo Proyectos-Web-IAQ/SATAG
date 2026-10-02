@@ -39,12 +39,14 @@ import {
 } from "@/lib/supabase/apiPanel";
 import { corteDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
 import { GLOSARIO } from "@/lib/glosario";
-import { huecoEnDias, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
+import { huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
 import { GRUPO_POR_TIPO, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import type { RolPanel } from "@/lib/supabase/auth";
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
 const VEN_IDENTIDAD: RolPanel[] = ["ti", "contador", "super"];
+/** Quien puede AGREGAR ventanas: los mismos que pasa `panel_exigir_rol` en cargar_eventos_zk (bloque 78). */
+const CARGAN: RolPanel[] = ["ti", "super"];
 
 /**
  * Cuantos dias hacia atras se bajan de la base al abrir la pestana.
@@ -106,15 +108,21 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
     const desde = restarDias(ultima, DIAS_SERIE);
     // Las ventanas que caen en el rango, para reconstruir el resumen con sus cifras.
     const ventanas = imps.filter((i) => (i.hasta ?? "") >= desde);
+    // Sin total: la base no sabe cuantas filas van a venir (los traslapes y las
+    // filas sin sentido no estan), y una barra que nunca llega al 100% miente.
     setProcesando("Leyendo la bitácora guardada…");
     setAvance(null);
     try {
-      const { eventos, truncado } = await listEventosZk(desde, (n) => setAvance({ hechas: n, total: Math.max(n, ventanas.reduce((s, v) => s + v.filasConTarjeta, 0)) }));
+      const { eventos, truncado } = await listEventosZk(desde, (n) =>
+        setProcesando(`Leyendo la bitácora guardada… ${n.toLocaleString("es-MX")} eventos`),
+      );
       setLectura(lecturaDesdeBase(eventos, ventanas));
       setSerie({ ventanas, truncada: truncado, desde });
       setOrigen("base");
       setArchivo(null);
       bytesRef.current = null;
+    } catch (err) {
+      setError(`No se pudo leer la bitácora guardada. ${err instanceof Error ? err.message : ""}`.trim());
     } finally {
       setProcesando(null);
       setAvance(null);
@@ -293,12 +301,23 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
           verIdentidad: VEN_IDENTIDAD.includes(rol),
           ventanas: origen === "base" ? (serie?.ventanas.length ?? 0) : importaciones.length,
           // Con un archivo, el hueco es contra la ultima ventana guardada. Con la
-          // base, es el mayor hueco entre las ventanas que entraron en la serie:
-          // uno solo basta para invalidar el uso por credencial.
-          huecoDias:
-            origen === "base"
-              ? (serie?.ventanas ?? []).reduce<number | null>((peor, v) => (v.huecoDias !== null && (peor === null || v.huecoDias > peor) ? v.huecoDias : peor), null)
-              : huecoEnDias(importaciones[0]?.hasta ?? null, lectura.resumen.desde),
+          // base, es el mayor hueco entre ventanas CONSECUTIVAS, recalculado con sus
+          // fechas: el hueco_dias guardado se midio al subir y queda mal si una
+          // ventana llego fuera de orden. Uno solo basta para invalidar el uso por
+          // credencial, y se dice entre que dos fechas esta.
+          ...(() => {
+            if (origen === "base") {
+              const h = huecoMayor(serie?.ventanas ?? []);
+              return { huecoDias: h?.dias ?? null, huecoEntre: h ? { hastaAnterior: h.hastaAnterior, desdeSiguiente: h.desdeSiguiente } : null };
+            }
+            const ultima = importaciones[0]?.hasta ?? null;
+            const d = huecoEnDias(ultima, lectura.resumen.desde);
+            return {
+              huecoDias: d,
+              huecoEntre: d !== null && d > 0 && ultima && lectura.resumen.desde ? { hastaAnterior: ultima, desdeSiguiente: lectura.resumen.desde } : null,
+            };
+          })(),
+          serie: origen === "base" && serie ? { ventanas: serie.ventanas.length, truncadas: serie.ventanas.filter((v) => v.topeAlcanzado).length } : null,
         };
       })()
     : null;
@@ -314,9 +333,11 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         <p className="ti-hint">
           {serie && origen === "base" ? (
             <>
-              Lo que se mide abajo es lo guardado en SATAG, igual para quien lo abra. Para agregar una ventana,
-              exporte en ZKBioSecurity <strong>{GLOSARIO.todosLosEventos.ruta}</strong> y elija el archivo aquí:
-              se revisa primero y se guarda con el botón.
+              Lo que se mide abajo es lo guardado en SATAG, igual para quien lo abra.{" "}
+              {CARGAN.includes(rol)
+                ? <>Para agregar una ventana, exporte en ZKBioSecurity <strong>{GLOSARIO.todosLosEventos.ruta}</strong> y
+                  elija el archivo aquí: se revisa primero y se guarda con el botón.</>
+                : "Las ventanas nuevas las carga TI."}
               {serie.truncada && " La serie se cortó por tamaño: se muestran las filas más antiguas del rango."}
             </>
           ) : (
@@ -329,7 +350,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
         </p>
 
         <div className="grid-2">
-          <div className="field">
+          {CARGAN.includes(rol) && <div className="field">
             <label className="label" htmlFor="arch-eventos">Archivo «{GLOSARIO.todosLosEventos.ui}» de ZK</label>
             <input
               id="arch-eventos"
@@ -349,7 +370,7 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
                 {lectura?.resumen.diasConActividad} días
               </p>
             )}
-          </div>
+          </div>}
 
           <div className="field">
             <label className="label" htmlFor="arch-personas">Archivo «{GLOSARIO.personasZk.ui}» de ZK (opcional)</label>
@@ -419,7 +440,14 @@ export default function VistaEstacionamiento({ rol, email }: { rol: RolPanel; em
 
       {datos ? (
         <PanelEstacionamiento d={datos} />
-      ) : procesando ? null : (
+      ) : procesando ? null : importaciones.length > 0 ? (
+        <div className="panel">
+          <p className="ti-empty">
+            No se pudo leer la bitácora guardada.{" "}
+            <button type="button" className="link-action" onClick={() => leerDeLaBase(importaciones)}>Reintentar</button>
+          </p>
+        </div>
+      ) : (
         <div className="panel">
           <p className="ti-empty">
             Todavía no hay ninguna bitácora guardada. Para ver la medición hace falta el archivo «{GLOSARIO.todosLosEventos.ui}» de ZKBioSecurity:{" "}

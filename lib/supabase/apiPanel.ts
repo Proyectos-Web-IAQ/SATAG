@@ -1084,8 +1084,8 @@ export async function listPasosDeTarjetas(tarjetas: string[], tope = 400): Promi
 /**
  * Los eventos guardados, para medir SIN el archivo (2-oct-2026).
  *
- * Pagina de mil en mil con `.range()` y sigue hasta una pagina vacia, no hasta una
- * «corta»: si PostgREST tuviera un tope menor que mil, una pagina corta no seria la
+ * Pagina con `.range()` y sigue hasta una pagina VACIA, no hasta una «corta»: si
+ * PostgREST tuviera un tope menor que la pagina pedida, una pagina corta no seria la
  * ultima y el panel mediria media ventana sin avisar. Trae solo lo que la medicion
  * usa; `descripcion` no se guarda y se devuelve vacia.
  *
@@ -1099,7 +1099,10 @@ export async function listEventosZk(
   onAvance?: (filas: number) => void,
   topePaginas = 120,
 ): Promise<{ eventos: EventoZk[]; truncado: boolean }> {
-  const PAGINA = 1000;
+  // Produccion sirve hasta 5,000 filas por peticion y local 1,000: se pide el
+  // maximo y se avanza por lo que de verdad llego, asi que el tope que aplique no
+  // cambia el resultado, solo cuantas vueltas da.
+  const PAGINA = 5000;
   const eventos: EventoZk[] = [];
   let truncado = false;
   for (let pagina = 0; ; pagina += 1) {

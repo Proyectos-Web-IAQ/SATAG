@@ -374,3 +374,61 @@ describe("lecturaDesdeBase: la misma lectura, venga del archivo o de la base", (
     expect(l.resumen).toMatchObject({ filasArchivo: 0, accesos: 0, desde: null, hasta: null, desbalance: null, diasConActividad: 0 });
   });
 });
+
+describe("lecturaDesdeBase: los bordes de juntar ventanas", () => {
+  const ev = (idEvento: number, ocurrioEn: string, sentido: "entrada" | "salida", repeticion = false, tarjeta = "123") => ({
+    idEvento, ocurrioEn, lote: "E2" as const, sentido, tarjeta, descripcion: "", concedido: true, departamentoEvento: "", repeticion,
+  });
+
+  it("acepta las fechas con «T» de PostgREST y las devuelve con la forma del parser", async () => {
+    const { lecturaDesdeBase } = await import("@/lib/zk/eventos");
+    const l = lecturaDesdeBase([ev(1, "2026-09-22 07:05:00", "entrada")], [
+      { filasArchivo: 10, filasConTarjeta: 1, topeAlcanzado: false, desde: "2026-09-22T06:00:00", hasta: "2026-09-22T20:00:00", archivo: "Todos los Eventos_20260922203015.xls" },
+    ]);
+    expect(l.resumen.desde).toBe("2026-09-22 06:00:00");
+    expect(l.resumen.hasta).toBe("2026-09-22 20:00:00");
+    expect(l.resumen.exportadoEn).toBe("2026-09-22 20:30:15");
+  });
+
+  it("vuelve a marcar una rafaga partida entre dos archivos", async () => {
+    const { lecturaDesdeBase } = await import("@/lib/zk/eventos");
+    // El archivo 1 termino con la primera lectura y el 2 empezo con la segunda, a
+    // 20 segundos: cada archivo la marco como primera. Juntas son un solo paso.
+    const l = lecturaDesdeBase([ev(1, "2026-09-22 15:59:50", "entrada"), ev(2, "2026-09-22 16:00:10", "entrada")], []);
+    expect(l.resumen.accesos).toBe(1);
+    expect(l.resumen.repeticiones).toBe(1);
+  });
+
+  it("el tope es el de la ultima ventana, no el de cualquiera", async () => {
+    const { lecturaDesdeBase } = await import("@/lib/zk/eventos");
+    const vieja = { filasArchivo: 40000, filasConTarjeta: 9000, topeAlcanzado: true, desde: "2026-09-15 06:00:00", hasta: "2026-09-22 10:00:00" };
+    const nueva = { filasArchivo: 30000, filasConTarjeta: 7000, topeAlcanzado: false, desde: "2026-09-22 10:00:00", hasta: "2026-09-29 18:00:00" };
+    expect(lecturaDesdeBase([], [vieja, nueva]).resumen.topeAlcanzado).toBe(false);
+    expect(lecturaDesdeBase([], [nueva, vieja]).resumen.topeAlcanzado).toBe(false);
+    expect(lecturaDesdeBase([], [{ ...nueva, topeAlcanzado: true }, vieja]).resumen.topeAlcanzado).toBe(true);
+  });
+});
+
+describe("huecoMayor: el hueco entre ventanas se recalcula con lo que la base sabe", () => {
+  const v = (desde: string, hasta: string) => ({ filasArchivo: 1, filasConTarjeta: 1, topeAlcanzado: false, desde, hasta });
+
+  it("encuentra el mayor hueco entre consecutivas aunque lleguen en desorden", async () => {
+    const { huecoMayor } = await import("@/lib/zk/eventos");
+    const h = huecoMayor([
+      v("2026-09-29T06:00:00", "2026-10-02T08:19:00"),
+      v("2026-09-15 06:00:00", "2026-09-22 10:00:00"),
+      v("2026-09-24 06:00:00", "2026-09-26 18:00:00"),
+    ]);
+    expect(h).not.toBeNull();
+    expect(h!.hastaAnterior).toBe("2026-09-26 18:00:00");
+    expect(h!.desdeSiguiente).toBe("2026-09-29 06:00:00");
+    expect(h!.dias).toBeCloseTo(2.5, 1);
+  });
+
+  it("una ventana vieja que cierra el hueco lo apaga, y una corta dentro de otra no abre uno", async () => {
+    const { huecoMayor } = await import("@/lib/zk/eventos");
+    expect(huecoMayor([v("2026-09-15 06:00:00", "2026-09-22 10:00:00"), v("2026-09-22 09:00:00", "2026-09-29 18:00:00")])).toBeNull();
+    expect(huecoMayor([v("2026-09-15 06:00:00", "2026-09-29 18:00:00"), v("2026-09-20 06:00:00", "2026-09-21 18:00:00"), v("2026-09-29 18:00:00", "2026-10-02 08:00:00")])).toBeNull();
+    expect(huecoMayor([])).toBeNull();
+  });
+});
