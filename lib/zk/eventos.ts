@@ -385,16 +385,41 @@ export function exportadoEnDe(nombre: string): string | null {
 }
 
 /**
+ * Por que no se pudo leer, dicho con las columnas que si trae. «No trae el reporte»
+ * a secas mandaba a repetir el export cuando el problema era otro: el 2-oct llego un
+ * archivo del 29-sep que alguien habia abierto y guardado en Excel, con «Fecha» y
+ * «Tiempo» separadas y SIN «ID de Evento», que es la llave con la que la base
+ * reconoce un evento y evita duplicarlo. Sin esa columna no se puede importar, y la
+ * persona tiene que saber que le falta exactamente eso para pedirlo bien.
+ */
+function explicarRechazo(texto: string): string {
+  const cab = texto
+    .replace(/\uFEFF/g, "")
+    .split(/\r?\n/)
+    .slice(0, 5)
+    .map((l) => l.split("\t").map((x) => x.trim()).filter(Boolean))
+    .sort((a, b) => b.length - a.length)[0] ?? [];
+  const faltan = ROTULOS.filter((r) => !cab.includes(r));
+  if (cab.length >= 3 && faltan.length > 0 && faltan.length < ROTULOS.length) {
+    const base = `El archivo trae las columnas ${cab.map((c) => `«${c}»`).join(", ")}, pero le falta ${faltan.map((c) => `«${c}»`).join(" y ")}.`;
+    const porque = faltan.includes("ID de Evento")
+      ? " Sin el ID del evento no se puede guardar: es la llave con la que SATAG reconoce cada paso y evita duplicarlo. Suele pasar cuando el export se abrió y se volvió a guardar en Excel, o se exportó con otras columnas."
+      : "";
+    return `${base}${porque} Vuelva a exportar «Todos los Eventos» desde ZKBioSecurity, tal como lo entrega, en Excel o en CSV.`;
+  }
+  return "El archivo no trae «Todos los Eventos» de ZK (columnas ID de Evento, Tiempo y Tarjeta). Revise que haya exportado ese reporte, en Excel o en CSV.";
+}
+
+/**
  * Lee el archivo que el usuario eligio, venga en Excel —que es lo que ZK propone por
  * defecto— o en CSV/TXT. La deteccion vive en `textoDeExportZk`.
  */
 export async function leerEventosZk(archivo: File): Promise<LecturaEventos> {
   const bytes = new Uint8Array(await archivo.arrayBuffer());
-  const lectura = parsearEventosZk(await textoDeExportZk(bytes), archivo.name);
+  const texto = await textoDeExportZk(bytes);
+  const lectura = parsearEventosZk(texto, archivo.name);
   if (lectura.resumen.filasArchivo === 0) {
-    throw new Error(
-      "El archivo no trae «Todos los Eventos» de ZK (columnas ID de Evento, Tiempo y Tarjeta). Revise que haya exportado ese reporte, en Excel o en CSV.",
-    );
+    throw new Error(explicarRechazo(texto));
   }
   return lectura;
 }
