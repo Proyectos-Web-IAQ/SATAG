@@ -1252,6 +1252,19 @@ a { color: var(--primary-strong); }
 .firme { border-top: 1px solid var(--ink); color: var(--muted); display: grid; font-size: 0.9rem; gap: 6px; line-height: 1.5; margin-top: 40px; max-width: 70ch; padding-top: 12px; }
 .firme strong { color: var(--ink); font-weight: 700; }
 
+/* ---------- Cobertura de datos: una columna por semana, de lunes a domingo ----------
+   Un solo color, el de la serie: la pregunta es «que dias hay», no «cuanto». El dia
+   que no cuenta para la curva va vacio con borde, para que se vea que entro. */
+.cobertura { display: block; height: auto; margin: 8px 0 4px; max-width: 100%; }
+.cobertura__rotulo { fill: var(--muted); font-size: 9px; }
+.cobertura__dia--normal { fill: var(--viz-serie-1); }
+.cobertura__dia--parcial { fill: var(--field-bg); stroke: var(--viz-serie-1); stroke-width: 1; }
+.cobertura__leyenda { align-items: center; display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 6px; }
+.cobertura__leyenda span { align-items: center; display: inline-flex; gap: 6px; }
+.cobertura__muestra { border-radius: 2px; display: inline-block; height: 11px; width: 11px; }
+.cobertura__muestra--normal { background: var(--viz-serie-1); }
+.cobertura__muestra--parcial { background: var(--field-bg); box-shadow: inset 0 0 0 1px var(--viz-serie-1); }
+
 /* ---------- Secciones sin caja ---------- */
 .seccion-plana { margin-top: 44px; }
 .seccion-plana > h3 { border-bottom: 1px solid var(--ink); color: var(--ink); font-size: 1.2rem; font-weight: 800; line-height: 1.25; margin: 0 0 4px; padding-bottom: 8px; }

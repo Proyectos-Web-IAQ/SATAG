@@ -18,7 +18,21 @@
 // DESDE OCTUBRE DE 2026 EL RESUMEN SIGUE DISEÑO.md: una frase que afirma el hallazgo,
 // la grafica que la respalda con su linea de lleno, y debajo las cifras como FILAS que
 // al tocarse resaltan su rango en la grafica y abren su detalle. Nada de tarjetas de
-// cifra. Las vistas de detalle (Secciones, Permanencia, limites) siguen debajo.
+// cifra. Cierra con cuantos dias de datos hay: es lo que confirma, semana a semana,
+// que cada archivo que se sube se esta sumando.
+//
+// CUATRO VISTAS, cada una con un trabajo (Gerardo, 2-oct):
+//   Resumen           la noticia, y la cobertura de datos.
+//   Estacionamientos  uno, el otro o los dos; sus secciones, y la gente de cada una.
+//   Secciones         el reporte global por seccion —lugares que ocupa y cuanto se
+//                     queda— con la distribucion de permanencias. Sin personas: esas
+//                     se consultan en Estacionamientos.
+//   Vialidad · beta   la calle.
+// «Permanencia» y «Que tan firme es esto» dejaron de ser pestanas: lo primero vive en
+// Secciones, y de los limites quedan los que cambian una decision (dias comparables,
+// cajones, el tope de ZK), dichos en el Resumen junto a los datos cargados. El resto
+// de aquel inventario de bordes era para quien construye la medicion, no para quien
+// la consulta.
 //
 // ES PRESENTACIONAL A PROPOSITO. Recibe las cifras ya medidas y no consulta nada. NI
 // UNA MEDIANA SE CALCULA AQUI: la version anterior sacaba la mediana global
@@ -44,7 +58,6 @@ import {
   minutosTipicosPorEncima,
   picoDeLaMediana,
   SHARE_SATURACION,
-  UMBRAL_SHOUP,
   type Eleccion,
   type EstanciasRol,
   type Medicion,
@@ -337,9 +350,70 @@ function VistaMaestroDetalle({
   );
 }
 
+/** La ultima vista y el ultimo estacionamiento elegidos: volver a la pestana no los pierde. */
+let ultimaVista = "resumen";
+let ultimoLoteVista = "ambos";
+
+/**
+ * Que dias tienen datos, como una rejilla de semanas: una columna por semana, de
+ * lunes a domingo. Lleno es un dia que describe la rutina; con borde y vacio, un dia
+ * que entro pero no cuenta para la curva (incompleto o atipico); sin cuadro, un dia
+ * sin bitacora: fin de semana, vacaciones o un hueco entre archivos. Es la grafica
+ * que crece cada vez que TI sube un archivo, y por eso vive en el Resumen.
+ */
+function CoberturaDias({ dias, comparables, excluidos }: { dias: string[]; comparables: string[]; excluidos: Medicion["diasExcluidos"] }) {
+  if (dias.length === 0) return null;
+  const DIA = 86_400_000;
+  const t0 = Date.parse(`${dias[0]}T00:00:00Z`);
+  const t1 = Date.parse(`${dias[dias.length - 1]}T00:00:00Z`);
+  const lunes = t0 - ((new Date(t0).getUTCDay() + 6) % 7) * DIA;
+  const semanas = Math.floor((t1 - lunes) / (7 * DIA)) + 1;
+  const normal = new Set(comparables);
+  const porque = new Map(excluidos.map((x) => [x.dia, x.motivo]));
+  const con = new Set(dias);
+  const C = 13, G = 3, IZQ = 16, ARR = 2;
+  const w = IZQ + semanas * (C + G);
+  const h = ARR + 7 * (C + G);
+  const celdas: React.ReactNode[] = [];
+  for (let s = 0; s < semanas; s += 1) {
+    for (let d = 0; d < 7; d += 1) {
+      const t = lunes + (s * 7 + d) * DIA;
+      if (t < t0 || t > t1) continue;
+      const iso = new Date(t).toISOString().slice(0, 10);
+      if (!con.has(iso)) continue;
+      const estado = normal.has(iso) ? "normal" : "parcial";
+      celdas.push(
+        <rect key={iso} className={`cobertura__dia cobertura__dia--${estado}`}
+          x={IZQ + s * (C + G)} y={ARR + d * (C + G)} width={C} height={C} rx={2}>
+          <title>{`${diaCorto(iso)}: ${estado === "normal" ? "día normal" : (porque.get(iso) ?? "no cuenta para la curva")}`}</title>
+        </rect>,
+      );
+    }
+  }
+  return (
+    <svg className="cobertura" viewBox={`0 0 ${w} ${h}`} width={w} height={h} role="img"
+      aria-label={`${dias.length} días con datos, del ${diaCorto(dias[0])} al ${diaCorto(dias[dias.length - 1])}`}>
+      {["L", "M", "M", "J", "V", "S", "D"].map((l, i) => (
+        <text key={i} className="cobertura__rotulo" x={0} y={ARR + i * (C + G) + C - 3}>{l}</text>
+      ))}
+      {celdas}
+    </svg>
+  );
+}
+
 export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento }) {
   const { m, eleccion, resumen, cupos, padron, fuentes, verIdentidad } = d;
-  const [vista, setVista] = useState("resumen");
+  const [vista, setVista] = useState(ultimaVista);
+  // En Estacionamientos se mira uno, el otro o los dos juntos.
+  const [loteVista, setLoteVista] = useState(ultimoLoteVista);
+  const elegirVista = (v: string) => {
+    ultimaVista = v;
+    setVista(v);
+  };
+  const elegirLoteVista = (l: string) => {
+    ultimoLoteVista = l;
+    setLoteVista(l);
+  };
   // Se abre en el estacionamiento MAS LLENO contra su cupo —o contra si mismo, sin
   // cupo—, porque ese es el que trae la noticia. El otro queda a un toque.
   const [lote, setLote] = useState<string>(() => {
@@ -363,7 +437,6 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
   const totalEstancias = m.estancias.reduce((a, r) => a + r.estancias, 0);
   const largas = m.estancias.reduce((a, r) => a + r.largas, 0);
   const cortas = m.estancias.reduce((a, r) => a + r.cortas, 0);
-  const censuradas = m.estancias.reduce((a, r) => a + r.censuradas, 0);
   const sinCupos = Object.values(cupos).every((c) => c === null);
 
   // Las señales de catálogo son BÚSQUEDAS en el padrón, no aritmética: por eso viven
@@ -421,7 +494,6 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
   });
   const totalMarcadas = secciones.reduce((a, s) => a + s.marcadas, 0);
   const oActivo = m.ocupacion.find((o) => o.lote === lote) ?? m.ocupacion[0];
-  const seccionesDelLote = oActivo ? agrupar(oActivo.porCredencial, oActivo.porDepartamento) : [];
 
   const MIN_PARA_COMPARAR = 5;
   const dep1 = m.ocupacion.find((o) => o.lote === "E1")?.porDepartamento ?? [];
@@ -513,10 +585,9 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
 
   const VISTAS = [
     { clave: "resumen", titulo: "Resumen" },
-    { clave: "lotes", titulo: "Estacionamientos" },
-    { clave: "secciones", titulo: "Secciones", cuenta: totalMarcadas },
-    { clave: "permanencia", titulo: "Permanencia" },
-    { clave: "calidad", titulo: "Qué tan firme es esto" },
+    // Las credenciales por revisar se cuentan aqui porque aqui esta la gente.
+    { clave: "lotes", titulo: "Estacionamientos", cuenta: totalMarcadas },
+    { clave: "secciones", titulo: "Secciones" },
     // La ultima y en beta a proposito: es el porque de todo esto —la calle—, pero
     // la mitad de sus datos se capturan a mano y viven en el navegador.
     { clave: "vialidad", titulo: "Vialidad · beta" },
@@ -559,7 +630,7 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
         </div>
       )}
 
-      <Vistas vistas={VISTAS} activa={vista} onCambio={setVista} />
+      <Vistas vistas={VISTAS} activa={vista} onCambio={elegirVista} />
 
       {/* Hasta donde sabe el archivo. Va arriba de todas las vistas porque toda cifra
           de la pantalla se lee «al corte de…»: el dia de la exportacion la jornada
@@ -758,6 +829,8 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
               <span>Estacionamiento</span>
               <span>›</span>
               <span>{m.dias.length === 1 ? diaCorto(m.dias[0]) : `del ${diaCorto(m.dias[0])} al ${diaCorto(m.dias[m.dias.length - 1])}`}</span>
+              <span>›</span>
+              <span>{m.dias.length} {m.dias.length === 1 ? "día" : "días"} con datos</span>
             </p>
             <h2 className="titular">{titular}</h2>
             <p className="titular__sub">{bajada}</p>
@@ -822,325 +895,257 @@ export default function PanelEstacionamiento({ d }: { d: DatosEstacionamiento })
               <PlanoPlantel ocupacion={m.ocupacion} cupos={cupos} minutoInicial={m.picoTotal.minuto} />
             </section>
 
-            <div className="firme">
-              <div>
-                <strong>Qué tan firme es esto.</strong> {m.diasComparables.length} de {m.dias.length} días describen un día
-                normal{m.corte ? `, y el archivo corta el ${diaCorto(m.corte.dia)} a las ${horaCorta(m.corte.minuto)}` : ""}.
-                El detalle está en «Qué tan firme es esto».
-              </div>
-              <div>
+            {/* Lo que sostiene todo lo de arriba: cuantos dias hay, y cuales cuentan.
+                Es tambien el contador que crece con cada archivo que TI sube. */}
+            <section className="seccion-plana">
+              <h3>
+                {m.dias.length} {m.dias.length === 1 ? "día" : "días"} con datos{d.serie ? " guardados en SATAG" : " en este archivo"}
+              </h3>
+              <p className="sub">
+                Del {diaCorto(m.dias[0])} al {diaCorto(m.dias[m.dias.length - 1])}
+                {d.serie ? `, en ${d.serie.ventanas} ${d.serie.ventanas === 1 ? "archivo" : "archivos"}` : ""}.{" "}
+                {m.diasComparables.length === m.dias.length
+                  ? "Todos describen un día normal."
+                  : `${m.diasComparables.length} describen un día normal; los demás entraron, pero no cuentan para la curva.`}
+                {d.serie ? " Cada archivo que se suba se suma aquí." : ""}
+              </p>
+              <CoberturaDias dias={m.dias} comparables={m.diasComparables} excluidos={m.diasExcluidos} />
+              <p className="ti-hint cobertura__leyenda">
+                <span><i className="cobertura__muestra cobertura__muestra--normal" aria-hidden="true" /> día normal</span>
+                <span><i className="cobertura__muestra cobertura__muestra--parcial" aria-hidden="true" /> incompleto o atípico; el cursor encima dice por qué</span>
+                <span>sin cuadro: sin bitácora ese día</span>
+              </p>
+              {(resumen.topeAlcanzado || (d.serie !== null && d.serie !== undefined && d.serie.truncadas > 0)) && (
+                <p className="notice" style={{ margin: "12px 0 0", padding: "10px 12px" }}>
+                  {/* ZK se queda con las 40,000 filas MAS RECIENTES: a una ventana truncada
+                      le falta su arranque, no su final. Decirlo al reves mandaba a exportar
+                      despues de la ultima fecha, y eso nunca cierra el hueco. */}
+                  {d.serie
+                    ? resumen.topeAlcanzado
+                      ? <>La última ventana llegó a las <strong>40,000 filas</strong> donde ZKBioSecurity corta, y ZK se queda
+                        con las más recientes: falta lo anterior a su primer evento
+                        {d.serie.ultimaDesde ? `, el ${diaCorto(d.serie.ultimaDesde.slice(0, 10))}` : ""}. Para cubrirlo, exporte por
+                        rango de fechas hasta ese día.</>
+                      : <>{d.serie.truncadas} de las {d.serie.ventanas} ventanas guardadas llegaron a las <strong>40,000 filas</strong> de
+                        ZKBioSecurity: a cada una le falta su arranque, no su final.</>
+                    : <>El archivo llegó a las <strong>40,000 filas</strong> donde ZKBioSecurity corta y solo cubre{" "}
+                      {resumen.diasConActividad} días. Para cubrir más, exporte por rango de fechas.</>}
+                </p>
+              )}
+              <p className="ti-hint" style={{ marginTop: 12 }}>
                 {sinCupos
                   ? "Estas curvas dicen cuántos coches hay dentro, no si sobró lugar: falta contar los cajones de cada estacionamiento."
                   : `Los cajones son los contados por el Instituto: ${m.ocupacion.map((x) => `${cupos[x.lote] ?? "sin contar"} en el E${x.lote.slice(1)}`).join(" y ")}.`}
-              </div>
-            </div>
+              </p>
+            </section>
           </>
         );
       })()}
 
       {/* =========================================== ESTACIONAMIENTOS =========== */}
-      {vista === "lotes" && oActivo && (
-        <>
-          <Segmentado
-            etiqueta="Estacionamiento"
-            activa={lote}
-            onCambio={elegirLote}
-            opciones={m.ocupacion.map((o) => ({
-              clave: o.lote,
-              titulo: `Estacionamiento ${o.lote.slice(1)} · hasta ${o.pico.dentro} coches`,
-            }))}
-          />
-
-          <Seccion
-            rotulo={`Estacionamiento ${oActivo.lote.slice(1)}`}
-            titulo="Quién lo usa, de mayor a menor ocupación"
-            nota={
-              <>
-                Ordenado por <strong>cuántos cajones ocupa cada sección a la vez</strong>, que es la única
-                medida comparable contra la capacidad: «primaria llega a ocupar 24 lugares» se contrasta con
-                cuántos hay. Contar entradas mediría tráfico, y lo que escasea no es tráfico, son lugares.
-                Elija una sección para ver a su gente.
-              </>
-            }
-          >
-            <VistaMaestroDetalle
-              grupos={seccionesDelLote}
-              elegida={sel[`lote-${lote}`] ?? null}
-              onElegir={(nombre) => setSel((v) => ({ ...v, [`lote-${lote}`]: nombre }))}
-              cols={columnasPersona}
-              verIdentidad={verIdentidad}
-              conPadron={padron !== null}
+      {vista === "lotes" && oActivo && (() => {
+        /* Uno, el otro o los dos juntos. Cambia QUE credenciales entran en las
+           secciones; las columnas y la lista son las mismas. */
+        const ambos = loteVista === "ambos" || !m.ocupacion.some((o) => o.lote === loteVista);
+        const o = ambos ? null : m.ocupacion.find((x) => x.lote === loteVista) ?? null;
+        const grupos = o === null ? secciones : agrupar(o.porCredencial, o.porDepartamento);
+        const claveSel = ambos ? "secciones" : `lote-${loteVista}`;
+        const marcadas = grupos.reduce((a, s) => a + s.marcadas, 0);
+        const leyenda = Object.values(SEÑAL).filter((x) =>
+          x.pendiente && grupos.some((s) => s.filas.some((f) => f.señales.some((y) => y.clave === x.clave))),
+        );
+        return (
+          <>
+            <Segmentado
+              etiqueta="Estacionamiento"
+              activa={ambos ? "ambos" : loteVista}
+              onCambio={elegirLoteVista}
+              opciones={[
+                ...m.ocupacion.map((x) => ({ clave: x.lote, titulo: `E${x.lote.slice(1)} · hasta ${x.pico.dentro} coches` })),
+                { clave: "ambos", titulo: "Los dos" },
+              ]}
             />
-          </Seccion>
 
-          {comparativa.length > 0 && (
             <Seccion
-              rotulo="Los dos lado a lado"
-              titulo="El mismo departamento se comporta casi igual en los dos"
+              rotulo={ambos ? "Los dos estacionamientos juntos" : `Estacionamiento ${loteVista.slice(1)}`}
+              titulo={ambos ? "Quién usa el estacionamiento, por sección" : "Quién lo usa, de mayor a menor ocupación"}
               nota={
                 <>
-                  Esta tabla impide publicar una conclusión falsa. Comparar la mediana del 1 contra la del 2
-                  sin abrir por departamento daría a entender que son estacionamientos de naturaleza distinta,
-                  y no lo son: los padres de familia se quedan prácticamente lo mismo en uno que en otro. La
-                  diferencia agregada entre los dos es <strong>quién entra a cada uno</strong>, no cómo se
-                  comporta. Si alguno diverge mucho, lo que delata no es el estacionamiento sino la etiqueta:
-                  bajo ese nombre hay gente de tipos distintos.
+                  Las secciones salen del catálogo del control de acceso, no de una clasificación nuestra, y van
+                  ordenadas por <strong>cuántos cajones ocupa cada una a la vez</strong>, que es la única medida
+                  comparable contra la capacidad: «primaria llega a ocupar 24 lugares» se contrasta con cuántos
+                  hay. Elija una sección para ver a su gente.
+                  {marcadas > 0 && (
+                    <> Hay <strong>{marcadas} credenciales por revisar</strong>; cada sección dice cuántas tiene.</>
+                  )}
+                  {ambos && sinExpediente.length > 0 && (
+                    <>
+                      {" "}Aparte, <strong>{sinExpediente.length} de las {m.porCredencial.length} credenciales
+                      que abrieron la pluma todavía no tienen expediente en SATAG</strong>. Eso lo resuelve la
+                      migración de una vez, no credencial por credencial, así que no cuenta como pendiente.
+                    </>
+                  )}
                 </>
               }
             >
-              <TablaPro
-                filas={comparativa}
-                claveFila={(c) => c.depto}
-                ordenInicial="total"
-                cols={[
-                  { clave: "depto", titulo: "Departamento", pie: "con 5 estancias o más en los dos", celda: (c) => c.depto, orden: (c) => c.depto },
-                  { clave: "m1", titulo: "Mediana en el 1", num: true, celda: (c) => dur(c.e1?.medianaMin), orden: (c) => c.e1?.medianaMin ?? 0 },
-                  { clave: "e1", titulo: "Estancias en el 1", num: true, celda: (c) => c.e1?.estancias ?? 0, orden: (c) => c.e1?.estancias ?? 0 },
-                  { clave: "m2", titulo: "Mediana en el 2", num: true, celda: (c) => dur(c.e2?.medianaMin), orden: (c) => c.e2?.medianaMin ?? 0 },
-                  { clave: "e2", titulo: "Estancias en el 2", num: true, celda: (c) => c.e2?.estancias ?? 0, orden: (c) => c.e2?.estancias ?? 0 },
-                  { clave: "total", titulo: "Total", num: true, celda: (c) => (c.e1?.estancias ?? 0) + (c.e2?.estancias ?? 0), orden: (c) => (c.e1?.estancias ?? 0) + (c.e2?.estancias ?? 0) },
-                ]}
+              {leyenda.length > 0 && (
+                <ul className="detail-grid" style={{ marginBottom: 14 }}>
+                  {leyenda.map((x) => (
+                    <li key={x.clave}>
+                      <span className={`status-chip status-chip--${x.tono}`}>{x.texto}</span>{" "}
+                      <span className="ti-hint">{x.porque}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <VistaMaestroDetalle
+                grupos={grupos}
+                elegida={sel[claveSel] ?? null}
+                onElegir={(nombre) => setSel((v) => ({ ...v, [claveSel]: nombre }))}
+                cols={columnasPersona}
+                verIdentidad={verIdentidad}
+                conPadron={padron !== null}
               />
+              <p className="ti-hint" style={{ marginTop: 12 }}>
+                <strong>«Cajones a la vez» es el máximo de coches de esa sección dentro al mismo tiempo</strong>,
+                que es lo que de verdad le cuesta al estacionamiento. Cada sección llega a su máximo a una hora
+                distinta, así que no suman el pico total; para eso está la segunda cifra, la de cuántos seguían ahí
+                en el peor momento. Las medianas salen solo de las entradas con salida leída.
+              </p>
             </Seccion>
-          )}
-        </>
-      )}
+
+            {ambos && comparativa.length > 0 && (
+              <Seccion
+                rotulo="Los dos lado a lado"
+                titulo="El mismo departamento se comporta casi igual en los dos"
+                nota={
+                  <>
+                    Esta tabla impide publicar una conclusión falsa. Comparar la mediana del 1 contra la del 2
+                    sin abrir por departamento daría a entender que son estacionamientos de naturaleza distinta,
+                    y no lo son: los padres de familia se quedan prácticamente lo mismo en uno que en otro. La
+                    diferencia agregada entre los dos es <strong>quién entra a cada uno</strong>, no cómo se
+                    comporta. Si alguno diverge mucho, lo que delata no es el estacionamiento sino la etiqueta:
+                    bajo ese nombre hay gente de tipos distintos.
+                  </>
+                }
+              >
+                <TablaPro
+                  filas={comparativa}
+                  claveFila={(c) => c.depto}
+                  ordenInicial="total"
+                  cols={[
+                    { clave: "depto", titulo: "Departamento", pie: "con 5 estancias o más en los dos", celda: (c) => c.depto, orden: (c) => c.depto },
+                    { clave: "m1", titulo: "Mediana en el 1", num: true, celda: (c) => dur(c.e1?.medianaMin), orden: (c) => c.e1?.medianaMin ?? 0 },
+                    { clave: "e1", titulo: "Estancias en el 1", num: true, celda: (c) => c.e1?.estancias ?? 0, orden: (c) => c.e1?.estancias ?? 0 },
+                    { clave: "m2", titulo: "Mediana en el 2", num: true, celda: (c) => dur(c.e2?.medianaMin), orden: (c) => c.e2?.medianaMin ?? 0 },
+                    { clave: "e2", titulo: "Estancias en el 2", num: true, celda: (c) => c.e2?.estancias ?? 0, orden: (c) => c.e2?.estancias ?? 0 },
+                    { clave: "total", titulo: "Total", num: true, celda: (c) => (c.e1?.estancias ?? 0) + (c.e2?.estancias ?? 0), orden: (c) => (c.e1?.estancias ?? 0) + (c.e2?.estancias ?? 0) },
+                  ]}
+                />
+              </Seccion>
+            )}
+          </>
+        );
+      })()}
 
       {/* =============================================== SECCIONES ============== */}
       {vista === "secciones" && (
-        <Seccion
-          rotulo="Los dos estacionamientos juntos"
-          titulo="Por sección: quién usa el estacionamiento, y qué conviene mirar"
-          nota={
-            <>
-              Las secciones salen del catálogo del control de acceso, no de una clasificación nuestra, y van
-              ordenadas por <strong>cuántos lugares ocupan a la vez</strong>. Elija una para ver a su gente.
-              {totalMarcadas > 0 && (
-                <> Hay <strong>{totalMarcadas} credenciales por revisar</strong>; las secciones que las
-                tienen vienen abiertas.</>
-              )}
-              {sinExpediente.length > 0 && (
-                <>
-                  {" "}Aparte, <strong>{sinExpediente.length} de las {m.porCredencial.length} credenciales
-                  que abrieron la pluma todavía no tienen expediente en SATAG</strong>. Eso lo resuelve la
-                  migración de una vez, no credencial por credencial, así que no cuenta como pendiente.
-                </>
-              )}
-            </>
-          }
-        >
-          {totalMarcadas > 0 && (
-            <ul className="detail-grid" style={{ marginBottom: 14 }}>
-              {Object.values(SEÑAL)
-                .filter((x) => secciones.some((s) => s.filas.some((f) => f.señales.some((y) => y.clave === x.clave))))
-                .map((x) => (
-                  <li key={x.clave}>
-                    <span className={`status-chip status-chip--${x.tono}`}>{x.texto}</span>{" "}
-                    <span className="ti-hint">{x.porque}</span>
-                  </li>
-                ))}
-            </ul>
-          )}
-          <VistaMaestroDetalle
-            grupos={secciones}
-            elegida={sel.secciones ?? null}
-            onElegir={(nombre) => setSel((v) => ({ ...v, secciones: nombre }))}
-            cols={columnasPersona}
-            verIdentidad={verIdentidad}
-            conPadron={padron !== null}
-          />
-          <p className="ti-hint" style={{ marginTop: 12 }}>
-            <strong>«Cajones a la vez» es el máximo de coches de esa sección dentro al mismo tiempo</strong>,
-            que es lo que de verdad le cuesta al estacionamiento. Ojo al sumarlos: cada sección llega a su
-            máximo a una hora distinta, así que no suman el pico total — para eso está la segunda cifra, la
-            de cuántos seguían ahí en el peor momento, que sí suma. Las medianas salen solo de las entradas
-            con salida leída, así que en las secciones de jornada larga son cotas inferiores.
-          </p>
-        </Seccion>
-      )}
+        <>
+          <Seccion
+            rotulo="Los dos estacionamientos juntos"
+            titulo="Cuántos lugares ocupa cada sección, y cuánto se queda"
+            nota={
+              <>
+                El reporte global, una fila por sección del control de acceso: los cajones que llega a ocupar a
+                la vez, cuántos de esos seguían ahí en el peor momento del estacionamiento, y lo que se queda la
+                mitad de su gente. Las personas de cada sección se consultan en «Estacionamientos».
+              </>
+            }
+          >
+            <TablaPro
+              filas={m.porDepartamento}
+              claveFila={(r) => r.rol}
+              ordenInicial="cajon"
+              cols={[
+                { clave: "rol", titulo: "Sección", celda: (r) => r.rol, orden: (r) => r.rol },
+                { clave: "cajon", titulo: "Cajones a la vez", pie: "máximo simultáneo de la sección", num: true, celda: (r) => r.cajonesAlaVez, orden: (r) => r.cajonesAlaVez, barra: (r) => r.cajonesAlaVez / Math.max(...m.porDepartamento.map((x) => x.cajonesAlaVez), 1) },
+                { clave: "enpico", titulo: "En el peor momento", pie: "de esos, cuántos seguían ahí", num: true, celda: (r) => r.cajonesEnElPico, orden: (r) => r.cajonesEnElPico },
+                { clave: "est", titulo: "Estancias", pie: "entradas con salida leída", num: true, celda: (r) => r.estancias, orden: (r) => r.estancias },
+                { clave: "cred", titulo: "Credenciales", pie: "personas distintas", num: true, celda: (r) => r.credenciales, orden: (r) => r.credenciales },
+                { clave: "med", titulo: "Mediana", pie: "lo que se queda la mitad", num: true, celda: (r) => dur(r.medianaMin), orden: (r) => r.medianaMin ?? 0 },
+                { clave: "iqr", titulo: "Mitad central", pie: "entre el 25% y el 75%", celda: (r) => <span className="ti-hint">{dur(r.p25Min)} – {dur(r.p75Min)}</span> },
+                { clave: "cortas", titulo: "De 30 min o menos", pie: "dejar y arrancar", num: true, celda: (r) => <>{r.cortas} <span className="ti-hint">({pct(r.cortas, r.estancias)})</span></>, orden: (r) => r.cortas },
+                { clave: "cens", titulo: "Sin salida leída", pie: "no se pudieron medir", num: true, celda: (r) => <>{r.censuradas} <span className="ti-hint">({pct(r.censuradas, r.estancias + r.censuradas)})</span></>, orden: (r) => r.censuradas },
+              ]}
+            />
+            <p className="ti-hint" style={{ marginTop: 10 }}>
+              <strong>Las medianas de las secciones de jornada larga son cotas inferiores.</strong> La última
+              columna explica por qué: cuando el lector no registra la salida, la estancia no se puede medir, y
+              eso pasa más en las secciones que se quedan más. Las que se pierden son justo las largas, así que
+              el contraste real entre secciones es mayor que el que esta tabla muestra, nunca menor.
+            </p>
+          </Seccion>
 
-      {/* ============================================= PERMANENCIA ============== */}
-      {vista === "permanencia" && (
-        <Seccion
-          rotulo="La distribución"
-          titulo="Hay dos poblaciones, y se ven separadas"
-          nota={
-            <>
-              No es una distribución con una media: son dos montones. El de la izquierda deja y arranca; el
-              de la derecha ocupa el cajón la jornada. El valle no es ruido — es donde termina una población
-              y empieza la otra. La escala es lineal, así que la desproporción que se ve es la real.
-            </>
-          }
-        >
-          <HistogramaEstancias grupos={m.histogramaPorRol} />
+          {/* La permanencia en general: antes era su propia pestana. Son dos
+              poblaciones, y la grafica lo dice mejor que cualquier promedio. */}
+          <Seccion
+            rotulo="La permanencia en general"
+            titulo="Hay dos poblaciones, y se ven separadas"
+            nota={
+              <>
+                No es una distribución con una media: son dos montones. El de la izquierda deja y arranca; el
+                de la derecha ocupa el cajón la jornada. El valle no es ruido: es donde termina una población
+                y empieza la otra. La escala es lineal, así que la desproporción que se ve es la real. En total{" "}
+                {totalEstancias.toLocaleString("es-MX")} estancias medidas, {largas} de cuatro horas o más ({pct(largas, totalEstancias)})
+                y {cortas} de media hora o menos ({pct(cortas, totalEstancias)}); la mediana de todas es {dur(m.medianaGlobalMin)}.
+              </>
+            }
+          >
+            <HistogramaEstancias grupos={m.histogramaPorRol} />
 
-          <h4 className="ti-section-title" style={{ marginTop: 18 }}>Quién compone cada barra</h4>
-          <div className="table-wrap">
-            <table className="admin-table tabla-pro">
-              <thead>
-                <tr>
-                  <th><span style={{ display: "inline-block", padding: "10px 12px" }}>Permanencia</span></th>
-                  {m.histogramaPorRol.map((g) => (
-                    <th key={g.rol} className="num">
-                      <span style={{ display: "inline-block", padding: "10px 12px" }}>{g.rol}</span>
-                    </th>
-                  ))}
-                  <th className="num"><span style={{ display: "inline-block", padding: "10px 12px" }}>Total</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {m.histograma.map((c, i) => (
-                  <tr key={c.desde}>
-                    <td>
-                      {c.hasta === null
-                        ? `${dur(c.desde)} o más`
-                        : `${c.desde === 0 ? "menos de " : `${dur(c.desde)} a `}${dur(c.hasta)}`}
-                    </td>
+            <h4 className="ti-section-title" style={{ marginTop: 18 }}>Quién compone cada barra</h4>
+            <div className="table-wrap">
+              <table className="admin-table tabla-pro">
+                <thead>
+                  <tr>
+                    <th><span style={{ display: "inline-block", padding: "10px 12px" }}>Permanencia</span></th>
                     {m.histogramaPorRol.map((g) => (
-                      <td key={g.rol} className="num">
-                        {g.cubetas[i].cuantas}{" "}
-                        <span className="ti-hint">({pct(g.cubetas[i].cuantas, c.cuantas)})</span>
-                      </td>
+                      <th key={g.rol} className="num">
+                        <span style={{ display: "inline-block", padding: "10px 12px" }}>{g.rol}</span>
+                      </th>
                     ))}
-                    <td className="num"><strong>{c.cuantas}</strong></td>
+                    <th className="num"><span style={{ display: "inline-block", padding: "10px 12px" }}>Total</span></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {m.histograma.map((c, i) => (
+                    <tr key={c.desde}>
+                      <td>
+                        {c.hasta === null
+                          ? `${dur(c.desde)} o más`
+                          : `${c.desde === 0 ? "menos de " : `${dur(c.desde)} a `}${dur(c.hasta)}`}
+                      </td>
+                      {m.histogramaPorRol.map((g) => (
+                        <td key={g.rol} className="num">
+                          {g.cubetas[i].cuantas}{" "}
+                          <span className="ti-hint">({pct(g.cubetas[i].cuantas, c.cuantas)})</span>
+                        </td>
+                      ))}
+                      <td className="num"><strong>{c.cuantas}</strong></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          <h4 className="ti-section-title" style={{ marginTop: 18 }}>La mediana de cada grupo</h4>
-          <EstanciasPorRol filas={m.estancias} />
-          <TablaPro
-            filas={m.estancias}
-            claveFila={(r) => r.rol}
-            ordenInicial="cajon"
-            cols={[
-              { clave: "rol", titulo: "Grupo", celda: (r) => r.rol, orden: (r) => r.rol },
-              { clave: "cajon", titulo: "Cajones a la vez", pie: "máximo simultáneo del grupo", num: true, celda: (r) => r.cajonesAlaVez, orden: (r) => r.cajonesAlaVez, barra: (r) => r.cajonesAlaVez / Math.max(...m.estancias.map((x) => x.cajonesAlaVez), 1) },
-              { clave: "enpico", titulo: "En el peor momento", pie: "de esos, cuántos seguían ahí", num: true, celda: (r) => r.cajonesEnElPico, orden: (r) => r.cajonesEnElPico },
-              { clave: "est", titulo: "Estancias", pie: "entradas con salida leída", num: true, celda: (r) => r.estancias, orden: (r) => r.estancias },
-              { clave: "cred", titulo: "Credenciales", pie: "personas distintas", num: true, celda: (r) => r.credenciales, orden: (r) => r.credenciales },
-              { clave: "med", titulo: "Mediana", pie: "lo que se queda la mitad", num: true, celda: (r) => dur(r.medianaMin), orden: (r) => r.medianaMin ?? 0 },
-              { clave: "iqr", titulo: "Mitad central", pie: "entre el 25% y el 75%", celda: (r) => <span className="ti-hint">{dur(r.p25Min)} – {dur(r.p75Min)}</span> },
-              { clave: "cortas", titulo: "De 30 min o menos", pie: "dejar y arrancar", num: true, celda: (r) => <>{r.cortas} <span className="ti-hint">({pct(r.cortas, r.estancias)})</span></>, orden: (r) => r.cortas },
-              { clave: "cens", titulo: "Sin salida leída", pie: "no se pudieron medir", num: true, celda: (r) => <>{r.censuradas} <span className="ti-hint">({pct(r.censuradas, r.estancias + r.censuradas)})</span></>, orden: (r) => r.censuradas },
-            ]}
-          />
-          <p className="ti-hint" style={{ marginTop: 10 }}>
-            <strong>Las medianas de los grupos de jornada larga son cotas inferiores.</strong> La última
-            columna explica por qué: cuando el lector no registra la salida, la estancia no se puede medir —
-            y eso pasa más en los grupos que se quedan más. Las que se pierden son justo las largas, así que
-            el contraste real entre los grupos es mayor que el que esta tabla muestra, nunca menor.
-            En total {totalEstancias.toLocaleString("es-MX")} estancias medidas, {largas} de cuatro horas o
-            más ({pct(largas, totalEstancias)}) y {cortas} de media hora o menos ({pct(cortas, totalEstancias)});
-            la mediana de todas es {dur(m.medianaGlobalMin)}.
-          </p>
-        </Seccion>
+            <h4 className="ti-section-title" style={{ marginTop: 18 }}>La mediana de cada grupo</h4>
+            <EstanciasPorRol filas={m.estancias} />
+          </Seccion>
+        </>
       )}
 
       {/* =============================================== VIALIDAD (beta) ======= */}
       {vista === "vialidad" && <VialidadBeta m={m} />}
-
-      {/* =============================================== CALIDAD =============== */}
-      {vista === "calidad" && (
-        <Seccion
-          rotulo="Los límites"
-          titulo="Qué falta para saber si falta espacio"
-          nota="Todo tablero tiene un borde. Estos son los de este, con su tamaño y su dirección: un error acotado y con signo es un error controlado."
-        >
-          {resumen.topeAlcanzado && !d.serie && (
-            <p className="notice" style={{ margin: "0 0 14px", padding: "10px 12px" }}>
-              El archivo llegó a las <strong>40,000 filas</strong>, que es donde ZKBioSecurity corta. La
-              exportación quedó truncada y solo cubre <strong>{resumen.diasConActividad} días</strong>. Para
-              cubrir un mes hacen falta varias exportaciones por rango de fechas.
-            </p>
-          )}
-          {d.serie && (resumen.topeAlcanzado || d.serie.truncadas > 0) && (
-            <p className="notice" style={{ margin: "0 0 14px", padding: "10px 12px" }}>
-              {/* ZK se queda con las 40,000 filas MAS RECIENTES: a una ventana truncada
-                  le falta su arranque, no su final. Decirlo al reves mandaba a exportar
-                  despues de la ultima fecha, y eso nunca cierra el hueco. */}
-              {resumen.topeAlcanzado
-                ? <>La última ventana llegó a las <strong>40,000 filas</strong>, que es donde ZKBioSecurity corta, y ZK se
-                  queda con las más recientes: lo que falta es lo anterior a su primer evento
-                  {d.serie.ultimaDesde ? `, el ${diaCorto(d.serie.ultimaDesde.slice(0, 10))}` : ""}. Para cubrirlo, exporte por
-                  rango de fechas hasta ese día.</>
-                : <>{d.serie.truncadas} de las {d.serie.ventanas} ventanas guardadas llegaron a las <strong>40,000 filas</strong> de
-                  ZKBioSecurity: a cada una le falta su arranque, no su final.</>}
-              {" "}Si eso dejó días sin cubrir entre dos ventanas, el aviso de arriba lo dice con fechas.
-            </p>
-          )}
-          <ul className="detail-grid">
-            {sinCupos && (
-              <li>
-                <strong>Cuántos cajones tiene cada estacionamiento.</strong> Es el único dato que falta para
-                pasar de «entraron tantos coches» a «faltó lugar», y es un conteo en sitio de una mañana.
-                Mientras tanto se puede dar la vuelta al revés: por la práctica de referencia un
-                estacionamiento empieza a operar mal arriba del {Math.round(UMBRAL_SHOUP * 100)}%, así que{" "}
-                {m.ocupacion
-                  .filter((o) => o.pico.dentro > 0)
-                  .map((o) => `el ${o.lote.slice(1)} estaría saturado si tiene ${Math.floor(o.pico.dentro / UMBRAL_SHOUP)} cajones o menos`)
-                  .join(", y ")}.
-              </li>
-            )}
-            <li>
-              <strong>{m.diasComparables.length} de los {m.dias.length} días describen un día normal.</strong>{" "}
-              Los otros quedan fuera de la curva con su motivo:{" "}
-              {m.diasExcluidos.map((x) => `${diaCorto(x.dia)} (${x.motivo})`).join("; ")}. El peor momento, en
-              cambio, se busca en todos: un día incompleto no describe la rutina, pero si trajo el momento más
-              lleno, ese momento ocurrió.
-            </li>
-            <li>
-              <strong>
-                {d.serie
-                  ? `${d.serie.ventanas === 1 ? "El archivo guardado traía" : `Los ${d.serie.ventanas} archivos guardados sumaban`} ${resumen.filasArchivo.toLocaleString("es-MX")} filas y solo`
-                  : `El archivo traía ${resumen.filasArchivo.toLocaleString("es-MX")} filas y solo`}{" "}
-                {resumen.accesos.toLocaleString("es-MX")} son accesos.
-              </strong>{" "}
-              {resumen.filasSinTarjeta.toLocaleString("es-MX")} ({pct(resumen.filasSinTarjeta, resumen.filasArchivo)})
-              son filas sin tarjeta —estado de los equipos, sensores de puerta y aperturas con el botón de
-              salida— y otras {resumen.repeticiones.toLocaleString("es-MX")} son el mismo lector disparando
-              varias veces por un solo coche. Las aperturas con botón son un límite real: un coche que entra
-              sin pasar credencial no aparece en ninguna de estas cifras.
-            </li>
-            <li>
-              <strong>
-                {resumen.entradas.toLocaleString("es-MX")} entradas contra {resumen.salidas.toLocaleString("es-MX")} salidas
-              </strong>
-              {resumen.desbalance !== null && (
-                <>
-                  {" "}({(Math.abs(resumen.desbalance) * 100).toFixed(1)}% de diferencia). Sobran{" "}
-                  {resumen.entradas >= resumen.salidas ? "entradas" : "salidas"}, así que el conteo de coches
-                  dentro está{" "}
-                  {resumen.entradas >= resumen.salidas
-                    ? "acotado por arriba: por eso el peor momento se da como un rango y no como un número"
-                    : "acotado por abajo: hay coches que ya estaban dentro cuando arranca el archivo"}
-                  .
-                </>
-              )}{" "}
-              De los dos lados: {m.entradasSinSalida} entradas no cerraron y {m.salidasSinEntrada} salidas no
-              tenían entrada en {d.serie ? "la bitácora" : "el archivo"}
-              {m.corte && m.corte.aunDentro > 0
-                ? `, y ${m.corte.aunDentro} coches seguían dentro cuando ${d.serie ? "la bitácora" : "el archivo"} termina, el ${diaCorto(m.corte.dia)} a las ${horaCorta(m.corte.minuto)}: esos no son un defecto, son el día corriendo`
-                : ""}
-              . En total {censuradas} estancias quedaron sin medir.
-            </li>
-            <li>
-              <strong>{resumen.rechazos.toLocaleString("es-MX")} intentos fueron rechazados</strong>{" "}
-              («Usuario no registrado»), de credenciales que ZK no reconoce. Cada uno detiene el carril, y en
-              los {m.ventana.minutos} minutos que importan eso se nota.
-            </li>
-            <li>
-              <strong>Esto es uso, no antigüedad.</strong> Una credencial que no aparece aquí no está
-              abandonada: pudo no venir esta semana.{" "}
-              {d.ventanas <= 1
-                ? "Con una sola ventana no se puede afirmar que una credencial no se use, solo acotar cada cuánto, y el panel de bajas sigue apagado hasta que haya serie suficiente."
-                : `Hay ${d.ventanas} ventanas guardadas; el panel de bajas sigue apagado hasta que la serie sea continua y suficiente.`}
-            </li>
-          </ul>
-        </Seccion>
-      )}
     </>
   );
 }
