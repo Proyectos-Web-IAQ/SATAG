@@ -38,6 +38,7 @@ import type {
   TipoUsuario,
   TramiteSolicitado,
 } from "@/lib/mock/types";
+import type { EventoZk } from "@/lib/zk/eventos";
 
 export interface AccionResultado {
   id: string;
@@ -1078,4 +1079,64 @@ export async function listPasosDeTarjetas(tarjetas: string[], tope = 400): Promi
       tarjeta: r.tarjeta,
     }))
     .reverse();
+}
+
+/**
+ * Los eventos guardados, para medir SIN el archivo (2-oct-2026).
+ *
+ * Pagina de mil en mil con `.range()` y sigue hasta una pagina vacia, no hasta una
+ * «corta»: si PostgREST tuviera un tope menor que mil, una pagina corta no seria la
+ * ultima y el panel mediria media ventana sin avisar. Trae solo lo que la medicion
+ * usa; `descripcion` no se guarda y se devuelve vacia.
+ *
+ * `desde` acota en el tiempo (hora de pared del controlador, como `ocurrio_en`):
+ * una temporada entera son cientos de miles de filas y la pantalla no las necesita
+ * todas para contar el dia tipico. El tope de paginas es un seguro declarado, no
+ * un limite de negocio: si se toca, la respuesta lo dice en `truncado`.
+ */
+export async function listEventosZk(
+  desde: string | null,
+  onAvance?: (filas: number) => void,
+  topePaginas = 120,
+): Promise<{ eventos: EventoZk[]; truncado: boolean }> {
+  const PAGINA = 1000;
+  const eventos: EventoZk[] = [];
+  let truncado = false;
+  for (let pagina = 0; ; pagina += 1) {
+    if (pagina >= topePaginas) {
+      truncado = true;
+      break;
+    }
+    let q = supabaseAuth
+      .from("zk_eventos")
+      .select("id_evento, ocurrio_en, lote, sentido, tarjeta, concedido, repeticion, departamento_evento")
+      .order("ocurrio_en", { ascending: true })
+      .order("id_evento", { ascending: true })
+      .range(eventos.length, eventos.length + PAGINA - 1);
+    if (desde) q = q.gte("ocurrio_en", desde);
+    const { data, error } = await q;
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as unknown as {
+      id_evento: number; ocurrio_en: string; lote: string; sentido: string; tarjeta: string;
+      concedido: boolean; repeticion: boolean; departamento_evento: string | null;
+    }[];
+    if (filas.length === 0) break;
+    for (const r of filas) {
+      eventos.push({
+        idEvento: Number(r.id_evento),
+        // Postgres devuelve el timestamp sin zona como «2026-09-22T07:18:00»; el
+        // parser y la medicion trabajan con «2026-09-22 07:18:00».
+        ocurrioEn: String(r.ocurrio_en).replace("T", " ").slice(0, 19),
+        lote: r.lote as EventoZk["lote"],
+        sentido: r.sentido === "salida" ? "salida" : "entrada",
+        tarjeta: r.tarjeta,
+        descripcion: "",
+        concedido: r.concedido,
+        departamentoEvento: r.departamento_evento ?? "",
+        repeticion: r.repeticion,
+      });
+    }
+    onAvance?.(eventos.length);
+  }
+  return { eventos, truncado };
 }
