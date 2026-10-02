@@ -211,7 +211,10 @@ a { color: var(--primary-strong); }
 /* Raleway trae por defecto cifras de estilo antiguo (el 1 y el 0 parecen
    minúsculas): en placas, TAGs y folios se leen disparejas. */
 .admin-shell { display: flex; font-variant-numeric: lining-nums; justify-content: center; min-height: calc(100dvh - var(--header-h)); padding: 16px 24px 40px; }
-.admin-panel { max-width: 1200px; width: min(100%, 1200px); }
+/* 1560 y no 1200: en un escritorio de 1920 el panel dejaba un tercio de la pantalla en
+   blanco a los costados (Gerardo, 2-oct). Lo que debe seguir angosto para leerse
+   —titulares, parrafos— ya tiene su propio max-width en caracteres. */
+.admin-panel { max-width: 1560px; width: min(100%, 1560px); }
 
 .admin-header {
   align-items: flex-start; border-bottom: 1px solid var(--line);

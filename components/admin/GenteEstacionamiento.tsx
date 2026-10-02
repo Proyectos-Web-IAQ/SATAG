@@ -46,8 +46,48 @@ export const SIN_ZK = "No está en el padrón de ZK";
 let ultimoLote = "ambos";
 let ultimaSeccion = TODAS;
 let ultimaAbierta: string | null = null;
+let ultimoOrdenGente: OrdenGente = "entradas";
+let ultimoDescGente = true;
+let ultimoOrdenSeccion: OrdenSeccion = "cajones";
+let ultimoDescSeccion = true;
 
 const dur = (min: number | null | undefined) => duracion((min ?? 0) * 60_000);
+
+/**
+ * Como se ordena la gente. Se elige y SE DICE: una lista ordenada sin decir por que
+ * obliga a adivinar que significa estar arriba (Gerardo, 2-oct).
+ */
+type OrdenGente = "entradas" | "visita" | "ultima" | "nombre";
+const ORDENES_GENTE: { clave: OrdenGente; titulo: string; dicho: string }[] = [
+  { clave: "entradas", titulo: "Veces que entró", dicho: "por veces que entró" },
+  { clave: "visita", titulo: "Tiempo por visita", dicho: "por tiempo por visita" },
+  { clave: "ultima", titulo: "Última vez que vino", dicho: "por la última vez que vino" },
+  { clave: "nombre", titulo: "Nombre", dicho: "por nombre" },
+];
+type OrdenSeccion = "cajones" | "mediana" | "credenciales" | "estancias";
+const ORDENES_SECCION: { clave: OrdenSeccion; titulo: string; dicho: string }[] = [
+  { clave: "cajones", titulo: "Cajones que ocupa a la vez", dicho: "por cajones que ocupa a la vez" },
+  { clave: "mediana", titulo: "Cuánto se queda (mediana)", dicho: "por cuánto se queda" },
+  { clave: "credenciales", titulo: "Personas distintas", dicho: "por personas distintas" },
+  { clave: "estancias", titulo: "Estancias medidas", dicho: "por estancias medidas" },
+];
+
+/** El selector de orden con su sentido: lo que la lista dice que es. */
+function Orden<T extends string>({ opciones, valor, desc, onValor, onDesc }: {
+  opciones: { clave: T; titulo: string }[]; valor: T; desc: boolean; onValor: (v: T) => void; onDesc: () => void;
+}) {
+  return (
+    <label className="gente__seccion">
+      <span>Ordenar por</span>
+      <select className="select" value={valor} onChange={(e) => onValor(e.target.value as T)}>
+        {opciones.map((o) => <option key={o.clave} value={o.clave}>{o.titulo}</option>)}
+      </select>
+      <button type="button" className="link-action" onClick={onDesc} aria-label={desc ? "De más a menos; cambiar a de menos a más" : "De menos a más; cambiar a de más a menos"}>
+        {desc ? "de más a menos ↓" : "de menos a más ↑"}
+      </button>
+    </label>
+  );
+}
 const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "—");
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 const nombreLote = (l: string) => `E${l.slice(1)}`;
@@ -182,12 +222,16 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
   const [lote, setLote] = useState(ultimoLote);
   const [seccion, setSeccion] = useState(ultimaSeccion);
   const [q, setQ] = useState("");
+  const [orden, setOrden] = useState<OrdenGente>(ultimoOrdenGente);
+  const [desc, setDesc] = useState(ultimoDescGente);
   // La memoria del modulo se escribe en un efecto, no en el manejador: es lo que el
   // compilador de React acepta como escritura fuera del render.
   useEffect(() => {
     ultimoLote = lote;
     ultimaSeccion = seccion;
-  }, [lote, seccion]);
+    ultimoOrdenGente = orden;
+    ultimoDescGente = desc;
+  }, [lote, seccion, orden, desc]);
   const g = useMemo(() => prepararGente(m, personas, fuentes), [m, personas, fuentes]);
 
   const delLote = registros.filter((r) => g.esDelLote(r, lote));
@@ -200,7 +244,18 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
   const filtrados = delLote
     .filter((r) => seccionActiva === TODAS || g.seccionDe(r) === seccionActiva)
     .filter((r) => coincide(r, texto))
-    .sort((a, b) => g.entradasDe(b, lote) - g.entradasDe(a, lote) || a.usuarioNombre.localeCompare(b.usuarioNombre, "es"));
+    .sort((a, b) => {
+      const ua = g.usoDe(a, lote), ub = g.usoDe(b, lote);
+      const nombre = a.usuarioNombre.localeCompare(b.usuarioNombre, "es");
+      let d = 0;
+      if (orden === "entradas") d = g.entradasDe(a, lote) - g.entradasDe(b, lote);
+      else if (orden === "visita") d = (ua?.medianaMin ?? -1) - (ub?.medianaMin ?? -1);
+      else if (orden === "ultima") d = (ua?.ultimoDia ?? "").localeCompare(ub?.ultimoDia ?? "");
+      else d = -nombre;
+      if (desc) d = -d;
+      return d || nombre;
+    });
+  const ordenDicho = `${ORDENES_GENTE.find((o) => o.clave === orden)?.dicho ?? ""}, ${orden === "nombre" ? (desc ? "de la Z a la A" : "de la A a la Z") : desc ? "de más a menos" : "de menos a más"}`;
 
   const dias = m.dias.length;
   const usaron = delLote.filter((r) => g.usoDe(r, lote) !== undefined).length;
@@ -212,12 +267,12 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
     const e2 = g.porLote.get("E2") ?? new Map<string, UsoCredencial>();
     const ambos = [...e1.keys()].filter((t) => e2.has(t)).length;
     titular = `${plural(g.todos.size, "credencial abrió", "credenciales abrieron")} la pluma en estos ${dias} días: ${e2.size - ambos} solo en el E2, ${e1.size - ambos} solo en el E1 y ${ambos} en los dos.`;
-    bajada = `${plural(delLote.length, "expediente tiene", "expedientes tienen")} pluma o entraron${sinPasos > 0 ? `; ${sinPasos} con derecho no entraron ni una vez` : ""}. Elija a alguien para ver su ficha completa: sus pasos por la pluma, sus TAGs, su vehículo y lo que no cuadra.`;
+    bajada = `${plural(delLote.length, "expediente tiene", "expedientes tienen")} pluma o entraron${sinPasos > 0 ? `; ${sinPasos} con derecho no entraron ni una vez` : ""}. Elija a alguien para ver su ficha completa: sus pasos por la pluma, sus TAGs, su vehículo y lo que no cuadra. Puede cambiar por qué se ordena la lista.`;
   } else {
     const cred = g.porLote.get(lote)?.size ?? 0;
     const top = secciones[0] ?? null;
     titular = `Por el ${nombreLote(lote)} entraron ${plural(cred, "credencial", "credenciales")} en estos ${dias} días${top ? `; ${top[0]} es la sección más numerosa, con ${top[1]}` : ""}.`;
-    bajada = `${plural(delLote.length, "expediente tiene", "expedientes tienen")} esa pluma o entraron por ahí${sinPasos > 0 ? `; ${sinPasos} con derecho no la usaron ni una vez` : ""}. Las personas van ordenadas por cuántas veces entraron.`;
+    bajada = `${plural(delLote.length, "expediente tiene", "expedientes tienen")} esa pluma o entraron por ahí${sinPasos > 0 ? `; ${sinPasos} con derecho no la usaron ni una vez` : ""}. Puede cambiar por qué se ordena la lista.`;
   }
 
   return (
@@ -256,6 +311,7 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        <Orden opciones={ORDENES_GENTE} valor={orden} desc={desc} onValor={setOrden} onDesc={() => setDesc((v) => !v)} />
       </div>
 
       {error && (
@@ -272,6 +328,7 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
         vacio={textoVacio(cargando, registros, texto !== "" || seccionActiva !== TODAS)}
         linea={g.linea(lote)}
         avisosExtra={g.avisosExtra}
+        orden={ordenDicho}
       />
     </>
   );
@@ -297,17 +354,25 @@ export function SeccionesEstacionamiento({
 }: PropsComunes & { cupos: Record<string, number | null> }) {
   const [abierta, setAbierta] = useState<string | null>(ultimaAbierta);
   const [verComposicion, setVerComposicion] = useState(false);
+  const [orden, setOrden] = useState<OrdenSeccion>(ultimoOrdenSeccion);
+  const [desc, setDesc] = useState(ultimoDescSeccion);
   useEffect(() => {
     ultimaAbierta = abierta;
-  }, [abierta]);
+    ultimoOrdenSeccion = orden;
+    ultimoDescSeccion = desc;
+  }, [abierta, orden, desc]);
   const abrir = (s: string) => setAbierta((v) => (v === s ? null : s));
   const g = useMemo(() => prepararGente(m, personas, fuentes), [m, personas, fuentes]);
 
   const porSeccion = m.porDepartamento.length > 0;
+  const valorDe = (x: EstanciasRol) =>
+    orden === "cajones" ? x.cajonesAlaVez : orden === "mediana" ? (x.medianaMin ?? 0) : orden === "credenciales" ? x.credenciales : x.estancias;
   const secs: EstanciasRol[] = [...(porSeccion ? m.porDepartamento : m.estancias)]
     .filter((x) => x.estancias > 0)
-    .sort((a, b) => b.cajonesAlaVez - a.cajonesAlaVez || b.estancias - a.estancias);
-  const top = secs[0] ?? null;
+    .sort((a, b) => (desc ? valorDe(b) - valorDe(a) : valorDe(a) - valorDe(b)) || b.cajonesAlaVez - a.cajonesAlaVez);
+  // El titular habla de la que mas lugares ocupa, se ordene como se ordene.
+  const top = [...secs].sort((a, b) => b.cajonesAlaVez - a.cajonesAlaVez)[0] ?? null;
+  const ordenDicho = `${ORDENES_SECCION.find((o) => o.clave === orden)?.dicho ?? ""}, ${desc ? "de más a menos" : "de menos a más"}`;
   const cupoTotal = m.ocupacion.every((o) => (cupos[o.lote] ?? null) !== null)
     ? m.ocupacion.reduce((a, o) => a + (cupos[o.lote] ?? 0), 0)
     : null;
@@ -358,6 +423,11 @@ export function SeccionesEstacionamiento({
           <button type="button" className="link-action" onClick={onReintentar}>Reintentar</button>
         </p>
       )}
+
+      <div className="gente__filtros">
+        <Orden opciones={ORDENES_SECCION} valor={orden} desc={desc} onValor={setOrden} onDesc={() => setDesc((v) => !v)} />
+        <span className="ti-hint">{secs.length} {porSeccion ? "secciones" : "grupos"} {ordenDicho}; la barra es «cajones a la vez».</span>
+      </div>
 
       <div className="filas">
         {secs.map((x) => {
@@ -413,6 +483,7 @@ export function SeccionesEstacionamiento({
                     vacio={textoVacio(cargando, registros, false)}
                     linea={g.linea("ambos")}
                     avisosExtra={g.avisosExtra}
+                    orden="por veces que entró, de más a menos"
                   />
                 </div>
               )}
