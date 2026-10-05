@@ -66,6 +66,8 @@ const RUTAS = [
       // La clase de la zona que se recorre minuto a minuto: solo existe si la
       // grafica de ocupacion ya no usa los blancos de cada dos horas (5-oct).
       { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },
+      // El nombre del departamento docente viaja tal cual en el puente a ZK.
+      { texto: "PREESCOLAR DOCENTES", que: "el puente a ZK usa los departamentos que ZK tiene desde el 5-oct" },
     ],
   },
 ];

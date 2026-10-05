@@ -65,34 +65,63 @@ const ROTULOS = ["Tarjeta", "ID de Departamento"];
 /**
  * Los departamentos de ZK, agrupados como los lee Direccion.
  *
- * NO SE INVENTA NINGUNO: las claves son los `ID de Departamento` del catalogo real
- * (export «Departamentos»), y los nombres se toman del archivo, no de aqui. Esta
- * tabla solo dice a que grupo pertenece cada uno.
+ * NO SE INVENTA NINGUNO: son los departamentos del catalogo real de ZK. Manda el
+ * NOMBRE: entre el 2 y el 5-oct-2026 TI renumero los departamentos (Padres de
+ * familia 7 -> 19, Alumnos 5 -> 20...) y un mapa por numero dejo de reconocer a
+ * mil personas de un dia para otro. Los numeros quedan como respaldo para archivos
+ * cuyo nombre no se reconozca. Esta tabla solo dice a que grupo pertenece cada uno.
  *
  * Tres decisiones que conviene no deshacer sin pensarlo:
  *
- * - `3 STOCK SATAG` cae en «Sin clasificar» y NO en un grupo propio. Una instalacion
+ * - STOCK SATAG cae en «Sin clasificar» y NO en un grupo propio. Una instalacion
  *   del dia cruza la pluma antes de que se suba el padron a ZK, asi que aparece con
  *   ese departamento aunque el coche sea de un padre. Es historia, no estado.
- * - `10 BAJAS` tambien: una tarjeta ahi no deberia abrir nada, y si aparece en la
- *   bitacora eso es el hallazgo, no su grupo.
- * - `1 General` y `hotel` son residuos de la configuracion vieja del control de
- *   acceso y mezclan gente de todo tipo. Darles un grupo propio seria inventar.
+ * - BAJAS tambien: una tarjeta ahi no deberia abrir nada, y si aparece en la
+ *   bitacora eso es el hallazgo, no su grupo. Igual «Falta de información».
+ * - General, «Otros» y `hotel` mezclan gente de todo tipo. Darles un grupo propio
+ *   seria inventar.
  */
+export const GRUPO_POR_NOMBRE_DEPTO: Record<string, string> = {
+  "PADRES DE FAMILIA": "Padres de familia",
+  MAESTROS: "Personal docente",
+  "PRIMARIA DOCENTE": "Personal docente",
+  "PREESCOLAR DOCENTES": "Personal docente",
+  "SECUNDARIA DOCENTES": "Personal docente",
+  "PREPARATORIA DOCENTES": "Personal docente",
+  "DEPORTES EXTRAESCOLARES": "Personal docente",
+  "TEX DOCENTES": "Personal docente",
+  ADMINISTRACION: "Administración y servicios",
+  ADMON: "Administración y servicios",
+  MANTENIMIENTO: "Administración y servicios",
+  ALUMNOS: "Alumnos",
+  "EX ALUMNOS": "Alumnos",
+};
 export const GRUPO_POR_DEPTO: Record<string, string> = {
-  "7": "Padres de familia",
-  "6": "Personal docente",
+  // Desde el 5-oct-2026.
+  "19": "Padres de familia",
+  "16": "Administración y servicios",
+  "17": "Administración y servicios",
+  "20": "Alumnos",
+  "21": "Alumnos",
+  // Sin cambio.
   "4": "Personal docente",
   "9": "Personal docente",
   "11": "Personal docente",
   "12": "Personal docente",
   "13": "Personal docente",
   "14": "Personal docente",
-  "2": "Administración y servicios",
   "15": "Administración y servicios",
+  // Hasta el 2-oct-2026: solo para archivos viejos.
+  "7": "Padres de familia",
+  "6": "Personal docente",
+  "2": "Administración y servicios",
   "5": "Alumnos",
   "8": "Alumnos",
 };
+
+/** El nombre de un departamento de ZK, comparable: sin acentos, en mayusculas. */
+export const nombreDepto = (s: string | null | undefined): string =>
+  String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
 /** `registros.tipo_usuario` de SATAG a los mismos grupos. Es la fuente de arriba. */
 export const GRUPO_POR_TIPO: Record<string, string> = {
@@ -104,8 +133,9 @@ export const GRUPO_POR_TIPO: Record<string, string> = {
 
 export const SIN_CLASIFICAR = "Sin clasificar";
 
-/** A que grupo pertenece un departamento de ZK. */
-export const grupoDeDepto = (id: string): string => GRUPO_POR_DEPTO[id] ?? SIN_CLASIFICAR;
+/** A que grupo pertenece un departamento de ZK: por su nombre y, si no se reconoce, por su numero. */
+export const grupoDeDepto = (id: string, nombre?: string): string =>
+  GRUPO_POR_NOMBRE_DEPTO[nombreDepto(nombre)] ?? GRUPO_POR_DEPTO[id] ?? SIN_CLASIFICAR;
 
 /**
  * Lee el export de personas de ZK.
