@@ -72,6 +72,7 @@ const RUTAS = [
       // debe aparecer DESPUES de aplicar el bloque 85 (va antes del cliente).
       // El RPC se llama por nombre: sobrevive a la minificacion. Solo debe aparecer
       // DESPUES de aplicar el bloque 86 (va antes del cliente).
+      { texto: "asignar_area_admin", que: "Administracion y Admon separados en el panel (bloque 88)" },
       { texto: "seguir_caso", que: "la pestana Casos guarda el seguimiento (bloque 87)" },
       { texto: "altas_desde_zk", que: "quien abre la pluma sin expediente entra solo a SATAG (bloque 86)" },
       { texto: "p_folio_recibo", que: "Administracion devuelve un cobro antes de instalar, atado al recibo que confirmo (bloque 85)" },

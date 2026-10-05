@@ -18,9 +18,9 @@
 // familia, en «Datos», para ir de uno a otro.
 
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
-import type { Registro } from "@/lib/mock/types";
+import type { AreaAdmin, Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
-import { listPasosDeTarjetas, type PasoZk } from "@/lib/supabase/apiPanel";
+import { asignarAreaAdmin, listPasosDeTarjetas, type PasoZk } from "@/lib/supabase/apiPanel";
 import { emparejarEstancias, horaCorta, type Estancia } from "@/lib/estacionamiento";
 import type { EventoZk } from "@/lib/zk/eventos";
 import { DetalleRegistro, ROL_LABEL } from "@/components/admin/RegistroCard";
@@ -324,6 +324,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
           <dl className="props">
             <div><dt>Tipo</dt><dd>{rolTexto}</dd></div>
             {r.seccionMaestro && <div><dt>Sección</dt><dd>{r.seccionMaestro}</dd></div>}
+            {r.tipoUsuario === "admin" && <AreaAdministrativa r={r} rol={rol} />}
             {r.apellidosFamilia && <div><dt>Familia</dt><dd>{r.apellidosFamilia}</dd></div>}
             <div><dt>Plumas</dt><dd>{r.estacionamientos.length ? r.estacionamientos.join(", ") : "Ninguna"}</dd></div>
             <div><dt>Estado</dt><dd>{ESTADO_LABEL[r.estado]}</dd></div>
@@ -357,6 +358,49 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
 }
 
 /* ------------------------------------------------------------------ lista y ficha */
+
+// Bloque 88: el administrativo es de Administración (ZK 16) o de Admon (ZK 17, el
+// equipo del contador). La diferencia solo existe en el panel, nunca en el registro
+// público. SATAG y ZK van a la par: esta área es el departamento al que exporta el
+// puente, y al cargar el padrón de ZK se alinea con el que ZK tenga.
+const AREA_LABEL: Record<AreaAdmin, string> = { administracion: "Administración", admon: "Admon" };
+const CAMBIAN_AREA: RolPanel[] = ["admin", "ti", "super"];
+
+function AreaAdministrativa({ r, rol }: { r: Registro; rol: RolPanel }) {
+  const [area, setArea] = useState<AreaAdmin>(r.areaAdmin ?? "administracion");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const otra: AreaAdmin = area === "admon" ? "administracion" : "admon";
+  async function cambiar() {
+    setGuardando(true);
+    setError(null);
+    try {
+      await asignarAreaAdmin(r.id, otra, null);
+      setArea(otra);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar el área.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+  return (
+    <div>
+      <dt>Área</dt>
+      <dd>
+        {AREA_LABEL[area]}
+        {CAMBIAN_AREA.includes(rol) && (
+          <>
+            {" · "}
+            <button type="button" className="link-action" disabled={guardando} onClick={cambiar}>
+              {guardando ? "Guardando…" : `Pasar a ${AREA_LABEL[otra]}`}
+            </button>
+          </>
+        )}
+        {error && <span className="field-error" role="alert"> {error}</span>}
+      </dd>
+    </div>
+  );
+}
 
 export default function FichaPersona({ registros, todos, rol, vacio, linea, avisosExtra, orden }: {
   /** Los expedientes que pasan el buscador y los filtros de Consulta. */

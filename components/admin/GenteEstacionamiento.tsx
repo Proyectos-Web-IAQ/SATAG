@@ -30,7 +30,7 @@ import type { Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import { duracion } from "@/lib/duracion";
 import type { EstanciasRol, Medicion, UsoCredencial } from "@/lib/estacionamiento";
-import { esHuerfana, GRUPO_POR_TIPO, nombreDepto, SIN_CLASIFICAR, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
+import { esHuerfana, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import FichaPersona from "@/components/admin/FichaPersona";
 import { HistogramaEstancias } from "@/components/admin/GraficasEstacionamiento";
 import { Segmentado } from "@/components/admin/UiEstacionamiento";
@@ -123,7 +123,7 @@ function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null, fue
   const seccionDe = (r: Registro) =>
     personas
       ? (r.noDispositivo ? personas.get(r.noDispositivo)?.departamento : undefined) || SIN_ZK
-      : GRUPO_POR_TIPO[r.tipoUsuario] ?? SIN_CLASIFICAR;
+      : grupoDeExpediente(r.tipoUsuario, r.areaAdmin) ?? SIN_CLASIFICAR;
   const esDelLote = (r: Registro, lote: string) => {
     if (!r.noDispositivo) return false;
     const u = usoDe(r, lote);

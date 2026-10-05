@@ -54,7 +54,7 @@ import {
 import { corteDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
 import { GLOSARIO } from "@/lib/glosario";
 import { exportadoEnDe, huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
-import { GRUPO_POR_TIPO, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
+import { grupoDeExpediente, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import type { RolPanel } from "@/lib/supabase/auth";
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
@@ -312,10 +312,19 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
   async function darDeAltaLasQueAbren(avisoAnterior: string) {
     try {
       const a = await altasDesdeZk(email);
-      if (a.altas === 0) return;
-      setAvisoCarga(
-        `${avisoAnterior} ${a.altas.toLocaleString("es-MX")} ${a.altas === 1 ? "credencial abrió la pluma sin expediente y se dio de alta" : "credenciales abrieron la pluma sin expediente y se dieron de alta"} desde ZK; falta capturar su vehículo.`,
-      );
+      if (a.altas === 0 && a.areasAlineadas === 0) return;
+      const partes: string[] = [];
+      if (a.altas > 0) {
+        partes.push(
+          `${a.altas.toLocaleString("es-MX")} ${a.altas === 1 ? "credencial abrió la pluma sin expediente y se dio de alta" : "credenciales abrieron la pluma sin expediente y se dieron de alta"} desde ZK; falta capturar su vehículo.`,
+        );
+      }
+      if (a.areasAlineadas > 0) {
+        partes.push(
+          `${a.areasAlineadas.toLocaleString("es-MX")} ${a.areasAlineadas === 1 ? "administrativo cambió" : "administrativos cambiaron"} de área para quedar como en ZK (Administración o Admon).`,
+        );
+      }
+      setAvisoCarga(`${avisoAnterior} ${partes.join(" ")}`);
       setPadron(await listPadronEstacionamiento());
     } catch (err) {
       setAvisoCarga(
@@ -464,7 +473,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
   // funcionar. Lo corrige grupoDeDepto, que es el mapa del catalogo de ZK.
   const rolDe = (tarjeta: string) => {
     const r = expedienteDe(tarjeta);
-    const deSatag = r ? GRUPO_POR_TIPO[r.tipoUsuario] : undefined;
+    const deSatag = r ? grupoDeExpediente(r.tipoUsuario, r.areaAdmin) : undefined;
     if (deSatag) return deSatag;
     const p = personas?.get(tarjeta);
     return p ? grupoDeDepto(p.departamentoId, p.departamento) : SIN_CLASIFICAR;

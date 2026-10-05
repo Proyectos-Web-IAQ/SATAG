@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import type { Registro } from "@/lib/mock/types";
 import { DEPTO_STOCK_ZK, deptoZkDe, filaPadron, filaStock } from "@/lib/zk/plantillaZk";
-import { grupoDeDepto, nombreDepto, SIN_CLASIFICAR } from "@/lib/zk/padron";
+import { grupoDeDepto, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR } from "@/lib/zk/padron";
 
 const expediente = (tipo: Registro["tipoUsuario"], seccion: string | null = null): Registro =>
   ({
@@ -23,6 +23,15 @@ describe("departamento de ZK al exportar", () => {
     expect(deptoZkDe(expediente("otro"))?.id).toBe("19");
     expect(deptoZkDe(expediente("alumno"))?.id).toBe("20");
     expect(deptoZkDe(expediente("admin"))?.id).toBe("16");
+  });
+
+  it("el administrativo de Admon va al 17; sin area, al 16 (bloque 88)", () => {
+    const admon = { ...expediente("admin"), areaAdmin: "admon" } as Registro;
+    const admin = { ...expediente("admin"), areaAdmin: "administracion" } as Registro;
+    expect(deptoZkDe(admon)).toEqual({ id: "17", nombre: "Admon" });
+    expect(deptoZkDe(admin)?.id).toBe("16");
+    // El area no cambia a nadie que no sea administrativo.
+    expect(deptoZkDe({ ...expediente("padres"), areaAdmin: "admon" } as Registro)?.id).toBe("19");
   });
 
   it("al maestro lo manda al departamento de su seccion", () => {
@@ -52,10 +61,19 @@ describe("departamento de ZK al exportar", () => {
   });
 });
 
+describe("grupo de un expediente de SATAG (bloque 88)", () => {
+  it("separa Admon de Administración solo en el administrativo", () => {
+    expect(grupoDeExpediente("admin", "admon")).toBe("Admon");
+    expect(grupoDeExpediente("admin", "administracion")).toBe("Administración y servicios");
+    expect(grupoDeExpediente("admin", null)).toBe("Administración y servicios");
+    expect(grupoDeExpediente("padres", "admon")).toBe("Padres de familia");
+  });
+});
+
 describe("grupo de un departamento de ZK en la pantalla", () => {
   it("reconoce los departamentos nuevos", () => {
     expect(grupoDeDepto("19", "Padres de familia")).toBe("Padres de familia");
-    expect(grupoDeDepto("17", "Admon")).toBe("Administración y servicios");
+    expect(grupoDeDepto("17", "Admon")).toBe("Admon");
     expect(grupoDeDepto("16", "Administracion")).toBe("Administración y servicios");
     expect(grupoDeDepto("20", "Alumnos")).toBe("Alumnos");
     expect(grupoDeDepto("21", "Ex alumnos")).toBe("Alumnos");

@@ -84,6 +84,9 @@ const ROTULOS = ["Tarjeta", "ID de Departamento"];
  * - General, «Otros» y `hotel` mezclan gente de todo tipo. Darles un grupo propio
  *   seria inventar.
  */
+/** Admon, el equipo del contador: ZK 17 y el area «admon» de SATAG (bloque 88). */
+export const GRUPO_ADMON = "Admon";
+
 export const GRUPO_POR_NOMBRE_DEPTO: Record<string, string> = {
   "PADRES DE FAMILIA": "Padres de familia",
   MAESTROS: "Personal docente",
@@ -94,7 +97,8 @@ export const GRUPO_POR_NOMBRE_DEPTO: Record<string, string> = {
   "DEPORTES EXTRAESCOLARES": "Personal docente",
   "TEX DOCENTES": "Personal docente",
   ADMINISTRACION: "Administración y servicios",
-  ADMON: "Administración y servicios",
+  // Bloque 88: Admon (el equipo del contador) se ve aparte de Administración.
+  ADMON: GRUPO_ADMON,
   MANTENIMIENTO: "Administración y servicios",
   ALUMNOS: "Alumnos",
   "EX ALUMNOS": "Alumnos",
@@ -103,7 +107,7 @@ export const GRUPO_POR_DEPTO: Record<string, string> = {
   // Desde el 5-oct-2026.
   "19": "Padres de familia",
   "16": "Administración y servicios",
-  "17": "Administración y servicios",
+  "17": GRUPO_ADMON,
   "20": "Alumnos",
   "21": "Alumnos",
   // Sin cambio.
@@ -127,6 +131,13 @@ export const nombreDepto = (s: string | null | undefined): string =>
   String(s ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
 
 /** `registros.tipo_usuario` de SATAG a los mismos grupos. Es la fuente de arriba. */
+/**
+ * El grupo de un expediente de SATAG. El administrativo se parte por su area
+ * (bloque 88): Admon aparte, todo lo demas en «Administración y servicios».
+ */
+export const grupoDeExpediente = (tipo: string, areaAdmin?: string | null): string | undefined =>
+  tipo === "admin" && areaAdmin === "admon" ? GRUPO_ADMON : GRUPO_POR_TIPO[tipo];
+
 export const GRUPO_POR_TIPO: Record<string, string> = {
   padres: "Padres de familia",
   maestro: "Personal docente",

@@ -38,6 +38,7 @@ import type {
   TipoMovimiento,
   TipoSolicitud,
   TipoUsuario,
+  AreaAdmin,
   TramiteSolicitado,
 } from "@/lib/mock/types";
 import type { EventoZk } from "@/lib/zk/eventos";
@@ -135,6 +136,7 @@ interface RegistroRow {
   apellidos_familia: string | null;
   parentesco_otro: string | null;
   seccion_maestro: string | null;
+  area_admin: string | null;
   marca: string;
   modelo: string;
   color: string;
@@ -168,7 +170,7 @@ interface RegistroRow {
 const SELECT_REGISTRO = `
   id, folio, usuario_nombre_completo, gestionante_nombre_completo, tipo_usuario,
   tipo_validado, tipo_validado_por, tipo_validado_en, usuario_es_menor,
-  apellidos_familia, parentesco_otro, seccion_maestro,
+  apellidos_familia, parentesco_otro, seccion_maestro, area_admin,
   marca, modelo, color, placas, sin_placas, no_dispositivo, procedencia_tag,
   origen_expediente, evidencia_aceptacion,
   tag_apartado, tag_apartado_no, estado,
@@ -261,6 +263,7 @@ function mapRegistro(r: RegistroRow): Registro {
     apellidosFamilia: r.apellidos_familia,
     parentescoOtro: r.parentesco_otro,
     seccionMaestro: r.seccion_maestro,
+    areaAdmin: (r.area_admin ?? null) as AreaAdmin | null,
     marca: r.marca,
     modelo: r.modelo,
     color: r.color,
@@ -561,6 +564,12 @@ export async function actualizarRegistroConEstacionamiento(
     p_hecho_por: hechoPor.trim() || null,
     p_procedencia_tag: cambios.procedenciaTag ?? null,
   });
+}
+
+// Bloque 88: Administración o Admon. Solo para administrativos; queda en movimientos.
+export async function asignarAreaAdmin(id: string, area: AreaAdmin, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("asignar_area_admin", { p_registro_id: id, p_area: area, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
 }
 
 export async function darBaja(id: string, motivo: string, hechoPor: string): Promise<AccionResultado> {
@@ -964,6 +973,8 @@ export interface PadronEstacionamiento {
   folio: string;
   noDispositivo: string;
   tipoUsuario: TipoUsuario;
+  /** Bloque 88: separa Administración de Admon dentro del panel. */
+  areaAdmin: AreaAdmin | null;
   estado: EstadoRegistro;
   origenExpediente: OrigenExpediente;
   estacionamientos: string[];
@@ -975,6 +986,7 @@ interface PadronEstRow {
   folio: string;
   no_dispositivo: string;
   tipo_usuario: string;
+  area_admin: string | null;
   estado: string;
   origen_expediente: string | null;
   registro_estacionamientos: { estacionamiento_clave: string }[] | null;
@@ -984,7 +996,7 @@ interface PadronEstRow {
 export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento[]> {
   const { data, error } = await supabaseAuth
     .from("registros")
-    .select("folio, no_dispositivo, tipo_usuario, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
+    .select("folio, no_dispositivo, tipo_usuario, area_admin, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
     .not("no_dispositivo", "is", null)
     // El padron completo son ~2,900 expedientes. El tope es holgura, no negocio: si
     // algun dia se rozara, la resolucion del rol baja a la base en vez de subir este
@@ -995,6 +1007,7 @@ export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento
     folio: r.folio,
     noDispositivo: r.no_dispositivo,
     tipoUsuario: r.tipo_usuario as TipoUsuario,
+    areaAdmin: (r.area_admin ?? null) as AreaAdmin | null,
     estado: r.estado as EstadoRegistro,
     origenExpediente: (r.origen_expediente ?? "satag") as OrigenExpediente,
     estacionamientos: (r.registro_estacionamientos ?? []).map((e) => e.estacionamiento_clave).sort(),
@@ -1345,13 +1358,15 @@ export interface RespuestaAltasZk {
   altas: number;
   tarjetas: string[];
   placasSueltas: number;
+  /** Administrativos cuya area se alineo con su departamento en ZK (bloque 88). */
+  areasAlineadas: number;
 }
 
 export async function altasDesdeZk(hechoPor: string | null): Promise<RespuestaAltasZk> {
   const { data, error } = await supabaseAuth.rpc("altas_desde_zk", { p_hecho_por: hechoPor });
   if (error) throw new Error(traducirError(error.message));
-  const r = (data ?? {}) as { altas?: number; tarjetas?: string[]; placasSueltas?: number };
-  return { altas: r.altas ?? 0, tarjetas: r.tarjetas ?? [], placasSueltas: r.placasSueltas ?? 0 };
+  const r = (data ?? {}) as { altas?: number; tarjetas?: string[]; placasSueltas?: number; areasAlineadas?: number };
+  return { altas: r.altas ?? 0, tarjetas: r.tarjetas ?? [], placasSueltas: r.placasSueltas ?? 0, areasAlineadas: r.areasAlineadas ?? 0 };
 }
 
 /**
