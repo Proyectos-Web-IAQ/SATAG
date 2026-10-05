@@ -149,6 +149,26 @@ describe("SATAG y ZK no coinciden en el tipo", () => {
   });
 });
 
+describe("patrones para resolver en grupo", () => {
+  it("quien ya sale como rechazado no se repite en «sin uso», y cada caso trae su patron", () => {
+    const casos = detectarCasos(
+      [
+        ev("3", "2026-10-01 08:00:00", "E2", false),
+        ev("3", "2026-10-03 08:00:00", "E2", false),
+        ev("1", "2026-09-21 08:00:00", "E2"),
+        ev("2", "2026-09-26 08:00:00", "E2"),
+        ev("9", "2026-10-06 08:00:00", "E2"),
+      ],
+      [exp("SATAG-1", "1", ["E2"]), exp("SATAG-2", "2", ["E2"]), exp("SATAG-3", "3", ["E1"])],
+      new Map(),
+    );
+    expect(casos.filter((c) => c.tarjeta === "3").map((c) => c.tipo)).toEqual(["rechazo-diario"]);
+    expect(casos.find((c) => c.tarjeta === "3")?.grupo).toBe("Intenta entrar por el E2, que no le corresponde");
+    expect(casos.find((c) => c.tarjeta === "1")).toMatchObject({ nivel: "rojo", grupo: "No ha venido ni una vez desde el 22-sep" });
+    expect(casos.find((c) => c.tarjeta === "2")).toMatchObject({ nivel: "amarillo", grupo: "De 7 a 13 días sin venir" });
+  });
+});
+
 describe("estadoVisible", () => {
   const caso = detectarCasos([ev("666666", "2026-10-05 08:00:00", "E2")], [], new Map())[0];
 
