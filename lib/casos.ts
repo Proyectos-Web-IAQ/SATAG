@@ -13,7 +13,7 @@
 // Es una funcion pura: recibe la bitacora, los expedientes y el padron de ZK, y no
 // sabe de React ni de Supabase. Asi se prueba con datos del tamaño de una prueba.
 import type { EventoZk } from "@/lib/zk/eventos";
-import { nombreDepto } from "@/lib/zk/padron";
+import { grupoDeDepto, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR } from "@/lib/zk/padron";
 
 export type TipoCaso =
   | "rechazo-diario"
@@ -22,6 +22,7 @@ export type TipoCaso =
   | "tag-anterior-abre"
   | "abre-sin-expediente"
   | "sin-padron"
+  | "tipo-distinto"
   | "sin-uso";
 
 /** Lo que el calculo necesita de un expediente. */
@@ -33,6 +34,9 @@ export interface ExpedienteCaso {
   tagsAnteriores: string[];
   /** Desde cuando el expediente puede abrir: instalacion o, si no consta, alta («2026-09-14»). */
   desde?: string | null;
+  /** Para comparar el tipo de SATAG con el departamento de ZK. */
+  tipoUsuario?: string;
+  areaAdmin?: string | null;
 }
 
 /** Lo que el calculo necesita de una persona de ZK. */
@@ -93,6 +97,11 @@ export const TIPOS_CASO: { tipo: TipoCaso; titulo: string; queHacer: string }[] 
     tipo: "sin-padron",
     titulo: "Credencial que no está en ningún padrón",
     queHacer: "Ni SATAG ni ZK saben de quién es. Si se averigua, registrarla en el expediente de su dueño.",
+  },
+  {
+    tipo: "tipo-distinto",
+    titulo: "SATAG y ZK no coinciden en el tipo",
+    queHacer: "El expediente dice una cosa (padre, docente, administrativo...) y el departamento de ZK otra. Corregir donde esté mal; si es en ZK, volver a subir el export de Personas.",
   },
   {
     tipo: "sin-uso",
@@ -277,7 +286,33 @@ export function detectarCasos(
     );
   }
 
-  // 7. SIN USO. El expediente vivo cuyo TAG (vigente o anterior) no abre la pluma.
+  // 7. TIPO DISTINTO. SATAG y ZK van a la par: el grupo del expediente (tipo y
+  // area) tiene que ser el del departamento de ZK. Solo si ZK lo tiene en un
+  // departamento con grupo: General, Otros, BAJAS y STOCK no dicen quien es.
+  if (personas) {
+    for (const x of vivos.values()) {
+      const p = personas.get(x.noDispositivo);
+      const deSatag = x.tipoUsuario ? grupoDeExpediente(x.tipoUsuario, x.areaAdmin) : undefined;
+      if (!p || !deSatag) continue;
+      const deZk = grupoDeDepto("", p.departamento);
+      if (deZk === SIN_CLASIFICAR || deZk === deSatag) continue;
+      const u = aperturas.get(x.noDispositivo);
+      casos.push({
+        clave: `tipo-distinto:${x.noDispositivo}`,
+        tipo: "tipo-distinto",
+        tarjeta: x.noDispositivo,
+        lote: null,
+        folio: x.folio,
+        detalle: `En SATAG es de «${deSatag}»; en ZK está en «${p.departamento}».`,
+        desde: u?.primera ?? "",
+        ultima: u?.ultima ?? "",
+        dias: u?.dias.size ?? 0,
+        veces: u?.veces ?? 0,
+      });
+    }
+  }
+
+  // 8. SIN USO. El expediente vivo cuyo TAG (vigente o anterior) no abre la pluma.
   // Se mide contra el ultimo dia que tiene la bitacora, no contra hoy: si falta
   // subir una semana de ZK, nadie debe salir en rojo por eso.
   const hasta = eventos.reduce((m, e) => (e.ocurrioEn > m ? e.ocurrioEn : m), "");

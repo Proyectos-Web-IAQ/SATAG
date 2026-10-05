@@ -123,6 +123,32 @@ describe("semaforo de expedientes vivos que no abren la pluma", () => {
   });
 });
 
+describe("SATAG y ZK no coinciden en el tipo", () => {
+  const personas = new Map<string, PersonaCaso>([
+    ["13077994", { nombre: "MARTIN ANGELES PEREZ", departamento: "Padres de familia" }],
+    ["13078001", { nombre: "X", departamento: "Admon" }],
+    ["13078002", { nombre: "Y", departamento: "General" }],
+  ]);
+  const casos = detectarCasos(
+    [ev("13077994", "2026-10-05 08:00:00", "E2"), ev("13078001", "2026-10-05 08:00:00", "E2"), ev("13078002", "2026-10-05 08:00:00", "E2")],
+    [
+      exp("SATAG-000968", "13077994", ["E1", "E2"], { tipoUsuario: "admin", areaAdmin: "administracion" }),
+      exp("SATAG-000970", "13078001", ["E2"], { tipoUsuario: "admin", areaAdmin: "admon" }),
+      exp("SATAG-000971", "13078002", ["E2"], { tipoUsuario: "padres" }),
+    ],
+    personas,
+  ).filter((c) => c.tipo === "tipo-distinto");
+
+  it("el administrativo que ZK tiene en Padres de familia es caso", () => {
+    expect(casos.map((c) => c.clave)).toEqual(["tipo-distinto:13077994"]);
+    expect(casos[0].detalle).toContain("Padres de familia");
+  });
+
+  it("Admon con area admon cuadra; General no dice nada y no es caso", () => {
+    expect(casos.some((c) => c.tarjeta === "13078001" || c.tarjeta === "13078002")).toBe(false);
+  });
+});
+
 describe("estadoVisible", () => {
   const caso = detectarCasos([ev("666666", "2026-10-05 08:00:00", "E2")], [], new Map())[0];
 
