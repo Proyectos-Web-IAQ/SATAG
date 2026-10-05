@@ -30,8 +30,11 @@ import Loader from "@/components/Loader";
 import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
 import GenteEstacionamiento, { SeccionesEstacionamiento } from "@/components/admin/GenteEstacionamiento";
 import type { Registro } from "@/lib/mock/types";
+import { detectarCasos } from "@/lib/casos";
+import VistaCasos from "@/components/admin/VistaCasos";
 import {
   cargarEventosZk,
+  altasDesdeZk,
   cargarPadronZk,
   getEstacionamientos,
   getUltimaCargaPadronZk,
@@ -110,7 +113,7 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
 }
 
 /** Las vistas que atiende este contenedor: las del panel, las dos de gente y la de los archivos de ZK. */
-export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos";
+export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos" | "casos";
 
 export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPanel; email: string | null; vista: VistaEstac }) {
   const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
@@ -284,12 +287,40 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
       // que vale para todos, y pregunta.
       await enviarPadron(
         { archivo: f.name, sha256: await huella(bytes), filasArchivo: l.filasArchivo, exportadoEn: exportadoEnDe(f.name) },
-        l.personas.map((p) => ({ tarjeta: p.tarjeta, nombre: p.nombre, departamentoId: p.departamentoId, departamento: p.departamento })),
+        l.personas.map((p) => ({
+          tarjeta: p.tarjeta,
+          nombre: p.nombre,
+          departamentoId: p.departamentoId,
+          departamento: p.departamento,
+          nombres: p.nombres,
+          apellidos: p.apellidos,
+          placa: p.placa,
+        })),
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo leer el padrón de personas.");
     } finally {
       setProcesando(null);
+    }
+  }
+
+  /**
+   * Despues de cada carga que termina bien: quien abrio la pluma sin expediente entra
+   * solo a SATAG (bloque 86). Si falla, la carga ya quedo guardada; se dice aparte y
+   * no se presenta como si la carga hubiera fallado.
+   */
+  async function darDeAltaLasQueAbren(avisoAnterior: string) {
+    try {
+      const a = await altasDesdeZk(email);
+      if (a.altas === 0) return;
+      setAvisoCarga(
+        `${avisoAnterior} ${a.altas.toLocaleString("es-MX")} ${a.altas === 1 ? "credencial abrió la pluma sin expediente y se dio de alta" : "credenciales abrieron la pluma sin expediente y se dieron de alta"} desde ZK; falta capturar su vehículo.`,
+      );
+      setPadron(await listPadronEstacionamiento());
+    } catch (err) {
+      setAvisoCarga(
+        `${avisoAnterior} No se pudieron dar de alta las credenciales que abren sin expediente: ${err instanceof Error ? err.message : "error desconocido"}.`,
+      );
     }
   }
 
@@ -310,11 +341,11 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         return;
       }
       setPendiente(null);
-      setAvisoCarga(
-        r.yaEstaba
-          ? `Ese padrón ya está guardado tal cual: ${r.vigentes.toLocaleString("es-MX")} personas vigentes, nada que cambiar.`
-          : `Padrón guardado: ${r.insertadas.toLocaleString("es-MX")} personas nuevas, ${r.actualizadas.toLocaleString("es-MX")} actualizadas y ${r.retiradas.toLocaleString("es-MX")} que ya no vienen en el export. ${r.vigentes.toLocaleString("es-MX")} vigentes.`,
-      );
+      const avisoPadron = r.yaEstaba
+        ? `Ese padrón ya está guardado tal cual: ${r.vigentes.toLocaleString("es-MX")} personas vigentes, nada que cambiar.`
+        : `Padrón guardado: ${r.insertadas.toLocaleString("es-MX")} personas nuevas, ${r.actualizadas.toLocaleString("es-MX")} actualizadas y ${r.retiradas.toLocaleString("es-MX")} que ya no vienen en el export. ${r.vigentes.toLocaleString("es-MX")} vigentes.`;
+      setAvisoCarga(avisoPadron);
+      await darDeAltaLasQueAbren(avisoPadron);
       const [zk, carga] = await Promise.all([listPadronZk(), getUltimaCargaPadronZk()]);
       setPersonas(zk.length > 0 ? indexarPadron(zk) : null);
       setCargaPadron(carga);
@@ -376,11 +407,12 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         setAvance({ hechas, total }),
       );
       const yaEstaban = r.yaEstaban + omitidos;
-      setAvisoCarga(
+      const avisoBitacora =
         r.insertados === 0
           ? `Esta ventana ya estaba guardada: ${yaEstaban.toLocaleString("es-MX")} eventos ya existían y no se mandó ninguno de más.`
-          : `Se guardaron ${r.insertados.toLocaleString("es-MX")} eventos nuevos${yaEstaban > 0 ? ` y ${yaEstaban.toLocaleString("es-MX")} ya estaban, así que no se volvieron a mandar` : ""}.`,
-      );
+          : `Se guardaron ${r.insertados.toLocaleString("es-MX")} eventos nuevos${yaEstaban > 0 ? ` y ${yaEstaban.toLocaleString("es-MX")} ya estaban, así que no se volvieron a mandar` : ""}.`;
+      setAvisoCarga(avisoBitacora);
+      await darDeAltaLasQueAbren(avisoBitacora);
       const imps = await listImportacionesZk();
       setImportaciones(imps);
       // Ya guardada, la ventana se mide junto con las demas: se vuelve a leer de
@@ -689,7 +721,24 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         </p>
       )}
       {datos ? (
-        vista === "lotes" || vista === "secciones" ? (
+        vista === "casos" ? (
+          <VistaCasos
+            casos={detectarCasos(
+              lectura?.eventos ?? [],
+              (padron ?? []).map((p) => ({
+                folio: p.folio,
+                noDispositivo: p.noDispositivo,
+                estado: p.estado,
+                estacionamientos: p.estacionamientos,
+                tagsAnteriores: p.tagsAnteriores,
+              })),
+              personas ?? null,
+            )}
+            nombreDe={VEN_IDENTIDAD.includes(rol) && personas ? (t) => personas.get(t)?.nombre : null}
+            puedeEditar={CARGAN.includes(rol)}
+            email={email}
+          />
+        ) : vista === "lotes" || vista === "secciones" ? (
           (() => {
             const comunes = {
               m: datos.m,

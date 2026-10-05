@@ -75,6 +75,7 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         { clave: "resumen", titulo: "Resumen" },
         { clave: "lotes", titulo: "Estacionamientos" },
         { clave: "secciones", titulo: "Secciones" },
+        { clave: "casos", titulo: "Casos" },
         { clave: "plano", titulo: "Plano del plantel" },
         { clave: "vialidad", titulo: "Vialidad", nota: "beta" },
       ],

@@ -47,6 +47,9 @@ export const esHuerfana = (f: Fuentes | undefined): boolean =>
 export interface PersonaZk {
   tarjeta: string;
   nombre: string;
+  /** Las dos columnas tal como ZK las trae; el alta automatica las necesita separadas (bloque 86). */
+  nombres: string;
+  apellidos: string;
   departamentoId: string;
   departamento: string;
   placa: string;
@@ -168,10 +171,14 @@ export function parsearPadronZk(texto: string): LecturaPadron {
     vistas.add(tarjeta);
 
     // El nombre viene partido en dos columnas y a veces una esta vacia.
-    const nombre = [f["Nombre"], f["Apellido"]].map((x) => (x ?? "").trim()).filter(Boolean).join(" ");
+    const nombres = (f["Nombre"] ?? "").trim();
+    const apellidos = (f["Apellido"] ?? "").trim();
+    const nombre = [nombres, apellidos].filter(Boolean).join(" ");
     personas.push({
       tarjeta,
       nombre,
+      nombres,
+      apellidos,
       departamentoId: (f["ID de Departamento"] ?? "").trim(),
       departamento: (f["Nombre de Departamento"] ?? "").trim(),
       // La placa viaja en «Placa Vehicular», pero el importador de ZK la escribe en
