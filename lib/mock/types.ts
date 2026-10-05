@@ -6,6 +6,9 @@
 // libre, su parentesco: sin ese cotejo entraría al estacionamiento alguien de
 // quien la escuela no sabe a qué familia pertenece.
 export type TipoUsuario = "maestro" | "padres" | "alumno" | "admin" | "otro";
+// Bloque 88: el administrativo es de Administración (ZK 16) o de Admon (ZK 17, el
+// equipo del contador). Solo existe en el panel: el registro público no la pide.
+export type AreaAdmin = "administracion" | "admon";
 export type GestionanteRelacion = "padre" | "madre" | "tutor" | "otro";
 export type FirmanteRol = "usuario" | "padre" | "madre" | "tutor" | "otro";
 export type ProcedenciaTag = "escuela" | "propio";
@@ -159,6 +162,8 @@ export interface Registro {
   // preparatoria. Texto tal como viene de la base; se valida con
   // esSeccionMaestro (lib/secciones). Nula en los demás tipos y en lo anterior.
   seccionMaestro?: string | null;
+  // Área del administrativo (bloque 88). Nula se lee como «administracion».
+  areaAdmin?: AreaAdmin | null;
   // Vehículo (aplanado)
   marca: string;
   modelo: string;
