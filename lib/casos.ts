@@ -21,7 +21,8 @@ export type TipoCaso =
   | "baja-que-abre"
   | "tag-anterior-abre"
   | "abre-sin-expediente"
-  | "sin-padron";
+  | "sin-padron"
+  | "sin-uso";
 
 /** Lo que el calculo necesita de un expediente. */
 export interface ExpedienteCaso {
@@ -30,6 +31,8 @@ export interface ExpedienteCaso {
   estado: string;
   estacionamientos: string[];
   tagsAnteriores: string[];
+  /** Desde cuando el expediente puede abrir: instalacion o, si no consta, alta («2026-09-14»). */
+  desde?: string | null;
 }
 
 /** Lo que el calculo necesita de una persona de ZK. */
@@ -55,6 +58,8 @@ export interface Caso {
   dias: number;
   /** Cuantas veces: rechazos o aperturas, segun el tipo. */
   veces: number;
+  /** Solo «sin-uso»: el semaforo. Rojo, 14 dias o mas sin abrir; amarillo, de 7 a 13. */
+  nivel?: "rojo" | "amarillo";
 }
 
 /** El orden en que se presentan: primero lo que afecta a alguien todos los dias. */
@@ -89,6 +94,11 @@ export const TIPOS_CASO: { tipo: TipoCaso; titulo: string; queHacer: string }[] 
     titulo: "Credencial que no está en ningún padrón",
     queHacer: "Ni SATAG ni ZK saben de quién es. Si se averigua, registrarla en el expediente de su dueño.",
   },
+  {
+    tipo: "sin-uso",
+    titulo: "Expediente vivo que no abre la pluma: candidatos a baja",
+    queHacer: "Rojo: 14 días o más sin abrir la pluma, o nunca desde el 22-sep. Amarillo: de 7 a 13 días. Solo son candidatos: confirmar con la persona o con Administración antes de dar de baja.",
+  },
 ];
 
 // Un rechazo pegado a la apertura de OTRA tarjeta en el mismo lote es casi siempre un
@@ -99,7 +109,15 @@ const PEGADO_SEG = 15;
 // Un solo dia de rechazo puede ser un error del lector; dos dias distintos ya es un patron.
 const DIAS_MINIMOS_RECHAZO = 2;
 
+// El primer dia valido de la bitacora (Gerardo, 5-oct): lo anterior al 22-sep no
+// cuenta como uso. Y el semaforo de «sin uso», en dias.
+export const PRIMER_DIA_VALIDO = "2026-09-22";
+const AMARILLO_DIAS = 7;
+const ROJO_DIAS = 14;
+
 const dia = (t: string) => t.slice(0, 10);
+const diasEntre = (a: string, b: string) =>
+  Math.round((Date.parse(`${b.slice(0, 10)}T12:00:00`) - Date.parse(`${a.slice(0, 10)}T12:00:00`)) / 86400000);
 const segundos = (t: string) => Date.parse(t.replace(" ", "T")) / 1000;
 
 interface Uso {
@@ -120,6 +138,11 @@ function acumular(m: Map<string, Uso>, clave: string, t: string) {
   u.dias.add(dia(t));
   u.veces += 1;
 }
+
+const fechaLarga = (t: string) => {
+  const [a, m, d] = t.slice(0, 10).split("-").map(Number);
+  return new Date(a, m - 1, d, 12).toLocaleDateString("es-MX", { day: "numeric", month: "long" });
+};
 
 const plural = (n: number, uno: string, varios: string) => `${n.toLocaleString("es-MX")} ${n === 1 ? uno : varios}`;
 
@@ -254,8 +277,56 @@ export function detectarCasos(
     );
   }
 
+  // 7. SIN USO. El expediente vivo cuyo TAG (vigente o anterior) no abre la pluma.
+  // Se mide contra el ultimo dia que tiene la bitacora, no contra hoy: si falta
+  // subir una semana de ZK, nadie debe salir en rojo por eso.
+  const hasta = eventos.reduce((m, e) => (e.ocurrioEn > m ? e.ocurrioEn : m), "");
+  if (hasta) {
+    const rechazosPorTarjeta = new Map<string, number>();
+    for (const e of eventos) {
+      if (e.concedido || e.repeticion || e.ocurrioEn < PRIMER_DIA_VALIDO) continue;
+      rechazosPorTarjeta.set(e.tarjeta, (rechazosPorTarjeta.get(e.tarjeta) ?? 0) + 1);
+    }
+    const ultimaDe = (x: ExpedienteCaso) =>
+      [x.noDispositivo, ...x.tagsAnteriores]
+        .map((t) => aperturas.get(t)?.ultima ?? "")
+        .filter((t) => t >= PRIMER_DIA_VALIDO)
+        .sort()
+        .pop() ?? null;
+    for (const x of vivos.values()) {
+      const ultima = ultimaDe(x);
+      const base = ultima ?? [PRIMER_DIA_VALIDO, (x.desde ?? "").slice(0, 10)].sort().pop()!;
+      const sinAbrir = diasEntre(base, hasta);
+      if (sinAbrir < AMARILLO_DIAS) continue;
+      const rechazosDe = rechazosPorTarjeta.get(x.noDispositivo) ?? 0;
+      casos.push({
+        clave: `sin-uso:${x.noDispositivo}`,
+        tipo: "sin-uso",
+        tarjeta: x.noDispositivo,
+        lote: null,
+        folio: x.folio,
+        detalle:
+          (ultima
+            ? `No abre la pluma desde el ${fechaLarga(ultima)}: ${plural(sinAbrir, "día", "días")}.`
+            : `No ha abierto la pluma ni una vez desde el ${fechaLarga(base)}: ${plural(sinAbrir, "día", "días")}.`) +
+          (rechazosDe > 0 ? ` La pluma lo rechazó ${plural(rechazosDe, "vez", "veces")}.` : ""),
+        desde: base,
+        ultima: ultima ?? "",
+        dias: sinAbrir,
+        veces: rechazosDe,
+        nivel: sinAbrir >= ROJO_DIAS ? "rojo" : "amarillo",
+      });
+    }
+  }
+
   const orden = new Map(TIPOS_CASO.map((t, i) => [t.tipo, i]));
-  return casos.sort((a, b) => (orden.get(a.tipo)! - orden.get(b.tipo)!) || (a.ultima < b.ultima ? 1 : a.ultima > b.ultima ? -1 : 0));
+  return casos.sort(
+    (a, b) =>
+      orden.get(a.tipo)! - orden.get(b.tipo)! ||
+      // En «sin uso», primero el que lleva mas dias sin abrir.
+      (a.tipo === "sin-uso" ? b.dias - a.dias : 0) ||
+      (a.ultima < b.ultima ? 1 : a.ultima > b.ultima ? -1 : 0),
+  );
 }
 
 export type EstadoCaso = "pendiente" | "revision" | "resuelto";

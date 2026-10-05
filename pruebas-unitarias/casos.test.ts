@@ -35,7 +35,8 @@ describe("detectarCasos", () => {
       ev("9999999", "2026-10-03 07:00:00", "E1"),
       ev("1585823", "2026-10-03 07:00:05", "E1", false),
     ];
-    const casos = detectarCasos(eventos, [exp("SATAG-001204", "1585823", ["E2"]), exp("SATAG-000001", "9999999", ["E1"])], null);
+    const casos = detectarCasos(eventos, [exp("SATAG-001204", "1585823", ["E2"]), exp("SATAG-000001", "9999999", ["E1"])], null)
+      .filter((c) => c.tipo === "rechazo-diario");
     expect(casos).toHaveLength(1);
     expect(casos[0]).toMatchObject({
       clave: "rechazo-diario:1585823:E1",
@@ -50,7 +51,7 @@ describe("detectarCasos", () => {
 
   it("un solo dia de rechazo no es caso", () => {
     const eventos = [ev("1585823", "2026-10-02 07:01:00", "E1", false), ev("1585823", "2026-10-02 07:05:00", "E1", false)];
-    expect(detectarCasos(eventos, [exp("SATAG-001204", "1585823", ["E2"])], null)).toHaveLength(0);
+    expect(detectarCasos(eventos, [exp("SATAG-001204", "1585823", ["E2"])], null).filter((c) => c.tipo === "rechazo-diario")).toHaveLength(0);
   });
 
   it("separa vivo en BAJAS, baja que abre, TAG anterior, sin expediente y sin padron", () => {
@@ -82,6 +83,43 @@ describe("detectarCasos", () => {
     const eventos = [ev("123456", "2026-10-01 07:00:00", "E2")];
     const personas = new Map<string, PersonaCaso>([["123456", { nombre: "B", departamento: "Padres de familia" }]]);
     expect(detectarCasos(eventos, [exp("SATAG-000002", "123456", ["E2"])], personas)).toHaveLength(0);
+  });
+});
+
+describe("semaforo de expedientes vivos que no abren la pluma", () => {
+  // La bitacora llega al 5-oct; todo se mide contra ese dia, no contra hoy.
+  const fin = ev("000000", "2026-10-05 08:00:00", "E2");
+
+  it("el 21-sep no cuenta: quien solo abrio ese dia se mide desde el 22-sep", () => {
+    const casos = detectarCasos([ev("10399926", "2026-09-21 14:37:22", "E2"), fin], [exp("SATAG-000105", "10399926", ["E1", "E2"])], null)
+      .filter((c) => c.tipo === "sin-uso");
+    expect(casos).toHaveLength(1);
+    expect(casos[0]).toMatchObject({ clave: "sin-uso:10399926", nivel: "amarillo", dias: 13, folio: "SATAG-000105", ultima: "" });
+  });
+
+  it("amarillo de 7 a 13 dias; rojo desde 14", () => {
+    const amarillo = detectarCasos([ev("11111111", "2026-09-27 08:00:00", "E2"), fin], [exp("SATAG-000010", "11111111", ["E2"])], null).filter((c) => c.tipo === "sin-uso");
+    expect(amarillo[0]).toMatchObject({ nivel: "amarillo", dias: 8 });
+    const rojo = detectarCasos([ev("11111111", "2026-09-22 08:00:00", "E2"), ev("000000", "2026-10-06 08:00:00", "E2")], [exp("SATAG-000010", "11111111", ["E2"])], null).filter((c) => c.tipo === "sin-uso");
+    expect(rojo[0]).toMatchObject({ nivel: "rojo", dias: 14 });
+  });
+
+  it("el instalado hace menos de una semana no es candidato; el que abrio hace poco tampoco", () => {
+    const casos = detectarCasos(
+      [ev("22222222", "2026-10-04 08:00:00", "E1"), fin],
+      [exp("SATAG-002870", "13078085", ["E1", "E2"], { desde: "2026-10-05" }), exp("SATAG-000011", "22222222", ["E1"])],
+      null,
+    ).filter((c) => c.tipo === "sin-uso");
+    expect(casos).toHaveLength(0);
+  });
+
+  it("cuenta la apertura de un TAG anterior del mismo expediente", () => {
+    const casos = detectarCasos(
+      [ev("14273782", "2026-10-03 07:00:00", "E2"), fin],
+      [exp("SATAG-001428", "9323381", ["E1", "E2"], { tagsAnteriores: ["14273782"] })],
+      new Map(),
+    ).filter((c) => c.tipo === "sin-uso");
+    expect(casos).toHaveLength(0);
   });
 });
 

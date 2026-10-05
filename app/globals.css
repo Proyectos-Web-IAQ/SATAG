@@ -1449,3 +1449,6 @@ a { color: var(--primary-strong); }
 .casos__d { margin: 2px 0; font-size: 0.92rem; color: var(--ink); max-width: 78ch; }
 .casos__f { margin: 0 0 4px; font-size: 0.82rem; color: var(--muted); }
 .casos__form { display: grid; gap: 8px; margin-top: 8px; max-width: 560px; }
+.casos__semaforo { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; align-self: center; }
+.casos__semaforo--rojo { background: var(--rose); }
+.casos__semaforo--amarillo { background: var(--amber); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }

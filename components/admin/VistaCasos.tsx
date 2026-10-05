@@ -171,6 +171,13 @@ function FilaCaso({
   return (
     <li className="casos__fila">
       <div className="casos__cab">
+        {c.nivel && (
+          <span
+            className={`casos__semaforo casos__semaforo--${c.nivel}`}
+            role="img"
+            aria-label={c.nivel === "rojo" ? "Rojo: 14 días o más sin abrir" : "Amarillo: de 7 a 13 días sin abrir"}
+          />
+        )}
         <strong>{c.tarjeta}</strong>
         {c.folio && <span> · {c.folio}</span>}
         {nombre && <span> · {nombre}</span>}
@@ -178,7 +185,9 @@ function FilaCaso({
       </div>
       <p className="casos__d">{c.detalle}</p>
       <p className="casos__f">
-        {c.dias === 1 ? `El ${fecha(c.ultima)}` : `Del ${fecha(c.desde)} al ${fecha(c.ultima)}, ${c.dias} días`}
+        {c.tipo === "sin-uso"
+          ? c.nivel === "rojo" ? "Candidato a baja" : "En observación"
+          : c.dias === 1 ? `El ${fecha(c.ultima)}` : `Del ${fecha(c.desde)} al ${fecha(c.ultima)}, ${c.dias} días`}
         {s && (
           <>
             {" · "}
