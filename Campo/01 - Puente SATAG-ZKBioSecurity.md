@@ -123,7 +123,7 @@ Departamentos, desde el 5-oct-2026 (TI los renumeró entre el 2 y el 5-oct): 1 G
 15 MANTENIMIENTO · 16 Administracion · 17 Admon · 18 STOCK SATAG ·
 19 Padres de familia · 20 Alumnos · 21 Ex alumnos · 22 Falta de información ·
 23 Otros. Desde SATAG (`lib/zk/plantillaZk.ts`), `tipo_usuario` se mapea
-padres→19, otro→19, alumno→20, admin→17 y el maestro por su sección
+padres→19, otro→19, alumno→20, admin→16 (TI pasa a mano al 17 a quien toque) y el maestro por su sección
 (preescolar→9, primaria→4, secundaria→11, preparatoria→12; sin sección no se
 exporta); el stock→18. Hasta el 2-oct eran padres→7, maestro→6, alumno→5,
 admin→2 y stock→3. Si ZK se vuelve a renumerar, `node Campo/herramientas/conciliar.mjs`

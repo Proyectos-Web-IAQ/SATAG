@@ -22,7 +22,7 @@ describe("departamento de ZK al exportar", () => {
     expect(deptoZkDe(expediente("padres"))?.id).toBe("19");
     expect(deptoZkDe(expediente("otro"))?.id).toBe("19");
     expect(deptoZkDe(expediente("alumno"))?.id).toBe("20");
-    expect(deptoZkDe(expediente("admin"))?.id).toBe("17");
+    expect(deptoZkDe(expediente("admin"))?.id).toBe("16");
   });
 
   it("al maestro lo manda al departamento de su seccion", () => {
