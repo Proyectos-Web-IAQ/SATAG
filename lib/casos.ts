@@ -64,6 +64,11 @@ export interface Caso {
   veces: number;
   /** Solo «sin-uso»: el semaforo. Rojo, 14 dias o mas sin abrir; amarillo, de 7 a 13. */
   nivel?: "rojo" | "amarillo";
+  /**
+   * El patron dentro del tipo: los casos con el mismo patron se resuelven con la misma
+   * decision (Gerardo, 5-oct: «104 casos es abrumador»). La pantalla los junta por esto.
+   */
+  grupo: string;
 }
 
 /** El orden en que se presentan: primero lo que afecta a alguien todos los dias. */
@@ -199,8 +204,9 @@ export function detectarCasos(
   };
 
   const casos: Caso[] = [];
-  const caso = (tipo: TipoCaso, tarjeta: string, lote: string | null, folio: string | null, u: Uso, detalle: string) =>
+  const caso = (tipo: TipoCaso, tarjeta: string, lote: string | null, folio: string | null, u: Uso, detalle: string, grupo: string) =>
     casos.push({
+      grupo,
       clave: `${tipo}:${tarjeta}${lote ? `:${lote}` : ""}`,
       tipo,
       tarjeta,
@@ -233,6 +239,9 @@ export function detectarCasos(
       x.folio,
       u,
       `La pluma del ${lote} le negó el paso ${plural(u.veces, "vez", "veces")} en ${plural(u.dias.size, "día", "días")}${sinDerecho ? `; SATAG tampoco le da el ${lote}` : `; SATAG sí le da el ${lote}, así que el error está en ZK`}.`,
+      sinDerecho
+        ? `Intenta entrar por el ${lote}, que no le corresponde`
+        : `Tiene el ${lote} en SATAG y ZK no lo deja pasar`,
     );
   }
 
@@ -242,13 +251,13 @@ export function detectarCasos(
     const vivo = vivos.get(tarjeta);
     if (vivo) {
       if (p && nombreDepto(p.departamento) === "BAJAS") {
-        caso("vivo-en-bajas", tarjeta, null, vivo.folio, u, `En ZK está en BAJAS y abrió la pluma ${plural(u.veces, "vez", "veces")}.`);
+        caso("vivo-en-bajas", tarjeta, null, vivo.folio, u, `En ZK está en BAJAS y abrió la pluma ${plural(u.veces, "vez", "veces")}.`, "En BAJAS de ZK");
       }
       continue;
     }
     const baja = bajas.get(tarjeta);
     if (baja) {
-      caso("baja-que-abre", tarjeta, null, baja.folio, u, `Expediente de baja; su TAG abrió la pluma ${plural(u.veces, "vez", "veces")}.`);
+      caso("baja-que-abre", tarjeta, null, baja.folio, u, `Expediente de baja; su TAG abrió la pluma ${plural(u.veces, "vez", "veces")}.`, "De baja en SATAG");
       continue;
     }
     const dueno = anteriores.get(tarjeta);
@@ -260,6 +269,7 @@ export function detectarCasos(
         dueno.folio,
         u,
         `Es un TAG anterior de ${dueno.folio}, que hoy usa el ${dueno.noDispositivo || "—"}; abrió ${plural(u.veces, "vez", "veces")}.`,
+        "TAG anterior de un expediente",
       );
       continue;
     }
@@ -271,6 +281,7 @@ export function detectarCasos(
         null,
         u,
         `En ZK: ${p.nombre || "sin nombre"}, ${p.departamento || "sin departamento"}. Abrió ${plural(u.veces, "vez", "veces")}.`,
+        p.nombre ? `En ZK: ${p.departamento || "sin departamento"}` : `En ZK sin nombre (${p.departamento || "sin departamento"})`,
       );
       continue;
     }
@@ -283,6 +294,7 @@ export function detectarCasos(
       personas
         ? `Ni SATAG ni ZK la conocen; abrió ${plural(u.veces, "vez", "veces")}.`
         : `Sin expediente en SATAG; abrió ${plural(u.veces, "vez", "veces")}. Falta el padrón de ZK para saber de quién es.`,
+      personas ? "Nadie la conoce" : "Falta el padrón de ZK",
     );
   }
 
@@ -304,6 +316,7 @@ export function detectarCasos(
         lote: null,
         folio: x.folio,
         detalle: `En SATAG es de «${deSatag}»; en ZK está en «${p.departamento}».`,
+        grupo: `SATAG: ${deSatag} · ZK: ${deZk}`,
         desde: u?.primera ?? "",
         ultima: u?.ultima ?? "",
         dias: u?.dias.size ?? 0,
@@ -328,7 +341,11 @@ export function detectarCasos(
         .filter((t) => t >= PRIMER_DIA_VALIDO)
         .sort()
         .pop() ?? null;
+    // Quien ya sale en «La pluma le niega el paso» no se repite aqui: ese caso es el
+    // que pide la accion, y contarlo dos veces infla la lista.
+    const yaRechazados = new Set(casos.filter((c) => c.tipo === "rechazo-diario").map((c) => c.tarjeta));
     for (const x of vivos.values()) {
+      if (yaRechazados.has(x.noDispositivo)) continue;
       const ultima = ultimaDe(x);
       const base = ultima ?? [PRIMER_DIA_VALIDO, (x.desde ?? "").slice(0, 10)].sort().pop()!;
       const sinAbrir = diasEntre(base, hasta);
@@ -350,6 +367,14 @@ export function detectarCasos(
         dias: sinAbrir,
         veces: rechazosDe,
         nivel: sinAbrir >= ROJO_DIAS ? "rojo" : "amarillo",
+        grupo:
+          rechazosDe > 0
+            ? "La pluma lo rechaza: revisar su acceso en ZK"
+            : sinAbrir < ROJO_DIAS
+              ? "De 7 a 13 días sin venir"
+              : ultima
+                ? "Dejó de venir hace 14 días o más"
+                : "No ha venido ni una vez desde el 22-sep",
       });
     }
   }

@@ -10,6 +10,8 @@ import { TIPOS_CASO, estadoVisible, type Caso, type EstadoCaso, type Seguimiento
 import { listSeguimientoCasos, seguirCaso } from "@/lib/supabase/apiPanel";
 import { Segmentado } from "@/components/admin/UiEstacionamiento";
 
+type Lista = "resolver" | "observacion" | "resueltos";
+
 const ETIQUETA_ESTADO: Record<EstadoCaso, string> = {
   pendiente: "Pendiente",
   revision: "En revisión",
@@ -37,7 +39,7 @@ export default function VistaCasos({
 }) {
   const [seguimiento, setSeguimiento] = useState<Map<string, SeguimientoCaso> | null>(null);
   const [errorLectura, setErrorLectura] = useState<string | null>(null);
-  const [filtro, setFiltro] = useState<EstadoCaso | "abiertos">("abiertos");
+  const [lista, setLista] = useState<Lista>("resolver");
 
   async function leer() {
     setErrorLectura(null);
@@ -56,9 +58,16 @@ export default function VistaCasos({
     () => casos.map((c) => ({ c, s: seguimiento?.get(c.clave), ...estadoVisible(c, seguimiento?.get(c.clave)) })),
     [casos, seguimiento],
   );
-  const cuenta = (e: EstadoCaso) => conEstado.filter((x) => x.estado === e).length;
-  const abiertos = cuenta("pendiente") + cuenta("revision");
-  const visibles = conEstado.filter((x) => (filtro === "abiertos" ? x.estado !== "resuelto" : x.estado === filtro));
+  // TRES LISTAS, no cuatro estados. Lo amarillo (de 7 a 13 dias sin venir) no pide
+  // nada hoy: es observacion. Mezclarlo con lo que si pide una accion es lo que hacia
+  // que 104 casos se sintieran como 104 pendientes (Gerardo, 5-oct).
+  const listaDe = (x: (typeof conEstado)[number]): Lista =>
+    x.estado === "resuelto" ? "resueltos" : x.c.nivel === "amarillo" ? "observacion" : "resolver";
+  const cuenta = (l: Lista) => conEstado.filter((x) => listaDe(x) === l).length;
+  const visibles = conEstado.filter((x) => listaDe(x) === lista);
+  const porResolver = cuenta("resolver");
+  const patrones = new Set(conEstado.filter((x) => listaDe(x) === "resolver").map((x) => `${x.c.tipo}|${x.c.grupo}`)).size;
+  const guardado = (nuevo: SeguimientoCaso) => setSeguimiento((m) => new Map(m ?? []).set(nuevo.clave, nuevo));
 
   return (
     <>
@@ -68,13 +77,14 @@ export default function VistaCasos({
         <span>Casos</span>
       </p>
       <h2 className="titular">
-        {abiertos === 0
-          ? "No hay casos abiertos: todo lo que pasa por la pluma cuadra con SATAG y ZK."
-          : `${abiertos} ${abiertos === 1 ? "caso abierto" : "casos abiertos"} entre la pluma, ZK y SATAG.`}
+        {porResolver === 0
+          ? "No hay casos por resolver: lo que pasa por la pluma cuadra con SATAG y ZK."
+          : `${porResolver} ${porResolver === 1 ? "caso por resolver" : "casos por resolver"}, en ${patrones} ${patrones === 1 ? "patrón" : "patrones"}.`}
       </h2>
       <p className="titular__sub">
-        Se calculan con la bitácora guardada cada vez que se abre esta pantalla: un caso que deja de pasar desaparece
-        solo, y uno resuelto que vuelve a pasar regresa a pendientes con su nota.
+        Los casos con el mismo patrón se resuelven con la misma decisión: abra el grupo y dele seguimiento a todos de una
+        vez. Se calculan con la bitácora guardada; uno que deja de pasar desaparece solo, y uno resuelto que vuelve a
+        pasar regresa con su nota.
       </p>
       {errorLectura && (
         <p className="submit-error" role="alert">
@@ -85,48 +95,138 @@ export default function VistaCasos({
 
       <div className="gente__filtros">
         <Segmentado
-          etiqueta="Estado"
-          activa={filtro}
-          onCambio={(v) => setFiltro(v as EstadoCaso | "abiertos")}
+          etiqueta="Lista"
+          activa={lista}
+          onCambio={(v) => setLista(v as Lista)}
           opciones={[
-            { clave: "abiertos", titulo: `Abiertos (${abiertos})` },
-            { clave: "pendiente", titulo: `Pendientes (${cuenta("pendiente")})` },
-            { clave: "revision", titulo: `En revisión (${cuenta("revision")})` },
-            { clave: "resuelto", titulo: `Resueltos (${cuenta("resuelto")})` },
+            { clave: "resolver", titulo: `Por resolver (${porResolver})` },
+            { clave: "observacion", titulo: `En observación (${cuenta("observacion")})` },
+            { clave: "resueltos", titulo: `Resueltos (${cuenta("resueltos")})` },
           ]}
         />
       </div>
+      {lista === "observacion" && (
+        <p className="ti-hint">
+          De 7 a 13 días sin abrir la pluma. No piden nada todavía: si llegan a 14 días pasan solos a «Por resolver».
+        </p>
+      )}
 
       {visibles.length === 0 && <p className="ti-empty">No hay casos en esta lista.</p>}
 
       {TIPOS_CASO.map((t) => {
         const deTipo = visibles.filter((x) => x.c.tipo === t.tipo);
         if (deTipo.length === 0) return null;
+        const grupos = new Map<string, typeof deTipo>();
+        for (const x of deTipo) grupos.set(x.c.grupo, [...(grupos.get(x.c.grupo) ?? []), x]);
+        const ordenados = [...grupos.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0], "es"));
         return (
           <section key={t.tipo} className="casos__grupo" aria-labelledby={`casos-${t.tipo}`}>
             <h3 id={`casos-${t.tipo}`} className="casos__t">
               {t.titulo} <span className="casos__n">{deTipo.length}</span>
             </h3>
             <p className="ti-hint">{t.queHacer}</p>
-            <ul className="casos__l">
-              {deTipo.map(({ c, s, estado, volvio }) => (
-                <FilaCaso
-                  key={c.clave}
-                  caso={c}
-                  seguimiento={s}
-                  estado={estado}
-                  volvio={volvio}
-                  nombre={nombreDe?.(c.tarjeta)}
-                  puedeEditar={puedeEditar}
-                  email={email}
-                  onGuardado={(nuevo) => setSeguimiento((m) => new Map(m ?? []).set(nuevo.clave, nuevo))}
-                />
-              ))}
-            </ul>
+            {ordenados.map(([grupo, xs]) => (
+              <details key={grupo} className="casos__patron" open={ordenados.length === 1 && xs.length <= 5}>
+                <summary>
+                  <span className="casos__patron-t">{grupo}</span> <span className="casos__n">{xs.length}</span>
+                </summary>
+                {puedeEditar && lista !== "resueltos" && xs.length > 1 && (
+                  <SeguimientoEnLote claves={xs.map((x) => x.c.clave)} email={email} onGuardado={guardado} />
+                )}
+                <ul className="casos__l">
+                  {xs.map(({ c, s, estado, volvio }) => (
+                    <FilaCaso
+                      key={c.clave}
+                      caso={c}
+                      seguimiento={s}
+                      estado={estado}
+                      volvio={volvio}
+                      nombre={nombreDe?.(c.tarjeta)}
+                      puedeEditar={puedeEditar}
+                      email={email}
+                      onGuardado={guardado}
+                    />
+                  ))}
+                </ul>
+              </details>
+            ))}
           </section>
         );
       })}
     </>
+  );
+}
+
+/**
+ * Una decision para todo un patron: el mismo estado y la misma nota en cada caso.
+ * Va uno por uno contra el mismo RPC que la fila (bloque 87): cada caso queda en el
+ * historial con su propio renglon, y si uno falla se sabe cual.
+ */
+function SeguimientoEnLote({
+  claves,
+  email,
+  onGuardado,
+}: {
+  claves: string[];
+  email: string | null;
+  onGuardado: (s: SeguimientoCaso) => void;
+}) {
+  const [abierta, setAbierta] = useState(false);
+  const [estado, setEstado] = useState<EstadoCaso>("revision");
+  const [nota, setNota] = useState("");
+  const [hechos, setHechos] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function guardar() {
+    setError(null);
+    setHechos(0);
+    let i = 0;
+    for (const clave of claves) {
+      try {
+        onGuardado(await seguirCaso(clave, estado, nota, email));
+        i += 1;
+        setHechos(i);
+      } catch (err) {
+        setError(`Se guardaron ${i} de ${claves.length}. ${err instanceof Error ? err.message : "No se pudo guardar el caso."}`);
+        setHechos(null);
+        return;
+      }
+    }
+    setHechos(null);
+    setAbierta(false);
+    setNota("");
+  }
+
+  if (!abierta) {
+    return (
+      <button type="button" className="link-action casos__lote-b" onClick={() => setAbierta(true)}>
+        Dar seguimiento a los {claves.length} de este grupo
+      </button>
+    );
+  }
+  const guardando = hechos !== null;
+  return (
+    <div className="casos__form casos__form--lote">
+      <Segmentado
+        etiqueta="Estado de todo el grupo"
+        activa={estado}
+        onCambio={(v) => setEstado(v as EstadoCaso)}
+        opciones={(Object.keys(ETIQUETA_ESTADO) as EstadoCaso[]).map((e) => ({ clave: e, titulo: ETIQUETA_ESTADO[e] }))}
+      />
+      <label className="label" htmlFor={`lote-${claves[0]}`}>
+        Nota para los {claves.length}{estado === "resuelto" ? " (qué se hizo)" : ""}
+      </label>
+      <textarea id={`lote-${claves[0]}`} className="input textarea" maxLength={2000} value={nota} onChange={(e) => setNota(e.target.value)} />
+      {error && <p className="submit-error" role="alert">{error}</p>}
+      <div className="chip-row">
+        <button type="button" className="btn" disabled={guardando || (estado === "resuelto" && !nota.trim())} onClick={guardar}>
+          {guardando ? `Guardando ${hechos} de ${claves.length}…` : `Guardar los ${claves.length}`}
+        </button>
+        <button type="button" className="link-action" disabled={guardando} onClick={() => setAbierta(false)}>
+          Cancelar
+        </button>
+      </div>
+    </div>
   );
 }
 

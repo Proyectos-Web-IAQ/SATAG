@@ -1452,3 +1452,9 @@ a { color: var(--primary-strong); }
 .casos__semaforo { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; align-self: center; }
 .casos__semaforo--rojo { background: var(--rose); }
 .casos__semaforo--amarillo { background: var(--amber); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18); }
+.casos__patron { border-bottom: 1px solid var(--line); padding: 6px 0; }
+.casos__patron > summary { cursor: pointer; padding: 6px 0; color: var(--ink); font-weight: 600; }
+.casos__patron[open] > summary { color: var(--primary-strong); }
+.casos__patron .casos__l { border-top: 0; }
+.casos__lote-b { margin: 2px 0 6px; }
+.casos__form--lote { padding: 10px 12px; background: var(--field-bg); border-radius: var(--radius); margin: 4px 0 8px; }
