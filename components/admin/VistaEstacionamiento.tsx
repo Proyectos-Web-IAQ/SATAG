@@ -740,6 +740,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
                 estado: p.estado,
                 estacionamientos: p.estacionamientos,
                 tagsAnteriores: p.tagsAnteriores,
+                desde: p.desde,
               })),
               personas ?? null,
             )}

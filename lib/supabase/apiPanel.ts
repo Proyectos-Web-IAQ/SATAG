@@ -975,6 +975,8 @@ export interface PadronEstacionamiento {
   tipoUsuario: TipoUsuario;
   /** Bloque 88: separa Administración de Admon dentro del panel. */
   areaAdmin: AreaAdmin | null;
+  /** Desde cuando puede abrir la pluma: instalacion o, si no consta, alta. Para el semaforo de Casos. */
+  desde: string | null;
   estado: EstadoRegistro;
   origenExpediente: OrigenExpediente;
   estacionamientos: string[];
@@ -987,6 +989,8 @@ interface PadronEstRow {
   no_dispositivo: string;
   tipo_usuario: string;
   area_admin: string | null;
+  fecha_instalacion: string | null;
+  created_at: string | null;
   estado: string;
   origen_expediente: string | null;
   registro_estacionamientos: { estacionamiento_clave: string }[] | null;
@@ -996,7 +1000,7 @@ interface PadronEstRow {
 export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento[]> {
   const { data, error } = await supabaseAuth
     .from("registros")
-    .select("folio, no_dispositivo, tipo_usuario, area_admin, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
+    .select("folio, no_dispositivo, tipo_usuario, area_admin, fecha_instalacion, created_at, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
     .not("no_dispositivo", "is", null)
     // El padron completo son ~2,900 expedientes. El tope es holgura, no negocio: si
     // algun dia se rozara, la resolucion del rol baja a la base en vez de subir este
@@ -1008,6 +1012,7 @@ export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento
     noDispositivo: r.no_dispositivo,
     tipoUsuario: r.tipo_usuario as TipoUsuario,
     areaAdmin: (r.area_admin ?? null) as AreaAdmin | null,
+    desde: r.fecha_instalacion ?? r.created_at?.slice(0, 10) ?? null,
     estado: r.estado as EstadoRegistro,
     origenExpediente: (r.origen_expediente ?? "satag") as OrigenExpediente,
     estacionamientos: (r.registro_estacionamientos ?? []).map((e) => e.estacionamiento_clave).sort(),
