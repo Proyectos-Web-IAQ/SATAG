@@ -512,10 +512,20 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
         : padronZk
             .map((r) => filaPadron(r, mapaZk.get(r.noDispositivo!)))
             .filter((f): f is FilaZk => f !== null);
+      // Un maestro sin seccion no tiene departamento en ZK: no se adivina, se avisa.
+      const sinSeccion = tipo === "padron"
+        ? padronZk.filter((r) => r.noDispositivo && r.tipoUsuario === "maestro" && !esSeccionMaestro(r.seccionMaestro))
+            .map((r) => `TAG ${r.noDispositivo}`)
+        : [];
+      const avisoSinSeccion = sinSeccion.length
+        ? ` ${sinSeccion.length} maestro${sinSeccion.length === 1 ? "" : "s"} sin sección no va${sinSeccion.length === 1 ? "" : "n"} en el archivo (${sinSeccion.join(", ")}): capture su sección en el expediente y vuelva a exportar.`
+        : "";
       if (filas.length === 0) {
         throw new Error(tipo === "stock"
           ? "No hay TAGs dados de alta en ese rango. Cambie la fecha o marque «todos los disponibles»."
-          : "No hay expedientes activos con TAG instalados en ese rango. Cambie la fecha o marque «todo el padrón».");
+          : sinSeccion.length
+            ? `No se generó el archivo.${avisoSinSeccion}`
+            : "No hay expedientes activos con TAG instalados en ese rango. Cambie la fecha o marque «todo el padrón».");
       }
       const nombre = `zk-${tipo}-satag-${fechaArchivo()}.${formato}`;
       const blob = formato === "xlsx" ? await generarXlsxZk(filas) : generarCsvZk(filas);
@@ -551,7 +561,8 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
             : " Todos son de familia: no hay niveles que ajustar.")
           + (propios.length
             ? ` ${propios.length} TAG${propios.length === 1 ? "" : "s"} propio${propios.length === 1 ? "" : "s"} de familia sin niveles (${propios.join(", ")}): quite y vuelva a poner los niveles de Padres de familia.`
-            : ""));
+            : "")
+          + avisoSinSeccion);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo generar el archivo.");

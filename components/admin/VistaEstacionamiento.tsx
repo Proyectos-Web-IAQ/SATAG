@@ -426,7 +426,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     const deSatag = r ? GRUPO_POR_TIPO[r.tipoUsuario] : undefined;
     if (deSatag) return deSatag;
     const p = personas?.get(tarjeta);
-    return p ? grupoDeDepto(p.departamentoId) : SIN_CLASIFICAR;
+    return p ? grupoDeDepto(p.departamentoId, p.departamento) : SIN_CLASIFICAR;
   };
   const deptoDe = personas
     ? (tarjeta: string) => personas.get(tarjeta)?.departamento || "No está en el padrón de ZK"
