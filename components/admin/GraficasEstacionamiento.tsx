@@ -14,8 +14,22 @@
 // pico rotulado. Comparar dos numeros grandes lado a lado se lee igual de bien y no
 // pide un color que significaria «la otra cosa», que es justo lo que la regla evita.
 
-import { FRANJA_DESDE, FRANJA_HASTA, horaCorta, medianaEn, type CubetaEstancia, type EstanciasRol, type OcupacionLote } from "@/lib/estacionamiento";
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  FRANJA_DESDE,
+  FRANJA_HASTA,
+  horaCorta,
+  lecturaOcupacion,
+  medianaEn,
+  pasoTeclado,
+  rangoPico,
+  type CubetaEstancia,
+  type EstanciasRol,
+  type LecturaOcupacion,
+  type OcupacionLote,
+} from "@/lib/estacionamiento";
 import { duracion } from "@/lib/duracion";
+import { GloboDatos, type Globo } from "@/components/admin/GraficasInstalacion";
 
 const W = 720;
 
@@ -71,6 +85,12 @@ export function OcupacionDelDia({
   const H = arriba + alto + abajo;
   const ancho = W - izq - der;
 
+  // La lectura del minuto apuntado y su globo. El globo se coloca en pixeles de
+  // .viz, que es su ancla y NO desliza (ver posDeMarca en GraficasInstalacion).
+  const cont = useRef<HTMLDivElement>(null);
+  const lienzo = useRef<SVGSVGElement>(null);
+  const [lectura, setLectura] = useState<{ l: LecturaOcupacion; globo: Globo } | null>(null);
+
   // EL TECHO NO ES EL PICO. Si lo fuera, la curva tocaria el borde del marco y se
   // leeria como «al 100%» justo cuando NO hay con que medir la saturacion, porque
   // falta el aforo. Una grafica que llena su marco dice «lleno» aunque el texto de
@@ -122,8 +142,49 @@ export function OcupacionDelDia({
     .map((f) => `${horaCorta(f.minuto)} ${f.p50}`)
     .join("; ");
 
+  // RECORRER LA GRAFICA. Una sola zona sensible del ancho del trazo, y la lectura
+  // es la del minuto apuntado (lecturaOcupacion). Con el teclado es un deslizador:
+  // flechas de cinco en cinco minutos, Mayus de hora en hora, Inicio y Fin; al
+  // entrar con Tab arranca en el pico, que es lo que la grafica viene a decir.
+  const leer = (minuto: number, iman: boolean) => {
+    const svg = lienzo.current, c = cont.current;
+    if (!svg || !c) return;
+    const l = lecturaOcupacion(o, minuto, diaRotulo, comparables, iman);
+    const s = svg.getBoundingClientRect(), k = c.getBoundingClientRect();
+    setLectura({
+      l,
+      globo: {
+        left: s.left - k.left + (x(l.minuto) * s.width) / W,
+        top: s.top - k.top + (y(l.valor) * s.height) / H,
+        ancho: k.width,
+        titulo: l.titulo,
+        lineas: l.lineas,
+      },
+    });
+  };
+  const alMover = (e: PointerEvent<SVGRectElement>) => {
+    const s = lienzo.current?.getBoundingClientRect();
+    if (!s) return;
+    const vx = ((e.clientX - s.left) / s.width) * W;
+    leer(FRANJA_DESDE + ((vx - izq) / ancho) * (FRANJA_HASTA - FRANJA_DESDE), true);
+  };
+  const alTeclear = (e: KeyboardEvent<SVGRectElement>) => {
+    if (e.key === "Escape") { setLectura(null); return; }
+    const desde = lectura?.l.minuto ?? o.pico.minuto ?? FRANJA_DESDE;
+    const paso = e.shiftKey ? 60 : 5;
+    const a =
+      e.key === "ArrowRight" ? pasoTeclado(desde, paso, o.pico.minuto)
+      : e.key === "ArrowLeft" ? pasoTeclado(desde, -paso, o.pico.minuto)
+      : e.key === "Home" ? FRANJA_DESDE
+      : e.key === "End" ? FRANJA_HASTA
+      : null;
+    if (a === null) return;
+    e.preventDefault();
+    leer(a, false);
+  };
+
   return (
-    <div className="viz">
+    <div className="viz" ref={cont}>
       {/* La leyenda es HTML y no SVG: un lector de pantalla la lee como lista. Y
           nombra las POBLACIONES, no los trazos: «el día más lleno» y «la mitad de
           los días» son dos cosas distintas aunque compartan color. */}
@@ -133,7 +194,9 @@ export function OcupacionDelDia({
         <li><i className="viz-sw viz-sw--banda" aria-hidden="true" />Entre su cuartil bajo y el alto</li>
       </ul>
       <div className="viz-scroll">
-        <svg className="viz-svg" viewBox={`0 0 ${W} ${H}`} role="img"
+        {/* «group» y no «img»: adentro hay un deslizador, y un img vuelve
+            decorativo todo lo que contiene. */}
+        <svg ref={lienzo} className="viz-svg" viewBox={`0 0 ${W} ${H}`} role="group"
           aria-label={`Coches dentro del estacionamiento ${o.lote} a lo largo del día. Línea continua: el día más lleno, ${diaRotulo}, con su momento más lleno de ${o.pico.dentro} coches a las ${horaCorta(o.pico.minuto)}${o.pico.hasta > o.pico.dentro ? `, hasta ${o.pico.hasta} contando las entradas que no cerraron` : ""}. Línea punteada: la mediana de los ${comparables} días comparables, con su banda de cuartiles. Serie de la mediana cada hora: ${serie}.`}>
 
           {marcas.map((n) => (
@@ -178,8 +241,7 @@ export function OcupacionDelDia({
             <g>
               <circle className="viz-punto" cx={x(o.pico.minuto)} cy={y(o.pico.dentro)} r={4} />
               <text className="viz-valor" x={x(o.pico.minuto)} y={y(o.pico.dentro) - 10} textAnchor="middle">
-                {o.pico.dentro}
-                {o.pico.hasta > o.pico.dentro ? `–${o.pico.hasta}` : ""} a las {horaCorta(o.pico.minuto)}
+                {rangoPico(o.pico)} a las {horaCorta(o.pico.minuto)}
               </text>
             </g>
           )}
@@ -188,21 +250,39 @@ export function OcupacionDelDia({
             <text key={m} className="viz-marca" x={x(m)} y={arriba + alto + 18} textAnchor="middle">{horaCorta(m)}</text>
           ))}
 
-          {/* Blanco por hora: mas grande que cualquier marca, y el foco por teclado
-              entrega el mismo dato que el puntero: las dos capas, con su nombre. */}
-          {horas.map((m) => {
-            const f = o.franjas.reduce((mejor, c) => (Math.abs(c.minuto - m) < Math.abs(mejor.minuto - m) ? c : mejor), o.franjas[0]);
-            const d = enElDia(m);
-            return (
-              <rect key={`b${m}`} className="viz-blanco" x={x(m) - 30} y={arriba} width={60} height={alto}
-                fill="transparent" tabIndex={0} role="img"
-                aria-label={`A las ${horaCorta(m)}: ${d} coches dentro de ${o.lote} el día más lleno; ${f.p50} en la mitad de los días, entre ${f.p25} y ${f.p75}`}>
-                <title>{`${horaCorta(m)} · día más lleno ${d} · mitad de los días ${f.p50} (${f.p25}–${f.p75})`}</title>
-              </rect>
-            );
-          })}
+          {/* La guia y el punto del minuto apuntado. Van ANTES de la zona sensible
+              para no robarle el puntero. */}
+          {lectura && (
+            <g aria-hidden="true">
+              <line className="viz-guia" x1={x(lectura.l.minuto)} x2={x(lectura.l.minuto)} y1={arriba} y2={arriba + alto} />
+              <circle className="viz-punto" cx={x(lectura.l.minuto)} cy={y(lectura.l.valor)} r={4} />
+            </g>
+          )}
+
+          {/* Una sola zona sensible, del ancho del trazo. Antes eran blancos de 60px
+              cada dos horas, y el globo daba la hora en punto y no el minuto apuntado:
+              sobre el pico de las 14:17 decia lo de las 14:00. */}
+          <rect className="viz-blanco viz-recorrido" x={izq} y={arriba} width={ancho} height={alto}
+            fill="transparent" tabIndex={0} role="slider"
+            aria-label={`Recorrer el día en ${o.lote}`}
+            aria-valuemin={FRANJA_DESDE} aria-valuemax={FRANJA_HASTA}
+            aria-valuenow={lectura?.l.minuto ?? o.pico.minuto ?? FRANJA_DESDE}
+            aria-valuetext={lectura ? [lectura.l.titulo, ...lectura.l.lineas].join(". ") : "Use las flechas para recorrer el día"}
+            onPointerEnter={alMover} onPointerMove={alMover} onPointerLeave={() => setLectura(null)}
+            onFocus={() => leer(o.pico.minuto ?? FRANJA_DESDE, false)} onBlur={() => setLectura(null)}
+            onKeyDown={alTeclear} />
         </svg>
       </div>
+      {lectura && <GloboDatos g={lectura.globo} />}
+      {o.pico.minuto !== null && o.pico.hasta > o.pico.dentro && (
+        // POR QUE EL PICO ES UN RANGO, dicho en la pantalla y no solo en el codigo:
+        // al revisarla el 5-oct-2026 el rango sin explicacion se leyo como imprecision.
+        <p className="ti-hint" style={{ margin: "6px 0 0" }}>
+          ¿Por qué {rangoPico(o.pico)}? {o.pico.dentro} son los coches a los que se les leyó la entrada y la
+          salida. A esa misma hora había {o.pico.hasta - o.pico.dentro} más con la entrada leída y la salida
+          no: estaban dentro, pero el lector no registró cuándo salieron. El número real está entre los dos.
+        </p>
+      )}
       {finDia < FRANJA_HASTA && (
         <p className="ti-hint" style={{ margin: "6px 0 0" }}>
           La línea del día termina a las {horaCorta(finDia)} porque ahí termina el archivo: el día seguía

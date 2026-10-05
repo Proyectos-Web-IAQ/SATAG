@@ -28,9 +28,9 @@ function diaCorto(dia: string): string {
   return d && m && y ? `${d}/${m}` : dia;
 }
 
-// ---- Globo de datos, compartido por las dos graficas ----
+// ---- Globo de datos, compartido por las dos graficas de aqui y por la ocupacion del estacionamiento ----
 
-interface Globo { left: number; top: number; ancho: number; titulo: string; lineas: string[] }
+export interface Globo { left: number; top: number; ancho: number; titulo: string; lineas: string[] }
 
 // Se posiciona desde el rectangulo de la MARCA, no desde el puntero: asi el globo
 // sale igual con el raton y con el teclado (Tab), que es justo lo que se pide
@@ -50,7 +50,7 @@ function posDeMarca(destino: Element, contenedor: HTMLDivElement | null) {
   return { left: m.left - c.left + m.width / 2, top: m.top - c.top, ancho: c.width };
 }
 
-function GloboDatos({ g }: { g: Globo }) {
+export function GloboDatos({ g }: { g: Globo }) {
   const ref = useRef<HTMLDivElement>(null);
 
   // El ancho del globo se conoce hasta que esta pintado, asi que se mide aqui y

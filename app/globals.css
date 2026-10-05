@@ -1158,6 +1158,8 @@ a { color: var(--primary-strong); }
 .viz-punto-g:focus-within .viz-punto { stroke: var(--ink); }
 
 .viz-blanco { cursor: default; outline: none; }
+/* La zona que se recorre minuto a minuto (ocupacion del estacionamiento). */
+.viz-recorrido { cursor: crosshair; }
 .viz-blanco:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 /* El globo: el VALOR manda y la etiqueta lo acompana (al contrario que una

@@ -63,6 +63,9 @@ const RUTAS = [
       // Clase CSS que solo existe en el JS de las graficas: prueba que la pestana
       // Tablero (columnas y dispersion) esta publicada, no solo su consulta.
       { texto: "viz-mediana", que: "las graficas del tablero (pestana Tablero)" },
+      // La clase de la zona que se recorre minuto a minuto: solo existe si la
+      // grafica de ocupacion ya no usa los blancos de cada dos horas (5-oct).
+      { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },
     ],
   },
 ];

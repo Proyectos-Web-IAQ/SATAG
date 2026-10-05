@@ -11,7 +11,12 @@ import {
   corteDe,
   emparejarEstancias,
   medirEstacionamiento,
+  lecturaOcupacion,
+  pasoTeclado,
+  rangoPico,
+  IMAN_PICO_MIN,
   type Corte,
+  type OcupacionLote,
 } from "@/lib/estacionamiento";
 import type { EventoZk } from "@/lib/zk/eventos";
 
@@ -247,5 +252,70 @@ describe("fueraDeNorma · la norma tiene que ser una poblacion, y la persona ten
     const pocos = dias.flatMap((d) => ["a", "b", "c"].flatMap((t) => estancia(t, "07:10:00", "07:25:00", d)));
     const m = medirEstacionamiento([...pocos, ...largo], () => "Alumnos");
     expect(m.fueraDeNorma).toHaveLength(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// La lectura al recorrer la grafica. El 5-oct-2026 el globo decia «93 a las 14:00»
+// bajo un rotulo de «121–132 a las 14:17»: las dos ciertas, y parecian contradecirse.
+describe("lecturaOcupacion · el globo y el rotulo dicen lo mismo", () => {
+  const PICO = 14 * 60 + 17;
+  // Lo minimo que la lectura usa; el resto de OcupacionLote no interviene.
+  const o = {
+    lote: "E2",
+    pico: { dentro: 121, hasta: 132, minuto: PICO, dia: "2026-09-24" },
+    diaPico: [
+      { minuto: 6 * 60, dentro: 0 },
+      { minuto: 14 * 60, dentro: 93 },
+      { minuto: PICO, dentro: 121 },
+      { minuto: 15 * 60, dentro: 70 },
+      { minuto: 20 * 60, dentro: 0 },
+    ],
+    franjas: [
+      { minuto: 14 * 60, p50: 94, p25: 90, p75: 98 },
+      { minuto: 14 * 60 + 15, p50: 110, p25: 100, p75: 115 },
+      { minuto: 21 * 60, p50: 2, p25: 0, p75: 4 },
+    ],
+  } as unknown as OcupacionLote;
+  const leer = (m: number, iman = true) => lecturaOcupacion(o, m, "jue 24 de sep", 8, iman);
+
+  it("cerca del pico se pega al pico y repite su rango", () => {
+    const l = leer(PICO - IMAN_PICO_MIN);
+    expect(l.capa).toBe("pico");
+    expect(l.minuto).toBe(PICO);
+    expect(l.titulo).toBe(`${rangoPico(o.pico)} coches a las 14:17`);
+    expect(l.valor).toBe(121);
+  });
+
+  it("explica el rango en el globo: confirmados y sin salida leida", () => {
+    expect(leer(PICO).lineas.join(" ")).toContain("121 con entrada y salida leídas, y 11 más");
+  });
+
+  it("fuera del iman, lee el minuto apuntado sobre la linea del dia", () => {
+    const l = leer(14 * 60 + 5);
+    expect(l.capa).toBe("dia");
+    expect(l.valor).toBe(93);
+    expect(l.titulo).toBe("93 coches a las 14:05");
+  });
+
+  it("sin iman (teclado) no se pega al pico", () => {
+    expect(leer(PICO - 5, false).capa).toBe("dia");
+  });
+
+  it("pasado el fin del dia, la cifra es de la mediana y lo dice", () => {
+    const l = leer(21 * 60);
+    expect(l.capa).toBe("tipico");
+    expect(l.valor).toBe(2);
+    expect(l.lineas.join(" ")).toContain("termina a las 20:00");
+  });
+
+  it("el teclado no se salta el pico, y puede salir de el", () => {
+    expect(pasoTeclado(14 * 60 + 15, 5, PICO)).toBe(PICO);
+    expect(pasoTeclado(PICO, 5, PICO)).toBe(PICO + 5);
+    expect(pasoTeclado(14 * 60 + 20, -5, PICO)).toBe(PICO);
+  });
+
+  it("sin entradas abiertas el pico es un solo numero", () => {
+    expect(rangoPico({ dentro: 80, hasta: 80, minuto: 600, dia: "2026-09-24" })).toBe("80");
   });
 });

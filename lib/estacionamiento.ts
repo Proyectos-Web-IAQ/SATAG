@@ -1246,12 +1246,112 @@ export function dentroEn(pasos: PasoOcupacion[], minuto: number): number {
   return v;
 }
 
+/** La franja de la mediana mas cercana a `minuto`; null si no hay ninguna. */
+export function franjaEn(franjas: PuntoFranja[], minuto: number): PuntoFranja | null {
+  let mejor: PuntoFranja | null = null;
+  for (const f of franjas) if (mejor === null || Math.abs(f.minuto - minuto) < Math.abs(mejor.minuto - minuto)) mejor = f;
+  return mejor;
+}
+
 /** La mediana entre dias en `minuto`: la franja mas cercana. */
 export function medianaEn(franjas: PuntoFranja[], minuto: number): number {
-  if (franjas.length === 0) return 0;
-  let mejor = franjas[0];
-  for (const f of franjas) if (Math.abs(f.minuto - minuto) < Math.abs(mejor.minuto - minuto)) mejor = f;
-  return mejor.p50;
+  return franjaEn(franjas, minuto)?.p50 ?? 0;
+}
+
+/**
+ * El pico como se escribe: «121» si no hubo entradas sin cerrar, «121–132» si las
+ * hubo. Lo comparten el rotulo de la grafica y su globo, para que digan lo mismo.
+ */
+export function rangoPico(p: Pico): string {
+  return p.hasta > p.dentro ? `${p.dentro}–${p.hasta}` : `${p.dentro}`;
+}
+
+/** A cuantos minutos del pico la lectura se pega a el al recorrer la grafica con el puntero. */
+export const IMAN_PICO_MIN = 6;
+
+/** Lo que la grafica de ocupacion dice en un minuto, y de que capa sale. */
+export interface LecturaOcupacion {
+  minuto: number;
+  /** Donde va el punto: sobre la linea del dia, o sobre la mediana si el dia ya no tiene datos. */
+  valor: number;
+  capa: "pico" | "dia" | "tipico";
+  titulo: string;
+  lineas: string[];
+}
+
+/**
+ * LA LECTURA AL RECORRER LA GRAFICA, minuto a minuto.
+ *
+ * Antes habia un blanco cada dos horas y el globo daba el valor de la hora en punto:
+ * con el puntero sobre el pico decia «93 a las 14:00» bajo un rotulo de «121–132 a
+ * las 14:17». Las dos cifras eran ciertas y parecian contradecirse (5-oct-2026). Ahora
+ * la lectura es la del minuto que se apunta, y a IMAN_PICO_MIN o menos del pico se
+ * pega al pico: el globo y el rotulo dicen el mismo numero.
+ *
+ * Una poblacion por capa, tambien aqui: el titulo es del dia mas lleno mientras ese
+ * dia tenga datos, y la mediana va en su propia linea, con su nombre.
+ *
+ * `iman` va apagado con el teclado: con pasos de cinco minutos, un iman de seis no
+ * dejaria salir del pico. El teclado llega al pico por `pasoTeclado`.
+ */
+export function lecturaOcupacion(
+  o: OcupacionLote,
+  minuto: number,
+  diaRotulo: string,
+  comparables: number,
+  iman = true,
+): LecturaOcupacion {
+  let m = Math.min(FRANJA_HASTA, Math.max(FRANJA_DESDE, Math.round(minuto)));
+  const pm = o.pico.minuto;
+  if (iman && pm !== null && Math.abs(m - pm) <= IMAN_PICO_MIN) m = pm;
+  const hora = horaCorta(m);
+  const f = franjaEn(o.franjas, m);
+  const tipico = f ? [`La mitad de los ${comparables} días: ${f.p50} (entre ${f.p25} y ${f.p75})`] : [];
+  const finDia = o.diaPico.length > 0 ? o.diaPico[o.diaPico.length - 1].minuto : null;
+
+  if (pm !== null && m === pm) {
+    const sinSalida = o.pico.hasta - o.pico.dentro;
+    return {
+      minuto: m,
+      valor: o.pico.dentro,
+      capa: "pico",
+      titulo: `${rangoPico(o.pico)} coches a las ${hora}`,
+      lineas: [
+        `Lo más lleno: el ${diaRotulo}`,
+        ...(sinSalida > 0
+          ? [`${o.pico.dentro} con entrada y salida leídas, y ${sinSalida} más que entraron y su salida no se leyó`]
+          : []),
+        ...tipico,
+      ],
+    };
+  }
+  if (finDia !== null && m <= finDia) {
+    const v = dentroEn(o.diaPico, m);
+    return {
+      minuto: m,
+      valor: v,
+      capa: "dia",
+      titulo: `${v} coches a las ${hora}`,
+      lineas: [`El día más lleno, ${diaRotulo}`, ...tipico],
+    };
+  }
+  return {
+    minuto: m,
+    valor: f ? f.p50 : 0,
+    capa: "tipico",
+    titulo: f ? `${f.p50} coches a las ${hora}` : `Sin datos a las ${hora}`,
+    lineas: [
+      ...(f ? [`La mitad de los ${comparables} días, entre ${f.p25} y ${f.p75}`] : []),
+      ...(finDia !== null ? [`El ${diaRotulo} termina a las ${horaCorta(finDia)}`] : []),
+    ],
+  };
+}
+
+/** El minuto siguiente al recorrer la grafica con el teclado: pasos fijos, sin saltarse el pico. */
+export function pasoTeclado(desde: number, paso: number, pico: number | null): number {
+  const a = Math.min(FRANJA_HASTA, Math.max(FRANJA_DESDE, desde + paso));
+  if (pico !== null && ((desde < pico && a > pico) || (desde > pico && a < pico))) return pico;
+  return a;
 }
 
 /**
