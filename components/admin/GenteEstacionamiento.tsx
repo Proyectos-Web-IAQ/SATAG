@@ -30,14 +30,16 @@ import type { Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import { duracion } from "@/lib/duracion";
 import type { EstanciasRol, Medicion, UsoCredencial } from "@/lib/estacionamiento";
-import { esHuerfana, GRUPO_POR_TIPO, SIN_CLASIFICAR, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
+import { esHuerfana, GRUPO_POR_TIPO, nombreDepto, SIN_CLASIFICAR, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import FichaPersona from "@/components/admin/FichaPersona";
 import { HistogramaEstancias } from "@/components/admin/GraficasEstacionamiento";
 import { Segmentado } from "@/components/admin/UiEstacionamiento";
 
 /** Departamentos de ZK que, si aparecen en la bitacora, son el hallazgo. */
-const DEPTO_BAJAS = "10";
-const DEPTO_STOCK = "3";
+// Por nombre y no por numero: ZK renumero sus departamentos el 2-5 oct-2026 y el
+// numero del stock paso del 3 al 18.
+const DEPTO_BAJAS = "BAJAS";
+const DEPTO_STOCK = "STOCK SATAG";
 const TODAS = "";
 /** La misma etiqueta que usa la medicion para una tarjeta que ZK no conoce (VistaEstacionamiento, `deptoDe`). */
 export const SIN_ZK = "No está en el padrón de ZK";
@@ -148,8 +150,8 @@ function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null, fue
     const p = personas?.get(t);
     const u = todos.get(t);
     if (personas && !p) out.push("El padrón de personas de ZK no conoce este TAG: o el padrón está desactualizado, o la credencial no se administra ahí.");
-    if (p?.departamentoId === DEPTO_BAJAS) out.push("En ZK está en el departamento BAJAS y aun así abre la pluma: una baja que abre es una baja que no se aplicó.");
-    if (p?.departamentoId === DEPTO_STOCK) out.push("En ZK cruza con el departamento de stock: es una instalación del día, porque el TAG pasa la pluma antes de que se suba el padrón.");
+    if (p && nombreDepto(p.departamento) === DEPTO_BAJAS) out.push("En ZK está en el departamento BAJAS y aun así abre la pluma: una baja que abre es una baja que no se aplicó.");
+    if (p && nombreDepto(p.departamento) === DEPTO_STOCK) out.push("En ZK cruza con el departamento de stock: es una instalación del día, porque el TAG pasa la pluma antes de que se suba el padrón.");
     if (u?.rol === SIN_CLASIFICAR) out.push("Ni SATAG ni ZK dicen a qué grupo pertenece: en ZK está en «General». Clasificarla en ZK y volver a exportar el padrón la acomoda.");
     if (normaRota.has(t) && u) {
       out.push(

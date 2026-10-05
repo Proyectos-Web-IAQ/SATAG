@@ -64,8 +64,15 @@ export async function textoDeExportZk(bytes: Uint8Array): Promise<string> {
   try {
     const XLSX = await import("xlsx");
     const libro = XLSX.read(bytes, { type: "array" });
-    const hoja = libro.Sheets[libro.SheetNames[0]];
-    if (hoja) texto = XLSX.utils.sheet_to_csv(hoja, { FS: "\t" });
+    // LA HOJA CON DATOS, no la primera. Un export que alguien abrio y guardo en Excel
+    // llega con una «Hoja1» vacia adelante y el reporte en la segunda (paso el 2-oct
+    // con un archivo del 29-sep): leer la primera decia «no trae el reporte» de un
+    // archivo que si lo traia.
+    const hojas = libro.SheetNames.map((n) => libro.Sheets[n]).filter(Boolean);
+    const conMasFilas = hojas
+      .map((h) => ({ h, filas: h["!ref"] ? XLSX.utils.decode_range(h["!ref"]).e.r + 1 : 0 }))
+      .sort((a, b) => b.filas - a.filas)[0];
+    if (conMasFilas && conMasFilas.filas > 0) texto = XLSX.utils.sheet_to_csv(conMasFilas.h, { FS: "\t" });
   } catch {
     texto = null;
   }

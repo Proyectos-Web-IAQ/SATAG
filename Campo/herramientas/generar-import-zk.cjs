@@ -14,6 +14,13 @@
 //   3. Salida: Campo/datos/zk-actualizacion.csv (mismo formato del export).
 //   PROBAR primero importando UNA fila en ZK antes de subir todo.
 
+// ===== DETENIDO EL 5-OCT-2026 =====
+// Sus numeros de departamento (7, 6, 5, 2) son los de ZK hasta el 2-oct: el 5-oct TI
+// renumero ZK y este archivo mandaria a la gente a departamentos vacios. El camino
+// vigente es el panel (TI > TAGs de la escuela > Exportar), que usa lib/zk/plantillaZk.ts.
+console.error('Herramienta detenida: los departamentos de ZK cambiaron el 5-oct-2026. Use el panel: TI > TAGs de la escuela > Exportar.');
+process.exit(1);
+
 const fs = require('fs');
 const path = require('path');
 
