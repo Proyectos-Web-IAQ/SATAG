@@ -52,6 +52,7 @@ let ultimoOrdenGente: OrdenGente = "entradas";
 let ultimoDescGente = true;
 let ultimoOrdenSeccion: OrdenSeccion = "cajones";
 let ultimoDescSeccion = true;
+let ultimoLoteSeccion = "ambos";
 
 const dur = (min: number | null | undefined) => duracion((min ?? 0) * 60_000);
 
@@ -358,27 +359,35 @@ export function SeccionesEstacionamiento({
   const [verComposicion, setVerComposicion] = useState(false);
   const [orden, setOrden] = useState<OrdenSeccion>(ultimoOrdenSeccion);
   const [desc, setDesc] = useState(ultimoDescSeccion);
+  // El contador, 5-oct: «en cada estacionamiento, que seccion predomina en cajones».
+  // El mismo selector que «Estacionamientos»: Los dos es el total del plantel.
+  const [lote, setLote] = useState(ultimoLoteSeccion);
   useEffect(() => {
     ultimaAbierta = abierta;
     ultimoOrdenSeccion = orden;
     ultimoDescSeccion = desc;
-  }, [abierta, orden, desc]);
+    ultimoLoteSeccion = lote;
+  }, [abierta, orden, desc, lote]);
   const abrir = (s: string) => setAbierta((v) => (v === s ? null : s));
   const g = useMemo(() => prepararGente(m, personas, fuentes), [m, personas, fuentes]);
 
   const porSeccion = m.porDepartamento.length > 0;
   const valorDe = (x: EstanciasRol) =>
     orden === "cajones" ? x.cajonesAlaVez : orden === "mediana" ? (x.medianaMin ?? 0) : orden === "credenciales" ? x.credenciales : x.estancias;
-  const secs: EstanciasRol[] = [...(porSeccion ? m.porDepartamento : m.estancias)]
+  const oc = lote === "ambos" ? null : (m.ocupacion.find((o) => o.lote === lote) ?? null);
+  const fuente = oc ? (porSeccion ? oc.porDepartamento : oc.porRol) : porSeccion ? m.porDepartamento : m.estancias;
+  const secs: EstanciasRol[] = [...fuente]
     .filter((x) => x.estancias > 0)
     .sort((a, b) => (desc ? valorDe(b) - valorDe(a) : valorDe(a) - valorDe(b)) || b.cajonesAlaVez - a.cajonesAlaVez);
   // El titular habla de la que mas lugares ocupa, se ordene como se ordene.
   const top = [...secs].sort((a, b) => b.cajonesAlaVez - a.cajonesAlaVez)[0] ?? null;
   const ordenDicho = `${ORDENES_SECCION.find((o) => o.clave === orden)?.dicho ?? ""}, ${desc ? "de más a menos" : "de menos a más"}`;
-  const cupoTotal = m.ocupacion.every((o) => (cupos[o.lote] ?? null) !== null)
-    ? m.ocupacion.reduce((a, o) => a + (cupos[o.lote] ?? 0), 0)
-    : null;
-  const credTotal = m.porCredencial.length;
+  const cupoTotal = oc
+    ? (cupos[oc.lote] ?? null)
+    : m.ocupacion.every((o) => (cupos[o.lote] ?? null) !== null)
+      ? m.ocupacion.reduce((a, o) => a + (cupos[o.lote] ?? 0), 0)
+      : null;
+  const credTotal = oc ? oc.porCredencial.length : m.porCredencial.length;
   const largasSecs = secs.filter((x) => (x.medianaMin ?? 0) >= JORNADA_LARGA_MIN);
   const credLargas = largasSecs.reduce((a, x) => a + x.credenciales, 0);
   const enPicoLargas = largasSecs.reduce((a, x) => a + x.cajonesEnElPico, 0);
@@ -391,6 +400,7 @@ export function SeccionesEstacionamiento({
   const dep1 = m.ocupacion.find((o) => o.lote === "E1")?.porDepartamento ?? [];
   const dep2 = m.ocupacion.find((o) => o.lote === "E2")?.porDepartamento ?? [];
   const comparada = (depto: string) => {
+    if (oc) return null;
     const e1 = dep1.find((r) => r.rol === depto) ?? null;
     const e2 = dep2.find((r) => r.rol === depto) ?? null;
     return e1 && e2 && e1.estancias >= MIN_PARA_COMPARAR && e2.estancias >= MIN_PARA_COMPARAR ? { e1, e2 } : null;
@@ -398,13 +408,32 @@ export function SeccionesEstacionamiento({
 
   const unidad = porSeccion ? "sección" : "grupo";
   const unidades = porSeccion ? "las secciones" : "los grupos";
+  // En un solo estacionamiento, el titular reparte SU momento mas lleno: los cajones
+  // en el pico de cada seccion suman exactamente el pico, asi que «cual predomina»
+  // tiene una respuesta que se puede comprobar contra el cupo.
+  const topPico = oc ? ([...secs].sort((a, b) => b.cajonesEnElPico - a.cajonesEnElPico)[0] ?? null) : null;
   const titular = top === null
-    ? "Todavía no hay estancias medidas por sección."
-    : `${top.rol} es ${porSeccion ? "la sección" : "el grupo"} que más lugares ocupa a la vez: ${top.cajonesAlaVez}${cupoTotal !== null ? ` de ${cupoTotal} cajones` : ""}.`;
+    ? `Todavía no hay estancias medidas por sección${oc ? ` en el ${nombreLote(oc.lote)}` : ""}.`
+    : oc && topPico && oc.pico.dentro > 0
+      ? `En el momento más lleno del ${nombreLote(oc.lote)} (${oc.pico.dentro}${cupoTotal !== null ? ` de ${cupoTotal}` : ""} cajones), ${topPico.rol} ocupaba ${topPico.cajonesEnElPico}: ${pct(topPico.cajonesEnElPico, oc.pico.dentro)} de los coches dentro.`
+      : `${top.rol} es ${porSeccion ? "la sección" : "el grupo"} que más lugares ocupa a la vez${oc ? ` en el ${nombreLote(oc.lote)}` : ""}: ${top.cajonesAlaVez}${cupoTotal !== null ? ` de ${cupoTotal} cajones` : ""}.`;
   const bajada = largasSecs.length > 0
     ? `${porSeccion ? "Las secciones" : "Los grupos"} de jornada larga —${largasSecs.slice(0, 3).map((x) => x.rol).join(", ")}${largasSecs.length > 3 ? " y más" : ""}— son ${pct(credLargas, credTotal)} de las credenciales y en el peor momento seguían dentro ${enPicoLargas} de sus coches: son la carga base del día. Lo que cuesta un lugar es cuánto tiempo se queda ocupado, no cuántas veces se usa. Abra una ${unidad} para ver a su gente.`
     : `Lo que cuesta un lugar es cuánto tiempo se queda ocupado, no cuántas veces se usa. Abra una ${unidad} para ver a su gente.`;
   const cajon = (n: number) => `${n} ${n === 1 ? "cajón" : "cajones"}`;
+  // La gente de una seccion abierta va en el MISMO orden que la lista de secciones
+  // (Gerardo, 5-oct: «si pongo cuánto se queda y abro Padres de familia, espero verlos
+  // ordenados por cuánto tiempo se quedan»). Cada orden de seccion tiene su par en
+  // la persona: cuanto se queda -> su mediana por visita; cajones -> el tiempo total
+  // que ocupo un cajon; personas y estancias -> cuantas veces entro.
+  const valorPersona = (r: Registro): number => {
+    const u = g.usoDe(r, lote);
+    if (orden === "mediana") return u?.medianaMin ?? -1;
+    if (orden === "cajones") return u?.totalMin ?? -1;
+    return g.entradasDe(r, lote);
+  };
+  const ordenPersonas =
+    orden === "mediana" ? "por tiempo por visita" : orden === "cajones" ? "por tiempo total en el estacionamiento" : "por veces que entró";
 
   return (
     <>
@@ -427,6 +456,12 @@ export function SeccionesEstacionamiento({
       )}
 
       <div className="gente__filtros">
+        <Segmentado
+          etiqueta="Estacionamiento"
+          activa={lote}
+          onCambio={setLote}
+          opciones={[...m.ocupacion.map((o) => ({ clave: o.lote, titulo: nombreLote(o.lote) })), { clave: "ambos", titulo: "Los dos" }]}
+        />
         <Orden opciones={ORDENES_SECCION} valor={orden} desc={desc} onValor={setOrden} onDesc={() => setDesc((v) => !v)} />
         <span className="ti-hint">{secs.length} {porSeccion ? "secciones" : "grupos"} {ordenDicho}; la barra es «cajones a la vez».</span>
       </div>
@@ -437,10 +472,13 @@ export function SeccionesEstacionamiento({
           const c = esta ? comparada(x.rol) : null;
           const gente = esta
             ? registros
-                .filter((r) => g.seccionDe(r) === x.rol && g.esDelLote(r, "ambos"))
-                .sort((a, b) => g.entradasDe(b, "ambos") - g.entradasDe(a, "ambos") || a.usuarioNombre.localeCompare(b.usuarioNombre, "es"))
+                .filter((r) => g.seccionDe(r) === x.rol && g.esDelLote(r, lote))
+                .sort((a, b) => {
+                  const d = valorPersona(a) - valorPersona(b);
+                  return (desc ? -d : d) || a.usuarioNombre.localeCompare(b.usuarioNombre, "es");
+                })
             : [];
-          const conExpediente = esta ? gente.filter((r) => g.usoDe(r, "ambos") !== undefined).length : 0;
+          const conExpediente = esta ? gente.filter((r) => g.usoDe(r, lote) !== undefined).length : 0;
           return (
             <div className="fila" key={x.rol} data-abierta={esta}>
               <button type="button" className="fila__b" aria-expanded={esta} onClick={() => abrir(x.rol)}>
@@ -448,7 +486,10 @@ export function SeccionesEstacionamiento({
                   {x.rol}
                   <span className="fila__track" aria-hidden="true"><i style={{ width: `${Math.round((x.cajonesAlaVez / topeCajones) * 100)}%` }} /></span>
                 </span>
-                <span className="fila__a">{cajon(x.cajonesAlaVez)} · {dur(x.medianaMin)}</span>
+                <span className="fila__a">
+                  {cajon(x.cajonesAlaVez)}
+                  {oc && cupoTotal ? ` (${pct(x.cajonesAlaVez, cupoTotal)} del ${nombreLote(oc.lote)})` : ""} · {dur(x.medianaMin)}
+                </span>
                 <span className="fila__flecha" aria-hidden="true">›</span>
               </button>
               {esta && (
@@ -483,9 +524,9 @@ export function SeccionesEstacionamiento({
                     todos={registros}
                     rol={rol}
                     vacio={textoVacio(cargando, registros, false)}
-                    linea={g.linea("ambos")}
+                    linea={g.linea(lote)}
                     avisosExtra={g.avisosExtra}
-                    orden="por veces que entró, de más a menos"
+                    orden={`${ordenPersonas}, ${desc ? "de más a menos" : "de menos a más"}`}
                   />
                 </div>
               )}
