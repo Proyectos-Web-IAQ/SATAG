@@ -458,6 +458,8 @@ a { color: var(--primary-strong); }
 .admin-payment-row strong { color: var(--ink); white-space: nowrap; }
 .admin-payment-row span { color: var(--muted); font-size: 0.82rem; font-weight: 600; text-align: right; }
 .admin-paid-hint { background: #eaf6ee; border-radius: var(--radius); color: #1f6b3a; padding: 10px 12px; }
+/* Bloque 85: un cobro devuelto sigue a la vista, apagado y tachado. */
+.admin-payment-row--devuelto strong { color: var(--muted); font-weight: 700; }
 
 @media (max-width: 480px) {
   .admin-payment-row { display: grid; }

@@ -66,6 +66,9 @@ const RUTAS = [
       // La clase de la zona que se recorre minuto a minuto: solo existe si la
       // grafica de ocupacion ya no usa los blancos de cada dos horas (5-oct).
       { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },
+      // El nombre del parametro viaja en la llamada: sobrevive a la minificacion. Solo
+      // debe aparecer DESPUES de aplicar el bloque 85 (va antes del cliente).
+      { texto: "p_folio_recibo", que: "Administracion devuelve un cobro antes de instalar, atado al recibo que confirmo (bloque 85)" },
     ],
   },
 ];

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Registro, TipoUsuario } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import {
+  devolverPago,
   listRegistros,
   registrarPago,
   validarPermisoMenor,
@@ -44,6 +45,11 @@ const sem = (n: number) => (n === 0 ? "ok" : n <= 4 ? "warn" : "alert");
 const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
 const porCobrar = (r: Registro) => r.estado === "pendiente" && r.pagos.length === 0;
+
+// Bloque 85: se devuelve un cobro VIGENTE mientras el TAG no este instalado. Es
+// el unico filtro, y la base lo vuelve a comprobar: esto solo decide si el
+// boton se ofrece.
+const puedeDevolver = (r: Registro) => r.pagos.length > 0 && !r.noDispositivo && !r.fechaInstalacion && !r.instaladoEn;
 
 const PAGINA = 25;
 type FiltroAdmin = "todos" | "por-cobrar" | "pagado" | "baja";
@@ -149,8 +155,8 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
   }
 
   function confirmarPago(r: Registro, pago: PagoCapturado) {
-    // El cambio de tipo se dice ANTES de cobrar: el pago no se puede deshacer y
-    // la corrección queda en la bitácora del expediente.
+    // El cambio de tipo se dice ANTES de cobrar: la corrección queda en la
+    // bitácora del expediente aunque el pago se devuelva después (bloque 85).
     const corrige = pago.tipoUsuario !== r.tipoUsuario;
     const parentescoAntes = r.parentescoOtro?.trim() || null;
     const parentesco = pago.parentescoOtro === null ? ""
@@ -183,6 +189,29 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
       confirmLabel: "Aceptar el permiso",
       action: () => validarPermisoMenor(r.id, nombreSesion),
       ok: () => `Permiso aceptado para ${r.folio}. Ya se puede cobrar.`,
+    });
+  }
+
+  // Bloque 85. Se confirma como el cobro: el dinero sale en ese momento y la
+  // devolución no se deshace desde el panel.
+  function confirmarDevolucion(r: Registro, motivo: string) {
+    const pago = r.pagos[r.pagos.length - 1];
+    // Un expediente dado de baja sigue en baja: solo sale el dinero.
+    const enBaja = r.estado === "baja";
+    setConfirm({
+      title: "Devolver el pago",
+      message: `Se registrará la devolución de ${dinero.format(pago.monto)} del recibo ${pago.folio ?? "sin folio"} de ${r.folio}, ${r.usuarioNombre}. `
+        + "Usted entrega el efectivo en este momento y la salida aparecerá en el siguiente corte de caja. "
+        + (enBaja
+          ? "El expediente sigue dado de baja: solo se registra la salida del dinero. "
+          : "El expediente vuelve a «Por cobrar» y TI deja de verlo en su cola. ")
+        + `Motivo: «${motivo}». ¿Continuar?`,
+      confirmLabel: "Devolver el pago",
+      // Viaja el recibo que se confirmo: la base devuelve ESE cobro y ninguno otro.
+      action: () => devolverPago(r.id, motivo, pago.folio),
+      ok: (resultado) => `Pago devuelto · recibo ${resultado.folioRecibo ?? pago.folio ?? ""} (${r.folio}). `
+        + (enBaja ? "El expediente sigue dado de baja." : "El expediente vuelve a «Por cobrar».")
+        + (resultado.yaCortado ? " Ese cobro ya estaba en un corte cerrado: la devolución sale en el siguiente." : ""),
     });
   }
 
@@ -251,7 +280,12 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
                         onSubmit={(pago) => confirmarPago(r, pago)} />
                     </>
                   ) : (
-                    <EstadoPago r={r} />
+                    <>
+                      <EstadoPago r={r} />
+                      {puedeDevolver(r) && (
+                        <FormDevolucion r={r} busy={busy} onSubmit={(motivo) => confirmarDevolucion(r, motivo)} />
+                      )}
+                    </>
                   )}
                   {/* SC-008: la evidencia va al final y bajo demanda. Aquí sirve
                       para cotejar quién firmó al confirmar el tipo de usuario. */}
@@ -436,7 +470,7 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
 }
 
 function HistorialPagos({ r }: { r: Registro }) {
-  if (r.pagos.length === 0) return null;
+  if (r.pagos.length === 0 && r.devoluciones.length === 0) return null;
   return (
     <div className="admin-payment-history">
       <p className="ti-section-title">Pagos registrados</p>
@@ -446,6 +480,63 @@ function HistorialPagos({ r }: { r: Registro }) {
           <span>{pago.fecha ?? "Fecha no disponible"} · {pago.cobradoPor ?? "Sin responsable"}{pago.folio ? ` · ${pago.folio}` : ""}</span>
         </div>
       ))}
+      {/* Bloque 85: el cobro devuelto no se borra. Se ve tachado, con quién lo
+          devolvió, cuándo y por qué. */}
+      {r.devoluciones.map((d, i) => (
+        <div className="admin-payment-row admin-payment-row--devuelto" key={`dev-${d.folio ?? i}`}>
+          <strong><s>{dinero.format(d.monto)}</s> devuelto</strong>
+          <span>
+            Recibo {d.folio ?? "sin folio"} · devuelto el {d.devueltoEn} por {d.devueltoPor ?? "sin responsable"}
+            {d.motivo ? ` · «${d.motivo}»` : ""}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// Bloque 85: Administración devuelve el cobro mientras el TAG no esté
+// instalado. Va cerrado y debajo del estado del pago: es la excepción, no el
+// flujo, y no debe competir con lo demás de la tarjeta.
+function FormDevolucion({ r, busy, onSubmit }: {
+  r: Registro;
+  busy: boolean;
+  onSubmit: (motivo: string) => void;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const pago = r.pagos[r.pagos.length - 1];
+  if (!abierto) {
+    return (
+      <button type="button" className="ghost-action" style={{ alignSelf: "flex-start" }} disabled={busy}
+        onClick={() => setAbierto(true)}>
+        Devolver el pago…
+      </button>
+    );
+  }
+  const limpio = motivo.trim();
+  return (
+    <div className="ti-form admin-payment-form">
+      <p className="ti-section-title">Devolver el pago</p>
+      <p className="ti-hint" style={{ margin: "0 0 12px" }}>
+        Se devuelven {dinero.format(pago.monto)} del recibo {pago.folio ?? "sin folio"}. El cobro no se borra: queda en
+        el historial marcado como devuelto, y la salida de dinero aparece en el siguiente corte de caja.
+      </p>
+      <div className="field">
+        <span>Motivo de la devolución</span>
+        <textarea className="input" rows={3} maxLength={500} value={motivo}
+          placeholder="Ej. se cobró al expediente equivocado"
+          onChange={(e) => setMotivo(e.target.value)} />
+      </div>
+      <div className="chip-row">
+        <button type="button" className="primary-action" disabled={busy || !limpio} onClick={() => onSubmit(limpio)}>
+          {`Devolver ${dinero.format(pago.monto)}`}
+        </button>
+        <button type="button" className="ghost-action" disabled={busy}
+          onClick={() => { setAbierto(false); setMotivo(""); }}>
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }

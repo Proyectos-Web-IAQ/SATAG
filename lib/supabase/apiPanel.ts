@@ -23,6 +23,7 @@ import type {
   Movimiento,
   MotivoIncompleto,
   Pago,
+  PagoDevuelto,
   PagoReciente,
   ProcedenciaTag,
   OrigenExpediente,
@@ -53,6 +54,10 @@ export interface AccionResultado {
   tipoUsuario?: TipoUsuario;
   tipoCorregido?: boolean;
   tipoAnterior?: TipoUsuario | null;
+  // Bloque 85: lo devuelve devolver_pago. yaCortado = el cobro ya estaba en un
+  // corte cerrado, y su devolucion sale en el corte siguiente.
+  monto?: number;
+  yaCortado?: boolean;
 }
 
 // Errores de red/sesion en espanol. Los errores de negocio de los RPCs
@@ -87,6 +92,11 @@ interface PagoRow {
   folio_recibo: string | null;
   fecha: string | null;
   created_at: string;
+  // Bloque 85. Sin el bloque aplicado PostgREST rechaza el select entero: por
+  // eso el 85 va ANTES de publicar este cliente.
+  devuelto_en: string | null;
+  devuelto_por: string | null;
+  devolucion_motivo: string | null;
 }
 interface SolicitudRow {
   id: string;
@@ -164,7 +174,7 @@ const SELECT_REGISTRO = `
   motivo_baja, fecha_baja, fecha_adquisicion, fecha_instalacion, instalado_por, instalado_en,
   permiso_url, permiso_validado, permiso_validado_por, permiso_validado_en,
   observaciones, created_at,
-  pagos ( monto, metodo, cobrado_por, folio_recibo, fecha, created_at ),
+  pagos ( monto, metodo, cobrado_por, folio_recibo, fecha, created_at, devuelto_en, devuelto_por, devolucion_motivo ),
   registro_estacionamientos ( estacionamiento_clave ),
   solicitudes ( id, tipo, detalle, atendida, created_at, solicitante_nombre, solicitante_rol, tramite_solicitado, alumno_nombre, alumno_grado, vehiculo_desc ),
   movimientos ( tipo, fecha, motivo, hecho_por, no_dispositivo_anterior, no_dispositivo_nuevo, created_at )
@@ -214,13 +224,20 @@ function mapSolicitud(s: SolicitudRow): Solicitud {
 }
 
 function mapRegistro(r: RegistroRow): Registro {
-  const pagos: Pago[] = [...r.pagos].sort(porCreatedAt).map((p) => ({
+  // Bloque 85: un pago devuelto NO es un pago. Se separa aqui, una sola vez,
+  // para que cada `pagos.length` del panel siga significando «ya pago».
+  const aPago = (p: PagoRow): Pago => ({
     monto: Number(p.monto),
     metodo: "efectivo",
     cobradoPor: p.cobrado_por,
     fecha: p.fecha,
     folio: p.folio_recibo,
-  }));
+  });
+  const ordenados = [...r.pagos].sort(porCreatedAt);
+  const pagos: Pago[] = ordenados.filter((p) => !p.devuelto_en).map(aPago);
+  const devoluciones: PagoDevuelto[] = ordenados
+    .filter((p): p is PagoRow & { devuelto_en: string } => Boolean(p.devuelto_en))
+    .map((p) => ({ ...aPago(p), devueltoEn: fechaLocal(p.devuelto_en), devueltoPor: p.devuelto_por, motivo: p.devolucion_motivo }));
   const solicitudes: Solicitud[] = [...r.solicitudes].sort(porCreatedAt).map(mapSolicitud);
   const movimientos: Movimiento[] = [...r.movimientos].sort(porCreatedAt).map((m) => ({
     tipo: m.tipo as TipoMovimiento,
@@ -268,6 +285,7 @@ function mapRegistro(r: RegistroRow): Registro {
     fechaBaja: r.fecha_baja,
     observaciones: r.observaciones,
     pagos,
+    devoluciones,
     solicitudes,
     movimientos,
     createdAt: r.created_at,
@@ -489,6 +507,15 @@ export async function registrarPago(
   });
 }
 
+// Bloque 85: Administracion devuelve el cobro de un expediente que aun no tiene
+// TAG instalado. Es el unico filtro, y lo aplica la base: aqui no se decide nada.
+// Quien devuelve sale de la sesion; el motivo es obligatorio.
+// El recibo es el que la pantalla mostro: si entre la carga y el clic alguien
+// devolvio y volvio a cobrar, la base rechaza en vez de devolver otro cobro.
+export async function devolverPago(id: string, motivo: string, folioRecibo: string | null): Promise<AccionResultado> {
+  return rpc("devolver_pago", { p_registro_id: id, p_motivo: motivo.trim(), p_folio_recibo: folioRecibo });
+}
+
 // Instalacion completa en UNA transaccion: asigna estacionamiento y activa el
 // TAG. Si cualquier validacion falla, el SQL 31 revierte ambas operaciones.
 export async function instalarTagConEstacionamiento(
@@ -672,7 +699,7 @@ function num(v: unknown): number {
   return typeof v === "number" ? v : Number(v ?? 0);
 }
 
-interface DiaCajaRow { dia: unknown; cantidad: unknown; subtotal: unknown }
+interface DiaCajaRow { dia: unknown; cantidad: unknown; subtotal: unknown; devoluciones?: unknown; devuelto?: unknown }
 
 // estado_caja: que hay en la caja ahora (sin cortar) + acumulados de venta.
 // Todo lo temporal lo calcula la BD en hora local (nunca sobre pagos.fecha).
@@ -683,6 +710,10 @@ export async function obtenerEstadoCaja(): Promise<EstadoCaja> {
   const dias = Array.isArray(d.desglosePorDia) ? (d.desglosePorDia as DiaCajaRow[]) : [];
   return {
     totalEnCaja: num(d.totalEnCaja),
+    // Bloque 85. Sin el bloque no vienen: lo cobrado es todo lo que hay.
+    cobradoEnCaja: d.cobradoEnCaja === undefined ? num(d.totalEnCaja) : num(d.cobradoEnCaja),
+    devueltoEnCaja: num(d.devueltoEnCaja),
+    devolucionesEnCaja: num(d.devolucionesEnCaja),
     pagosEnCaja: num(d.pagosEnCaja),
     diasDeCobro: num(d.diasDeCobro),
     primerCobro: (d.primerCobro as string | null) ?? null,
@@ -690,6 +721,8 @@ export async function obtenerEstadoCaja(): Promise<EstadoCaja> {
       dia: String(x.dia),
       cantidad: num(x.cantidad),
       subtotal: num(x.subtotal),
+      devoluciones: num(x.devoluciones),
+      devuelto: num(x.devuelto),
     })),
     ultimoCorte: (d.ultimoCorte as string | null) ?? null,
     vendidoMes: num(d.vendidoMes),
@@ -720,6 +753,9 @@ export async function cortarCaja(
     diferencia: num(d.diferencia),
     pagosCortados: num(d.pagosCortados),
     diasDeCobro: num(d.diasDeCobro),
+    totalCobrado: d.totalCobrado === undefined ? num(d.totalEsperado) : num(d.totalCobrado),
+    totalDevuelto: num(d.totalDevuelto),
+    devolucionesCortadas: num(d.devolucionesCortadas),
   };
 }
 
@@ -731,6 +767,8 @@ interface CorteRow {
   periodo_hasta: string;
   total_esperado: number | string;
   cantidad_pagos: number | string;
+  total_devuelto: number | string;
+  cantidad_devoluciones: number | string;
   dias_de_cobro: number | string;
   efectivo_contado: number | string;
   diferencia: number | string;
@@ -743,7 +781,7 @@ interface CorteRow {
 export async function listCortes(): Promise<CorteCaja[]> {
   const { data, error } = await supabaseAuth
     .from("cortes_caja")
-    .select("id, folio_corte, cortado_por, periodo_desde, periodo_hasta, total_esperado, cantidad_pagos, dias_de_cobro, efectivo_contado, diferencia, observaciones, created_at")
+    .select("id, folio_corte, cortado_por, periodo_desde, periodo_hasta, total_esperado, cantidad_pagos, total_devuelto, cantidad_devoluciones, dias_de_cobro, efectivo_contado, diferencia, observaciones, created_at")
     .order("created_at", { ascending: false });
   if (error) throw new Error(traducirError(error.message));
   return (data as unknown as CorteRow[]).map((c) => ({
@@ -754,6 +792,8 @@ export async function listCortes(): Promise<CorteCaja[]> {
     periodoHasta: c.periodo_hasta,
     totalEsperado: num(c.total_esperado),
     cantidadPagos: num(c.cantidad_pagos),
+    totalDevuelto: num(c.total_devuelto),
+    cantidadDevoluciones: num(c.cantidad_devoluciones),
     diasDeCobro: num(c.dias_de_cobro),
     efectivoContado: num(c.efectivo_contado),
     diferencia: num(c.diferencia),
@@ -768,6 +808,10 @@ interface PagoRecienteRow {
   created_at: string;
   cobrado_por: string | null;
   corte_id: string | null;
+  devuelto_en: string | null;           // bloque 85
+  devuelto_por: string | null;
+  devolucion_motivo: string | null;
+  devolucion_corte_id: string | null;
   // Embed to-one via FK: PostgREST lo entrega como objeto; se contempla el array por robustez.
   registros:
     | { folio: string; usuario_nombre_completo: string }
@@ -780,27 +824,32 @@ interface PagoRecienteRow {
 // traen los cobros de ese corte y no todo el historial. Tope alto por seguridad.
 // La RLS de pagos deja leer a admin/ti/consulta/super; esta vista solo la usa
 // Finanzas (admin/super).
+//
+// Bloque 85: el corte tambien lista sus SALIDAS. Una devolucion entra al corte
+// en que se devolvio el dinero (devolucion_corte_id), que puede no ser el del
+// cobro. Por eso son dos consultas: los cobros del corte y las devoluciones del
+// corte, en una sola lista ordenada por cuando paso cada cosa.
 export async function listPagosDeCorte(corteId: string | null): Promise<PagoReciente[]> {
-  let q = supabaseAuth
-    .from("pagos")
-    .select("folio_recibo, monto, created_at, cobrado_por, corte_id, registros ( folio, usuario_nombre_completo )")
-    .order("created_at", { ascending: false })
-    .limit(1000);
-  q = corteId === null ? q.is("corte_id", null) : q.eq("corte_id", corteId);
-  const { data, error } = await q;
-  if (error) throw new Error(traducirError(error.message));
-  return (data as unknown as PagoRecienteRow[]).map((p) => {
+  const COLS = "folio_recibo, monto, created_at, cobrado_por, corte_id, devuelto_en, devuelto_por, devolucion_motivo, devolucion_corte_id, registros ( folio, usuario_nombre_completo )";
+  let cobros = supabaseAuth.from("pagos").select(COLS).order("created_at", { ascending: false }).limit(1000);
+  cobros = corteId === null ? cobros.is("corte_id", null) : cobros.eq("corte_id", corteId);
+  let salidas = supabaseAuth.from("pagos").select(COLS).not("devuelto_en", "is", null).order("devuelto_en", { ascending: false }).limit(1000);
+  salidas = corteId === null ? salidas.is("devolucion_corte_id", null) : salidas.eq("devolucion_corte_id", corteId);
+  const [c, s] = await Promise.all([cobros, salidas]);
+  if (c.error) throw new Error(traducirError(c.error.message));
+  if (s.error) throw new Error(traducirError(s.error.message));
+  const base = (p: PagoRecienteRow) => {
     const reg = Array.isArray(p.registros) ? p.registros[0] : p.registros;
-    return {
-      folioRecibo: p.folio_recibo,
-      monto: num(p.monto),
-      fecha: p.created_at,
-      cobradoPor: p.cobrado_por,
-      registroFolio: reg?.folio ?? null,
-      usuarioNombre: reg?.usuario_nombre_completo ?? null,
-      cortado: p.corte_id !== null,
-    };
-  });
+    return { folioRecibo: p.folio_recibo, monto: num(p.monto), registroFolio: reg?.folio ?? null, usuarioNombre: reg?.usuario_nombre_completo ?? null };
+  };
+  const filasCobro: PagoReciente[] = (c.data as unknown as PagoRecienteRow[]).map((p) => ({
+    ...base(p), fecha: p.created_at, cobradoPor: p.cobrado_por, cortado: p.corte_id !== null, devolucion: false, motivo: null,
+  }));
+  const filasSalida: PagoReciente[] = (s.data as unknown as PagoRecienteRow[]).map((p) => ({
+    ...base(p), fecha: p.devuelto_en ?? p.created_at, cobradoPor: p.devuelto_por, cortado: p.devolucion_corte_id !== null,
+    devolucion: true, motivo: p.devolucion_motivo,
+  }));
+  return [...filasCobro, ...filasSalida].sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 
 // ---- Medicion de la instalacion (metrica que pidio Contabilidad) ----
@@ -815,8 +864,8 @@ interface InstalacionRow {
   // (uno-a-muchos, igual que en SELECT_REGISTRO). Se admite el objeto suelto
   // por si la relacion se declara to-one algun dia.
   pagos:
-    | { created_at: string }
-    | { created_at: string }[]
+    | { created_at: string; devuelto_en: string | null }
+    | { created_at: string; devuelto_en: string | null }[]
     | null;
 }
 
@@ -839,7 +888,7 @@ interface InstalacionRow {
 export async function listInstalaciones(): Promise<InstalacionMedida[]> {
   const { data, error } = await supabaseAuth
     .from("registros")
-    .select("folio, fecha_instalacion, created_at, instalado_en, instalado_por_email, pagos ( created_at )")
+    .select("folio, fecha_instalacion, created_at, instalado_en, instalado_por_email, pagos ( created_at, devuelto_en )")
     .not("fecha_instalacion", "is", null)
     .order("instalado_en", { ascending: false, nullsFirst: false })
     .limit(2000);
@@ -848,9 +897,10 @@ export async function listInstalaciones(): Promise<InstalacionMedida[]> {
     // El PRIMER cobro, no un cobro cualquiera: un expediente puede tener mas de
     // uno (reinstalacion, segundo TAG) y PostgREST no garantiza el orden del
     // embed. El que arranca la espera hasta la instalacion es el mas antiguo.
+    // Bloque 85: un cobro devuelto no arranca ninguna espera; cuenta el vigente.
     const pago = Array.isArray(r.pagos)
-      ? [...r.pagos].sort(porCreatedAt)[0]
-      : r.pagos;
+      ? [...r.pagos].filter((p) => !p.devuelto_en).sort(porCreatedAt)[0]
+      : r.pagos && !r.pagos.devuelto_en ? r.pagos : undefined;
     return {
       folio: r.folio,
       fechaInstalacion: r.fecha_instalacion,

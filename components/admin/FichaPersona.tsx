@@ -207,7 +207,10 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
   if (r.estado === "activo" && r.estacionamientos.length === 0) avisos.push("Está activo y no tiene derecho de pluma asignado.");
   const pendientes = r.solicitudes.filter((s) => !s.atendida).length;
   if (pendientes > 0) avisos.push(pendientes === 1 ? "Tiene una solicitud sin atender." : `Tiene ${pendientes} solicitudes sin atender.`);
-  if (r.estado === "pendiente" && r.origenExpediente === "satag" && r.pagos.length === 0) avisos.push("Todavía no pasa por caja.");
+  if (r.estado === "pendiente" && r.origenExpediente === "satag" && r.pagos.length === 0) {
+    // Bloque 85: no es lo mismo no haber pagado que haber pagado y que se le devolviera.
+    avisos.push(r.devoluciones.length > 0 ? "Su pago se devolvió y está por cobrar de nuevo." : "Todavía no pasa por caja.");
+  }
   for (const l of lotesUsados) {
     if (!r.estacionamientos.includes(l)) avisos.push(`Entró por el ${l} y no tiene esa pluma en SATAG.`);
   }
@@ -289,13 +292,18 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
 
           <section className="ficha__bloque">
             <h3>Actividad</h3>
-            {r.movimientos.length === 0 && r.pagos.length === 0 ? (
+            {r.movimientos.length === 0 && r.pagos.length === 0 && r.devoluciones.length === 0 ? (
               <p className="ficha__vacio">Sin movimientos registrados.</p>
             ) : (
               <ul className="actividad">
                 {[...r.movimientos]
-                  .map((m) => ({ fecha: m.fecha, texto: `${m.tipo.charAt(0).toUpperCase()}${m.tipo.slice(1)}${m.motivo ? `: ${m.motivo}` : ""}${m.hechoPor ? ` · ${m.hechoPor}` : ""}` }))
+                  // La devolucion (bloque 85) ya trae su frase completa en el motivo.
+                  .map((m) => ({ fecha: m.fecha, texto: m.tipo === "devolucion"
+                    ? `${m.motivo ?? "Devolución del pago"}${m.hechoPor ? ` · ${m.hechoPor}` : ""}`
+                    : `${m.tipo.charAt(0).toUpperCase()}${m.tipo.slice(1)}${m.motivo ? `: ${m.motivo}` : ""}${m.hechoPor ? ` · ${m.hechoPor}` : ""}` }))
                   .concat(r.pagos.map((p) => ({ fecha: p.fecha ?? "", texto: `Cobro de $${p.monto}${p.cobradoPor ? ` · ${p.cobradoPor}` : ""}` })))
+                  // El cobro devuelto sigue siendo algo que paso: se lista, marcado.
+                  .concat(r.devoluciones.map((p) => ({ fecha: p.fecha ?? "", texto: `Cobro de $${p.monto} (devuelto después)${p.cobradoPor ? ` · ${p.cobradoPor}` : ""}` })))
                   .sort((a, b) => (a.fecha < b.fecha ? 1 : -1))
                   .map((a, i) => (
                     <li key={i}><time>{fechaCorta(a.fecha)}</time><span>{a.texto}</span></li>
