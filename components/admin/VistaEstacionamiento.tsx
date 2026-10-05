@@ -741,6 +741,8 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
                 estacionamientos: p.estacionamientos,
                 tagsAnteriores: p.tagsAnteriores,
                 desde: p.desde,
+                tipoUsuario: p.tipoUsuario,
+                areaAdmin: p.areaAdmin,
               })),
               personas ?? null,
             )}
