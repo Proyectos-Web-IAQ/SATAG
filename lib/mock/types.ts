@@ -16,7 +16,11 @@ export type EvidenciaAceptacion = "electronica" | "fisica" | "no_localizada";
 // 'bloqueado' existe en la BD (12_registros.sql) aunque el panel aun no lo
 // produce: el tipo lo incluye para que un registro bloqueado no truene la UI.
 export type EstadoRegistro = "pendiente" | "activo" | "baja" | "bloqueado";
-export type TipoMovimiento = "alta" | "baja" | "reposicion" | "cambio" | "prueba" | "bloqueo" | "rectificacion";
+// "validacion" la agrego el bloque 76 (aceptar el permiso del menor) y "devolucion"
+// el 85 (Administracion devuelve un cobro antes de instalar).
+export type TipoMovimiento =
+  | "alta" | "baja" | "reposicion" | "cambio" | "prueba" | "bloqueo" | "rectificacion"
+  | "validacion" | "devolucion";
 
 export interface Estacionamiento {
   clave: string; // 'E1' | 'E2'
@@ -59,6 +63,17 @@ export interface Pago {
   cobradoPor: string | null;
   fecha: string | null;
   folio: string | null;
+}
+
+// Un cobro que Administracion devolvio antes de instalar (bloque 85). No se
+// borra: conserva su folio de recibo y gana cuando, quien y por que. Va en su
+// propia lista y NO en `pagos`, para que todo lo que pregunta «¿ya pago?»
+// (`pagos.length`) siga contestando bien sin tener que saber de devoluciones.
+export interface PagoDevuelto extends Pago {
+  /** Dia de la devolucion en hora de Queretaro (AAAA-MM-DD). */
+  devueltoEn: string;
+  devueltoPor: string | null;
+  motivo: string | null;
 }
 
 export type TipoSolicitud = "actualizacion" | "baja" | "nota";
@@ -187,7 +202,9 @@ export interface Registro {
   motivoBaja: string | null;
   fechaBaja: string | null;
   observaciones: string | null;
+  /** Solo los pagos VIGENTES. Los devueltos van en `devoluciones`. */
   pagos: Pago[];
+  devoluciones: PagoDevuelto[];
   solicitudes: Solicitud[];
   movimientos: Movimiento[];
   createdAt: string;
@@ -251,14 +268,19 @@ export interface CrearRegistroResultado {
 // dia local, así que 'dia' llega como 'YYYY-MM-DD' listo para mostrar.
 export interface DiaCaja {
   dia: string;
-  cantidad: number;
-  subtotal: number;
+  cantidad: number;          // cobros del dia
+  subtotal: number;          // lo cobrado ese dia
+  devoluciones: number;      // bloque 85; 0 si la base aun no las cuenta
+  devuelto: number;
 }
 
 // Foto de la caja actual: lo que aún no se ha cortado, más los acumulados que
 // responden "cuánto vendí". Lo devuelve el RPC estado_caja.
 export interface EstadoCaja {
-  totalEnCaja: number;
+  totalEnCaja: number;       // efectivo que debe haber: cobrado menos devuelto
+  cobradoEnCaja: number;     // bloque 85
+  devueltoEnCaja: number;    // bloque 85
+  devolucionesEnCaja: number;
   pagosEnCaja: number;
   diasDeCobro: number;       // días de cobro distintos sin cortar (semáforo)
   primerCobro: string | null;
@@ -277,6 +299,9 @@ export interface ResultadoCorte {
   diferencia: number;        // + sobrante, - faltante
   pagosCortados: number;
   diasDeCobro: number;
+  totalCobrado: number;      // bloque 85: totalEsperado = cobrado - devuelto
+  totalDevuelto: number;
+  devolucionesCortadas: number;
 }
 
 // Un cobro (ticket/recibo) del detalle de un corte o de la caja actual. Se carga
@@ -289,6 +314,10 @@ export interface PagoReciente {
   registroFolio: string | null;
   usuarioNombre: string | null;
   cortado: boolean;         // true = ya pertenece a un corte cerrado
+  // Bloque 85: la fila es una SALIDA (una devolucion), no un cobro. `fecha` es
+  // cuando se devolvio y `cobradoPor`, quien devolvio.
+  devolucion: boolean;
+  motivo: string | null;
 }
 
 // ---- Medición de la instalación (métrica que pidió Contabilidad) ----
@@ -383,8 +412,10 @@ export interface CorteCaja {
   cortadoPor: string;
   periodoDesde: string | null;
   periodoHasta: string;
-  totalEsperado: number;
+  totalEsperado: number;     // desde el bloque 85: cobrado menos devuelto
   cantidadPagos: number;
+  totalDevuelto: number;     // bloque 85; 0 en los cortes anteriores
+  cantidadDevoluciones: number;
   diasDeCobro: number;
   efectivoContado: number;
   diferencia: number;

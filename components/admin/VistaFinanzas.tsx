@@ -44,20 +44,25 @@ function DetalleCobros({ cargando, error, lista, onReintentar }: {
       </p>
     );
   }
-  if (lista.length === 0) return <p className="ti-hint" style={{ margin: 0 }}>Sin cobros en este periodo.</p>;
+  if (lista.length === 0) return <p className="ti-hint" style={{ margin: 0 }}>Sin cobros ni devoluciones en este periodo.</p>;
   return (
     <div className="table-wrap">
       <table className="admin-table">
         <thead>
-          <tr><th>Fecha</th><th>Recibo</th><th>Expediente</th><th>Monto</th><th>Cobrado por</th></tr>
+          <tr><th>Fecha</th><th>Recibo</th><th>Expediente</th><th>Monto</th><th>Cobrado o devuelto por</th></tr>
         </thead>
         <tbody>
+          {/* Bloque 85: una devolucion es una SALIDA. Va en su renglon, con signo
+              y con el motivo, aunque el cobro que devuelve este en otro corte. */}
           {lista.map((p, i) => (
-            <tr key={p.folioRecibo ?? `${p.fecha}-${i}`}>
+            <tr key={`${p.devolucion ? "dev" : "cob"}-${p.folioRecibo ?? `${p.fecha}-${i}`}`}>
               <td>{fechaHora(p.fecha)}</td>
-              <td>{p.folioRecibo ?? "—"}</td>
-              <td>{p.registroFolio ?? "—"}{p.usuarioNombre ? ` · ${p.usuarioNombre}` : ""}</td>
-              <td>{dinero.format(p.monto)}</td>
+              <td>{p.folioRecibo ?? "—"}{p.devolucion ? " · devolución" : ""}</td>
+              <td>
+                {p.registroFolio ?? "—"}{p.usuarioNombre ? ` · ${p.usuarioNombre}` : ""}
+                {p.devolucion && p.motivo ? <><br /><span className="ti-hint">Motivo: {p.motivo}</span></> : null}
+              </td>
+              <td>{p.devolucion ? `−${dinero.format(p.monto)}` : dinero.format(p.monto)}</td>
               <td>{p.cobradoPor ?? "—"}</td>
             </tr>
           ))}
@@ -209,6 +214,10 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
 
   const totalEnCaja = estado?.totalEnCaja ?? 0;
   const pagosEnCaja = estado?.pagosEnCaja ?? 0;
+  // Bloque 85: lo devuelto sale de la caja. totalEnCaja ya viene neto.
+  const devolucionesEnCaja = estado?.devolucionesEnCaja ?? 0;
+  const devueltoEnCaja = estado?.devueltoEnCaja ?? 0;
+  const cobradoEnCaja = estado?.cobradoEnCaja ?? totalEnCaja;
   const dias = estado?.diasDeCobro ?? 0;
   // El color y la leyenda miran los días naturales; `dias` se queda para la
   // regla de la mezcla, que es otra cosa.
@@ -217,7 +226,10 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
   const contadoNum = Number(contado.replace(",", "."));
   const contadoValido = contado !== "" && Number.isFinite(contadoNum) && contadoNum >= 0;
   const diferencia = contadoValido ? Number((contadoNum - totalEnCaja).toFixed(2)) : 0;
-  const hayPagos = pagosEnCaja > 0;
+  // Una devolucion sola tambien se corta: el dinero salio y el corte lo registra.
+  const hayPagos = pagosEnCaja > 0 || devolucionesEnCaja > 0;
+  const movimientosEnCaja = `${pagosEnCaja} cobro(s)`
+    + (devolucionesEnCaja > 0 ? ` y ${devolucionesEnCaja} devolución(es)` : "");
   const multidia = dias > 1;
   // El servidor exige explicación si el efectivo no cuadra o si el corte mezcla
   // varios días; la UI lo refleja para no dejar mandar algo que la BD rechazará.
@@ -235,9 +247,14 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
       title: "Cerrar corte de caja",
       danger: true,
       confirmLabel: "Cerrar corte",
-      message: `Se cerrará el corte de ${pagosEnCaja} cobro(s) por ${dinero.format(totalEnCaja)}. Usted contó ${dinero.format(contadoNum)}: ${signo}. La caja quedará en cero y este corte NO se podrá modificar después. ¿Continuar?`,
+      message: `Se cerrará el corte de ${movimientosEnCaja}`
+        + (devolucionesEnCaja > 0
+          ? `: ${dinero.format(cobradoEnCaja)} cobrado menos ${dinero.format(devueltoEnCaja)} devuelto, ${dinero.format(totalEnCaja)} esperado.`
+          : ` por ${dinero.format(totalEnCaja)}.`)
+        + ` Usted contó ${dinero.format(contadoNum)}: ${signo}. La caja quedará en cero y este corte NO se podrá modificar después. ¿Continuar?`,
       action: () => cortarCaja(contadoNum, nombreSesion, observaciones.trim()),
-      ok: (r) => `Corte ${r.folioCorte} cerrado · ${dinero.format(r.totalEsperado)} en ${r.pagosCortados} cobro(s)${r.diferencia !== 0 ? ` · diferencia ${dinero.format(r.diferencia)}` : " · cuadró exacto"}.`,
+      ok: (r) => `Corte ${r.folioCorte} cerrado · ${dinero.format(r.totalEsperado)} en ${r.pagosCortados} cobro(s)`
+        + `${r.devolucionesCortadas > 0 ? ` y ${r.devolucionesCortadas} devolución(es)` : ""}${r.diferencia !== 0 ? ` · diferencia ${dinero.format(r.diferencia)}` : " · cuadró exacto"}.`,
     });
   }
 
@@ -266,7 +283,8 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
           <span className="metric-label">En caja ahora</span>
           <span className="metric-value">{dinero.format(totalEnCaja)}</span>
           <span className="metric-label" style={{ fontWeight: 600 }}>
-            {pagosEnCaja} cobro(s)
+            {movimientosEnCaja}
+            {devolucionesEnCaja > 0 ? ` · ${dinero.format(devueltoEnCaja)} devuelto` : ""}
             {diasSinCortar !== null && diasSinCortar > 1 ? ` · ${diasSinCortar} días sin cortar` : ""}
           </span>
         </div>
@@ -292,19 +310,25 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
         )}
 
         {!hayPagos ? (
-          <p className="ti-empty">✓ La caja está en ceros. No hay cobros pendientes de cortar.</p>
+          <p className="ti-empty">✓ La caja está en ceros. No hay cobros ni devoluciones pendientes de cortar.</p>
         ) : (
           <>
-            {(estado?.desglosePorDia.length ?? 0) > 1 && (
+            {((estado?.desglosePorDia.length ?? 0) > 1 || devolucionesEnCaja > 0) && (
               <div className="table-wrap" style={{ marginBottom: 14 }}>
                 <table className="admin-table">
-                  <thead><tr><th>Día de cobro</th><th>Cobros</th><th>Subtotal</th></tr></thead>
+                  <thead>
+                    <tr>
+                      <th>Día</th><th>Cobros</th><th>Subtotal</th>
+                      {devolucionesEnCaja > 0 && <><th>Devoluciones</th><th>Devuelto</th></>}
+                    </tr>
+                  </thead>
                   <tbody>
                     {estado?.desglosePorDia.map((d) => (
                       <tr key={d.dia}>
                         <td>{diaCorto(d.dia)}</td>
                         <td>{d.cantidad}</td>
                         <td>{dinero.format(d.subtotal)}</td>
+                        {devolucionesEnCaja > 0 && <><td>{d.devoluciones}</td><td>{d.devuelto > 0 ? `−${dinero.format(d.devuelto)}` : "—"}</td></>}
                       </tr>
                     ))}
                   </tbody>
@@ -320,7 +344,7 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
 
             <p style={{ margin: "0 0 12px" }}>
               <button type="button" className="link-action" onClick={() => toggleDetalle(CLAVE_CAJA, null)}>
-                {expandido === CLAVE_CAJA ? "▾ Ocultar" : "▸ Ver"} los {pagosEnCaja} cobro(s) en caja
+                {expandido === CLAVE_CAJA ? "▾ Ocultar" : "▸ Ver"} {movimientosEnCaja} en caja
               </button>
             </p>
             {expandido === CLAVE_CAJA && (
@@ -341,7 +365,8 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
 
               {contadoValido && (
                 <p className={`notice ${diferencia === 0 ? "" : "submit-error"}`} style={{ margin: "0 0 12px" }}>
-                  <strong>Esperado:</strong> {dinero.format(totalEnCaja)} ·{" "}
+                  <strong>Esperado:</strong> {dinero.format(totalEnCaja)}
+                  {devolucionesEnCaja > 0 ? ` (${dinero.format(cobradoEnCaja)} cobrado − ${dinero.format(devueltoEnCaja)} devuelto)` : ""} ·{" "}
                   <strong>Diferencia:</strong>{" "}
                   {diferencia === 0
                     ? "cuadra exacto"
@@ -386,7 +411,7 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
               <thead>
                 <tr>
                   <th>Folio</th><th>Fecha</th><th>Esperado</th><th>Contado</th>
-                  <th>Diferencia</th><th>Cobros</th><th>Por</th><th>Observaciones</th>
+                  <th>Diferencia</th><th>Cobros</th><th>Devuelto</th><th>Por</th><th>Observaciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -406,12 +431,13 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
                             : `−${dinero.format(Math.abs(c.diferencia))}`}
                       </td>
                       <td>{c.cantidadPagos}</td>
+                      <td>{c.cantidadDevoluciones > 0 ? `−${dinero.format(c.totalDevuelto)} (${c.cantidadDevoluciones})` : "—"}</td>
                       <td>{c.cortadoPor}</td>
                       <td>{c.observaciones ?? "—"}</td>
                     </tr>
                     {expandido === c.id && (
                       <tr>
-                        <td colSpan={8} style={{ background: "#f7f9fc" }}>
+                        <td colSpan={9} style={{ background: "#f7f9fc" }}>
                           <DetalleCobros cargando={cargandoDet === c.id} error={errorDet[c.id] ?? null}
                             lista={pagosPorCorte[c.id] ?? []} onReintentar={() => cargarDetalle(c.id, c.id)} />
                         </td>

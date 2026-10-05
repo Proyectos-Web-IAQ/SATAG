@@ -68,6 +68,9 @@ const RUTAS = [
       { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },
       // El nombre del departamento docente viaja tal cual en el puente a ZK.
       { texto: "PREESCOLAR DOCENTES", que: "el puente a ZK usa los departamentos que ZK tiene desde el 5-oct" },
+      // El nombre del parametro viaja en la llamada: sobrevive a la minificacion. Solo
+      // debe aparecer DESPUES de aplicar el bloque 85 (va antes del cliente).
+      { texto: "p_folio_recibo", que: "Administracion devuelve un cobro antes de instalar, atado al recibo que confirmo (bloque 85)" },
     ],
   },
 ];
