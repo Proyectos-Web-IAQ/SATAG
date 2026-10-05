@@ -406,6 +406,15 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
   }
 
   const porTag = new Map((padron ?? []).map((p) => [p.noDispositivo, p]));
+  // Un TAG que el expediente YA NO usa sigue siendo suyo en la bitacora: sus pasadas
+  // viejas tienen dueno. Sin esto, un TAG cambiado o repuesto salia como credencial
+  // «de nadie» (el 14273782, el TAG externo que se cambio por uno del IAQ el 28-sep).
+  // El TAG vigente de otro expediente manda: solo se usa si nadie lo tiene hoy.
+  const porTagAnterior = new Map<string, PadronEstacionamiento>();
+  for (const p of padron ?? []) {
+    for (const t of p.tagsAnteriores) if (!porTag.has(t) && !porTagAnterior.has(t)) porTagAnterior.set(t, p);
+  }
+  const expedienteDe = (tarjeta: string) => porTag.get(tarjeta) ?? porTagAnterior.get(tarjeta);
 
   // LA REGLA QUE NO SE PUEDE OMITIR: el dueño se resuelve contra el padrón, NUNCA
   // contra el departamento que trae el evento. Las instalaciones del día cruzan la
@@ -422,7 +431,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
   // traduce 'padres' y 'maestro', no '4' ni '15': el respaldo nunca llego a
   // funcionar. Lo corrige grupoDeDepto, que es el mapa del catalogo de ZK.
   const rolDe = (tarjeta: string) => {
-    const r = porTag.get(tarjeta);
+    const r = expedienteDe(tarjeta);
     const deSatag = r ? GRUPO_POR_TIPO[r.tipoUsuario] : undefined;
     if (deSatag) return deSatag;
     const p = personas?.get(tarjeta);
@@ -438,7 +447,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         const m = medirEstacionamiento(lectura.eventos, rolDe, { deptoDe, corte: corteDe(lectura.resumen) });
         const fuentes = new Map<string, Fuentes>();
         for (const u of m.porCredencial) {
-          const r = porTag.get(u.tarjeta);
+          const r = expedienteDe(u.tarjeta);
           fuentes.set(u.tarjeta, {
             satag: r !== undefined,
             hoja: r?.origenExpediente === "migracion_hoja",

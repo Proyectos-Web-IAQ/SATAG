@@ -915,6 +915,8 @@ export interface PadronEstacionamiento {
   estado: EstadoRegistro;
   origenExpediente: OrigenExpediente;
   estacionamientos: string[];
+  /** Los TAGs que el expediente uso antes (cambios y reposiciones): sus pasadas viejas son suyas. */
+  tagsAnteriores: string[];
 }
 
 interface PadronEstRow {
@@ -923,12 +925,13 @@ interface PadronEstRow {
   estado: string;
   origen_expediente: string | null;
   registro_estacionamientos: { estacionamiento_clave: string }[] | null;
+  movimientos: { no_dispositivo_anterior: string | null }[] | null;
 }
 
 export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento[]> {
   const { data, error } = await supabaseAuth
     .from("registros")
-    .select("no_dispositivo, tipo_usuario, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave )")
+    .select("no_dispositivo, tipo_usuario, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
     .not("no_dispositivo", "is", null)
     // El padron completo son ~2,900 expedientes. El tope es holgura, no negocio: si
     // algun dia se rozara, la resolucion del rol baja a la base en vez de subir este
@@ -941,6 +944,13 @@ export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento
     estado: r.estado as EstadoRegistro,
     origenExpediente: (r.origen_expediente ?? "satag") as OrigenExpediente,
     estacionamientos: (r.registro_estacionamientos ?? []).map((e) => e.estacionamiento_clave).sort(),
+    tagsAnteriores: [
+      ...new Set(
+        (r.movimientos ?? [])
+          .map((m) => m.no_dispositivo_anterior?.trim() ?? "")
+          .filter((t) => t !== "" && t !== r.no_dispositivo),
+      ),
+    ],
   }));
 }
 
