@@ -16,8 +16,8 @@ directo en el navegador (`lib/zk/plantillaZk.ts`), sin sheet ni línea de
 comandos:
 
 - **Descargar plantilla ZK (TAGs disponibles)**: pre-alta de las tarjetas en
-  ZK como `DISPONIBLE / STOCK SATAG`, depto **3 STOCK SATAG** (hasta el 14-sep
-  iban a Padres de familia), ID = No. de TAG.
+  ZK como `DISPONIBLE / STOCK SATAG`, depto **18 STOCK SATAG** (hasta el 14-sep
+  iban a Padres de familia; del 14-sep al 2-oct, al 3), ID = No. de TAG.
 - **Descargar padrón instalado para ZK**: los expedientes activos con TAG;
   actualiza la misma tarjeta con nombre, apellidos, depto real y placa (en
   Celular). El aviso de descarga cuenta los de familia y lista los TAGs de
@@ -44,7 +44,7 @@ los aplica, pero es uno por uno.
 
 Con eso, el proceso vigente es:
 
-1. **Stock.** Los DISPONIBLE entran al departamento 3 STOCK SATAG. Después de
+1. **Stock.** Los DISPONIBLE entran al departamento 18 STOCK SATAG. Después de
    importarlos, se quitan y se vuelven a poner ESTACIONAMIENTO 1 y 2 de ese
    departamento: todo el stock queda activo, y solo el stock (ahí no hay nadie
    más). Consecuencia aceptada: un TAG de la escuela ya abre la pluma desde que
@@ -65,11 +65,16 @@ Con eso, el proceso vigente es:
 
 ## Las piezas por línea de comandos (en `Campo/herramientas/`)
 
+> **Detenidas desde el 5-oct-2026.** Usaban los números de departamento que ZK
+> tenía hasta el 2-oct y hoy mandarían a la gente a departamentos vacíos. El
+> camino vigente es el panel (TI › TAGs de la escuela › Exportar). Esta sección
+> queda como historia.
+
 | Archivo | Papel |
 |---|---|
-| `generar-import-zk.cjs` | Fuente: **sheet histórico** (`Campo/datos/Registros.csv`). Para regularizar lo instalado con papel. |
+| `generar-import-zk.cjs` | DETENIDO. Fuente: **sheet histórico** (`Campo/datos/Registros.csv`). Para regularizar lo instalado con papel. |
 | `export-zk-desde-satag.sql` | Se corre en el SQL Editor de Supabase; el resultado se descarga como `Campo/datos/satag-export.csv`. |
-| `generar-import-zk-desde-satag.cjs` | Fuente: **SATAG** (el flujo definitivo). Mismo motor, lee `satag-export.csv`. |
+| `generar-import-zk-desde-satag.cjs` | DETENIDO. Fuente: SATAG; lo reemplazó el panel. Mismo motor, lee `satag-export.csv`. |
 | `convertir-zk-a-xls.ps1` | Convierte el CSV generado al `.xls` que ZK acepta, inyectándolo en la plantilla oficial. |
 
 Ambos generadores necesitan además el export más reciente de ZK
@@ -112,12 +117,19 @@ Ambos generadores necesitan además el export más reciente de ZK
 | 14 | Código de Auto Gestión | `selfPwd` | `123456`, convención IAQ |
 | 15 | Celular | `mobilePhone` | **aquí va la placa**, convención IAQ |
 
-Departamentos: 1 General · 2 Administración · 3 STOCK SATAG (creado el
-14-sep-2026 bajo General, para los DISPONIBLE) · 5 Alumnos · 6 Maestros ·
-7 Padres de familia · 10 BAJAS. Desde SATAG, `tipo_usuario` se mapea
-padres→7, otro→7, maestro→6, alumno→5, admin→2; el stock→3.
+Departamentos, desde el 5-oct-2026 (TI los renumeró entre el 2 y el 5-oct): 1 General ·
+4 PRIMARIA DOCENTE · 9 PREESCOLAR DOCENTES · 10 BAJAS · 11 SECUNDARIA DOCENTES ·
+12 PREPARATORIA DOCENTES · 13 DEPORTES EXTRAESCOLARES · 14 TEX DOCENTES ·
+15 MANTENIMIENTO · 16 Administracion · 17 Admon · 18 STOCK SATAG ·
+19 Padres de familia · 20 Alumnos · 21 Ex alumnos · 22 Falta de información ·
+23 Otros. Desde SATAG (`lib/zk/plantillaZk.ts`), `tipo_usuario` se mapea
+padres→19, otro→19, alumno→20, admin→17 y el maestro por su sección
+(preescolar→9, primaria→4, secundaria→11, preparatoria→12; sin sección no se
+exporta); el stock→18. Hasta el 2-oct eran padres→7, maestro→6, alumno→5,
+admin→2 y stock→3. Si ZK se vuelve a renumerar, `node Campo/herramientas/conciliar.mjs`
+lo avisa en «EL PUENTE».
 
-## Procedimiento completo (fuente SATAG)
+## Procedimiento completo (fuente SATAG), histórico: ya lo hace el panel
 
 1. En el SQL Editor, correr `export-zk-desde-satag.sql` y descargar el
    resultado como `Campo\datos\satag-export.csv`.
