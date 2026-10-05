@@ -1246,7 +1246,7 @@ export async function listPadronZk(): Promise<PersonaZk[]> {
     if (error) throw new Error(traducirError(error.message));
     const filas = (data ?? []) as { tarjeta: string; nombre: string; departamento_id: string; departamento: string }[];
     if (filas.length === 0) break;
-    for (const r of filas) out.push({ tarjeta: r.tarjeta, nombre: r.nombre, departamentoId: r.departamento_id, departamento: r.departamento, placa: "" });
+    for (const r of filas) out.push({ tarjeta: r.tarjeta, nombre: r.nombre, departamentoId: r.departamento_id, departamento: r.departamento, nombres: "", apellidos: "", placa: "" });
   }
   return out;
 }
@@ -1261,7 +1261,16 @@ export interface MetaPadronZk {
   forzar?: boolean;
 }
 
-export type FilaPadronZk = { tarjeta: string; nombre: string; departamentoId: string; departamento: string };
+/** `nombres`, `apellidos` y `placa` los guarda el bloque 86; un RPC anterior los ignora sin fallar. */
+export type FilaPadronZk = {
+  tarjeta: string;
+  nombre: string;
+  departamentoId: string;
+  departamento: string;
+  nombres: string;
+  apellidos: string;
+  placa: string;
+};
 
 /**
  * Lo que contesta el RPC (bloque 84). O escribio, o FRENO sin escribir nada y pide
@@ -1292,6 +1301,24 @@ export async function cargarPadronZk(meta: MetaPadronZk, filas: FilaPadronZk[], 
     };
   }
   return { requiereConfirmacion: false, yaEstaba: r.yaEstaba ?? false, insertadas: r.insertadas ?? 0, actualizadas: r.actualizadas ?? 0, retiradas: r.retiradas ?? 0, vigentes: r.vigentes ?? 0 };
+}
+
+/**
+ * Da de alta, como `migracion_zk`, cada credencial que abrio la pluma y no tiene
+ * expediente (bloque 86, rol ti). Se llama despues de guardar la bitacora o el
+ * padron de ZK; repetirla no duplica nada.
+ */
+export interface RespuestaAltasZk {
+  altas: number;
+  tarjetas: string[];
+  placasSueltas: number;
+}
+
+export async function altasDesdeZk(hechoPor: string | null): Promise<RespuestaAltasZk> {
+  const { data, error } = await supabaseAuth.rpc("altas_desde_zk", { p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as { altas?: number; tarjetas?: string[]; placasSueltas?: number };
+  return { altas: r.altas ?? 0, tarjetas: r.tarjetas ?? [], placasSueltas: r.placasSueltas ?? 0 };
 }
 
 /**
