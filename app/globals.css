@@ -1434,3 +1434,18 @@ a { color: var(--primary-strong); }
 .beta-captura input:focus-visible { border-color: var(--primary); outline: 2px solid var(--primary); outline-offset: -1px; }
 .beta-captura__horas { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); margin-bottom: 14px; max-width: 640px; }
 .beta-captura__horas label { display: grid; gap: 4px; }
+
+/* ------------------------------------------------------------------ casos (bloque 87) */
+.casos__grupo { margin: 22px 0 0; }
+.casos__t { font-size: 1rem; color: var(--primary-strong); margin: 0 0 2px; }
+.casos__n { color: var(--muted); font-weight: 600; margin-left: 4px; }
+.casos__l { list-style: none; margin: 6px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.casos__fila { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.casos__cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 4px; color: var(--ink); }
+.casos__estado { margin-left: auto; font-size: 0.8rem; font-weight: 700; color: var(--muted); }
+.casos__estado--pendiente { color: var(--rose); }
+.casos__estado--revision { color: var(--primary); }
+.casos__estado--resuelto { color: var(--green); }
+.casos__d { margin: 2px 0; font-size: 0.92rem; color: var(--ink); max-width: 78ch; }
+.casos__f { margin: 0 0 4px; font-size: 0.82rem; color: var(--muted); }
+.casos__form { display: grid; gap: 8px; margin-top: 8px; max-width: 560px; }

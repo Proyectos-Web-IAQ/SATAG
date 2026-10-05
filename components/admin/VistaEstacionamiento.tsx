@@ -30,6 +30,8 @@ import Loader from "@/components/Loader";
 import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
 import GenteEstacionamiento, { SeccionesEstacionamiento } from "@/components/admin/GenteEstacionamiento";
 import type { Registro } from "@/lib/mock/types";
+import { detectarCasos } from "@/lib/casos";
+import VistaCasos from "@/components/admin/VistaCasos";
 import {
   cargarEventosZk,
   altasDesdeZk,
@@ -111,7 +113,7 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
 }
 
 /** Las vistas que atiende este contenedor: las del panel, las dos de gente y la de los archivos de ZK. */
-export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos";
+export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos" | "casos";
 
 export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPanel; email: string | null; vista: VistaEstac }) {
   const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
@@ -719,7 +721,24 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         </p>
       )}
       {datos ? (
-        vista === "lotes" || vista === "secciones" ? (
+        vista === "casos" ? (
+          <VistaCasos
+            casos={detectarCasos(
+              lectura?.eventos ?? [],
+              (padron ?? []).map((p) => ({
+                folio: p.folio,
+                noDispositivo: p.noDispositivo,
+                estado: p.estado,
+                estacionamientos: p.estacionamientos,
+                tagsAnteriores: p.tagsAnteriores,
+              })),
+              personas ?? null,
+            )}
+            nombreDe={VEN_IDENTIDAD.includes(rol) && personas ? (t) => personas.get(t)?.nombre : null}
+            puedeEditar={CARGAN.includes(rol)}
+            email={email}
+          />
+        ) : vista === "lotes" || vista === "secciones" ? (
           (() => {
             const comunes = {
               m: datos.m,
