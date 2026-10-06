@@ -6,7 +6,7 @@
 import { describe, it, expect } from "vitest";
 import type { Registro } from "@/lib/mock/types";
 import { DEPTO_STOCK_ZK, deptoZkDe, filaPadron, filaStock } from "@/lib/zk/plantillaZk";
-import { grupoDeDepto, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR } from "@/lib/zk/padron";
+import { grupoDeDepto, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR, GRUPO_EMPLEADO_PPF } from "@/lib/zk/padron";
 
 const expediente = (tipo: Registro["tipoUsuario"], seccion: string | null = null): Registro =>
   ({
@@ -96,5 +96,17 @@ describe("grupo de un departamento de ZK en la pantalla", () => {
   it("compara nombres sin acentos ni mayusculas", () => {
     expect(nombreDepto(" Falta de  información ")).toBe("FALTA DE INFORMACION");
     expect(nombreDepto("Administración")).toBe(nombreDepto("ADMINISTRACION"));
+  });
+});
+
+describe("Empleado_PPF (ZK 25, 6-oct)", () => {
+  it("se agrupa aparte por nombre y por numero", () => {
+    expect(grupoDeDepto("25", "Empleado_PPF")).toBe(GRUPO_EMPLEADO_PPF);
+    expect(grupoDeDepto("25")).toBe(GRUPO_EMPLEADO_PPF);
+    expect(grupoDeDepto("99", "Empleado PPF")).toBe(GRUPO_EMPLEADO_PPF);
+  });
+
+  it("SATAG todavia no manda a nadie al 25: ningun tipo cae ahi", () => {
+    for (const t of ["padres", "otro", "alumno", "admin"] as const) expect(deptoZkDe(expediente(t))?.id).not.toBe("25");
   });
 });

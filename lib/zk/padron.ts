@@ -86,6 +86,12 @@ const ROTULOS = ["Tarjeta", "ID de Departamento"];
  */
 /** Admon, el equipo del contador: ZK 17 y el area «admon» de SATAG (bloque 88). */
 export const GRUPO_ADMON = "Admon";
+/**
+ * Empleado_PPF (ZK 25, creado el 6-oct-2026): personal que ademas es padre de familia.
+ * Abre las dos plumas; por politica se estaciona en el lote de su departamento y usa
+ * el otro solo para recoger a sus hijos. SATAG todavia no lo exporta: solo lo agrupa.
+ */
+export const GRUPO_EMPLEADO_PPF = "Personal que es padre de familia";
 
 export const GRUPO_POR_NOMBRE_DEPTO: Record<string, string> = {
   "PADRES DE FAMILIA": "Padres de familia",
@@ -99,6 +105,8 @@ export const GRUPO_POR_NOMBRE_DEPTO: Record<string, string> = {
   ADMINISTRACION: "Administración y servicios",
   // Bloque 88: Admon (el equipo del contador) se ve aparte de Administración.
   ADMON: GRUPO_ADMON,
+  EMPLEADO_PPF: GRUPO_EMPLEADO_PPF,
+  "EMPLEADO PPF": GRUPO_EMPLEADO_PPF,
   MANTENIMIENTO: "Administración y servicios",
   ALUMNOS: "Alumnos",
   "EX ALUMNOS": "Alumnos",
@@ -108,6 +116,7 @@ export const GRUPO_POR_DEPTO: Record<string, string> = {
   "19": "Padres de familia",
   "16": "Administración y servicios",
   "17": GRUPO_ADMON,
+  "25": GRUPO_EMPLEADO_PPF,
   "20": "Alumnos",
   "21": "Alumnos",
   // Sin cambio.
