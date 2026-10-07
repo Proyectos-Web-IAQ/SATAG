@@ -11,6 +11,7 @@ import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import PanelInstalacion from "@/components/admin/PanelInstalacion";
 import VistaEstacionamiento, { type VistaEstac } from "@/components/admin/VistaEstacionamiento";
+import VistaCasos from "@/components/admin/VistaCasos";
 import FichaPersona from "@/components/admin/FichaPersona";
 import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
 
@@ -65,6 +66,9 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
       vistas: [
         { clave: "personas", titulo: "Personas" },
         ...(mide ? [{ clave: "tablero", titulo: "Tablero de instalación" }] : []),
+        // Administracion abre y sigue casos (bloque 89, Gerardo 6-oct) pero no lee la
+        // bitacora de ZK: ve Casos aqui, sin los detectados, y no el grupo Estacionamiento.
+        ...(rol === "admin" ? [{ clave: "casos", titulo: "Casos" }] : []),
       ],
     },
   ];
@@ -171,6 +175,7 @@ function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
   const contenido =
     vista === "personas" ? <VistaConsulta rol={rol} />
     : vista === "tablero" ? <PanelInstalacion rol={rol} email={email} />
+    : vista === "casos" && rol === "admin" ? <VistaCasos detectados={[]} nombreDe={null} email={email} />
     : <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />;
   if (claves.length === 1) return contenido;
   return (

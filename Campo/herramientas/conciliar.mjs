@@ -37,13 +37,18 @@
 // ID de ZK y, donde hace falta para trabajar, nombre y placa— se escriben en
 // Campo/datos/conciliacion-AAAA-MM-DD/, que esta en .gitignore.
 //
-//   node Campo/herramientas/conciliar.mjs [--satag archivo.csv] [--seguir TAG,TAG,...]
+//   node Campo/herramientas/conciliar.mjs [--datos Campo/datos/AAAA-MM-DD] [--satag archivo.csv] [--seguir TAG,TAG,...]
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
 
 const RAIZ = process.cwd();
-const DATOS = path.join(RAIZ, "Campo", "datos");
+// `--datos Campo/datos/2026-10-06` lee las fotos de una carpeta por dia (6-oct);
+// sin el, la carpeta de siempre.
+const DATOS = (() => {
+  const i = process.argv.indexOf("--datos");
+  return i >= 0 ? path.resolve(RAIZ, process.argv[i + 1]) : path.join(RAIZ, "Campo", "datos");
+})();
 const requerir = createRequire(import.meta.url);
 
 // ---------------------------------------------------------------------------

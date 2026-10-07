@@ -24,7 +24,9 @@ import { asignarAreaAdmin, listPasosDeTarjetas, type PasoZk } from "@/lib/supaba
 import { emparejarEstancias, horaCorta, type Estancia } from "@/lib/estacionamiento";
 import type { EventoZk } from "@/lib/zk/eventos";
 import { DetalleRegistro, ROL_LABEL } from "@/components/admin/RegistroCard";
+import { textoVehiculo } from "@/lib/vehiculo";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
+import { AvisoPreguntar, SeccionCasos, useCasosDePersona } from "@/components/admin/CasosDePersona";
 
 /** Quien lee `zk_eventos` segun la RLS del bloque 78. */
 const VEN_PASOS: RolPanel[] = ["ti", "contador", "super"];
@@ -143,7 +145,7 @@ export function PasosSemana({ estancias }: { estancias: Estancia[] }) {
           })}
         </svg>
       </div>
-      <p className="pasos__nota">Azul: E2. Gris: E1. Cada barra va de la entrada a la salida; la que termina en «?» no tiene salida leída.</p>
+      <p className="pasos__nota">Azul: E2. Verde: E1. Cada barra va de la entrada a la salida; la punteada (termina en «?») es una entrada sin salida leída.</p>
     </div>
   );
 }
@@ -163,6 +165,9 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
   });
   const tags = useMemo(() => tagsDe(r), [r]);
   const puedeVerPasos = VEN_PASOS.includes(rol);
+  // Los casos del expediente y de cualquiera de sus TAGs (bloque 89).
+  const numerosTag = useMemo(() => tags.map((t) => t.numero), [tags]);
+  const casos = useCasosDePersona(r.id, numerosTag, rol);
 
   useEffect(() => {
     if (!puedeVerPasos) return;
@@ -222,6 +227,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
 
   return (
     <article className="ficha" aria-live="polite">
+      <AvisoPreguntar casos={casos.porPreguntar} />
       <div className="ficha__ident">
         <h2>{r.usuarioNombre}</h2>
         <span className="ficha__rol">{rolTexto}{seccion ? ` · ${seccion}` : ""}</span>
@@ -237,6 +243,19 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
 
       <div className="ficha__cuerpo">
         <div>
+          {casos.puede && (
+            <SeccionCasos
+              registroId={r.id}
+              casos={casos.casos}
+              tipos={casos.tipos}
+              cargando={casos.cargando}
+              error={casos.error}
+              recargar={casos.recargar}
+              rol={rol}
+              email={null}
+            />
+          )}
+
           <section className="ficha__bloque">
             <h3>Entradas y salidas</h3>
             {!puedeVerPasos ? (
@@ -282,7 +301,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
                 <tbody>
                   <tr className={r.estado === "baja" ? "baja" : undefined}>
                     <td className="mono">{r.placas ?? (r.sinPlacas ? "Sin placas" : "—")}</td>
-                    <td>{[r.marca, r.modelo, r.color].filter((v) => v && v !== "Sin registrar").join(", ") || "Sin registrar"}</td>
+                    <td>{textoVehiculo(r)}</td>
                     <td>{ESTADO_LABEL[r.estado]}</td>
                   </tr>
                 </tbody>
@@ -372,6 +391,8 @@ function AreaAdministrativa({ r, rol }: { r: Registro; rol: RolPanel }) {
   const [error, setError] = useState<string | null>(null);
   const otra: AreaAdmin = area === "admon" ? "administracion" : "admon";
   async function cambiar() {
+    // Escribe en el expediente y en el puente a ZK: se confirma antes.
+    if (!window.confirm(`¿Pasar a ${r.usuarioNombre} del área ${AREA_LABEL[area]} a ${AREA_LABEL[otra]}? Este cambio se refleja en el departamento al que exporta el puente a ZK.`)) return;
     setGuardando(true);
     setError(null);
     try {
@@ -390,8 +411,7 @@ function AreaAdministrativa({ r, rol }: { r: Registro; rol: RolPanel }) {
         {AREA_LABEL[area]}
         {CAMBIAN_AREA.includes(rol) && (
           <>
-            {" · "}
-            <button type="button" className="link-action" disabled={guardando} onClick={cambiar}>
+            <button type="button" className="ghost-action ghost-action--chico" style={{ display: "block", marginTop: 6 }} disabled={guardando} onClick={cambiar}>
               {guardando ? "Guardando…" : `Pasar a ${AREA_LABEL[otra]}`}
             </button>
           </>

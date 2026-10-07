@@ -841,7 +841,9 @@ a { color: var(--primary-strong); }
    completa en las columnas y 24px alrededor de cada punto. Un punto de 11px es
    un alfiler al que nadie le atina, y con teclado seria imposible. */
 :root {
-  --viz-serie-1: #1F5FA8;  /* paso claro del azul institucional, para marcas */
+  --viz-serie-1: #1F5FA8;
+  /* E1 en las graficas de pasos: verde institucional. El gris se leia como «apagado» (6-oct). */
+  --viz-serie-2: #1E8A5A;  /* paso claro del azul institucional, para marcas */
   --viz-reja: #e4e9f0;     /* recesiva, pero que aguante un proyector */
 }
 
@@ -1413,9 +1415,10 @@ a { color: var(--primary-strong); }
 .pasos__nota { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
 /* E2 en el azul de serie, E1 en gris: el color distingue el estacionamiento y la
    nota lo dice en texto. Una estancia sin salida leida va mas clara. */
-.pasos__barra { fill: var(--viz-serie-1); }
-.pasos__barra--e1 { fill: #8a94a6; }
-.pasos__barra--abierta { fill-opacity: 0.45; }
+.pasos__barra { fill: var(--viz-serie-1); stroke: var(--viz-serie-1); stroke-width: 0; }
+.pasos__barra--e1 { fill: var(--viz-serie-2); stroke: var(--viz-serie-2); }
+/* Sin salida leida: punteada y casi transparente, que no se confunda con una estancia real. */
+.pasos__barra--abierta { fill-opacity: 0.15; stroke-width: 1.5; stroke-dasharray: 4 3; }
 .actividad { list-style: none; margin: 0; padding: 0; }
 .actividad li { border-bottom: 1px solid var(--line); display: grid; font-size: 0.92rem; gap: 12px; grid-template-columns: 7.5rem minmax(0, 1fr); padding: 8px 0; }
 .actividad time { color: var(--muted); font-size: 0.86rem; font-variant-numeric: tabular-nums; }
@@ -1457,4 +1460,54 @@ a { color: var(--primary-strong); }
 .casos__patron[open] > summary { color: var(--primary-strong); }
 .casos__patron .casos__l { border-top: 0; }
 .casos__lote-b { margin: 2px 0 6px; }
+.casos__estado--abierto { color: var(--rose); }
+.casos__estado--seguimiento { color: var(--primary); }
+.casos__estado--descartado { color: var(--muted); }
+
+/* ------------------------------------------------------------------ casos guardados (bloque 89)
+   Pensado desde 390 px: la fila es un boton de ancho completo con el titulo arriba, lo
+   demas debajo y el estado en su propia linea; los filtros se apilan. */
+.casos__cuentas { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.casos__cuenta { background: var(--field-bg); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); cursor: pointer; font: inherit; font-size: 0.9rem; min-height: 44px; padding: 0 14px; }
+.casos__cuenta b { font-variant-numeric: tabular-nums; }
+.casos__cuenta[aria-pressed="true"] { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.casos__filtros { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin: 0 0 10px; max-width: 900px; }
+.casos__filtro { display: grid; gap: 4px; }
+.casos__filtro > span { color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+.casos__filtro--buscar { grid-column: 1 / -1; }
+.casos__sinreg { border-top: 1px solid var(--line); margin-top: 28px; padding-top: 8px; }
+.casos__sinreg > summary { color: var(--primary-strong); cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; gap: 4px; }
+.casos__fila--sinreg { align-items: center; display: flex; gap: 12px; justify-content: space-between; }
+.casos__fila--sinreg > div { min-width: 0; }
+.ghost-action--chico { min-height: 38px; padding: 0 12px; font-size: 0.9rem; flex: none; }
+.caso-lista { margin-top: 8px; }
+.caso-fila { background: none; border: 0; color: inherit; cursor: pointer; display: grid; font: inherit; gap: 2px; min-height: 44px; padding: 0; text-align: left; width: 100%; }
+.caso-fila__t { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.caso-fila__n { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; margin-right: 4px; }
+.caso-fila__m { color: var(--muted); font-size: 0.84rem; overflow-wrap: anywhere; }
+.caso-fila .casos__estado { margin-left: 0; }
+@media (min-width: 700px) {
+  .caso-fila { column-gap: 14px; grid-template-columns: minmax(0, 1fr) auto; }
+  .caso-fila__m { grid-column: 1; }
+  .caso-fila .casos__estado { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+}
+.caso { border-left: 2px solid var(--line); margin: 8px 0 6px 2px; padding: 4px 0 4px 12px; }
+.caso__meta { color: var(--muted); font-size: 0.84rem; margin: 0 0 6px; }
+.caso__detalle { margin: 0 0 6px; max-width: 78ch; overflow-wrap: anywhere; white-space: pre-wrap; }
+.caso__cierre { background: var(--field-bg); border-radius: var(--radius); font-size: 0.9rem; margin: 6px 0; padding: 8px 10px; }
+.caso__h { color: var(--muted); font-size: 0.74rem; font-weight: 800; letter-spacing: 0.08em; margin: 14px 0 6px; text-transform: uppercase; }
+.caso__evid { display: grid; font-size: 0.9rem; gap: 6px; margin: 0; }
+.caso__evid div { display: grid; gap: 2px 12px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 700px) { .caso__evid div { grid-template-columns: 12rem minmax(0, 1fr); } }
+.caso__evid dt { color: var(--muted); }
+.caso__evid dd { margin: 0; overflow-wrap: anywhere; }
+.caso__hist li { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+@media (min-width: 700px) { .caso__hist li { grid-template-columns: 10rem minmax(0, 1fr); } }
+.caso__nota { display: block; margin-top: 2px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.caso__form { margin-top: 12px; max-width: 560px; }
+.caso__form .select, .caso__form .input, .caso__form .textarea { width: 100%; }
+.caso__b { min-height: 44px; }
+.caso-aviso { background: #fff6dd; border: 1px solid #e3c36a; border-left-width: 4px; border-radius: var(--radius); color: #5a4300; margin: 0 0 16px; padding: 10px 14px; }
+.caso-aviso ul { margin: 4px 0 0; padding-left: 18px; }
+.caso-aviso__n { opacity: 0.75; }
 .casos__form--lote { padding: 10px 12px; background: var(--field-bg); border-radius: var(--radius); margin: 4px 0 8px; }
