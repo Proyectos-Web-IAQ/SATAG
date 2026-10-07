@@ -85,6 +85,8 @@ const RUTAS = [
       // «í» como í y una marca con acento nunca coincide.
       // Sin el acento: el empaquetado escribe la «í» como \xed y una marca con acento
       // nunca coincide (7-oct).
+      // El RPC del tablero de casos (bloque 90): solo existe en el cliente nuevo.
+      { texto: "mover_casos", que: "el tablero de casos: Nuevo, Por atender, Esperando y Cerrado (bloque 90)" },
       { texto: "entrada no le", que: "la ficha distingue salida sin entrada de entrada sin salida (7-oct)" },
     ],
   },

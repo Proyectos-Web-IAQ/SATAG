@@ -9,7 +9,7 @@
 // Quien escribe son ti, contador y admin (y super); todos leen. La base lo vuelve a
 // verificar en el RPC: aqui `puedeEditar` solo evita ofrecer un boton que fallaria.
 import { useEffect, useId, useState } from "react";
-import { anotarCaso, listNotasCaso } from "@/lib/supabase/apiPanel";
+import { anotarCaso, listNotasCaso, moverCasos } from "@/lib/supabase/apiPanel";
 import {
   ESTADOS_CASO,
   ETIQUETA_ESTADO_CASO,
@@ -142,7 +142,10 @@ function Seguimiento({ caso, email, onGuardado }: { caso: CasoGuardado; email: s
     setGuardando(true);
     setError(null);
     try {
-      await anotarCaso(caso.id, nota.trim(), estado === "" || estado === caso.estado ? null : estado, email);
+      // Desde el bloque 90 el estado cambia con mover_casos: anotar_caso no sabe de la
+      // espera y no puede cerrar un caso que esta en Esperando.
+      if (estado === "" || estado === caso.estado) await anotarCaso(caso.id, nota.trim(), null, email);
+      else await moverCasos([caso.id], { estado: estado as "abierto" | "resuelto" | "descartado", nota: nota.trim() }, email);
       setNota("");
       setEstado("");
       onGuardado();
@@ -159,7 +162,7 @@ function Seguimiento({ caso, email, onGuardado }: { caso: CasoGuardado; email: s
       <label className="label" htmlFor={`${id}-estado`}>Estado</label>
       <select id={`${id}-estado`} className="select" value={estado} onChange={(e) => setEstado(e.target.value as EstadoCasoGuardado | "")}>
         <option value="">Sin cambiar ({ETIQUETA_ESTADO_CASO[caso.estado].toLowerCase()})</option>
-        {ESTADOS_CASO.filter((e) => e !== caso.estado).map((e) => (
+        {ESTADOS_CASO.filter((e) => e !== caso.estado && (e === "abierto" || e === "resuelto" || e === "descartado")).map((e) => (
           <option key={e} value={e}>{e === "abierto" && (caso.estado === "resuelto" || caso.estado === "descartado") ? "Reabrir" : ETIQUETA_ESTADO_CASO[e]}</option>
         ))}
       </select>

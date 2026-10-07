@@ -11,7 +11,7 @@ import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import PanelInstalacion from "@/components/admin/PanelInstalacion";
 import VistaEstacionamiento, { type VistaEstac } from "@/components/admin/VistaEstacionamiento";
-import VistaCasos from "@/components/admin/VistaCasos";
+import TableroCasos from "@/components/admin/casos/TableroCasos";
 import FichaPersona from "@/components/admin/FichaPersona";
 import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
 
@@ -175,7 +175,7 @@ function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
   const contenido =
     vista === "personas" ? <VistaConsulta rol={rol} />
     : vista === "tablero" ? <PanelInstalacion rol={rol} email={email} />
-    : vista === "casos" && rol === "admin" ? <VistaCasos detectados={[]} nombreDe={null} email={email} />
+    : vista === "casos" && rol === "admin" ? <TableroCasos rol={rol} email={email} eventos={null} ventana={{ desde: null, hasta: null }} personas={null} />
     : <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />;
   if (claves.length === 1) return contenido;
   return (

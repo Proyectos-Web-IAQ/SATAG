@@ -5,8 +5,12 @@
 // numero, estado, historial y evidencia. Aqui no hay React ni Supabase: asi se
 // prueba con datos del tamaño de una prueba.
 
-export type EstadoCasoGuardado = "abierto" | "seguimiento" | "resuelto" | "descartado";
+// Bloque 90: `nuevo` (nadie lo ha revisado) y `esperando` (a la persona, a un
+// tercero o a una fecha). `abierto` es «Por atender»; `seguimiento` queda del 89 y
+// se pinta en Esperando.
+export type EstadoCasoGuardado = "nuevo" | "abierto" | "esperando" | "seguimiento" | "resuelto" | "descartado";
 export type OrigenCaso = "manual" | "regla" | "migracion";
+export type MotivoEspera = "persona" | "tercero" | "fecha";
 
 export interface TipoCasoCatalogo {
   tipo: string;
@@ -17,6 +21,20 @@ export interface TipoCasoCatalogo {
   /** true: lo abre una regla; no se ofrece en «Registrar caso» a mano. */
   automatico: boolean;
   orden: number;
+  /** Bloque 90: la familia da el grupo y el color de la etiqueta. */
+  familia: string;
+  /** false = retirado: ya no se ofrece al reportar; sus casos lo conservan. */
+  activo: boolean;
+  motivosCierre: string[];
+}
+
+/** Bloque 90: los grupos de tipos, con el color de su etiqueta. */
+export interface FamiliaCaso {
+  id: string;
+  titulo: string;
+  orden: number;
+  fondo: string;
+  tinta: string;
 }
 
 export interface CasoGuardado {
@@ -39,6 +57,14 @@ export interface CasoGuardado {
   cerradoPor: string | null;
   cerradoEn: string | null;
   cierreNota: string | null;
+  /** Bloque 90. */
+  urgente: boolean;
+  atorado: boolean;
+  esperaMotivo: MotivoEspera | null;
+  esperaHasta: string | null;
+  esperaTexto: string | null;
+  cierreMotivo: string | null;
+  veces: number;
   /** El expediente ligado, si lo tiene. */
   folio: string | null;
   nombre: string | null;
@@ -47,7 +73,7 @@ export interface CasoGuardado {
 export interface NotaCaso {
   id: string;
   casoId: string;
-  clase: "apertura" | "nota" | "estado";
+  clase: "apertura" | "nota" | "estado" | "marca" | "tipo";
   estadoAntes: EstadoCasoGuardado | null;
   estadoDespues: EstadoCasoGuardado | null;
   nota: string;
@@ -55,10 +81,12 @@ export interface NotaCaso {
   hechoEn: string;
 }
 
-export const ESTADOS_CASO: EstadoCasoGuardado[] = ["abierto", "seguimiento", "resuelto", "descartado"];
+export const ESTADOS_CASO: EstadoCasoGuardado[] = ["nuevo", "abierto", "esperando", "seguimiento", "resuelto", "descartado"];
 
 export const ETIQUETA_ESTADO_CASO: Record<EstadoCasoGuardado, string> = {
-  abierto: "Abierto",
+  nuevo: "Nuevo",
+  abierto: "Por atender",
+  esperando: "Esperando",
   seguimiento: "En seguimiento",
   resuelto: "Resuelto",
   descartado: "Descartado",
@@ -68,6 +96,56 @@ export const ETIQUETA_ESTADO_CASO: Record<EstadoCasoGuardado, string> = {
 export const esCierre = (e: EstadoCasoGuardado): boolean => e === "resuelto" || e === "descartado";
 /** Lo que sigue pidiendo atencion. */
 export const estaVivo = (e: EstadoCasoGuardado): boolean => !esCierre(e);
+
+/* ------------------------------------------------------------------ el tablero (bloque 90) */
+
+export type ColumnaCaso = "nuevo" | "atender" | "esperando" | "cerrado";
+
+/** Las cuatro columnas del tablero: en que paso va el caso. */
+export const COLUMNAS_CASO: { id: ColumnaCaso; titulo: string; ayuda: string }[] = [
+  { id: "nuevo", titulo: "Nuevo", ayuda: "Lo abrió una regla o lo reportó alguien; nadie lo ha revisado." },
+  { id: "atender", titulo: "Por atender", ayuda: "Alguien tiene que hacer algo." },
+  { id: "esperando", titulo: "Esperando", ayuda: "A la persona, a alguien de fuera o a una fecha." },
+  { id: "cerrado", titulo: "Cerrado", ayuda: "Con motivo. Se puede reabrir." },
+];
+
+/** La columna de un estado. `seguimiento` (89) se pinta en Esperando. */
+export function columnaDe(e: EstadoCasoGuardado): ColumnaCaso {
+  if (e === "nuevo") return "nuevo";
+  if (e === "abierto") return "atender";
+  if (e === "esperando" || e === "seguimiento") return "esperando";
+  return "cerrado";
+}
+
+/** Lo que espera un caso, en una frase. */
+export function textoEspera(c: Pick<CasoGuardado, "esperaMotivo" | "esperaHasta" | "esperaTexto" | "estado">): string {
+  if (c.esperaMotivo === "persona") return "a que la persona se presente";
+  if (c.esperaMotivo === "tercero") return `a ${c.esperaTexto ?? "alguien de fuera"}`;
+  if (c.esperaMotivo === "fecha" && c.esperaHasta) return `hasta el ${fechaLarga(c.esperaHasta)}`;
+  return c.estado === "seguimiento" ? "en seguimiento (sin motivo de espera)" : "";
+}
+
+/** «2027-04-06» a «6 abr 2027». */
+export function fechaLarga(dia: string): string {
+  const [a, m, d] = dia.slice(0, 10).split("-").map(Number);
+  return new Date(a, m - 1, d, 12).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+}
+
+/** Los motivos generales de cierre, ademas de los del tipo. */
+export const MOTIVOS_RESOLVER = ["Se corrigió en ZK", "Se habló con la persona", "Se confirmó en GES o con RH"];
+export const MOTIVOS_DESCARTAR = ["No era problema", "Duplicado de otro caso", "Ya no aplica"];
+
+/** De quien es un caso, para agrupar tarjetas: el expediente, o el TAG. */
+export function clavePersonaCaso(c: Pick<CasoGuardado, "registroId" | "tarjeta" | "numero">): string {
+  return c.registroId ? `r:${c.registroId}` : c.tarjeta ? `t:${c.tarjeta}` : `c:${c.numero}`;
+}
+
+/** «Hace 3 días», contado en dias de calendario de Queretaro. */
+export function diasDesde(iso: string, hoy: Date = new Date()): number {
+  const fmt = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(d);
+  const a = Date.parse(fmt(new Date(iso)) + "T00:00:00Z"), b = Date.parse(fmt(hoy) + "T00:00:00Z");
+  return Math.max(0, Math.round((b - a) / 86_400_000));
+}
 
 /** «C-000123». */
 export function numeroCaso(n: number): string {
@@ -94,7 +172,7 @@ export function ordenarCasos<T extends Pick<CasoGuardado, "estado" | "actualizad
 }
 
 export function contarPorEstado(casos: Pick<CasoGuardado, "estado">[]): Record<EstadoCasoGuardado, number> {
-  const c: Record<EstadoCasoGuardado, number> = { abierto: 0, seguimiento: 0, resuelto: 0, descartado: 0 };
+  const c: Record<EstadoCasoGuardado, number> = { nuevo: 0, abierto: 0, esperando: 0, seguimiento: 0, resuelto: 0, descartado: 0 };
   for (const x of casos) c[x.estado] += 1;
   return c;
 }

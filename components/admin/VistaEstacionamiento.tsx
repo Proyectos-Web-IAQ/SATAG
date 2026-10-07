@@ -30,8 +30,7 @@ import Loader from "@/components/Loader";
 import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
 import GenteEstacionamiento, { SeccionesEstacionamiento } from "@/components/admin/GenteEstacionamiento";
 import type { Registro } from "@/lib/mock/types";
-import { detectarCasos } from "@/lib/casos";
-import VistaCasos from "@/components/admin/VistaCasos";
+import TableroCasos from "@/components/admin/casos/TableroCasos";
 import {
   cargarEventosZk,
   altasDesdeZk,
@@ -731,23 +730,12 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
       )}
       {datos ? (
         vista === "casos" ? (
-          <VistaCasos
-            detectados={detectarCasos(
-              lectura?.eventos ?? [],
-              (padron ?? []).map((p) => ({
-                folio: p.folio,
-                noDispositivo: p.noDispositivo,
-                estado: p.estado,
-                estacionamientos: p.estacionamientos,
-                tagsAnteriores: p.tagsAnteriores,
-                desde: p.desde,
-                tipoUsuario: p.tipoUsuario,
-                areaAdmin: p.areaAdmin,
-              })),
-              personas ?? null,
-            )}
-            nombreDe={VEN_IDENTIDAD.includes(rol) && personas ? (t) => personas.get(t)?.nombre : null}
+          <TableroCasos
+            rol={rol}
             email={email}
+            eventos={VEN_IDENTIDAD.includes(rol) ? lectura?.eventos ?? [] : null}
+            ventana={{ desde: lectura?.resumen.desde ?? null, hasta: lectura?.resumen.hasta ?? null }}
+            personas={VEN_IDENTIDAD.includes(rol) ? personas ?? null : null}
           />
         ) : vista === "lotes" || vista === "secciones" ? (
           (() => {

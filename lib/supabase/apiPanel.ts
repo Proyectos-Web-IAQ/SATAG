@@ -9,7 +9,7 @@
 // recargan la lista despues de actuar, asi que el registro actualizado llega
 // por listRegistros y devolverlo aqui seria un segundo viaje redundante.
 import { supabaseAuth } from "./auth";
-import type { CasoGuardado, EstadoCasoGuardado, NotaCaso, OrigenCaso, TipoCasoCatalogo } from "@/lib/casosRegistro";
+import type { CasoGuardado, EstadoCasoGuardado, FamiliaCaso, MotivoEspera, NotaCaso, OrigenCaso, TipoCasoCatalogo } from "@/lib/casosRegistro";
 import { urlFirmada } from "@/lib/firma";
 import type {
   CambiosRegistro,
@@ -1330,6 +1330,7 @@ export async function cargarPadronZk(meta: MetaPadronZk, filas: FilaPadronZk[], 
 const SELECT_CASO = `
   id, numero, tipo, registro_id, tarjeta, titulo, detalle, evidencia, estado, origen, regla, clave,
   preguntar_al_presentarse, creado_por, creado_en, actualizado_en, cerrado_por, cerrado_en, cierre_nota,
+  urgente, atorado, espera_motivo, espera_hasta, espera_texto, cierre_motivo, veces,
   registro:registros ( folio, usuario_nombre_completo )
 `;
 
@@ -1339,6 +1340,8 @@ interface CasoRow {
   regla: string | null; clave: string | null; preguntar_al_presentarse: boolean; creado_por: string;
   creado_en: string; actualizado_en: string; cerrado_por: string | null; cerrado_en: string | null;
   cierre_nota: string | null;
+  urgente: boolean | null; atorado: boolean | null; espera_motivo: string | null; espera_hasta: string | null;
+  espera_texto: string | null; cierre_motivo: string | null; veces: number | null;
   // El FK es a-uno, pero se admite la lista por si PostgREST la devuelve asi.
   registro: { folio: string; usuario_nombre_completo: string } | { folio: string; usuario_nombre_completo: string }[] | null;
 }
@@ -1365,6 +1368,13 @@ function mapCaso(r: CasoRow): CasoGuardado {
     cerradoPor: r.cerrado_por,
     cerradoEn: r.cerrado_en,
     cierreNota: r.cierre_nota,
+    urgente: r.urgente === true,
+    atorado: r.atorado === true,
+    esperaMotivo: (r.espera_motivo as MotivoEspera | null) ?? null,
+    esperaHasta: r.espera_hasta,
+    esperaTexto: r.espera_texto,
+    cierreMotivo: r.cierre_motivo,
+    veces: Number(r.veces ?? 1),
     folio: reg?.folio ?? null,
     nombre: reg?.usuario_nombre_completo ?? null,
   };
@@ -1374,11 +1384,12 @@ function mapCaso(r: CasoRow): CasoGuardado {
 export async function listTiposCaso(): Promise<TipoCasoCatalogo[]> {
   const { data, error } = await supabaseAuth
     .from("casos_tipos")
-    .select("tipo, titulo, categoria, que_hacer, automatico, orden")
+    .select("tipo, titulo, categoria, que_hacer, automatico, orden, familia, activo, motivos_cierre")
     .order("orden", { ascending: true });
   if (error) throw new Error(traducirError(error.message));
-  return ((data ?? []) as { tipo: string; titulo: string; categoria: string; que_hacer: string; automatico: boolean; orden: number }[]).map((t) => ({
+  return ((data ?? []) as { tipo: string; titulo: string; categoria: string; que_hacer: string; automatico: boolean; orden: number; familia: string | null; activo: boolean | null; motivos_cierre: string[] | null }[]).map((t) => ({
     tipo: t.tipo, titulo: t.titulo, categoria: t.categoria, queHacer: t.que_hacer, automatico: t.automatico, orden: t.orden,
+    familia: t.familia ?? "otro", activo: t.activo !== false, motivosCierre: t.motivos_cierre ?? [],
   }));
 }
 
@@ -1460,6 +1471,101 @@ export async function abrirCaso(e: EntradaCaso, hechoPor: string | null): Promis
 /** Una nota, un cambio de estado o las dos. Cerrar (resuelto/descartado) exige nota; reabrir limpia el cierre. */
 export async function anotarCaso(casoId: string, nota: string, estado: EstadoCasoGuardado | null, hechoPor: string | null): Promise<void> {
   const { error } = await supabaseAuth.rpc("anotar_caso", { p_caso: casoId, p_nota: nota, p_estado: estado, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+}
+
+/* ------------------------------------------------------------------ el tablero (bloque 90) */
+
+/** Las familias de tipos, con su color. */
+export async function listFamiliasCaso(): Promise<FamiliaCaso[]> {
+  const { data, error } = await supabaseAuth.from("casos_familias").select("id, titulo, orden, fondo, tinta").order("orden", { ascending: true });
+  if (error) throw new Error(traducirError(error.message));
+  return (data ?? []) as FamiliaCaso[];
+}
+
+/** Reportar a mano: el caso nace en «Nuevo». */
+export async function reportarCaso(
+  e: { tipo: string; titulo: string; detalle?: string; registroId?: string | null; tarjeta?: string | null; urgente?: boolean },
+  hechoPor: string | null,
+): Promise<{ id: string; numero: number }> {
+  const { data, error } = await supabaseAuth.rpc("reportar_caso", {
+    p_tipo: e.tipo,
+    p_titulo: e.titulo,
+    p_detalle: e.detalle ?? "",
+    p_registro_id: e.registroId ?? null,
+    p_tarjeta: e.tarjeta ?? null,
+    p_urgente: e.urgente ?? false,
+    p_evidencia: {},
+    p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as { id?: string; numero?: number };
+  return { id: r.id ?? "", numero: Number(r.numero ?? 0) };
+}
+
+export interface MovimientoCaso {
+  /** «abierto» es Por atender. */
+  estado: "abierto" | "esperando" | "resuelto" | "descartado";
+  nota?: string;
+  motivo?: string | null;
+  espera?: { motivo: MotivoEspera; hasta?: string | null; texto?: string | null } | null;
+}
+
+/** Mueve uno o varios casos a otro paso. Cada uno guarda su linea de historial. */
+export async function moverCasos(ids: string[], m: MovimientoCaso, hechoPor: string | null): Promise<number> {
+  const { data, error } = await supabaseAuth.rpc("mover_casos", {
+    p_casos: ids,
+    p_estado: m.estado,
+    p_nota: m.nota ?? "",
+    p_motivo: m.motivo ?? null,
+    p_espera_motivo: m.espera?.motivo ?? null,
+    p_espera_hasta: m.espera?.hasta ?? null,
+    p_espera_texto: m.espera?.texto ?? null,
+    p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  return Number((data as { movidos?: number } | null)?.movidos ?? 0);
+}
+
+/** Urgente, atorado o tipo. Lo que llega en `undefined` no se toca. */
+export async function marcarCasos(
+  ids: string[],
+  m: { urgente?: boolean; atorado?: boolean; tipo?: string },
+  hechoPor: string | null,
+): Promise<number> {
+  const { data, error } = await supabaseAuth.rpc("marcar_casos", {
+    p_casos: ids,
+    p_urgente: m.urgente ?? null,
+    p_atorado: m.atorado ?? null,
+    p_tipo: m.tipo ?? null,
+    p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  return Number((data as { cambios?: number } | null)?.cambios ?? 0);
+}
+
+/** Crea (tipo null) o edita un tipo de caso. Solo ti; la base lo vuelve a verificar. */
+export async function guardarTipoCaso(
+  t: { tipo: string | null; titulo: string; familia: string; queHacer: string; motivos: string[]; activo: boolean; orden?: number | null },
+  hechoPor: string | null,
+): Promise<string> {
+  const { data, error } = await supabaseAuth.rpc("guardar_tipo_caso", {
+    p_tipo: t.tipo,
+    p_titulo: t.titulo,
+    p_familia: t.familia,
+    p_que_hacer: t.queHacer,
+    p_motivos: t.motivos,
+    p_activo: t.activo,
+    p_orden: t.orden ?? null,
+    p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  return String((data as { tipo?: string } | null)?.tipo ?? t.tipo ?? "");
+}
+
+/** Borra un tipo sin casos (con casos, se retira). */
+export async function borrarTipoCaso(tipo: string): Promise<void> {
+  const { error } = await supabaseAuth.rpc("borrar_tipo_caso", { p_tipo: tipo });
   if (error) throw new Error(traducirError(error.message));
 }
 

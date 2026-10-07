@@ -20,6 +20,7 @@ const caso = (o: Partial<CasoGuardado>): CasoGuardado => ({
   id: "x", numero: 1, tipo: "otro", registroId: null, tarjeta: "1234567", titulo: "Un caso", detalle: "", evidencia: {},
   estado: "abierto", origen: "manual", regla: null, clave: null, preguntarAlPresentarse: false, creadoPor: "ti",
   creadoEn: "2026-10-06T10:00:00Z", actualizadoEn: "2026-10-06T10:00:00Z", cerradoPor: null, cerradoEn: null, cierreNota: null,
+  urgente: false, atorado: false, esperaMotivo: null, esperaHasta: null, esperaTexto: null, cierreMotivo: null, veces: 1,
   folio: null, nombre: null, ...o,
 });
 
@@ -66,7 +67,7 @@ describe("orden y cuentas", () => {
   });
   it("cuenta por estado", () => {
     expect(contarPorEstado([caso({}), caso({ estado: "resuelto" }), caso({ estado: "resuelto" })])).toEqual({
-      abierto: 1, seguimiento: 0, resuelto: 2, descartado: 0,
+      nuevo: 0, abierto: 1, esperando: 0, seguimiento: 0, resuelto: 2, descartado: 0,
     });
   });
 });
