@@ -41,12 +41,14 @@ const casosSnl = snl.tarjetas.map((t) => ({
   evidencia: { ventana: snl.ventana, lote: t.lote, lector: t.lector, estancias: t.estancias, sinSalida: t.sinSalida, sinEntrada: t.sinEntrada, diasConFalla: t.diasConFalla, ultimoPaso: t.ultimoPaso },
 }));
 
-// G. Correcciones de nombre dictadas: folio,nombres,paterno,materno,antes_paterno,antes_materno,nota
+// G. Correcciones de nombre dictadas: tarjeta,nombres,paterno,materno,antes_paterno,antes_materno,nota
+// POR TAG, NUNCA POR FOLIO: los folios de la copia local no son los de produccion
+// (7-oct: SATAG-004457 en local era SATAG-000957 en produccion y la guardia no lo encontro).
 const csv = path.join(dir, "correcciones-nombre.csv");
 const nombres = fs.existsSync(csv)
   ? fs.readFileSync(csv, "utf8").split(/\r?\n/).slice(1).filter(Boolean).map((l) => {
-      const [folio, n, p, m, ap, am, nota] = l.split(",");
-      return { folio, n, p, m, ap, am: am ?? "", nota: nota ?? "" };
+      const [tarjeta, n, p, m, ap, am, nota] = l.split(",");
+      return { tarjeta, n, p, m, ap, am: am ?? "", nota: nota ?? "" };
     })
   : [];
 
@@ -85,7 +87,7 @@ create table _respaldo_casos_${dia.replace(/-/g, "")} as
       from casos;
 create table _respaldo_nombres_${dia.replace(/-/g, "")} as
     select id, folio, usuario_nombres, usuario_apellido_paterno, usuario_apellido_materno
-      from registros where folio in (${nombres.map((x) => sqlTxt(x.folio)).join(", ") || "''"});
+      from registros where no_dispositivo in (${nombres.map((x) => sqlTxt(x.tarjeta)).join(", ") || "''"}) and estado <> 'baja';
 alter table _respaldo_casos_${dia.replace(/-/g, "")} enable row level security;
 alter table _respaldo_nombres_${dia.replace(/-/g, "")} enable row level security;
 revoke all on table _respaldo_casos_${dia.replace(/-/g, "")}, _respaldo_nombres_${dia.replace(/-/g, "")} from anon, authenticated, public;
@@ -178,7 +180,7 @@ $salida$;
 -- G. Nombres corregidos (solo si el expediente sigue como estaba).
 ${nombres.map((x) => `with hecho as (
     update registros set usuario_nombres = ${sqlTxt(x.n)}, usuario_apellido_paterno = ${sqlTxt(x.p)}, usuario_apellido_materno = ${sqlTxt(x.m)}
-     where folio = ${sqlTxt(x.folio)} and usuario_apellido_paterno = ${sqlTxt(x.ap)} and coalesce(usuario_apellido_materno, '') = ${sqlTxt(x.am)}
+     where no_dispositivo = ${sqlTxt(x.tarjeta)} and estado <> 'baja' and usuario_apellido_paterno = ${sqlTxt(x.ap)} and coalesce(usuario_apellido_materno, '') = ${sqlTxt(x.am)}
     returning id
 )
 insert into movimientos (registro_id, tipo, motivo, hecho_por)
