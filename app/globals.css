@@ -1733,3 +1733,15 @@ a { color: var(--primary-strong); }
 .tc-cand--foco { background: var(--field-bg); }
 .tc-cand__m { display: block; font-size: 0.75rem; color: var(--muted); }
 .tc-elegido { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; border: 1px solid var(--primary); background: var(--field-bg); border-radius: var(--radius); padding: 8px 10px; margin-top: 4px; }
+.tc-vista--obs { margin-left: auto; }
+.tc-vista--obs > button:first-child { color: #8a5214; }
+.tc-obs { padding: 4px 2px 20px; }
+.tc-obs__tabla { overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+.tc-obs__tabla table { border-collapse: collapse; width: 100%; font-size: 0.85rem; min-width: 720px; }
+.tc-obs__tabla th { position: sticky; top: 0; background: #fff; text-align: left; color: var(--muted); font-weight: 700; font-size: 0.75rem; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.tc-obs__tabla td { padding: 7px 10px; border-bottom: 1px solid #eef1f4; vertical-align: top; font-variant-numeric: tabular-nums; }
+.tc-obs__tabla tbody tr { cursor: pointer; }
+.tc-obs__tabla tbody tr:hover, .tc-obs--act { background: var(--field-bg); }
+.tc-obs__m { display: block; font-size: 0.75rem; color: var(--muted); }
+.tc-obs__barra { display: block; width: 90px; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin: 4px 0 3px; }
+.tc-obs__barra i { display: block; height: 100%; background: #d98a2b; }

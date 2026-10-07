@@ -5,9 +5,12 @@
 // numero, estado, historial y evidencia. Aqui no hay React ni Supabase: asi se
 // prueba con datos del tamaño de una prueba.
 
+import { normalizarBusqueda } from "@/lib/buscarPersona";
+
 // Bloque 90: `nuevo` (nadie lo ha revisado) y `esperando` (a la persona, a un
 // tercero o a una fecha). `abierto` es «Por atender»; `seguimiento` queda del 89 y
 // se pinta en Esperando.
+
 export type EstadoCasoGuardado = "nuevo" | "abierto" | "esperando" | "seguimiento" | "resuelto" | "descartado";
 export type OrigenCaso = "manual" | "regla" | "migracion";
 export type MotivoEspera = "persona" | "tercero" | "fecha";
@@ -211,7 +214,9 @@ export function coincideBusqueda(c: CasoGuardado, q: string): boolean {
   if (!t) return true;
   const n = numeroDeBusqueda(t);
   if (n !== null && c.numero === n) return true;
-  return [numeroCaso(c.numero), c.tarjeta ?? "", c.folio ?? "", c.nombre ?? "", c.titulo].join(" ").toLowerCase().includes(t);
+  // Sin acentos y en cualquier orden: «martinez gonzalez» encuentra «Martínez González».
+  const indice = normalizarBusqueda([numeroCaso(c.numero), c.tarjeta ?? "", c.folio ?? "", c.nombre ?? "", c.titulo, c.vehiculo?.placas ?? ""].join(" "));
+  return normalizarBusqueda(t).split(" ").every((p) => indice.includes(p));
 }
 
 /* ------------------------------------------------------------------ evidencia */

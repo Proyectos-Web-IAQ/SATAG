@@ -61,6 +61,12 @@ const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
 const POR_COLUMNA = 12;
 
+// En observacion: esperan su fecha y son muchos (191 al 7-oct, y creceran). Mientras
+// esperan no van en las columnas sino en su propia vista; cuando su fecha llega y
+// regresan a Por atender, vuelven al tablero (Gerardo, 7-oct).
+const EN_OBSERVACION = ["tag-sin-uso"];
+const enObservacion = (c: CasoGuardado) => EN_OBSERVACION.includes(c.tipo) && columnaDe(c.estado) === "esperando";
+
 interface Vista { id: string; titulo: string; tipos: string[]; urgente: boolean; base?: boolean }
 const VISTAS_BASE: Vista[] = [
   { id: "todos", titulo: "Todos", tipos: [], urgente: false, base: true },
@@ -150,9 +156,11 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
 
   // Lo cerrado hace mas de 30 dias se archiva: no se ve en el tablero, pero se busca.
   const visibles = useMemo(
-    () => (casos ?? []).filter((c) => pasa(c, filtro) && coincideBusqueda(c, q) && !(columnaDe(c.estado) === "cerrado" && !q && c.cerradoEn && diasDesde(c.cerradoEn) > 30)),
+    () => (casos ?? []).filter((c) => pasa(c, filtro) && coincideBusqueda(c, q) && !enObservacion(c) && !(columnaDe(c.estado) === "cerrado" && !q && c.cerradoEn && diasDesde(c.cerradoEn) > 30)),
     [casos, filtro, q],
   );
+  const observados = useMemo(() => (casos ?? []).filter((c) => enObservacion(c) && coincideBusqueda(c, q)), [casos, q]);
+  const [verObservacion, setVerObservacion] = useState(false);
   const porColumna = useMemo(() => {
     const m = new Map<ColumnaCaso, CasoGuardado[]>(COLUMNAS_CASO.map((c) => [c.id, []]));
     for (const c of visibles) m.get(columnaDe(c.estado))!.push(c);
@@ -336,6 +344,11 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
           </div>
         ))}
         {filtroCambio && <button type="button" className="tc-guardar-v" onClick={guardarVista}>+ Guardar vista</button>}
+        <div className={`tc-vista tc-vista--obs${verObservacion ? " tc-vista--act" : ""}`}>
+          <button type="button" role="tab" aria-selected={verObservacion} onClick={() => setVerObservacion((v) => !v)} title="Esperan su fecha: no están en las columnas">
+            TAGs sin uso en observación <b>{observados.length}</b>
+          </button>
+        </div>
       </div>
 
       <div className="tc-chips">
@@ -358,7 +371,9 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
       </div>
 
       <Zona abierto={caso !== null}
-        tablero={
+        tablero={verObservacion ? (
+          <TablaObservacion casos={observados} eventos={eventos} nombreDe={nombreDe} activo={activo} onAbrir={setActivo} onVolver={() => setVerObservacion(false)} />
+        ) : (
           <div className="tc-tablero">
             {COLUMNAS_CASO.map((col) => {
               const l = porColumna.get(col.id)!;
@@ -378,7 +393,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
               );
             })}
           </div>
-        }
+        )}
         panel={caso && (
           <PanelCaso
             key={caso.id}
@@ -851,5 +866,78 @@ function DialogoReportar({ tipos, familias, casos, candidatos, cargando, onCance
         </button>
       </div>
     </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ los TAGs sin uso, aparte */
+
+/**
+ * Los que esperan su fecha (hoy, los «TAG sin uso»): una tabla, no tarjetas, porque
+ * son muchos y crecen. Cada uno con su fecha POR TAG (Gerardo, 7-oct): su ultimo
+ * paso conocido, o el 7-jul si nunca paso, mas 6 meses.
+ */
+function TablaObservacion({ casos, eventos, nombreDe, activo, onAbrir, onVolver }: {
+  casos: CasoGuardado[];
+  eventos: EventoZk[] | null;
+  nombreDe: (t: string) => string | undefined;
+  activo: string | null;
+  onAbrir: (id: string) => void;
+  onVolver: () => void;
+}) {
+  // El ultimo paso que abrio, por TAG: de la bitacora cargada si la hay; si no, el de la evidencia.
+  const ultimoPorTag = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const e of eventos ?? []) {
+      if (!e.concedido || e.repeticion) continue;
+      const ya = m.get(e.tarjeta);
+      if (!ya || e.ocurrioEn > ya) m.set(e.tarjeta, e.ocurrioEn);
+    }
+    return m;
+  }, [eventos]);
+  const filas = casos
+    .map((c) => {
+      const ev = typeof c.evidencia?.ultimoPaso === "string" ? c.evidencia.ultimoPaso : "";
+      const deEv = /^\d{4}-\d{2}-\d{2}/.test(ev) ? ev.slice(0, 10) : null;
+      const deBit = c.tarjeta ? ultimoPorTag.get(c.tarjeta)?.slice(0, 10) ?? null : null;
+      const ultimo = [deEv, deBit].filter((x): x is string => !!x).sort().pop() ?? null;
+      const desde = ultimo ?? "2026-07-07";
+      const sin = diasDesde(desde + "T12:00:00");
+      return { c, ultimo, sin, avance: Math.min(1, sin / 182) };
+    })
+    .sort((a, b) => (a.c.esperaHasta ?? "").localeCompare(b.c.esperaHasta ?? "") || b.sin - a.sin);
+  return (
+    <div className="tc-obs">
+      <p className="ti-hint">
+        Esperan su fecha: 6 meses desde su último paso conocido (o desde el 7-jul, inicio de la historia de ZK, si nunca pasó).
+        Si un TAG vuelve a abrir, su caso se cierra; si llega la fecha sin uso, regresa a «Por atender» como listo para baja.{" "}
+        <button type="button" className="link-action" onClick={onVolver}>Volver al tablero</button>
+      </p>
+      <div className="tc-obs__tabla">
+        <table>
+          <thead>
+            <tr><th>Persona</th><th>TAG sin uso</th><th>TAG que sí usa</th><th>Último paso</th><th>Sin entrar</th><th>Lista para baja</th></tr>
+          </thead>
+          <tbody>
+            {filas.map(({ c, ultimo, sin, avance }) => {
+              const usa = typeof c.evidencia?.tagQueSiUsa === "string" ? c.evidencia.tagQueSiUsa : null;
+              return (
+                <tr key={c.id} className={c.id === activo ? "tc-obs--act" : ""} onClick={() => onAbrir(c.id)} tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter") onAbrir(c.id); }}>
+                  <td><b>{c.nombre ?? (c.tarjeta ? nombreDe(c.tarjeta) : null) ?? "Sin nombre"}</b>{c.folio && <span className="tc-obs__m mono">{c.folio}</span>}</td>
+                  <td className="mono">{c.tarjeta}</td>
+                  <td className="mono">{usa ?? "—"}</td>
+                  <td>{ultimo ? fechaLarga(ultimo) : <span className="tc-obs__m">ninguno desde el 7-jul</span>}</td>
+                  <td>
+                    <span className="tc-obs__barra" aria-hidden="true"><i style={{ width: `${Math.round(avance * 100)}%` }} /></span>
+                    {sin} días
+                  </td>
+                  <td>{c.esperaHasta ? fechaLarga(c.esperaHasta) : "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+        {filas.length === 0 && <p className="g-vacio">No hay TAGs en observación.</p>}
+      </div>
+    </div>
   );
 }
