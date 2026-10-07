@@ -123,7 +123,12 @@ export function PasosSemana({ estancias }: { estancias: Estancia[] }) {
                 {del.length === 0 && <text className="viz-marca" x={izq} y={y + 14}>No entró</text>}
                 {del.map((e, j) => {
                   const x1 = x(e.entro), x2 = Math.max(x(e.entro + e.dur), x1 + 3);
-                  const fin = e.censura === null ? horaCorta(e.entro + e.dur) : "sin salida leída";
+                  // «izquierda»: se leyo la SALIDA y no la entrada; el inicio de la barra
+                  // es supuesto (arranque de la franja) y lo desconocido es la entrada.
+                  const sinEntrada = e.censura === "izquierda";
+                  const desde = sinEntrada ? "?" : horaCorta(e.entro);
+                  const hasta = e.censura === null || sinEntrada ? horaCorta(e.entro + e.dur) : "?";
+                  const fin = e.censura === null ? `salió ${hasta}` : sinEntrada ? `salió ${hasta} · entrada no leída` : "sin salida leída";
                   // El rotulo va a la derecha de la barra si cabe antes de la siguiente
                   // y antes del borde; si no, queda en el title.
                   const sig = del[j + 1];
@@ -132,10 +137,10 @@ export function PasosSemana({ estancias }: { estancias: Estancia[] }) {
                     <g key={j}>
                       <rect className={`pasos__barra${e.lote === "E1" ? " pasos__barra--e1" : ""}${e.censura !== null ? " pasos__barra--abierta" : ""}`}
                         x={x1.toFixed(1)} y={y + 4} width={(x2 - x1).toFixed(1)} height={12} rx={2}>
-                        <title>{`${e.lote} · entró ${horaCorta(e.entro)} · ${fin}`}</title>
+                        <title>{sinEntrada ? `${e.lote} · ${fin}` : `${e.lote} · entró ${desde} · ${fin}`}</title>
                       </rect>
                       {cabe && (
-                        <text className="viz-marca" x={x2 + 5} y={y + 14}>{e.lote} {horaCorta(e.entro)}–{e.censura === null ? horaCorta(e.entro + e.dur) : "?"}</text>
+                        <text className="viz-marca" x={x2 + 5} y={y + 14}>{e.lote} {desde}–{hasta}</text>
                       )}
                     </g>
                   );
@@ -145,7 +150,7 @@ export function PasosSemana({ estancias }: { estancias: Estancia[] }) {
           })}
         </svg>
       </div>
-      <p className="pasos__nota">Azul: E2. Verde: E1. Cada barra va de la entrada a la salida; la punteada (termina en «?») es una entrada sin salida leída.</p>
+      <p className="pasos__nota">Azul: E2. Verde: E1. Cada barra va de la entrada a la salida; la punteada tiene un extremo sin leer: «?» al final es una entrada sin salida leída, y «?» al principio es una salida sin entrada leída (la barra arranca a la izquierda solo para dibujarla).</p>
     </div>
   );
 }

@@ -51,7 +51,7 @@ import {
   type PadronEstacionamiento,
   type RespuestaCargaPadronZk,
 } from "@/lib/supabase/apiPanel";
-import { corteDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
+import { corteDe, inicioDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
 import { GLOSARIO } from "@/lib/glosario";
 import { exportadoEnDe, huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
 import { grupoDeExpediente, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
@@ -485,7 +485,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
 
   const datos: DatosEstacionamiento | null = lectura
     ? (() => {
-        const m = medirEstacionamiento(lectura.eventos, rolDe, { deptoDe, corte: corteDe(lectura.resumen) });
+        const m = medirEstacionamiento(lectura.eventos, rolDe, { deptoDe, corte: corteDe(lectura.resumen), inicio: inicioDe(lectura.resumen) });
         const fuentes = new Map<string, Fuentes>();
         for (const u of m.porCredencial) {
           const r = expedienteDe(u.tarjeta);

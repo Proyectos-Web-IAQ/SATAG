@@ -80,6 +80,9 @@ const RUTAS = [
       // El seguimiento del bloque 87 (seguir_caso) se reemplazo por el 89 el 7-oct.
       { texto: "altas_desde_zk", que: "quien abre la pluma sin expediente entra solo a SATAG (bloque 86)" },
       { texto: "p_folio_recibo", que: "Administracion devuelve un cobro antes de instalar, atado al recibo que confirmo (bloque 85)" },
+      // Cadena del rotulo de la grafica de la ficha (7-oct): una salida sin entrada
+      // ya no se rotula como «sin salida leida».
+      { texto: "entrada no leída", que: "la ficha distingue salida sin entrada de entrada sin salida (7-oct)" },
     ],
   },
 ];

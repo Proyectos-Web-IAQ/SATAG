@@ -417,6 +417,11 @@ export interface Medicion {
    */
   salidasSinEntrada: number;
   /**
+   * Salidas sin entrada del DIA EN QUE ARRANCA el archivo: entraron antes de que el
+   * archivo empezara. No estan en `salidasSinEntrada`. 0 si no se paso `inicio`.
+   */
+  antesDelArchivo: number;
+  /**
    * Hasta donde sabe el archivo, y cuantos coches seguian dentro a esa hora. Esos NO
    * estan en `entradasSinSalida`: no les falta la salida, les falta el dia.
    * `null` si la lectura no trae fechas.
@@ -458,6 +463,13 @@ export interface Estancia {
  * la hora de cierre del recinto, no en el fin del registro.
  */
 export const MINUTO_CIERRE_POR_DEFECTO = 21 * 60;
+
+/**
+ * Dos pasos de la misma tarjeta, en el mismo sentido y estacionamiento, a menos de
+ * esto, son UNA lectura. A 30 min ya se fundia un «dejar y volver»; a 10 no
+ * (diagnostico del 7-oct sobre 14-sep a 6-oct).
+ */
+export const REPETICION_ESTANCIA_MIN = 10;
 
 /**
  * HASTA DONDE SABE EL ARCHIVO.
@@ -544,7 +556,14 @@ export function emparejarEstancias(
   eventos: EventoZk[],
   minutoCierre: number = MINUTO_CIERRE_POR_DEFECTO,
   corte: Corte | null = null,
-): { estancias: Estancia[]; entradasSinSalida: number; salidasSinEntrada: number; aunDentro: number } {
+  inicio: Corte | null = null,
+): {
+  estancias: Estancia[];
+  entradasSinSalida: number;
+  salidasSinEntrada: number;
+  aunDentro: number;
+  antesDelArchivo: number;
+} {
   const porTarjetaDiaLote = new Map<string, EventoZk[]>();
   for (const e of accesos(eventos)) {
     const k = `${e.tarjeta}|${dia(e)}|${e.lote}`;
@@ -557,6 +576,7 @@ export function emparejarEstancias(
   let entradasSinSalida = 0;
   let salidasSinEntrada = 0;
   let aunDentro = 0;
+  let antesDelArchivo = 0;
 
   // Una entrada que no cerro se corta en la hora de cierre y queda marcada. SALVO EL
   // DIA DEL CORTE: ahi el archivo termina antes que la jornada, asi que quien no
@@ -576,7 +596,15 @@ export function emparejarEstancias(
   for (const grupo of porTarjetaDiaLote.values()) {
     const orden = [...grupo].sort((a, b) => minuto(a) - minuto(b));
     let abierta: EventoZk | null = null;
+    let previo: EventoZk | null = null;
     for (const e of orden) {
+      // La misma lectura otra vez: el mismo sentido a menos de
+      // `REPETICION_ESTANCIA_MIN` del paso anterior. Las repeticiones de `marcarRepeticiones`
+      // (2 min) dejan pasar las de 2 a 10 min, y cada una fabricaba una entrada sin
+      // salida o una salida sin entrada que no existieron (diagnostico del 7-oct: 20
+      // de 520 huerfanos en los dias normales). Se conserva la primera.
+      if (previo !== null && previo.sentido === e.sentido && minuto(e) - minuto(previo) <= REPETICION_ESTANCIA_MIN) continue;
+      previo = e;
       if (e.sentido === "entrada") {
         // Dos entradas seguidas: la primera nunca cerro.
         if (abierta !== null) estancias.push(porDerecha(abierta));
@@ -605,13 +633,30 @@ export function emparejarEstancias(
           dur: Math.max(0, minuto(e) - FRANJA_DESDE),
           censura: "izquierda",
         });
-        salidasSinEntrada += 1;
+        // EL DIA EN QUE ARRANCA EL ARCHIVO, una salida sin entrada no es un defecto:
+        // el coche entro antes de que el archivo empezara a contar. Es la misma
+        // censura que el «corte», pero por la izquierda, y se cuenta aparte (el 14-sep
+        // eran 134 de los 755 huerfanos).
+        if (inicio !== null && dia(e) === inicio.dia) antesDelArchivo += 1;
+        else salidasSinEntrada += 1;
       }
     }
     if (abierta !== null) estancias.push(porDerecha(abierta));
   }
 
-  return { estancias, entradasSinSalida, salidasSinEntrada, aunDentro };
+  return { estancias, entradasSinSalida, salidasSinEntrada, aunDentro, antesDelArchivo };
+}
+
+/** El arranque de una lectura (su primer evento), con la forma de `Corte`. `null` sin fechas. */
+export function inicioDe(resumen: { desde: string | null }): Corte | null {
+  const primero = resumen.desde;
+  if (!primero) return null;
+  return {
+    dia: primero.slice(0, 10),
+    minuto: Number(primero.slice(11, 13)) * 60 + Number(primero.slice(14, 16)) + Number(primero.slice(17, 19)) / 60,
+    exportadoEn: null,
+    retrasoMin: null,
+  };
 }
 
 /** Las estancias con los dos extremos leidos: las unicas que miden permanencia. */
@@ -1038,6 +1083,8 @@ export interface OpcionesMedicion {
    * de cierre, como antes.
    */
   corte?: Corte | null;
+  /** Donde arranca el archivo (ver `inicioDe`): lo simetrico de `corte`. */
+  inicio?: Corte | null;
 }
 
 export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: OpcionesMedicion = {}): Medicion {
@@ -1045,7 +1092,12 @@ export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: Opci
   const corte = op.corte ?? null;
   const ok = accesos(eventos);
   const dias = [...new Set(ok.map(dia))].sort();
-  const { estancias, entradasSinSalida, salidasSinEntrada, aunDentro } = emparejarEstancias(eventos, minutoCierre, corte);
+  const { estancias, entradasSinSalida, salidasSinEntrada, aunDentro, antesDelArchivo } = emparejarEstancias(
+    eventos,
+    minutoCierre,
+    corte,
+    op.inicio ?? null,
+  );
   const { comparables, excluidos } = clasificarDias(ok, dias, corte);
 
   const picoTotal = picoPorDia(estancias);
@@ -1186,6 +1238,7 @@ export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: Opci
     enLaMeseta: [...enMeseta.entries()].map(([rol, coches]) => ({ rol, coches })).sort((a, b) => b.coches - a.coches),
     entradasSinSalida,
     salidasSinEntrada,
+    antesDelArchivo,
     corte: corte === null ? null : { ...corte, aunDentro },
   };
 }

@@ -10,7 +10,9 @@ import {
   clasificarDias,
   corteDe,
   emparejarEstancias,
+  inicioDe,
   medirEstacionamiento,
+  REPETICION_ESTANCIA_MIN,
   lecturaOcupacion,
   pasoTeclado,
   rangoPico,
@@ -75,6 +77,72 @@ describe("emparejarEstancias · el dia del corte no es un dia que termino", () =
     const r = emparejarEstancias([paso({ hora: "07:30:00" })]);
     expect(r.entradasSinSalida).toBe(1);
     expect(r.aunDentro).toBe(0);
+  });
+});
+
+describe("emparejarEstancias · el dia en que arranca el archivo (diagnostico del 7-oct)", () => {
+  const salida = (hora: string, dia = "2026-09-14") => paso({ hora, dia, sentido: "salida" });
+  it("una salida sin entrada del primer dia entro antes del archivo: NO es defecto", () => {
+    const r = emparejarEstancias([salida("16:10:00")], MINUTO_CIERRE_POR_DEFECTO, null, corteA("2026-09-14", 14 * 60 + 38));
+    expect(r.antesDelArchivo).toBe(1);
+    expect(r.salidasSinEntrada).toBe(0);
+    // La estancia se sigue dibujando y contando para la ocupacion.
+    expect(r.estancias[0].censura).toBe("izquierda");
+  });
+  it("la misma salida sin entrada otro dia SI es salida sin entrada", () => {
+    const r = emparejarEstancias([salida("16:10:00", "2026-09-15")], MINUTO_CIERRE_POR_DEFECTO, null, corteA("2026-09-14", 14 * 60 + 38));
+    expect(r.salidasSinEntrada).toBe(1);
+    expect(r.antesDelArchivo).toBe(0);
+  });
+  it("sin inicio todo sigue igual que antes", () => {
+    const r = emparejarEstancias([salida("16:10:00")]);
+    expect(r.salidasSinEntrada).toBe(1);
+    expect(r.antesDelArchivo).toBe(0);
+  });
+  it("inicioDe toma el primer evento de la lectura", () => {
+    expect(inicioDe({ desde: "2026-09-14 14:38:30" })).toMatchObject({ dia: "2026-09-14", minuto: 14 * 60 + 38.5 });
+    expect(inicioDe({ desde: null })).toBeNull();
+  });
+});
+
+describe("emparejarEstancias · una lectura repetida no es otro paso", () => {
+  it("dos entradas a menos de 10 min son una: la estancia cierra con la salida", () => {
+    const r = emparejarEstancias([
+      paso({ hora: "07:30:00" }),
+      paso({ hora: "07:36:00" }),
+      paso({ hora: "13:00:00", sentido: "salida" }),
+    ]);
+    expect(r.entradasSinSalida).toBe(0);
+    expect(r.estancias).toHaveLength(1);
+    // Cuenta desde la PRIMERA lectura, que es cuando el coche paso.
+    expect(r.estancias[0].entro).toBe(7 * 60 + 30);
+  });
+  it("dos salidas a menos de 10 min son una: no hay salida sin entrada", () => {
+    const r = emparejarEstancias([
+      paso({ hora: "07:30:00" }),
+      paso({ hora: "13:00:00", sentido: "salida" }),
+      paso({ hora: "13:08:00", sentido: "salida" }),
+    ]);
+    expect(r.salidasSinEntrada).toBe(0);
+    expect(r.estancias).toHaveLength(1);
+  });
+  it(`a mas de ${REPETICION_ESTANCIA_MIN} min ya son dos pasos: se queda la entrada sin salida`, () => {
+    const r = emparejarEstancias([
+      paso({ hora: "07:30:00" }),
+      paso({ hora: "07:45:00" }),
+      paso({ hora: "13:00:00", sentido: "salida" }),
+    ]);
+    expect(r.entradasSinSalida).toBe(1);
+    expect(r.estancias).toHaveLength(2);
+  });
+  it("dejar y volver (entrada, salida, entrada en 10 min) son dos estancias", () => {
+    const r = emparejarEstancias([
+      paso({ hora: "07:30:00" }),
+      paso({ hora: "07:34:00", sentido: "salida" }),
+      paso({ hora: "07:38:00" }),
+      paso({ hora: "13:00:00", sentido: "salida" }),
+    ]);
+    expect(r.estancias.filter((s) => s.censura === null)).toHaveLength(2);
   });
 });
 
