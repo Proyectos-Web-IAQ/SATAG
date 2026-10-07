@@ -81,8 +81,11 @@ const RUTAS = [
       { texto: "altas_desde_zk", que: "quien abre la pluma sin expediente entra solo a SATAG (bloque 86)" },
       { texto: "p_folio_recibo", que: "Administracion devuelve un cobro antes de instalar, atado al recibo que confirmo (bloque 85)" },
       // Cadena del rotulo de la grafica de la ficha (7-oct): una salida sin entrada
-      // ya no se rotula como «sin salida leida».
-      { texto: "entrada no leída", que: "la ficha distingue salida sin entrada de entrada sin salida (7-oct)" },
+      // ya no se rotula como «sin salida leida». Sin el acento: el empaquetado escribe la
+      // «í» como í y una marca con acento nunca coincide.
+      // Sin el acento: el empaquetado escribe la «í» como \xed y una marca con acento
+      // nunca coincide (7-oct).
+      { texto: "entrada no le", que: "la ficha distingue salida sin entrada de entrada sin salida (7-oct)" },
     ],
   },
 ];
