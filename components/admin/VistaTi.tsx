@@ -28,6 +28,7 @@ import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
+import { textoVehiculo } from "@/lib/vehiculo";
 import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, TIPO_USUARIO_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
@@ -1734,7 +1735,7 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
                   <div key={r.id} className="ti-card is-open">
                     <div className="ti-card__body">
                       <span className="ti-card__veh">{r.usuarioNombre}</span>
-                      <span className="ti-card__sub">{r.marca} {r.modelo} · {r.color} · {r.placas ?? (r.sinPlacas ? "sin placas" : "—")}</span>
+                      <span className="ti-card__sub">{textoVehiculo(r)} · {r.placas ?? (r.sinPlacas ? "sin placas" : "—")}</span>
                       <span className="ti-card__meta">{r.folio}{r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}</span>
                       <button type="button" className="primary-action" disabled={busy} style={{ marginTop: 10 }}
                         onClick={() => elegir(r)}>Elegir este expediente</button>

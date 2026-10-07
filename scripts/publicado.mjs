@@ -38,6 +38,10 @@ const RUTAS = [
       { texto: "seccion_maestro", que: "el panel consulta la seccion (L2-09)" },
       { texto: "las consulta Sistemas", que: "la firma solo la abren TI y super (L2-03)" },
       { texto: "dados de alta desde", que: "el stock a ZK va filtrado por fecha de alta" },
+      // Los nombres de los RPC viajan en la llamada: sobreviven a la minificacion.
+      { texto: "abrir_caso", que: "la ficha y la pestana Casos abren casos (bloque 89)" },
+      { texto: "anotar_caso", que: "el seguimiento de casos (bloque 89)" },
+      { texto: "EMPLEADO_PPF", que: "Estacionamiento agrupa el departamento Empleado_PPF (ZK 25)" },
       { texto: "Contabilidad", que: "el rol contador existe en el cliente (inerte hasta el bloque 74)" },
       // Marca el nombre de columna, no un rotulo de pantalla: va dentro del
       // select de listInstalaciones, asi que sobrevive a la minificacion y a

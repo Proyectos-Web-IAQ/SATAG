@@ -9,7 +9,7 @@
 // recargan la lista despues de actuar, asi que el registro actualizado llega
 // por listRegistros y devolverlo aqui seria un segundo viaje redundante.
 import { supabaseAuth } from "./auth";
-import type { EstadoCaso, SeguimientoCaso } from "@/lib/casos";
+import type { CasoGuardado, EstadoCasoGuardado, NotaCaso, OrigenCaso, TipoCasoCatalogo } from "@/lib/casosRegistro";
 import { urlFirmada } from "@/lib/firma";
 import type {
   CambiosRegistro,
@@ -1325,33 +1325,142 @@ export async function cargarPadronZk(meta: MetaPadronZk, filas: FilaPadronZk[], 
   return { requiereConfirmacion: false, yaEstaba: r.yaEstaba ?? false, insertadas: r.insertadas ?? 0, actualizadas: r.actualizadas ?? 0, retiradas: r.retiradas ?? 0, vigentes: r.vigentes ?? 0 };
 }
 
-/** Lo que TI decidio de cada caso (bloque 87). Los casos se calculan en lib/casos.ts. */
-export async function listSeguimientoCasos(): Promise<SeguimientoCaso[]> {
-  const { data, error } = await supabaseAuth
-    .from("casos_seguimiento")
-    .select("clave, estado, nota, actualizado_por, actualizado_en")
-    .limit(5000);
-  if (error) throw new Error(traducirError(error.message));
-  return ((data ?? []) as { clave: string; estado: string; nota: string; actualizado_por: string; actualizado_en: string }[]).map((r) => ({
+/* ------------------------------------------------------------------ casos (bloque 89) */
+
+const SELECT_CASO = `
+  id, numero, tipo, registro_id, tarjeta, titulo, detalle, evidencia, estado, origen, regla, clave,
+  preguntar_al_presentarse, creado_por, creado_en, actualizado_en, cerrado_por, cerrado_en, cierre_nota,
+  registro:registros ( folio, usuario_nombre_completo )
+`;
+
+interface CasoRow {
+  id: string; numero: number; tipo: string; registro_id: string | null; tarjeta: string | null;
+  titulo: string; detalle: string; evidencia: Record<string, unknown> | null; estado: string; origen: string;
+  regla: string | null; clave: string | null; preguntar_al_presentarse: boolean; creado_por: string;
+  creado_en: string; actualizado_en: string; cerrado_por: string | null; cerrado_en: string | null;
+  cierre_nota: string | null;
+  // El FK es a-uno, pero se admite la lista por si PostgREST la devuelve asi.
+  registro: { folio: string; usuario_nombre_completo: string } | { folio: string; usuario_nombre_completo: string }[] | null;
+}
+
+function mapCaso(r: CasoRow): CasoGuardado {
+  const reg = Array.isArray(r.registro) ? r.registro[0] ?? null : r.registro;
+  return {
+    id: r.id,
+    numero: Number(r.numero),
+    tipo: r.tipo,
+    registroId: r.registro_id,
+    tarjeta: r.tarjeta,
+    titulo: r.titulo,
+    detalle: r.detalle,
+    evidencia: r.evidencia ?? {},
+    estado: r.estado as EstadoCasoGuardado,
+    origen: r.origen as OrigenCaso,
+    regla: r.regla,
     clave: r.clave,
-    estado: r.estado as EstadoCaso,
-    nota: r.nota,
-    actualizadoPor: r.actualizado_por,
+    preguntarAlPresentarse: r.preguntar_al_presentarse,
+    creadoPor: r.creado_por,
+    creadoEn: r.creado_en,
     actualizadoEn: r.actualizado_en,
+    cerradoPor: r.cerrado_por,
+    cerradoEn: r.cerrado_en,
+    cierreNota: r.cierre_nota,
+    folio: reg?.folio ?? null,
+    nombre: reg?.usuario_nombre_completo ?? null,
+  };
+}
+
+/** El catalogo de tipos de caso (bloque 89). Agregar un tipo es un insert, no un cambio de cliente. */
+export async function listTiposCaso(): Promise<TipoCasoCatalogo[]> {
+  const { data, error } = await supabaseAuth
+    .from("casos_tipos")
+    .select("tipo, titulo, categoria, que_hacer, automatico, orden")
+    .order("orden", { ascending: true });
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as { tipo: string; titulo: string; categoria: string; que_hacer: string; automatico: boolean; orden: number }[]).map((t) => ({
+    tipo: t.tipo, titulo: t.titulo, categoria: t.categoria, queHacer: t.que_hacer, automatico: t.automatico, orden: t.orden,
   }));
 }
 
-export async function seguirCaso(clave: string, estado: EstadoCaso, nota: string, hechoPor: string | null): Promise<SeguimientoCaso> {
-  const { data, error } = await supabaseAuth.rpc("seguir_caso", { p_clave: clave, p_estado: estado, p_nota: nota, p_hecho_por: hechoPor });
+/**
+ * Los casos guardados, con el folio y el nombre del expediente cuando lo tienen.
+ * Sin filtro de persona trae todos (la pestana filtra en el cliente: son centenas);
+ * con `registroId` y/o `tarjetas` trae los de esa persona, por su expediente o por
+ * cualquiera de sus TAGs.
+ */
+export async function listCasos(filtro: { registroId?: string; tarjetas?: string[] } = {}): Promise<CasoGuardado[]> {
+  let q = supabaseAuth.from("casos").select(SELECT_CASO).order("actualizado_en", { ascending: false }).limit(5000);
+  if (filtro.registroId !== undefined || filtro.tarjetas !== undefined) {
+    const partes: string[] = [];
+    if (filtro.registroId) partes.push(`registro_id.eq.${filtro.registroId}`);
+    // Los TAGs son solo digitos: nada que escapar en el filtro.
+    const tags = (filtro.tarjetas ?? []).filter((t) => /^[0-9]{4,12}$/.test(t));
+    if (tags.length > 0) partes.push(`tarjeta.in.(${tags.join(",")})`);
+    if (partes.length === 0) return [];
+    q = q.or(partes.join(","));
+  }
+  const { data, error } = await q;
   if (error) throw new Error(traducirError(error.message));
-  const r = (data ?? {}) as { clave?: string; estado?: string; nota?: string; actualizadoPor?: string; actualizadoEn?: string };
-  return {
-    clave: r.clave ?? clave,
-    estado: (r.estado ?? estado) as EstadoCaso,
-    nota: r.nota ?? nota,
-    actualizadoPor: r.actualizadoPor ?? "",
-    actualizadoEn: r.actualizadoEn ?? new Date().toISOString(),
-  };
+  return ((data ?? []) as unknown as CasoRow[]).map(mapCaso);
+}
+
+/** El historial de un caso, del mas viejo al mas nuevo. */
+export async function listNotasCaso(casoId: string): Promise<NotaCaso[]> {
+  const { data, error } = await supabaseAuth
+    .from("casos_notas")
+    .select("id, caso_id, clase, estado_antes, estado_despues, nota, hecho_por, hecho_en")
+    .eq("caso_id", casoId)
+    .order("hecho_en", { ascending: true });
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as { id: string; caso_id: string; clase: string; estado_antes: string | null; estado_despues: string | null; nota: string; hecho_por: string; hecho_en: string }[]).map((n) => ({
+    id: n.id,
+    casoId: n.caso_id,
+    clase: n.clase as NotaCaso["clase"],
+    estadoAntes: n.estado_antes as EstadoCasoGuardado | null,
+    estadoDespues: n.estado_despues as EstadoCasoGuardado | null,
+    nota: n.nota,
+    hechoPor: n.hecho_por,
+    hechoEn: n.hecho_en,
+  }));
+}
+
+export interface EntradaCaso {
+  tipo: string;
+  titulo: string;
+  detalle?: string;
+  registroId?: string | null;
+  tarjeta?: string | null;
+  evidencia?: Record<string, unknown>;
+  preguntar?: boolean;
+  /** Con clave no duplica: si ya existe, el RPC devuelve el mismo caso con `yaExistia`. */
+  clave?: string | null;
+  origen?: OrigenCaso;
+  regla?: string | null;
+}
+
+export async function abrirCaso(e: EntradaCaso, hechoPor: string | null): Promise<{ id: string; numero: number; yaExistia: boolean }> {
+  const { data, error } = await supabaseAuth.rpc("abrir_caso", {
+    p_tipo: e.tipo,
+    p_titulo: e.titulo,
+    p_detalle: e.detalle ?? "",
+    p_registro_id: e.registroId ?? null,
+    p_tarjeta: e.tarjeta ?? null,
+    p_evidencia: e.evidencia ?? {},
+    p_preguntar: e.preguntar ?? false,
+    p_clave: e.clave ?? null,
+    p_origen: e.origen ?? "manual",
+    p_regla: e.regla ?? null,
+    p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as { id?: string; numero?: number; yaExistia?: boolean };
+  return { id: r.id ?? "", numero: Number(r.numero ?? 0), yaExistia: r.yaExistia === true };
+}
+
+/** Una nota, un cambio de estado o las dos. Cerrar (resuelto/descartado) exige nota; reabrir limpia el cierre. */
+export async function anotarCaso(casoId: string, nota: string, estado: EstadoCasoGuardado | null, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("anotar_caso", { p_caso: casoId, p_nota: nota, p_estado: estado, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
 }
 
 /**

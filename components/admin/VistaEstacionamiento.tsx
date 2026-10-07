@@ -732,7 +732,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
       {datos ? (
         vista === "casos" ? (
           <VistaCasos
-            casos={detectarCasos(
+            detectados={detectarCasos(
               lectura?.eventos ?? [],
               (padron ?? []).map((p) => ({
                 folio: p.folio,
@@ -747,7 +747,6 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
               personas ?? null,
             )}
             nombreDe={VEN_IDENTIDAD.includes(rol) && personas ? (t) => personas.get(t)?.nombre : null}
-            puedeEditar={CARGAN.includes(rol)}
             email={email}
           />
         ) : vista === "lotes" || vista === "secciones" ? (

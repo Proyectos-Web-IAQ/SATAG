@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Registro, Solicitud, TipoUsuario, TramiteSolicitado } from "@/lib/mock/types";
 import EstadoChip from "@/components/admin/EstadoChip";
+import { textoVehiculo } from "@/lib/vehiculo";
 import { nombreDesdeEmail } from "@/lib/supabase/apiPanel";
 import { CRITERIO_ESTACIONAMIENTO_MAESTRO, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
 
@@ -145,7 +146,7 @@ export function TarjetaRegistro({ r, abierto, onToggle, children, chip, espera }
           <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? "SIN PLACAS" : "—")}</span>
           {chip ?? <EstadoChip estado={r.estado} />}
         </span>
-        <span className="ti-card__veh">{r.marca} {r.modelo} · {r.color}</span>
+        <span className="ti-card__veh">{textoVehiculo(r)}</span>
         <span className="ti-card__sub">{r.usuarioNombre} · <span style={{ textTransform: "capitalize" }}>{r.tipoUsuario}</span></span>
         <span className="ti-card__meta">
           {r.folio}
