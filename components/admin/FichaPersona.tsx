@@ -23,7 +23,8 @@ import type { RolPanel } from "@/lib/supabase/auth";
 import { asignarAreaAdmin, listPasosDeTarjetas, type PasoZk } from "@/lib/supabase/apiPanel";
 import { emparejarEstancias, horaCorta, type Estancia } from "@/lib/estacionamiento";
 import type { EventoZk } from "@/lib/zk/eventos";
-import { DetalleRegistro, ROL_LABEL } from "@/components/admin/RegistroCard";
+import { DetalleRegistro } from "@/components/admin/RegistroCard";
+import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { textoVehiculo } from "@/lib/vehiculo";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import { AvisoPreguntar, SeccionCasos, useCasosDePersona } from "@/components/admin/CasosDePersona";
@@ -36,13 +37,6 @@ const ORIGEN_LABEL: Record<Registro["origenExpediente"], string> = {
   satag: "Alta en SATAG",
   migracion_hoja: "Migrado de la hoja histórica",
   migracion_zk: "Migrado del control de acceso",
-};
-
-const ESTADO_LABEL: Record<Registro["estado"], string> = {
-  pendiente: "Pendiente de cobro",
-  activo: "Activo",
-  bloqueado: "Bloqueado",
-  baja: "Dado de baja",
 };
 
 /** «2026-09-22» o una fecha ISO con hora a «22/09/2026». Lo que no sea fecha, tal cual. */
@@ -61,7 +55,7 @@ function tagsDe(r: Registro): { numero: string; estado: string; desde: string; v
   if (r.noDispositivo) {
     out.push({
       numero: r.noDispositivo,
-      estado: r.estado === "baja" ? `Dado de baja${r.fechaBaja ? ` el ${fechaCorta(r.fechaBaja)}` : ""}` : "Vigente",
+      estado: r.estado === "baja" ? `${ESTADO_EXPEDIENTE.baja}${r.fechaBaja ? ` el ${fechaCorta(r.fechaBaja)}` : ""}` : "Vigente",
       desde: fechaCorta(r.fechaInstalacion ?? r.createdAt),
       vigente: r.estado !== "baja",
     });
@@ -225,7 +219,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
   if (r.estado === "baja" && visitas > 0) avisos.push("Está dado de baja y su TAG sigue abriendo la pluma.");
   for (const a of extras) if (!avisos.includes(a)) avisos.push(a);
 
-  const rolTexto = ROL_LABEL[r.tipoUsuario];
+  const rolTexto = TIPO_PERSONA[r.tipoUsuario];
   const seccion = r.seccionMaestro ?? (r.apellidosFamilia ? `familia ${r.apellidosFamilia}` : null);
 
   return (
@@ -237,7 +231,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
       </div>
       <div className="ficha__cifras">
         <span>TAG {r.estado === "baja" ? "" : "vigente "}<b><code>{r.noDispositivo ?? "sin TAG"}</code></b></span>
-        <span>Plumas <b>{r.estacionamientos.length ? r.estacionamientos.join(" y ") : "ninguna"}</b></span>
+        <span>{ROTULO.plumas} <b>{textoPlumas(r.estacionamientos)}</b></span>
         {puedeVerPasos && pasos.para === r.id && !pasos.cargando && pasos.error === null && (
           <span>Últimos días <b>{visitas} {visitas === 1 ? "visita" : "visitas"}</b>{diasConPaso > 0 ? ` en ${diasConPaso} ${diasConPaso === 1 ? "día" : "días"}` : ""}</span>
         )}
@@ -300,12 +294,12 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
             <h3>Vehículo</h3>
             <div className="table-wrap">
               <table className="tabla-tipo">
-                <thead><tr><th>Placa</th><th>Vehículo</th><th>Estado</th></tr></thead>
+                <thead><tr><th>{ROTULO.placa}</th><th>Vehículo</th><th>Estado</th></tr></thead>
                 <tbody>
                   <tr className={r.estado === "baja" ? "baja" : undefined}>
-                    <td className="mono">{r.placas ?? (r.sinPlacas ? "Sin placas" : "—")}</td>
+                    <td className="mono">{r.placas ?? (r.sinPlacas ? ROTULO.sinPlacas : "—")}</td>
                     <td>{textoVehiculo(r)}</td>
-                    <td>{ESTADO_LABEL[r.estado]}</td>
+                    <td>{ESTADO_EXPEDIENTE[r.estado]}</td>
                   </tr>
                 </tbody>
               </table>
@@ -348,8 +342,8 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
             {r.seccionMaestro && <div><dt>Sección</dt><dd>{r.seccionMaestro}</dd></div>}
             {r.tipoUsuario === "admin" && <AreaAdministrativa r={r} rol={rol} />}
             {r.apellidosFamilia && <div><dt>Familia</dt><dd>{r.apellidosFamilia}</dd></div>}
-            <div><dt>Plumas</dt><dd>{r.estacionamientos.length ? r.estacionamientos.join(", ") : "Ninguna"}</dd></div>
-            <div><dt>Estado</dt><dd>{ESTADO_LABEL[r.estado]}</dd></div>
+            <div><dt>{ROTULO.plumas}</dt><dd>{textoPlumas(r.estacionamientos)}</dd></div>
+            <div><dt>Estado</dt><dd>{ESTADO_EXPEDIENTE[r.estado]}</dd></div>
             <div><dt>Origen</dt><dd>{ORIGEN_LABEL[r.origenExpediente]}</dd></div>
             <div><dt>Folio</dt><dd><code>{r.folio}</code></dd></div>
           </dl>
@@ -360,7 +354,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
                 {familia.map((f) => (
                   <li key={f.id} style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
                     <button type="button" className="link-action" onClick={() => onIr(f.id)}>
-                      {f.usuarioNombre} · {ROL_LABEL[f.tipoUsuario]}{f.noDispositivo ? ` · TAG ${f.noDispositivo}` : ""}
+                      {f.usuarioNombre} · {TIPO_PERSONA[f.tipoUsuario]}{f.noDispositivo ? ` · TAG ${f.noDispositivo}` : ""}
                     </button>
                   </li>
                 ))}
@@ -468,7 +462,7 @@ export default function FichaPersona({ registros, todos, rol, vacio, linea, avis
                   {señalada(r) && <span className="persona__punto" title="Hay algo que no cuadra" />}
                 </span>
                 <span className="persona__mt">
-                  {ROL_LABEL[r.tipoUsuario]} · {r.noDispositivo ? <>TAG <code>{r.noDispositivo}</code></> : "sin TAG"}
+                  {TIPO_PERSONA[r.tipoUsuario]} · {r.noDispositivo ? <>TAG <code>{r.noDispositivo}</code></> : "sin TAG"}
                   {r.placas ? <> · <code>{r.placas}</code></> : ""}
                 </span>
                 {linea && <span className="persona__mt persona__uso">{linea(r)}</span>}

@@ -7,28 +7,10 @@ import { textoVehiculo } from "@/lib/vehiculo";
 import { nombreDesdeEmail } from "@/lib/supabase/apiPanel";
 import { CRITERIO_ESTACIONAMIENTO_MAESTRO, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
 import { fecha, fechaHora } from "@/lib/formato";
+import { enFrase, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 
-// Rol de quien deja una nota del buzon (SC-003), en texto legible.
-// El buzon publico NO ofrece 'otro' (ni 'alumno'); la entrada esta aqui porque
-// el mapa es exhaustivo sobre TipoUsuario y el compilador la exige.
-export const ROL_LABEL: Record<TipoUsuario, string> = {
-  padres: "padre/madre/tutor",
-  maestro: "maestro",
-  admin: "administrativo",
-  alumno: "alumno",
-  otro: "otro familiar",
-};
-
-// Las mismas categorias que ROL_LABEL, pero como etiqueta de opcion: se usan
-// en los botones con que Administracion CONFIRMA el tipo al cobrar (CC-05),
-// donde una etiqueta en minusculas a media frase no funciona.
-export const TIPO_USUARIO_LABEL: Record<TipoUsuario, string> = {
-  padres: "Padre / madre / tutor",
-  maestro: "Maestro",
-  alumno: "Alumno",
-  admin: "Administrativo",
-  otro: "Otro familiar",
-};
+// El tipo de persona (y el rol de quien deja una nota del buzon, SC-003) se
+// escribe con TIPO_PERSONA de lib/glosario.ts; a media frase, con enFrase.
 
 // Orden en que se ofrecen: primero el caso mas frecuente.
 export const TIPOS_USUARIO: TipoUsuario[] = ["padres", "maestro", "alumno", "admin", "otro"];
@@ -68,7 +50,7 @@ export function BadgeEspera({ fecha }: { fecha: string }) {
 // de quien viene y que tramite pidio; una actualizacion/baja dice que pide.
 export function textoSolicitud(s: Solicitud): string {
   if (s.tipo === "nota") {
-    const rol = s.solicitanteRol ? ` (${ROL_LABEL[s.solicitanteRol]})` : "";
+    const rol = s.solicitanteRol ? ` (${enFrase(TIPO_PERSONA[s.solicitanteRol])})` : "";
     const quien = s.solicitanteNombre ? `Nota de ${s.solicitanteNombre}${rol}` : "Nota";
     const pide = s.tramiteSolicitado ? ` — pidió ${TRAMITE_LABEL[s.tramiteSolicitado]}` : "";
     return `${quien}${pide} (${s.fecha}): ${s.detalle}`;
@@ -129,14 +111,14 @@ export function TarjetaRegistro({ r, abierto, onToggle, children, chip, espera }
     <div ref={ref} className={`ti-card ${abierto ? "is-open" : ""} ${r.sinPlacas ? "ti-card--sin-placas" : ""}`}>
       <button type="button" className="ti-card__head" onClick={onToggle} aria-expanded={abierto}>
         <span className="ti-card__row">
-          <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? "SIN PLACAS" : "—")}</span>
+          <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? ROTULO.sinPlacas : "—")}</span>
           {chip ?? <EstadoChip estado={r.estado} />}
         </span>
         <span className="ti-card__veh">{textoVehiculo(r)}</span>
-        <span className="ti-card__sub">{r.usuarioNombre} · <span style={{ textTransform: "capitalize" }}>{r.tipoUsuario}</span></span>
+        <span className="ti-card__sub">{r.usuarioNombre} · {TIPO_PERSONA[r.tipoUsuario] ?? r.tipoUsuario}</span>
         <span className="ti-card__meta">
           {r.folio}
-          {r.estacionamientos.length > 0 ? ` · ${r.estacionamientos.join(" + ")}` : ""}
+          {r.estacionamientos.length > 0 ? ` · ${textoPlumas(r.estacionamientos)}` : ""}
           {r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}
         </span>
         {espera && <span className="ti-card__espera"><BadgeEspera fecha={espera} /></span>}
@@ -168,7 +150,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
         <div><div className="k">Procedencia TAG</div><div className="v" style={{ textTransform: "capitalize" }}>{r.procedenciaTag}</div></div>
         {r.tagApartado && <div><div className="k">TAG apartado</div><div className="v">{r.tagApartadoNo}</div></div>}
         <div><div className="k">Pagos</div><div className="v">{r.pagos.length ? `$${r.pagos.reduce((a, p) => a + p.monto, 0)} (${r.pagos.length})` : "Sin pago"}</div></div>
-        <div><div className="k">Estacionamiento</div><div className="v">{r.estacionamientos.join(" + ") || "Sin asignar"}</div></div>
+        <div><div className="k">{ROTULO.plumas}</div><div className="v">{textoPlumas(r.estacionamientos)}</div></div>
         {/* Desde el bloque 68 (L2-04) la instalación trae hora real y el correo
             de la sesión; lo instalado antes solo tiene la fecha y el nombre
             tecleado. */}
@@ -190,7 +172,7 @@ export function DetalleRegistro({ r, busy = false, onDescartar }: {
 function TipoUsuarioValidado({ r }: { r: Registro }) {
   return (
     <>
-      {ROL_LABEL[r.tipoUsuario] ?? r.tipoUsuario}{" "}
+      {TIPO_PERSONA[r.tipoUsuario] ?? r.tipoUsuario}{" "}
       {r.tipoValidado ? (
         <span className="tipo-sello tipo-sello--ok"
           title={`Validado por ${r.tipoValidadoPor ?? "Administración"} el ${fechaLegible(r.tipoValidadoEn)}`}>

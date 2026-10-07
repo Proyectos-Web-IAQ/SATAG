@@ -57,6 +57,7 @@ import { textoVehiculo } from "@/lib/vehiculo";
 import { buscarCandidatos, construirCandidatos, type CandidatoCaso } from "@/lib/buscarPersona";
 import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 import { fechaHora } from "@/lib/formato";
+import { ROTULO } from "@/lib/glosario";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -624,9 +625,9 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
               <div>Persona<b>{nombre}</b></div>
               <div>Folio<b className="mono">{folio ?? "—"}</b></div>
               <div>TAG<b className="mono">{caso.tarjeta ?? "—"}</b></div>
-              <div>Placa<b className="mono">{placa ?? "—"}</b></div>
+              <div>{ROTULO.placa}<b className="mono">{placa ?? "—"}</b></div>
               <div>Vehículo<b>{vehiculo ?? "—"}</b></div>
-              <div>Depto. en ZK<b>{persona?.departamento ?? String(caso.evidencia?.departamentoZk ?? "—")}</b></div>
+              <div>{ROTULO.departamentoZk}<b>{persona?.departamento ?? String(caso.evidencia?.departamentoZk ?? "—")}</b></div>
               <div>Último paso<b>{ultimoPaso ? ultimoPaso.slice(0, 16) : String(caso.evidencia?.ultimoPaso ?? "—")}</b></div>
               <div>Casos vivos<b>{otros.filter((c) => columnaDe(c.estado) !== "cerrado").length}</b></div>
             </div>
@@ -668,10 +669,10 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
               <div>Persona<b>{nombre}</b></div>
               <div>Folio<b className="mono">{folio ?? "—"}</b></div>
               <div>TAG<b className="mono">{caso.tarjeta ?? "—"}</b></div>
-              <div>Placa en SATAG<b className="mono">{placa ?? "—"}</b></div>
+              <div>{ROTULO.placaSatag}<b className="mono">{placa ?? "—"}</b></div>
               <div>Vehículo<b>{vehiculo ?? "—"}</b></div>
-              <div>Depto. en ZK<b>{persona?.departamento ?? "—"}</b></div>
-              <div>Placa en ZK<b className="mono">{persona?.placa || "—"}</b></div>
+              <div>{ROTULO.departamentoZk}<b>{persona?.departamento ?? "—"}</b></div>
+              <div>{ROTULO.placaZk}<b className="mono">{persona?.placa || "—"}</b></div>
               <div>Nombre en ZK<b>{persona?.nombre ?? "—"}</b></div>
             </div>
             <LosTags

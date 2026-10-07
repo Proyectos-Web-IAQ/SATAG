@@ -7,6 +7,7 @@
 
 import { normalizarBusqueda } from "@/lib/buscarPersona";
 import { fecha } from "@/lib/formato";
+import { ROTULO } from "@/lib/glosario";
 
 // Bloque 90: `nuevo` (nadie lo ha revisado) y `esperando` (a la persona, a un
 // tercero o a una fecha). `abierto` es «Por atender»; `seguimiento` queda del 89 y
@@ -226,8 +227,8 @@ const ETIQUETAS_EVIDENCIA: Record<string, string> = {
   aperturasVentana: "Aperturas en la ventana",
   aperturasDelQueUsa: "Aperturas del TAG que sí usa",
   ultimoPaso: "Último paso por la pluma",
-  departamentoZk: "Departamento en ZK",
-  plumas: "Plumas",
+  departamentoZk: ROTULO.departamentoZk,
+  plumas: ROTULO.plumas,
   categoria: "Categoría",
   prioridad: "Prioridad",
   motivo: "Motivo",

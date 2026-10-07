@@ -13,6 +13,8 @@
 //   que     la explicacion de una linea, para el titulo o el pie
 //   detalle una segunda linea, cuando la primera no alcanza
 
+import type { EstadoRegistro, TipoUsuario } from "@/lib/mock/types";
+
 export interface Termino {
   ui: string;
   que: string;
@@ -53,3 +55,59 @@ export const GLOSARIO = {
     que: "cuánto se queda un coche, de que entra a que sale; se da la mediana y no el promedio, porque unas pocas estancias larguísimas arrastran el promedio",
   },
 } as const satisfies Record<string, Termino>;
+
+/* ------------------------------------------------------------------ rotulos de persona */
+
+// DISEÑO.md §8.3: los rotulos de persona —estado del expediente, tipo, plumas, placa,
+// departamento— se escriben igual en todas las pestanas. El inventario del 7-oct
+// encontro tres juegos para el estado («Pendiente», «Pendiente de cobro», «pendiente
+// de cobro»), cuatro para el tipo y tres formas de unir las plumas. Aqui se escriben
+// una vez, con mayuscula inicial; cuando el rotulo va a media frase se deriva con
+// `enFrase`, nunca con un segundo mapa en minusculas.
+
+/** El estado del expediente en SATAG. */
+export const ESTADO_EXPEDIENTE: Record<EstadoRegistro, string> = {
+  pendiente: "Pendiente de cobro",
+  activo: "Activo",
+  bloqueado: "Bloqueado",
+  baja: "Dado de baja",
+};
+
+/** Quien conduce: el tipo que se declara en el alta y que Administracion confirma al cobrar. */
+export const TIPO_PERSONA: Record<TipoUsuario, string> = {
+  padres: "Padre / madre / tutor",
+  maestro: "Maestro",
+  alumno: "Alumno",
+  admin: "Administrativo",
+  otro: "Otro familiar",
+};
+
+/**
+ * Rotulos sueltos de la persona. «Placa» cuando no hay ambiguedad; «Placa en SATAG» y
+ * «Placa en ZK» cuando las dos conviven en la misma vista.
+ */
+export const ROTULO = {
+  departamentoZk: "Departamento en ZK",
+  placa: "Placa",
+  placaSatag: "Placa en SATAG",
+  placaZk: "Placa en ZK",
+  sinPlacas: "Sin placas",
+  plumas: "Plumas",
+  ninguna: "Ninguna",
+} as const;
+
+/** Las plumas de una persona: «E1», «E1 y E2», «E1, E2 y E3»; sin plumas, «Ninguna». */
+export function textoPlumas(claves: string[]): string {
+  if (claves.length === 0) return ROTULO.ninguna;
+  if (claves.length === 1) return claves[0];
+  return `${claves.slice(0, -1).join(", ")} y ${claves[claves.length - 1]}`;
+}
+
+/**
+ * Un rotulo dentro de una frase: baja la mayuscula inicial de una palabra comun
+ * («Dado de baja» → «dado de baja», «Ninguna» → «ninguna») y deja intactas las
+ * claves y siglas («E1 y E2», «TAG»), que no empiezan con mayuscula y minuscula.
+ */
+export function enFrase(rotulo: string): string {
+  return rotulo.replace(/^(\p{Lu})(?=\p{Ll})/u, (m) => m.toLowerCase());
+}

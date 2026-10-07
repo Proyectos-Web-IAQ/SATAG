@@ -30,12 +30,16 @@ import {
 import { PasosSemana } from "@/components/admin/FichaPersona";
 import type { PersonaZk } from "@/lib/zk/padron";
 import { diaMes, diaSemana } from "@/lib/formato";
+import { enFrase, ESTADO_EXPEDIENTE, ROTULO } from "@/lib/glosario";
 
 /** El expediente de SATAG de un TAG: el vigente, o uno que lo tuvo antes. */
 export interface ExpedienteTag { folio: string; estado: string; anterior: boolean; placas?: string | null; vehiculo?: string | null }
 
-/** El estado del expediente con las palabras del resto del panel (FichaPersona ESTADO_LABEL). */
-const estadoLegible = (e: string) => ({ pendiente: "pendiente de cobro", activo: "activo", bloqueado: "bloqueado", baja: "dado de baja" } as Record<string, string>)[e] ?? e;
+/** El estado del expediente con las palabras del resto del panel (lib/glosario.ts), a media frase. */
+const estadoLegible = (e: string) => {
+  const rotulo = (ESTADO_EXPEDIENTE as Record<string, string>)[e];
+  return rotulo ? enFrase(rotulo) : e;
+};
 
 /** Placas comparables: sin espacios ni guiones, en mayusculas. */
 const placaNorm = (p: string | null | undefined) => (p ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
@@ -288,13 +292,13 @@ export function LosTags({ tags, eventos, ventana, zkDe, expedienteDe, nombreDe, 
                 {leeZk ? (
                   <>
                     <dt>En ZK</dt><dd>{z?.nombre || nombreDe(tarjeta) || <span className="g-falta-dato">no está en el padrón de ZK</span>}</dd>
-                    <dt>Departamento</dt><dd>{z?.departamento || "—"}</dd>
-                    <dt>Placa en ZK</dt><dd className="mono">{z?.placa || "—"}</dd>
+                    <dt>{ROTULO.departamentoZk}</dt><dd>{z?.departamento || "—"}</dd>
+                    <dt>{ROTULO.placaZk}</dt><dd className="mono">{z?.placa || "—"}</dd>
                   </>
                 ) : (
                   <><dt>En ZK</dt><dd className="g-falta-dato">lo ven TI y Contabilidad</dd></>
                 )}
-                <dt>Placa en SATAG</dt>
+                <dt>{ROTULO.placaSatag}</dt>
                 <dd>
                   <span className="mono">{x?.placas || "—"}</span>
                   {x?.placas && z?.placa && placaNorm(x.placas) !== placaNorm(z.placa) && <span className="g-difiere"> · no coincide con ZK</span>}
@@ -427,7 +431,7 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe, zkDe, expe
           {cuadro([{ tarjeta: t, papel: "El del caso" }])}
           <Bloque
             titulo={porLote.length ? porLote.map((z, i) => <span key={z.L}>{i ? " · " : ""}{z.L}: <b>{z.a}</b> veces abrió, <b>{z.r}</b> la rechazó</span>) : "Sin pasos en la bitácora"}
-            sub={`Departamento en ZK: ${String(ev.departamentoZk ?? "—")} · plumas: ${String(ev.plumas ?? "—")}`}
+            sub={`${ROTULO.departamentoZk}: ${String(ev.departamentoZk ?? "—")} · ${ROTULO.plumas}: ${String(ev.plumas ?? "—")}`}
           >
             <Comparar filas={porLote.flatMap((z) => [
               { etiqueta: `${z.L} abrió`, valor: z.a, max, texto: String(z.a), color: LOTE[z.L] },

@@ -1,6 +1,6 @@
 import type { EstadoRegistro } from "@/lib/mock/types";
+import { ESTADO_EXPEDIENTE } from "@/lib/glosario";
 
 export default function EstadoChip({ estado }: { estado: EstadoRegistro }) {
-  const txt = { pendiente: "Pendiente", activo: "Activo", baja: "Baja", bloqueado: "Bloqueado" }[estado];
-  return <span className={`status-chip status-chip--${estado}`}>{txt}</span>;
+  return <span className={`status-chip status-chip--${estado}`}>{ESTADO_EXPEDIENTE[estado]}</span>;
 }

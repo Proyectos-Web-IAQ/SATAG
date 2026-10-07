@@ -14,6 +14,7 @@ import VistaEstacionamiento, { type VistaEstac } from "@/components/admin/VistaE
 import TableroCasos from "@/components/admin/casos/TableroCasos";
 import FichaPersona from "@/components/admin/FichaPersona";
 import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
+import { ESTADO_EXPEDIENTE, ROTULO } from "@/lib/glosario";
 
 type Vista = "admin" | "ti" | "finanzas" | "consulta";
 
@@ -191,10 +192,8 @@ function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
   );
 }
 
-// Etiqueta y orden de presentación de los estados en el filtro de Consulta.
-const ETIQUETA_ESTADO: Record<EstadoRegistro, string> = {
-  pendiente: "Pendiente", activo: "Activo", bloqueado: "Bloqueado", baja: "Baja",
-};
+// Orden de presentación de los estados en el filtro de Consulta; la etiqueta
+// es la de lib/glosario.ts (ESTADO_EXPEDIENTE).
 const ORDEN_ESTADO: EstadoRegistro[] = ["pendiente", "activo", "bloqueado", "baja"];
 
 // Alterna un valor dentro de una lista (chips de filtro que se combinan).
@@ -284,10 +283,10 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
   // Resumen de filtros activos: cada píldora se quita por su cuenta cuando la
   // barra está colapsada. El contador del botón "Filtros" es su longitud.
   const activos: { label: string; quitar: () => void }[] = [
-    ...estados.map((e) => ({ label: ETIQUETA_ESTADO[e], quitar: () => setEstados((s) => s.filter((x) => x !== e)) })),
+    ...estados.map((e) => ({ label: ESTADO_EXPEDIENTE[e], quitar: () => setEstados((s) => s.filter((x) => x !== e)) })),
     ...(tagFiltro ? [{ label: tagFiltro === "con" ? "Con TAG" : "Sin TAG", quitar: () => setTagFiltro(null) }] : []),
     ...estacs.map((c) => ({ label: c, quitar: () => setEstacs((s) => s.filter((x) => x !== c)) })),
-    ...(soloSinPlacas ? [{ label: "Sin placas", quitar: () => setSoloSinPlacas(false) }] : []),
+    ...(soloSinPlacas ? [{ label: ROTULO.sinPlacas, quitar: () => setSoloSinPlacas(false) }] : []),
   ];
 
   const metrics = useMemo(() => ({
@@ -375,7 +374,7 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
                   <div className="chip-row">
                     {estadosDisponibles.map((e) => (
                       <button key={e} type="button" className={`select-chip ${estados.includes(e) ? "on" : ""}`}
-                        onClick={() => setEstados((s) => alternar(s, e))}>{ETIQUETA_ESTADO[e]}</button>
+                        onClick={() => setEstados((s) => alternar(s, e))}>{ESTADO_EXPEDIENTE[e]}</button>
                     ))}
                   </div>
                 </div>
@@ -404,7 +403,7 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
                 <span className="filtro-label">Vehículo</span>
                 <div className="chip-row">
                   <button type="button" className={`select-chip ${soloSinPlacas ? "on" : ""}`}
-                    onClick={() => setSoloSinPlacas((v) => !v)}>Sin placas</button>
+                    onClick={() => setSoloSinPlacas((v) => !v)}>{ROTULO.sinPlacas}</button>
                 </div>
               </div>
             </div>

@@ -16,8 +16,9 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import {
   DetalleRegistro, TarjetaRegistro, scrollAlAviso,
-  TIPOS_USUARIO, TIPO_USUARIO_LABEL, TIPOS_CON_FAMILIA,
+  TIPOS_USUARIO, TIPOS_CON_FAMILIA,
 } from "@/components/admin/RegistroCard";
+import { enFrase, ROTULO, TIPO_PERSONA } from "@/lib/glosario";
 
 type Modo = "inicio" | "pago";
 
@@ -165,18 +166,18 @@ export default function VistaAdmin({ nombreSesion, rol }: { nombreSesion: string
       : ` Parentesco con la familia: «${pago.parentescoOtro}».`;
     setConfirm({
       title: "Registrar pago",
-      message: `Se registrará un pago en efectivo de ${dinero.format(pago.monto)} para ${r.folio}, ${r.usuarioNombre} (${r.placas ?? "sin placas"}). El sistema generará el folio del recibo. Cobrado por ${pago.cobradoPor}.`
+      message: `Se registrará un pago en efectivo de ${dinero.format(pago.monto)} para ${r.folio}, ${r.usuarioNombre} (${r.placas ?? enFrase(ROTULO.sinPlacas)}). El sistema generará el folio del recibo. Cobrado por ${pago.cobradoPor}.`
         + (corrige
-          ? ` Quien conduce quedará corregido de ${TIPO_USUARIO_LABEL[r.tipoUsuario]} a ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}, y el cambio se anotará en la bitácora.`
-          : ` Queda validado como ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`)
+          ? ` Quien conduce quedará corregido de ${TIPO_PERSONA[r.tipoUsuario]} a ${TIPO_PERSONA[pago.tipoUsuario]}, y el cambio se anotará en la bitácora.`
+          : ` Queda validado como ${TIPO_PERSONA[pago.tipoUsuario]}.`)
         + parentesco
         + " ¿Continuar?",
       confirmLabel: "Registrar pago",
       action: () => registrarPago(r.id, pago),
       ok: (resultado) => `Pago de ${dinero.format(pago.monto)} registrado · recibo ${resultado.folioRecibo ?? "generado"} (${r.folio}).`
         + (resultado.tipoCorregido && resultado.tipoAnterior
-          ? ` Quien conduce, corregido: ${TIPO_USUARIO_LABEL[resultado.tipoAnterior]} → ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`
-          : ` Quien conduce, validado: ${TIPO_USUARIO_LABEL[pago.tipoUsuario]}.`),
+          ? ` Quien conduce, corregido: ${TIPO_PERSONA[resultado.tipoAnterior]} → ${TIPO_PERSONA[pago.tipoUsuario]}.`
+          : ` Quien conduce, validado: ${TIPO_PERSONA[pago.tipoUsuario]}.`),
     });
   }
 
@@ -412,18 +413,18 @@ function FormPago({ r, busy, cobradoPor, onSubmit }: {
         <p className="ti-hint" style={{ margin: "0 0 6px" }}>
           {tipoFijo
             ? "El titular es menor de edad: su tipo queda fijo en alumno y firma su padre, madre o tutor."
-            : <>En el alta se declaró como <strong>{TIPO_USUARIO_LABEL[r.tipoUsuario]}</strong>. Confírmelo con la persona presente; si no corresponde, elija el correcto.</>}
+            : <>En el alta se declaró como <strong>{TIPO_PERSONA[r.tipoUsuario]}</strong>. Confírmelo con la persona presente; si no corresponde, elija el correcto.</>}
         </p>
         <div className="chip-row">
           {TIPOS_USUARIO.map((t) => (
             <button key={t} type="button" disabled={tipoFijo && t !== "alumno"}
               className={`select-chip ${tipoEfectivo === t ? "on" : ""}`}
-              onClick={() => setTipo(t)}>{TIPO_USUARIO_LABEL[t]}</button>
+              onClick={() => setTipo(t)}>{TIPO_PERSONA[t]}</button>
           ))}
         </div>
         {corrige && (
           <p className="ti-hint" style={{ marginTop: 6 }}>
-            Se corregirá de {TIPO_USUARIO_LABEL[r.tipoUsuario]} a {TIPO_USUARIO_LABEL[tipoEfectivo]}; el
+            Se corregirá de {TIPO_PERSONA[r.tipoUsuario]} a {TIPO_PERSONA[tipoEfectivo]}; el
             cambio queda en la bitácora del expediente.
           </p>
         )}

@@ -29,7 +29,8 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import { textoVehiculo } from "@/lib/vehiculo";
-import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, TIPO_USUARIO_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { DetalleRegistro, TarjetaRegistro, TRAMITE_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { enFrase, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { fechaHora } from "@/lib/formato";
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
@@ -397,12 +398,12 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
     // verifique justo lo que acaba de corregir.
     const c = correccion?.cambios;
     const placas = c && "placas" in c ? c.placas : r.placas;
-    const vehiculo = `${c?.marca ?? r.marca} ${c?.modelo ?? r.modelo} ${c?.color ?? r.color} (${placas ?? "sin placas"})`;
+    const vehiculo = `${c?.marca ?? r.marca} ${c?.modelo ?? r.modelo} ${c?.color ?? r.color} (${placas ?? enFrase(ROTULO.sinPlacas)})`;
     setConfirm({
       title: correccion ? "Corregir datos e instalar TAG" : "Instalar y activar TAG",
       dato: `TAG ${tag}`,
       message: (correccion ? `Primero se corregirán los datos del vehículo: ${correccion.resumen}. ` : "")
-        + `Se instalará el TAG ${tag} en el ${vehiculo} de ${r.usuarioNombre}, con acceso a ${claves.join(" + ")}, y el registro quedará activo.`
+        + `Se instalará el TAG ${tag} en el ${vehiculo} de ${r.usuarioNombre}, con acceso a ${enFrase(textoPlumas(claves))}, y el registro quedará activo.`
         + (apartado ? ` Se apartará el TAG ${apartado} de la escuela.` : "")
         + (cambiaProcedencia ? ` El TAG quedará marcado como ${procedencia}.` : "")
         + " Compare el número de arriba con el impreso en el TAG. ¿Continuar?",
@@ -549,9 +550,9 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
         // asignó al instalar, el aviso dice qué nivel dejar en ZK sin abrir
         // cada expediente.
         const ajustar = conFila.filter((r) => r.tipoUsuario !== "padres" && r.tipoUsuario !== "otro")
-          .map((r) => `TAG ${r.noDispositivo} (${TIPO_USUARIO_LABEL[r.tipoUsuario].toLowerCase()}`
+          .map((r) => `TAG ${r.noDispositivo} (${enFrase(TIPO_PERSONA[r.tipoUsuario])}`
             + (r.tipoUsuario === "maestro" && esSeccionMaestro(r.seccionMaestro) ? ` de ${SECCION_MAESTRO_LABEL[r.seccionMaestro].toLowerCase()}` : "")
-            + (r.estacionamientos.length ? `: deje solo ${r.estacionamientos.join(" + ")}` : "")
+            + (r.estacionamientos.length ? `: deje solo ${textoPlumas(r.estacionamientos)}` : "")
             + ")");
         // Un TAG propio de la familia no paso por el stock: nace en ZK sin
         // niveles, y se activa volviendo a aplicar los del departamento.
@@ -1132,7 +1133,7 @@ function useDatosVehiculo(r: Registro): DatosVehiculo {
 
   const cambios: CambiosRegistro = {};
   const resumen: string[] = [];
-  if (placasFinal !== r.placas || sinPlacas !== r.sinPlacas) { cambios.placas = placasFinal; cambios.sinPlacas = sinPlacas; resumen.push(`placas ${r.placas ?? "sin placas"} → ${placasFinal ?? "sin placas"}`); }
+  if (placasFinal !== r.placas || sinPlacas !== r.sinPlacas) { cambios.placas = placasFinal; cambios.sinPlacas = sinPlacas; resumen.push(`placas ${r.placas ?? enFrase(ROTULO.sinPlacas)} → ${placasFinal ?? enFrase(ROTULO.sinPlacas)}`); }
   // Un dato vacío no es un cambio: se ignora en vez de borrar lo capturado. Los
   // formularios, además, no dejan guardar un vehículo corregido a medias.
   if (marcaFinal && marcaFinal !== r.marca) { cambios.marca = marcaFinal; resumen.push(`marca ${r.marca} → ${marcaFinal}`); }
@@ -1357,7 +1358,7 @@ function FormInstalar({ r, marcas, colores, estacionamientos, disponibles, tagRe
           claves.length > 0 ? (
             <p className="field-error" role="alert">
               No se pudo cargar el catálogo de estacionamientos. Se instalará con la asignación que
-              ya tiene el expediente ({claves.join(" + ")}); toque «Actualizar lista» si necesita cambiarla.
+              ya tiene el expediente ({textoPlumas(claves)}); toque «Actualizar lista» si necesita cambiarla.
             </p>
           ) : (
             <p className="field-error" role="alert">
@@ -1515,7 +1516,7 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, guardando,
   Object.assign(cambios, veh.cambios);
   resumen.push(...veh.resumen);
   if (procedencia !== r.procedenciaTag) { cambios.procedenciaTag = procedencia; resumen.push(`procedencia ${r.procedenciaTag} → ${procedencia}`); }
-  if (estCambia) resumen.push(`estacionamiento ${r.estacionamientos.join(" + ") || "sin asignar"} → ${claves.join(" + ") || "sin asignar"}`);
+  if (estCambia) resumen.push(`plumas ${enFrase(textoPlumas(r.estacionamientos))} → ${enFrase(textoPlumas(claves))}`);
   const hayCambios = resumen.length > 0;
 
   return (
@@ -1561,14 +1562,14 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, guardando,
           // Todavía cargando: la asignación actual sigue intacta mientras tanto.
           <p className="ti-hint">
             Cargando el catálogo de estacionamientos… Asignación actual:{" "}
-            {r.estacionamientos.join(" + ") || "sin asignar"}.
+            {enFrase(textoPlumas(r.estacionamientos))}.
           </p>
         ) : estacionamientos === null ? (
           // D-09: sin catálogo no se puede MODIFICAR la asignación; la actual
           // (que viene del registro, no del catálogo) se conserva tal cual.
           <p className="field-error" role="alert">
             No se pudo cargar el catálogo de estacionamientos. Se conserva la asignación actual
-            ({r.estacionamientos.join(" + ") || "sin asignar"}); toque «Actualizar lista» para poder cambiarla.
+            ({enFrase(textoPlumas(r.estacionamientos))}); toque «Actualizar lista» para poder cambiarla.
           </p>
         ) : (
           <div className="chip-row">
@@ -1702,7 +1703,7 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
       <div className="ti-card__body">
         <div className="detail-grid" style={{ marginBottom: 12 }}>
           <div><div className="k">Solicitante</div><div className="v">{nota.solicitanteNombre ?? "—"}</div></div>
-          <div><div className="k">Quién solicita</div><div className="v">{nota.solicitanteRol ? ROL_LABEL[nota.solicitanteRol] : "—"}</div></div>
+          <div><div className="k">Quién solicita</div><div className="v">{nota.solicitanteRol ? TIPO_PERSONA[nota.solicitanteRol] : "—"}</div></div>
           <div style={{ gridColumn: "1 / -1" }}><div className="k">Pidió</div><div className="v"><strong>{nota.tramiteSolicitado ? TRAMITE_LABEL[nota.tramiteSolicitado] : "—"}</strong></div></div>
           {nota.alumnoNombre && <div><div className="k">Alumno</div><div className="v">{nota.alumnoNombre}</div></div>}
           {nota.alumnoGrado && <div><div className="k">Grado</div><div className="v">{nota.alumnoGrado}</div></div>}
@@ -1735,7 +1736,7 @@ function TarjetaNota({ nota, registros, busy, onVincular, onDescartar }: {
                   <div key={r.id} className="ti-card is-open">
                     <div className="ti-card__body">
                       <span className="ti-card__veh">{r.usuarioNombre}</span>
-                      <span className="ti-card__sub">{textoVehiculo(r)} · {r.placas ?? (r.sinPlacas ? "sin placas" : "—")}</span>
+                      <span className="ti-card__sub">{textoVehiculo(r)} · {r.placas ?? (r.sinPlacas ? ROTULO.sinPlacas : "—")}</span>
                       <span className="ti-card__meta">{r.folio}{r.noDispositivo ? ` · TAG ${r.noDispositivo}` : " · sin TAG"}</span>
                       <button type="button" className="primary-action" disabled={busy} style={{ marginTop: 10 }}
                         onClick={() => elegir(r)}>Elegir este expediente</button>

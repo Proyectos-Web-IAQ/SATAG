@@ -2,6 +2,7 @@
 
 import type { MotivoIncompleto, RegistroIncompleto } from "@/lib/mock/types";
 import EstadoChip from "@/components/admin/EstadoChip";
+import { ROTULO } from "@/lib/glosario";
 
 // CC-02 · Reporte de expedientes incompletos.
 //
@@ -111,7 +112,7 @@ export default function ListaIncompletos({ items, vacio }: {
         <div key={r.id} className={`ti-card ${r.sinPlacas ? "ti-card--sin-placas" : ""}`}>
           <div className="incompleto">
             <span className="ti-card__row">
-              <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? "SIN PLACAS" : "—")}</span>
+              <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? ROTULO.sinPlacas : "—")}</span>
               <EstadoChip estado={r.estado} />
             </span>
             <span className="ti-card__veh">
