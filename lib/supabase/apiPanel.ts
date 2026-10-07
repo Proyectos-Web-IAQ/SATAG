@@ -970,6 +970,10 @@ export function nombreDesdeEmail(email: string): string {
  * y el origen porque distingue un alta de SATAG de un expediente migrado.
  */
 export interface PadronEstacionamiento {
+  /** El expediente: para ligarle un caso al reportarlo. */
+  id: string;
+  /** A quien se registro (el conductor). Para el buscador de «Reportar caso». */
+  nombre: string;
   folio: string;
   noDispositivo: string;
   tipoUsuario: TipoUsuario;
@@ -990,6 +994,8 @@ export interface PadronEstacionamiento {
 }
 
 interface PadronEstRow {
+  id: string;
+  usuario_nombre_completo: string | null;
   folio: string;
   no_dispositivo: string;
   tipo_usuario: string;
@@ -1009,7 +1015,7 @@ interface PadronEstRow {
 export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento[]> {
   const { data, error } = await supabaseAuth
     .from("registros")
-    .select("folio, no_dispositivo, tipo_usuario, area_admin, fecha_instalacion, created_at, estado, origen_expediente, placas, marca, modelo, color, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
+    .select("id, usuario_nombre_completo, folio, no_dispositivo, tipo_usuario, area_admin, fecha_instalacion, created_at, estado, origen_expediente, placas, marca, modelo, color, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
     .not("no_dispositivo", "is", null)
     // El padron completo son ~2,900 expedientes. El tope es holgura, no negocio: si
     // algun dia se rozara, la resolucion del rol baja a la base en vez de subir este
@@ -1017,6 +1023,8 @@ export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento
     .limit(5000);
   if (error) throw new Error(traducirError(error.message));
   return (data as unknown as PadronEstRow[]).map((r) => ({
+    id: r.id,
+    nombre: r.usuario_nombre_completo ?? "",
     folio: r.folio,
     noDispositivo: r.no_dispositivo,
     tipoUsuario: r.tipo_usuario as TipoUsuario,

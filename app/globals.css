@@ -1727,3 +1727,9 @@ a { color: var(--primary-strong); }
 .g-tagc__pares dt { color: var(--muted); }
 .g-tagc__pares dd { margin: 0; overflow-wrap: anywhere; }
 .g-difiere { color: #a3122a; font-weight: 700; }
+.tc-busca { position: relative; }
+.tc-cands { list-style: none; margin: 4px 0 0; padding: 4px; border: 1px solid var(--line); border-radius: var(--radius); max-height: 260px; overflow-y: auto; background: #fff; }
+.tc-cand { all: unset; box-sizing: border-box; display: block; width: 100%; padding: 7px 9px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+.tc-cand--foco { background: var(--field-bg); }
+.tc-cand__m { display: block; font-size: 0.75rem; color: var(--muted); }
+.tc-elegido { display: flex; gap: 10px; justify-content: space-between; align-items: flex-start; border: 1px solid var(--primary); background: var(--field-bg); border-radius: var(--radius); padding: 8px 10px; margin-top: 4px; }

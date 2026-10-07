@@ -43,15 +43,18 @@ import {
   guardarTipoCaso,
   listCasos,
   listFamiliasCaso,
+  listPadronEstacionamiento,
   listNotasCaso,
   listTiposCaso,
   marcarCasos,
   moverCasos,
   reportarCaso,
   type MovimientoCaso,
+  type PadronEstacionamiento,
 } from "@/lib/supabase/apiPanel";
 import SelectorTipo, { Etiqueta, type ModoSelector } from "@/components/admin/casos/SelectorTipo";
 import { textoVehiculo } from "@/lib/vehiculo";
+import { buscarCandidatos, construirCandidatos, type CandidatoCaso } from "@/lib/buscarPersona";
 import { EntradasSalidas, EvidenciaGraficas, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
@@ -85,7 +88,7 @@ function guardarVistas(v: Vista[]) {
 const pasa = (c: CasoGuardado, f: { tipos: string[]; urgente: boolean }) =>
   (!f.tipos.length || f.tipos.includes(c.tipo)) && (!f.urgente || (c.urgente && columnaDe(c.estado) !== "cerrado"));
 
-export default function TableroCasos({ rol, email, eventos, ventana, personas, expedientes = null }: {
+export default function TableroCasos({ rol, email, eventos, ventana, personas, expedientes = null, padron = null }: {
   rol: RolPanel;
   email: string | null;
   /** La bitacora de ZK ya leida por la pestana; null = este rol no la lee. */
@@ -95,7 +98,10 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   personas: Map<string, PersonaZk> | null;
   /** El expediente de SATAG de cada TAG (vigente o anterior), para el cuadro de TAGs. */
   expedientes?: Map<string, ExpedienteTag> | null;
+  /** El padron de SATAG ya leido por la pestana; si no llega (Administracion), se pide al reportar. */
+  padron?: PadronEstacionamiento[] | null;
 }) {
+  const [padronPropio, setPadronPropio] = useState<PadronEstacionamiento[] | null>(null);
   const [casos, setCasos] = useState<CasoGuardado[] | null>(null);
   const [tipos, setTipos] = useState<TipoCasoCatalogo[]>([]);
   const [familias, setFamilias] = useState<FamiliaCaso[]>([]);
@@ -289,6 +295,14 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
     ));
   }
 
+  // El buscador de «Reportar caso»: expedientes de SATAG y padron de ZK, por TAG.
+  const padronUsado = padron ?? padronPropio;
+  useEffect(() => {
+    if (dialogo?.que !== "reportar" || padron || padronPropio) return;
+    listPadronEstacionamiento().then(setPadronPropio).catch(() => setPadronPropio([]));
+  }, [dialogo, padron, padronPropio]);
+  const candidatos = useMemo(() => (dialogo?.que === "reportar" ? construirCandidatos(padronUsado ?? [], personas) : []), [dialogo, padronUsado, personas]);
+
   const nVivos = (casos ?? []).filter((c) => columnaDe(c.estado) !== "cerrado").length;
 
   return (
@@ -434,7 +448,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
           onListo={(m) => { const ids = dialogo.ids; setDialogo(null); mover(ids, m, m.estado === "resuelto" ? "Resuelto" : "Descartado"); }} />
       )}
       {dialogo?.que === "reportar" && (
-        <DialogoReportar tipos={tipos} familias={familias} casos={casos ?? []} nombreDe={nombreDe} onCancelar={() => setDialogo(null)}
+        <DialogoReportar tipos={tipos} familias={familias} casos={casos ?? []} candidatos={candidatos} cargando={padronUsado === null} onCancelar={() => setDialogo(null)}
           onListo={(e) => {
             setDialogo(null);
             hacer(async () => { const r = await reportarCaso(e, email); await leer(); setActivo(r.id); }, "Caso reportado en «Nuevo»");
@@ -726,24 +740,34 @@ function DialogoCerrar({ ids, casos, tipoDe, onCancelar, onListo }: {
   );
 }
 
-function DialogoReportar({ tipos, familias, casos, nombreDe, onCancelar, onListo }: {
+function DialogoReportar({ tipos, familias, casos, candidatos, cargando, onCancelar, onListo }: {
   tipos: TipoCasoCatalogo[];
   familias: FamiliaCaso[];
   casos: CasoGuardado[];
-  nombreDe: (t: string) => string | undefined;
+  /** Expedientes de SATAG y padron de ZK, por TAG (lib/buscarPersona). */
+  candidatos: CandidatoCaso[];
+  cargando: boolean;
   onCancelar: () => void;
-  onListo: (e: { tipo: string; titulo: string; detalle: string; tarjeta: string; urgente: boolean }) => void;
+  onListo: (e: { tipo: string; titulo: string; detalle: string; tarjeta: string; registroId: string | null; urgente: boolean }) => void;
 }) {
   const activos = tipos.filter((t) => t.activo);
   const [tipo, setTipo] = useState(activos.find((t) => !t.automatico)?.tipo ?? activos[0]?.tipo ?? "otro");
-  const [tarjeta, setTarjeta] = useState("");
+  const [busqueda, setBusqueda] = useState("");
+  const [elegido, setElegido] = useState<CandidatoCaso | null>(null);
+  const [foco, setFoco] = useState(0);
   const [titulo, setTitulo] = useState("");
   const [detalle, setDetalle] = useState("");
   const [urgente, setUrgente] = useState(false);
-  const tag = tarjeta.replace(/\D/g, "");
-  const vivos = tag.length >= 4 ? casos.filter((c) => c.tarjeta === tag && columnaDe(c.estado) !== "cerrado") : [];
-  const falta = tag.length < 4 ? "Escriba el número de TAG." : titulo.trim().length < 3 ? "Escriba en pocas palabras qué pasó." : null;
+  const resultados = useMemo(() => (elegido ? [] : buscarCandidatos(candidatos, busqueda)), [candidatos, busqueda, elegido]);
+  // Un TAG tecleado que no esta en ningun padron tambien se puede reportar.
+  const soloDigitos = busqueda.replace(/\D/g, "");
+  const tagSuelto = !elegido && /^\d{4,12}$/.test(busqueda.trim()) && !resultados.some((r) => r.tarjeta === soloDigitos) ? soloDigitos : null;
+  const tag = elegido?.tarjeta ?? tagSuelto ?? "";
+  const vivos = tag ? casos.filter((c) => (c.tarjeta === tag || (elegido?.registroId && c.registroId === elegido.registroId)) && columnaDe(c.estado) !== "cerrado") : [];
+  const falta = !tag ? "Busque y elija a la persona (o escriba el número de TAG)." : titulo.trim().length < 3 ? "Escriba en pocas palabras qué pasó." : null;
   const qh = tipos.find((t) => t.tipo === tipo)?.queHacer;
+  const elegir = (c: CandidatoCaso) => { setElegido(c); setBusqueda(""); };
+
   return (
     <Modal titulo="Reportar caso" onCancelar={onCancelar}>
       <label className="label">¿Qué pasó?
@@ -756,12 +780,64 @@ function DialogoReportar({ tipos, familias, casos, nombreDe, onCancelar, onListo
         </select>
       </label>
       {qh && <p className="ti-hint">{qh}</p>}
-      <label className="label">Número de TAG
-        <input className="input mono" inputMode="numeric" value={tarjeta} onChange={(e) => setTarjeta(e.target.value)} />
-      </label>
-      {tag.length >= 4 && nombreDe(tag) && <p className="ti-hint">En ZK: {nombreDe(tag)}</p>}
+
+      <div className="label">¿De quién?</div>
+      {elegido ? (
+        <div className="tc-elegido">
+          <div>
+            <b>{elegido.nombre || "Sin nombre"}</b>
+            <span className="tc-cand__m">
+              TAG <span className="mono">{elegido.tarjeta}</span>
+              {elegido.folio && <> · <span className="mono">{elegido.folio}</span>{elegido.estado === "baja" ? " (dado de baja)" : ""}</>}
+              {elegido.placas && <> · <span className="mono">{elegido.placas}</span></>}
+              {elegido.vehiculo && <> · {elegido.vehiculo}</>}
+              {!elegido.folio && " · sin expediente en SATAG"}
+            </span>
+          </div>
+          <button type="button" className="link-action" onClick={() => setElegido(null)}>Cambiar</button>
+        </div>
+      ) : (
+        <div className="tc-busca">
+          <input
+            className="input"
+            autoFocus
+            value={busqueda}
+            onChange={(e) => { setBusqueda(e.target.value); setFoco(0); }}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowDown") { e.preventDefault(); setFoco((f) => Math.min(f + 1, resultados.length - 1)); }
+              if (e.key === "ArrowUp") { e.preventDefault(); setFoco((f) => Math.max(f - 1, 0)); }
+              if (e.key === "Enter" && resultados[foco]) { e.preventDefault(); elegir(resultados[foco]); }
+            }}
+            placeholder="Nombre, TAG, placa, folio o modelo del coche"
+            aria-label="Buscar a la persona"
+            role="combobox"
+            aria-expanded={resultados.length > 0}
+            aria-controls="tc-resultados"
+          />
+          {cargando && <p className="ti-hint">Leyendo el padrón…</p>}
+          {resultados.length > 0 && (
+            <ul className="tc-cands" id="tc-resultados" role="listbox">
+              {resultados.map((c, i) => (
+                <li key={c.tarjeta} role="option" aria-selected={i === foco}>
+                  <button type="button" className={`tc-cand${i === foco ? " tc-cand--foco" : ""}`} onMouseEnter={() => setFoco(i)} onClick={() => elegir(c)}>
+                    <b>{c.nombre || "Sin nombre"}</b>
+                    <span className="tc-cand__m">
+                      TAG <span className="mono">{c.tarjeta}</span>
+                      {c.folio ? <> · <span className="mono">{c.folio}</span>{c.estado === "baja" ? " (baja)" : ""}</> : " · solo en ZK"}
+                      {c.placas && <> · <span className="mono">{c.placas}</span></>}
+                      {c.vehiculo && <> · {c.vehiculo}</>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {busqueda.trim().length >= 2 && !resultados.length && !cargando && !tagSuelto && <p className="ti-hint">Nadie coincide. Si tiene el número de TAG, escríbalo completo.</p>}
+          {tagSuelto && <p className="ti-hint">El TAG <span className="mono">{tagSuelto}</span> no está en SATAG ni en el padrón de ZK; se reportará solo con el número.</p>}
+        </div>
+      )}
       {vivos.length > 0 && (
-        <p className="tc-dup">Ese TAG ya tiene {vivos.length} caso{vivos.length === 1 ? "" : "s"} vivo{vivos.length === 1 ? "" : "s"}: {vivos.slice(0, 3).map((c) => `${numeroCaso(c.numero)} ${c.titulo}`).join("; ")}. Si es lo mismo, agregue una nota ahí en vez de reportar otro.</p>
+        <p className="tc-dup">Ya tiene {vivos.length} caso{vivos.length === 1 ? "" : "s"} vivo{vivos.length === 1 ? "" : "s"}: {vivos.slice(0, 3).map((c) => `${numeroCaso(c.numero)} ${c.titulo}`).join("; ")}. Si es lo mismo, agregue una nota ahí en vez de reportar otro.</p>
       )}
       <label className="label">En pocas palabras<input className="input" maxLength={200} value={titulo} onChange={(e) => setTitulo(e.target.value)} /></label>
       <label className="label">Detalle (opcional)<textarea className="textarea" maxLength={4000} value={detalle} onChange={(e) => setDetalle(e.target.value)} /></label>
@@ -769,7 +845,10 @@ function DialogoReportar({ tipos, familias, casos, nombreDe, onCancelar, onListo
       {falta && <p className="ti-hint" role="status">{falta}</p>}
       <div className="tc-modal__pie">
         <button type="button" className="ghost-action" onClick={onCancelar}>Cancelar</button>
-        <button type="button" className="primary-action" disabled={falta !== null} onClick={() => onListo({ tipo, titulo: titulo.trim(), detalle: detalle.trim(), tarjeta: tag, urgente })}>Reportar</button>
+        <button type="button" className="primary-action" disabled={falta !== null}
+          onClick={() => onListo({ tipo, titulo: titulo.trim(), detalle: detalle.trim(), tarjeta: tag, registroId: elegido?.registroId ?? null, urgente })}>
+          Reportar
+        </button>
       </div>
     </Modal>
   );

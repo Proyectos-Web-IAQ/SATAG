@@ -752,6 +752,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
             ventana={{ desde: lectura?.resumen.desde ?? null, hasta: lectura?.resumen.hasta ?? null }}
             personas={VEN_IDENTIDAD.includes(rol) ? personas ?? null : null}
             expedientes={expedientesPorTag(padron ?? [])}
+            padron={padron}
           />
         ) : vista === "lotes" || vista === "secciones" ? (
           (() => {
