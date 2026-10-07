@@ -1274,14 +1274,16 @@ export async function listPadronZk(): Promise<PersonaZk[]> {
   for (let pagina = 0; pagina < 20; pagina += 1) {
     const { data, error } = await supabaseAuth
       .from("zk_padron")
-      .select("tarjeta, nombre, departamento_id, departamento")
+      // La placa la guarda el bloque 86 (de «Placa Vehicular» o, si viene vacia, de
+      // «Celular», que es donde la escribe el importador de ZK).
+      .select("tarjeta, nombre, departamento_id, departamento, placa")
       .eq("vigente", true)
       .order("tarjeta", { ascending: true })
       .range(out.length, out.length + PAGINA - 1);
     if (error) throw new Error(traducirError(error.message));
-    const filas = (data ?? []) as { tarjeta: string; nombre: string; departamento_id: string; departamento: string }[];
+    const filas = (data ?? []) as { tarjeta: string; nombre: string; departamento_id: string; departamento: string; placa: string | null }[];
     if (filas.length === 0) break;
-    for (const r of filas) out.push({ tarjeta: r.tarjeta, nombre: r.nombre, departamentoId: r.departamento_id, departamento: r.departamento, nombres: "", apellidos: "", placa: "" });
+    for (const r of filas) out.push({ tarjeta: r.tarjeta, nombre: r.nombre, departamentoId: r.departamento_id, departamento: r.departamento, nombres: "", apellidos: "", placa: (r.placa ?? "").toUpperCase() });
   }
   return out;
 }
