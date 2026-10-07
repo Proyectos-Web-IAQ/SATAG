@@ -2,6 +2,7 @@
 
 import { duracion, personaCorta } from "@/lib/duracion";
 import type { Marcador as DatosMarcador } from "@/lib/instalaciones";
+import { diaMes } from "@/lib/formato";
 
 // El marcador de quien instala. Lo ve TI (y super), NO el contador.
 //
@@ -26,8 +27,7 @@ function Cifra({ etiqueta, valor, pie }: { etiqueta: string; valor: string; pie?
 }
 
 function diaCortoDM(dia: string): string {
-  const [, m, d] = dia.split("-");
-  return d && m ? `${d}/${m}` : dia;
+  return diaMes(dia);
 }
 
 export default function Marcador({ m, email }: { m: DatosMarcador; email: string | null }) {

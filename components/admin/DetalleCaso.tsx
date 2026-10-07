@@ -21,6 +21,7 @@ import {
   type NotaCaso,
   type TipoCasoCatalogo,
 } from "@/lib/casosRegistro";
+import { diaMes, fechaHora } from "@/lib/formato";
 
 const ORIGEN_TEXTO: Record<CasoGuardado["origen"], string> = {
   manual: "Registrado a mano",
@@ -30,11 +31,11 @@ const ORIGEN_TEXTO: Record<CasoGuardado["origen"], string> = {
 
 /** «6 oct 2026, 10:32», en hora de Queretaro. */
 export function horaCaso(iso: string): string {
-  return new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Mexico_City" }).format(new Date(iso));
+  return fechaHora(iso);
 }
 /** «6 oct», para las listas. */
 export function diaCaso(iso: string): string {
-  return new Intl.DateTimeFormat("es-MX", { day: "numeric", month: "short", timeZone: "America/Mexico_City" }).format(new Date(iso));
+  return diaMes(iso);
 }
 
 export default function DetalleCaso({ caso, tipo, puedeEditar, email, onCambio }: {

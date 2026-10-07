@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { duracion, personaCorta } from "@/lib/duracion";
 import type { FilaDia, FilaPersona } from "@/lib/instalaciones";
+import { diaMes } from "@/lib/formato";
 
 // Las dos graficas del tablero de instalacion. SVG en linea, sin libreria: el
 // sitio es un export estatico y meterle una dependencia de graficas para dibujar
@@ -24,8 +25,7 @@ import type { FilaDia, FilaPersona } from "@/lib/instalaciones";
 // tinta del sitio.
 
 function diaCorto(dia: string): string {
-  const [y, m, d] = dia.split("-");
-  return d && m && y ? `${d}/${m}` : dia;
+  return diaMes(dia);
 }
 
 // ---- Globo de datos, compartido por las dos graficas de aqui y por la ocupacion del estacionamiento ----

@@ -6,6 +6,7 @@
 // prueba con datos del tamaño de una prueba.
 
 import { normalizarBusqueda } from "@/lib/buscarPersona";
+import { fecha } from "@/lib/formato";
 
 // Bloque 90: `nuevo` (nadie lo ha revisado) y `esperando` (a la persona, a un
 // tercero o a una fecha). `abierto` es «Por atender»; `seguimiento` queda del 89 y
@@ -133,8 +134,7 @@ export function textoEspera(c: Pick<CasoGuardado, "esperaMotivo" | "esperaHasta"
 
 /** «2027-04-06» a «6 abr 2027». */
 export function fechaLarga(dia: string): string {
-  const [a, m, d] = dia.slice(0, 10).split("-").map(Number);
-  return new Date(a, m - 1, d, 12).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  return fecha(dia);
 }
 
 /** Los motivos generales de cierre, ademas de los del tipo. */

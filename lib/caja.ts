@@ -1,3 +1,4 @@
+import { fecha } from "@/lib/formato";
 // Reglas de la caja que no dependen de React ni de la base: el semaforo y las
 // fechas. Viven aparte de la pantalla para poder probarlas solas; son reglas de
 // negocio que el contador usa para decidir cuando cortar, no detalles visuales.
@@ -5,8 +6,7 @@
 // El desglose trae 'dia' como 'YYYY-MM-DD' ya en hora local: se reordena a
 // DD/MM/YYYY sin construir un Date (evita el corrimiento de zona horaria).
 export function diaCorto(dia: string): string {
-  const [y, m, d] = dia.split("-");
-  return d && m && y ? `${d}/${m}/${y}` : dia;
+  return fecha(dia);
 }
 
 // UMBRALES del semaforo de la caja (fuente de verdad para soporte / manual).

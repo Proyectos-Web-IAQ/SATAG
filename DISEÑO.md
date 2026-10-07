@@ -121,3 +121,45 @@ colores en una gráfica, y el color nunca es el único canal: cada tramo lleva s
 
 Los esqueletos de octubre de 2026 están publicados como páginas privadas; los tokens de
 color viven en `app/globals.css`, que es la fuente de verdad de los valores.
+
+## 8. Fuentes de verdad y una sola forma de decir las cosas
+
+Aprobado por Gerardo el 7-oct-2026, después de un inventario de todas las pestañas: el
+mismo dato se escribía de siete formas, «último paso» se calculaba tres veces y el código
+resolvía con SATAG lo que, por regla, dice ZK.
+
+### 8.1 Una fuente por concepto
+
+| Concepto | Manda | Se compara con | Si no cuadra |
+|---|---|---|---|
+| Qué TAG tiene una persona | ZK (padrón vigente) | el expediente de SATAG | se abre un caso |
+| Quién es y si sigue en el colegio | GES | el nombre del expediente | caso «Datos del expediente» |
+| Vehículo y placa | el expediente de SATAG (lo captura caja) | la placa en ZK | se abre un caso |
+| Qué plumas abre | ZK (privilegios por puerta) | lo que pide SATAG | caso «Acceso a la pluma» |
+| Si usa el estacionamiento | la bitácora, una sola cuenta con su ventana declarada | — | «TAG sin uso» |
+| Lo que hay que resolver | los casos | — | — |
+
+La hoja de cálculo es historia: sirve de pista, no de hecho. Una diferencia entre dos
+fuentes no se «arregla» en silencio en una pantalla: se vuelve un caso con su evidencia.
+
+### 8.2 Una sola capa de persona
+
+Todas las pestañas leen a la persona por el mismo camino: identidad, todos sus TAGs (del
+expediente, anteriores y los que liga un caso), vehículos, plumas según SATAG y según ZK,
+uso con su ventana, casos y, cuando exista, GES. Las piezas que la muestran son comunes
+—tarjeta de TAG, gráfica de pasos, fecha, rótulos— y ninguna pestaña arma la suya.
+
+### 8.3 Fechas y rótulos
+
+Las fechas salen de `lib/formato.ts`, con nombres de mes y día propios (no dependen del
+idioma del navegador), y distinguen tres datos que no se tratan igual: un día suelto, un
+instante de la base (se pasa a hora de Querétaro) y la hora de pared de ZK (ya es local).
+Los rótulos de persona —estado del expediente, tipo, plumas, placa, departamento,
+sección— salen del glosario, como los de la bitácora.
+
+### 8.4 Orden de trabajo
+
+1. Glosario ampliado y un solo formato de fechas y rótulos.
+2. La capa de persona y las piezas comunes, pestaña por pestaña.
+3. «Manda ZK» para TAGs y plumas, con las diferencias como casos.
+4. GES en SATAG.

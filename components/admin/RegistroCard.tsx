@@ -6,6 +6,7 @@ import EstadoChip from "@/components/admin/EstadoChip";
 import { textoVehiculo } from "@/lib/vehiculo";
 import { nombreDesdeEmail } from "@/lib/supabase/apiPanel";
 import { CRITERIO_ESTACIONAMIENTO_MAESTRO, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
+import { fecha, fechaHora } from "@/lib/formato";
 
 // Rol de quien deja una nota del buzon (SC-003), en texto legible.
 // El buzon publico NO ofrece 'otro' (ni 'alumno'); la entrada esta aqui porque
@@ -75,30 +76,15 @@ export function textoSolicitud(s: Solicitud): string {
   return `Solicita ${s.tipo === "actualizacion" ? "actualización" : "baja"} (${s.fecha}): ${s.detalle}`;
 }
 
-// Fecha legible en hora de Querétaro. Postgres entrega timestamptz en UTC:
-// recortar el ISO haría que un sello de las 19:00 se viera con la fecha del día
-// siguiente (mismo motivo que fechaLocal en lib/supabase/apiPanel.ts).
-const FORMATO_FECHA = new Intl.DateTimeFormat("es-MX", {
-  timeZone: "America/Mexico_City",
-  dateStyle: "medium",
-});
-
+// Fecha legible en hora de Querétaro (lib/formato.ts): Postgres entrega
+// timestamptz en UTC y recortar el ISO correria al dia siguiente un sello de las 19:00.
 function fechaLegible(iso: string | null): string {
-  if (!iso) return "—";
-  const fecha = new Date(iso);
-  return Number.isNaN(fecha.getTime()) ? iso : FORMATO_FECHA.format(fecha);
+  return fecha(iso);
 }
 
 // L2-04: la instalación guarda la hora real desde el bloque 68.
-const FORMATO_FECHA_HORA = new Intl.DateTimeFormat("es-MX", {
-  timeZone: "America/Mexico_City",
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
 function fechaHoraLegible(iso: string): string {
-  const fecha = new Date(iso);
-  return Number.isNaN(fecha.getTime()) ? iso : FORMATO_FECHA_HORA.format(fecha);
+  return fechaHora(iso);
 }
 
 // Scroll suave salvo que el sistema pida movimiento reducido.

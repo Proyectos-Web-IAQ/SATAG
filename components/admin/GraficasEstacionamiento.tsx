@@ -30,6 +30,7 @@ import {
 } from "@/lib/estacionamiento";
 import { duracion } from "@/lib/duracion";
 import { GloboDatos, type Globo } from "@/components/admin/GraficasInstalacion";
+import { diaSemana } from "@/lib/formato";
 
 const W = 720;
 
@@ -295,8 +296,7 @@ export function OcupacionDelDia({
 
 /** «mar, 22 sep», construida en hora local: ZK da hora local y aqui se respeta. */
 function diaLegible(dia: string): string {
-  const [a, m, d] = dia.split("-").map(Number);
-  return new Date(a, m - 1, d, 12).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
+  return diaSemana(dia);
 }
 
 /** Un rotulo de eje corto para una duracion en minutos: «15m», «4h». */

@@ -10,6 +10,7 @@ import Marcador from "@/components/admin/Marcador";
 import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
 import { ColumnasPorDia, DispersionTiempos } from "@/components/admin/GraficasInstalacion";
+import { fecha } from "@/lib/formato";
 
 // Pestana TABLERO: cuantos TAGs se han instalado, cuanto tarda el tramite y
 // quien los instalo. La pidio Contabilidad y es la segunda pantalla del rol
@@ -22,8 +23,7 @@ import { ColumnasPorDia, DispersionTiempos } from "@/components/admin/GraficasIn
 // funcion mas que mantener para no ganar nada.
 
 function diaCorto(dia: string): string {
-  const [y, m, d] = dia.split("-");
-  return d && m && y ? `${d}/${m}/${y}` : dia;
+  return fecha(dia);
 }
 
 // `rol` y `email` deciden si ademas del tablero se pinta EL MARCADOR. Quien

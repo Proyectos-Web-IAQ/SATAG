@@ -56,6 +56,7 @@ import SelectorTipo, { Etiqueta, type ModoSelector } from "@/components/admin/ca
 import { textoVehiculo } from "@/lib/vehiculo";
 import { buscarCandidatos, construirCandidatos, type CandidatoCaso } from "@/lib/buscarPersona";
 import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
+import { fechaHora } from "@/lib/formato";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -646,7 +647,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
               <ul className="tc-hist">
                 {notas.map((n) => (
                   <li key={n.id} className={n.clase === "nota" ? "tc-hist__nota" : ""}>
-                    <time>{new Intl.DateTimeFormat("es-MX", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Mexico_City" }).format(new Date(n.hechoEn))} · {n.hechoPor}</time>
+                    <time>{fechaHora(n.hechoEn)} · {n.hechoPor}</time>
                     {n.clase === "apertura" ? <span>Se abrió el caso</span> : n.clase === "nota" ? <div className="tc-hist__tarj">{n.nota}</div> : <span>{n.nota || (n.estadoDespues ? `→ ${n.estadoDespues}` : "")}</span>}
                   </li>
                 ))}

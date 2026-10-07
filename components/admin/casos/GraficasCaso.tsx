@@ -29,6 +29,7 @@ import {
 } from "@/lib/casosEvidencia";
 import { PasosSemana } from "@/components/admin/FichaPersona";
 import type { PersonaZk } from "@/lib/zk/padron";
+import { diaMes, diaSemana } from "@/lib/formato";
 
 /** El expediente de SATAG de un TAG: el vigente, o uno que lo tuvo antes. */
 export interface ExpedienteTag { folio: string; estado: string; anterior: boolean; placas?: string | null; vehiculo?: string | null }
@@ -46,14 +47,8 @@ const DESDE = 5 * 60, HASTA = 21 * 60;
 export interface Ventana { desde: string | null; hasta: string | null }
 
 const hhmm = (m: number) => `${Math.floor(m / 60)}:${String(Math.floor(m % 60)).padStart(2, "0")}`;
-const diaCorto = (d: string) => {
-  const [a, m, x] = d.split("-").map(Number);
-  return new Date(a, m - 1, x, 12).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
-};
-const diaMin = (d: string) => {
-  const [a, m, x] = d.split("-").map(Number);
-  return new Date(a, m - 1, x, 12).toLocaleDateString("es-MX", { day: "numeric", month: "short" });
-};
+const diaCorto = (d: string) => diaSemana(d);
+const diaMin = (d: string) => diaMes(d);
 
 /* ------------------------------------------------------------------ piezas */
 

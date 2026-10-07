@@ -78,12 +78,12 @@ describe("diasNaturalesDesde · la trampa de la zona horaria", () => {
 });
 
 describe("diaCorto", () => {
-  it("reordena sin construir un Date, para no correr la fecha", () => {
-    expect(diaCorto("2026-09-21")).toBe("21/09/2026");
+  it("escribe la fecha como todo el panel (lib/formato), sin correrla de dia", () => {
+    expect(diaCorto("2026-09-21")).toBe("21 sep 2026");
   });
 
   it("lo que no tenga forma de fecha se devuelve tal cual", () => {
-    expect(diaCorto("")).toBe("");
+    expect(diaCorto("")).toBe("—");
     expect(diaCorto("2026-09")).toBe("2026-09");
   });
 });

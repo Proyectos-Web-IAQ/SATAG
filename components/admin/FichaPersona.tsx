@@ -27,6 +27,7 @@ import { DetalleRegistro, ROL_LABEL } from "@/components/admin/RegistroCard";
 import { textoVehiculo } from "@/lib/vehiculo";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import { AvisoPreguntar, SeccionCasos, useCasosDePersona } from "@/components/admin/CasosDePersona";
+import { diaSemana, fecha } from "@/lib/formato";
 
 /** Quien lee `zk_eventos` segun la RLS del bloque 78. */
 const VEN_PASOS: RolPanel[] = ["ti", "contador", "super"];
@@ -46,15 +47,12 @@ const ESTADO_LABEL: Record<Registro["estado"], string> = {
 
 /** «2026-09-22» o una fecha ISO con hora a «22/09/2026». Lo que no sea fecha, tal cual. */
 function fechaCorta(v: string | null | undefined): string {
-  if (!v) return "—";
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(v);
-  return m ? `${m[3]}/${m[2]}/${m[1]}` : v;
+  return fecha(v);
 }
 
 /** «mar 22 sep», en hora local, para las filas de la semana. */
 function diaLegible(dia: string): string {
-  const [a, m, d] = dia.split("-").map(Number);
-  return new Date(a, m - 1, d, 12).toLocaleDateString("es-MX", { weekday: "short", day: "numeric", month: "short" });
+  return diaSemana(dia);
 }
 
 /** Los TAGs que ha tenido el expediente: el vigente primero y los anteriores despues. */

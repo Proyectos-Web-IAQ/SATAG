@@ -23,6 +23,7 @@
 
 import { useEffect, useId, useState } from "react";
 import { horaCorta, type Medicion } from "@/lib/estacionamiento";
+import { fecha } from "@/lib/formato";
 
 const CLAVE = "satag.vialidad.beta.v1";
 
@@ -112,7 +113,7 @@ export default function VialidadBeta({ m }: { m: Medicion }) {
           : "La calle, según el tráfico típico de Google Maps"}</h3>
         <p className="sub">
           {c.ruta}. Minutos de trayecto a cada hora de un día de clases, contra las 10:00 como referencia sin
-          colegio. {c.capturadoEl ? `Capturado el ${c.capturadoEl.split("-").reverse().join("/")}.` : "Sin capturar todavía."}
+          colegio. {c.capturadoEl ? `Capturado el ${fecha(c.capturadoEl)}.` : "Sin capturar todavía."}
         </p>
 
         {hayCaptura && (

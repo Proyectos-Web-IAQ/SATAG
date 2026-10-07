@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { Registro } from "@/lib/mock/types";
 import { urlPermiso } from "@/lib/supabase/apiPanel";
+import { fechaHora } from "@/lib/formato";
 
 // El permiso para conducir del conductor menor de edad, en la pantalla del
 // cobro (bloque 75).
@@ -16,10 +17,6 @@ import { urlPermiso } from "@/lib/supabase/apiPanel";
 // foto del permiso de un menor cada vez que alguien despliega un expediente
 // seria exponerla a quien pasara por ahi. Y la URL caduca en un minuto.
 
-const FMT = new Intl.DateTimeFormat("es-MX", {
-  timeZone: "America/Mexico_City",
-  day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-});
 
 export default function PermisoMenor({ r, busy, onAceptar }: {
   r: Registro;
@@ -67,7 +64,7 @@ export default function PermisoMenor({ r, busy, onAceptar }: {
       <p className="notice" style={{ margin: "0 0 16px", padding: "10px 12px" }}>
         ✓ Permiso para conducir <strong>aceptado</strong>
         {r.permisoValidadoPor ? ` por ${r.permisoValidadoPor}` : ""}
-        {r.permisoValidadoEn ? ` · ${FMT.format(new Date(r.permisoValidadoEn))}` : ""}.
+        {r.permisoValidadoEn ? ` · ${fechaHora(r.permisoValidadoEn)}` : ""}.
       </p>
     );
   }

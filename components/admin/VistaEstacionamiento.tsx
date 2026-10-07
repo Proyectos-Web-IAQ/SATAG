@@ -57,6 +57,7 @@ import { GLOSARIO } from "@/lib/glosario";
 import { exportadoEnDe, huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
 import { grupoDeExpediente, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import type { RolPanel } from "@/lib/supabase/auth";
+import { fecha, fechaHora as fechaHoraFmt } from "@/lib/formato";
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
 const VEN_IDENTIDAD: RolPanel[] = ["ti", "contador", "super"];
@@ -97,9 +98,9 @@ const memoria: {
 } = {};
 
 /** «2026-10-02T18:55:00+00:00» a «02/10/2026». */
-const fechaCorta = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—");
+const fechaCorta = (iso: string | null | undefined): string => fecha(iso);
 /** «2026-10-02T09:29:57» a «02/10/2026 09:29», que es la hora de pared de ZK. */
-const fechaHora = (iso: string | null | undefined): string => (iso ? `${fechaCorta(iso)} ${iso.slice(11, 16)}` : "—");
+const fechaHora = (iso: string | null | undefined): string => fechaHoraFmt(iso);
 
 /** «2026-09-22 18:42:00» menos N dias, a medianoche, con la misma forma. */
 function restarDias(hasta: string, dias: number): string {

@@ -30,6 +30,7 @@ import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import { textoVehiculo } from "@/lib/vehiculo";
 import { DetalleRegistro, TarjetaRegistro, ROL_LABEL, TRAMITE_LABEL, TIPO_USUARIO_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { fechaHora } from "@/lib/formato";
 
 type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
 type Accion = "instalar" | "actualizar" | "baja";
@@ -1608,8 +1609,7 @@ function FormBaja({ r, busy, guardando, tiNombre, onTiNombre, onSubmit }: {
 }
 
 // Nunca recortar el ISO UTC: se formatea en la zona del Instituto.
-const fechaHoraLocal = (iso: string) =>
-  new Intl.DateTimeFormat("es-MX", { dateStyle: "short", timeStyle: "short", timeZone: "America/Mexico_City" }).format(new Date(iso));
+const fechaHoraLocal = (iso: string) => fechaHora(iso);
 
 // Fecha (sin hora) de un ISO, en la zona del Instituto. Mismo criterio que
 // `fechaLocal` de apiPanel: recortar el ISO en UTC correria al dia siguiente

@@ -7,18 +7,13 @@ import Loader from "@/components/Loader";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { scrollAlAviso } from "@/components/admin/RegistroCard";
 import { diaCorto, semDias, diasNaturalesDesde } from "@/lib/caja";
+import { fechaHora as fechaHoraFmt } from "@/lib/formato";
 
 const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
-const FMT_FECHA_HORA = new Intl.DateTimeFormat("es-MX", {
-  timeZone: "America/Mexico_City",
-  day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
-});
 
 function fechaHora(iso: string | null): string {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : FMT_FECHA_HORA.format(d);
+  return fechaHoraFmt(iso);
 }
 
 // Clave especial para el detalle de cobros de la caja actual (aún sin cortar).
