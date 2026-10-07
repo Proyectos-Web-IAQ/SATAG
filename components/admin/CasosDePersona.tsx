@@ -50,14 +50,17 @@ export function useCasosDePersona(registroId: string, tags: string[], rol: RolPa
     return () => { vivo = false; };
   }, [registroId, llaveTags, puede, version]);
 
+  // Se lee SIEMPRE al abrir la ficha: los tipos los edita TI desde el tablero (bloque 90), y
+  // un catalogo guardado para toda la sesion no veia un tipo creado despues (Gerardo, 7-oct).
+  // Lo guardado solo sirve para no mostrar la lista vacia mientras llega la nueva.
   useEffect(() => {
-    if (!puede || catalogoEnMemoria) return;
+    if (!puede) return;
     let vivo = true;
     listTiposCaso()
       .then((t) => { catalogoEnMemoria = t; if (vivo) setTipos(t); })
       .catch(() => { /* sin catalogo se sigue viendo la lista; el formulario avisa */ });
     return () => { vivo = false; };
-  }, [puede]);
+  }, [puede, registroId]);
 
   const recargar = useCallback(() => setVersion((v) => v + 1), []);
   const casos = estado.para === registroId ? ordenarCasos(estado.casos) : [];
@@ -173,8 +176,8 @@ function RegistrarCaso({ registroId, tipos, email, onListo, onCancelar }: {
   onCancelar: () => void;
 }) {
   const id = useId();
-  // Los que abre una regla no se ofrecen a mano: ya los trae el calculo.
-  const manuales = tipos.filter((t) => !t.automatico);
+  // Los que abre una regla no se ofrecen a mano (ya los trae el calculo), ni los retirados.
+  const manuales = tipos.filter((t) => !t.automatico && t.activo).sort((a, b) => a.titulo.localeCompare(b.titulo, "es"));
   const [tipo, setTipo] = useState("");
   const [titulo, setTitulo] = useState("");
   const [detalle, setDetalle] = useState("");
