@@ -55,7 +55,7 @@ import {
 import SelectorTipo, { Etiqueta, type ModoSelector } from "@/components/admin/casos/SelectorTipo";
 import { textoVehiculo } from "@/lib/vehiculo";
 import { buscarCandidatos, construirCandidatos, type CandidatoCaso } from "@/lib/buscarPersona";
-import { EntradasSalidas, EvidenciaGraficas, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
+import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -306,9 +306,21 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   // El buscador de «Reportar caso»: expedientes de SATAG y padron de ZK, por TAG.
   const padronUsado = padron ?? padronPropio;
   useEffect(() => {
-    if (dialogo?.que !== "reportar" || padron || padronPropio) return;
+    if ((dialogo?.que !== "reportar" && !activo) || padron || padronPropio) return;
     listPadronEstacionamiento().then(setPadronPropio).catch(() => setPadronPropio([]));
-  }, [dialogo, padron, padronPropio]);
+  }, [dialogo, activo, padron, padronPropio]);
+  // Administracion no recibe el mapa de expedientes de la pestana: se arma del padron que si lee.
+  const expedientesDelPadron = useMemo(() => {
+    if (expedientes || !padronUsado) return null;
+    const m = new Map<string, ExpedienteTag>();
+    for (const p of padronUsado) {
+      const ya = m.get(p.noDispositivo);
+      if (p.noDispositivo && (!ya || (ya.estado === "baja" && p.estado !== "baja"))) {
+        m.set(p.noDispositivo, { folio: p.folio, estado: p.estado, anterior: false, placas: p.placas, vehiculo: textoVehiculo(p) });
+      }
+    }
+    return m;
+  }, [expedientes, padronUsado]);
   const candidatos = useMemo(() => (dialogo?.que === "reportar" ? construirCandidatos(padronUsado ?? [], personas) : []), [dialogo, padronUsado, personas]);
 
   const nVivos = (casos ?? []).filter((c) => columnaDe(c.estado) !== "cerrado").length;
@@ -407,7 +419,8 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
             nombreDe={nombreDe}
             persona={caso.tarjeta ? personas?.get(caso.tarjeta) ?? null : null}
             zkDe={(t) => personas?.get(t)}
-            expedienteDe={(t) => expedientes?.get(t)}
+            expedienteDe={(t) => (expedientes ?? expedientesDelPadron)?.get(t)}
+            padron={padronUsado}
             onCerrarPanel={() => setActivo(null)}
             onAbrir={setActivo}
             onCambiarTipo={(ancla) => setSelector({ modo: "asignar", ancla, ids: [caso.id] })}
@@ -527,7 +540,7 @@ function Zona({ abierto, tablero, panel }: { abierto: boolean; tablero: ReactNod
 
 /* ------------------------------------------------------------------ el detalle */
 
-function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, nombreDe, persona, zkDe, expedienteDe, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
+function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, nombreDe, persona, zkDe, expedienteDe, padron, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
   caso: CasoGuardado;
   casos: CasoGuardado[];
   tipos: TipoCasoCatalogo[];
@@ -539,6 +552,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
   persona: PersonaZk | null;
   zkDe: (t: string) => PersonaZk | undefined;
   expedienteDe: (t: string) => ExpedienteTag | undefined;
+  padron: PadronEstacionamiento[] | null;
   onCerrarPanel: () => void;
   onAbrir: (id: string) => void;
   onCambiarTipo: (ancla: DOMRect) => void;
@@ -659,6 +673,16 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
               <div>Placa en ZK<b className="mono">{persona?.placa || "—"}</b></div>
               <div>Nombre en ZK<b>{persona?.nombre ?? "—"}</b></div>
             </div>
+            <LosTags
+              titulo="Todos los TAGs de esta persona"
+              tags={tagsDeLaPersona(caso, otros, padron)}
+              eventos={eventos ?? []}
+              ventana={eventos ? ventana : { desde: null, hasta: null }}
+              zkDe={zkDe}
+              expedienteDe={expedienteDe}
+              nombreDe={nombreDe}
+              leeZk={eventos !== null}
+            />
             <h4 className="tc-h">Casos de esta persona</h4>
             <ul className="tc-otros">
               {otros.map((o) => (
@@ -940,4 +964,23 @@ function TablaObservacion({ casos, eventos, nombreDe, activo, onAbrir, onVolver 
       </div>
     </div>
   );
+}
+
+/**
+ * Todos los TAGs que SATAG liga a una persona (Gerardo, 7-oct: la ficha mostraba uno
+ * aunque el sistema supiera de dos). Del expediente: el vigente y los anteriores; de
+ * sus casos: el TAG de cada caso y el TAG que «si usa». Un TAG sin expediente lo dice.
+ */
+function tagsDeLaPersona(caso: CasoGuardado, otros: CasoGuardado[], padron: PadronEstacionamiento[] | null): { tarjeta: string; papel: string }[] {
+  const out = new Map<string, string>();
+  const exp = caso.registroId ? padron?.find((p) => p.id === caso.registroId) : undefined;
+  if (exp?.noDispositivo) out.set(exp.noDispositivo, `TAG del expediente ${exp.folio}`);
+  for (const t of exp?.tagsAnteriores ?? []) if (!out.has(t)) out.set(t, `TAG anterior del expediente ${exp?.folio ?? ""}`.trim());
+  for (const o of otros) {
+    const usa = typeof o.evidencia?.tagQueSiUsa === "string" ? o.evidencia.tagQueSiUsa : null;
+    if (usa && !out.has(usa)) out.set(usa, "El que sí usa");
+    if (o.tarjeta && !out.has(o.tarjeta)) out.set(o.tarjeta, `Sin expediente · lo liga el caso ${numeroCaso(o.numero)}`);
+  }
+  if (caso.tarjeta && !out.has(caso.tarjeta)) out.set(caso.tarjeta, "El del caso");
+  return [...out].map(([tarjeta, papel]) => ({ tarjeta, papel }));
 }

@@ -33,6 +33,9 @@ import type { PersonaZk } from "@/lib/zk/padron";
 /** El expediente de SATAG de un TAG: el vigente, o uno que lo tuvo antes. */
 export interface ExpedienteTag { folio: string; estado: string; anterior: boolean; placas?: string | null; vehiculo?: string | null }
 
+/** El estado del expediente con las palabras del resto del panel (FichaPersona ESTADO_LABEL). */
+const estadoLegible = (e: string) => ({ pendiente: "pendiente de cobro", activo: "activo", bloqueado: "bloqueado", baja: "dado de baja" } as Record<string, string>)[e] ?? e;
+
 /** Placas comparables: sin espacios ni guiones, en mayusculas. */
 const placaNorm = (p: string | null | undefined) => (p ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 
@@ -260,17 +263,21 @@ function Llegada({ r }: { r: NonNullable<ReturnType<typeof llegadaHabitual>> }) 
  * numero COMPLETO y como esta en cada sistema. Sin esto, la grafica de dos TAGs no
  * decia cual era cual (Gerardo, 7-oct, con el caso de los dos TAGs del mismo coche).
  */
-function LosTags({ tags, eventos, ventana, zkDe, expedienteDe, nombreDe }: {
+export function LosTags({ tags, eventos, ventana, zkDe, expedienteDe, nombreDe, titulo, leeZk = true }: {
   tags: { tarjeta: string; papel: string }[];
   eventos: EventoZk[];
   ventana: Ventana;
   zkDe?: (t: string) => PersonaZk | undefined;
   expedienteDe?: (t: string) => ExpedienteTag | undefined;
   nombreDe: (t: string) => string | undefined;
+  titulo?: string;
+  /** false: este rol no lee el padron ni la bitacora de ZK (Administracion). Se dice, no se pinta en cero. */
+  leeZk?: boolean;
 }) {
+  const hayBitacora = leeZk && !!ventana.desde;
   return (
     <section className="g-bloque">
-      <div className="g-tit">{tags.length > 1 ? "Los TAGs de este caso" : "El TAG de este caso"}</div>
+      <div className="g-tit">{titulo ?? (tags.length > 1 ? "Los TAGs de este caso" : "El TAG de este caso")}</div>
       <div className="g-tags">
         {tags.map(({ tarjeta, papel }, i) => {
           const z = zkDe?.(tarjeta);
@@ -283,24 +290,35 @@ function LosTags({ tags, eventos, ventana, zkDe, expedienteDe, nombreDe }: {
               <div className="g-tag"><i style={{ background: SERIE[i] ?? "#657080" }} aria-hidden="true" /><b className="mono">{tarjeta}</b></div>
               <div className="g-papel">{papel}</div>
               <dl className="g-tagc__pares">
-                <dt>En ZK</dt><dd>{z?.nombre || nombreDe(tarjeta) || <span className="g-falta-dato">no está en el padrón de ZK</span>}</dd>
-                <dt>Departamento</dt><dd>{z?.departamento || "—"}</dd>
-                <dt>Placa en ZK</dt><dd className="mono">{z?.placa || "—"}</dd>
+                {leeZk ? (
+                  <>
+                    <dt>En ZK</dt><dd>{z?.nombre || nombreDe(tarjeta) || <span className="g-falta-dato">no está en el padrón de ZK</span>}</dd>
+                    <dt>Departamento</dt><dd>{z?.departamento || "—"}</dd>
+                    <dt>Placa en ZK</dt><dd className="mono">{z?.placa || "—"}</dd>
+                  </>
+                ) : (
+                  <><dt>En ZK</dt><dd className="g-falta-dato">lo ven TI y Contabilidad</dd></>
+                )}
                 <dt>Placa en SATAG</dt>
                 <dd>
                   <span className="mono">{x?.placas || "—"}</span>
                   {x?.placas && z?.placa && placaNorm(x.placas) !== placaNorm(z.placa) && <span className="g-difiere"> · no coincide con ZK</span>}
                 </dd>
                 <dt>Vehículo</dt><dd>{x?.vehiculo || "—"}</dd>
-                <dt>En SATAG</dt><dd>{x ? <><span className="mono">{x.folio}</span> · {x.anterior ? `TAG anterior (${x.estado})` : x.estado}</> : <span className="g-falta-dato">sin expediente</span>}</dd>
-                <dt>Pluma</dt><dd>abrió <b>{abrio}</b>{rech ? <> · rechazó <b>{rech}</b></> : " · sin rechazos"}</dd>
-                <dt>Último paso</dt><dd>{ult ? `${diaCorto(ult.dia)} ${hhmm(ult.min)}` : "—"}</dd>
+                <dt>En SATAG</dt><dd>{x ? <><span className="mono">{x.folio}</span> · {x.anterior ? `TAG anterior (${estadoLegible(x.estado)})` : estadoLegible(x.estado)}</> : <span className="g-falta-dato">sin expediente</span>}</dd>
+                {hayBitacora ? (
+                  <>
+                    <dt>Pluma</dt><dd>abrió <b>{abrio}</b>{rech ? <> · rechazó <b>{rech}</b></> : " · sin rechazos"}</dd>
+                    <dt>Último paso</dt><dd>{ult ? `${diaCorto(ult.dia)} ${hhmm(ult.min)}` : "—"}</dd>
+                  </>
+                ) : (
+                  <><dt>Pluma</dt><dd className="g-falta-dato">{leeZk ? "sin bitácora cargada" : "la ven TI y Contabilidad"}</dd></>
+                )}
               </dl>
             </div>
           );
         })}
       </div>
-      {!ventana.desde && <div className="g-nota">Sin bitácora cargada: «Abrió» y «Rechazos» salen en cero.</div>}
     </section>
   );
 }
@@ -469,7 +487,7 @@ export function EntradasSalidas({ tarjetas, eventos, ventana, nombreDe }: { tarj
               <PasosSemana estancias={es} />
             </Bloque>
             <Bloque titulo="Cada lectura" sub="Incluye las que la pluma rechazó.">
-              <TiraPasos series={[{ etiqueta: `TAG ·${t.slice(-4)}`, lecturas: l }]} />
+              <TiraPasos series={[{ etiqueta: t, lecturas: l }]} />
             </Bloque>
           </div>
         );
