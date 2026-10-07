@@ -30,7 +30,9 @@ import Loader from "@/components/Loader";
 import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
 import GenteEstacionamiento, { SeccionesEstacionamiento } from "@/components/admin/GenteEstacionamiento";
 import type { Registro } from "@/lib/mock/types";
+import { textoVehiculo } from "@/lib/vehiculo";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
+import type { ExpedienteTag } from "@/components/admin/casos/GraficasCaso";
 import {
   cargarEventosZk,
   altasDesdeZk,
@@ -112,14 +114,15 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
 }
 
 /** El expediente de cada TAG, para el cuadro de TAGs de un caso: el vigente manda sobre uno dado de baja; los anteriores, despues. */
-function expedientesPorTag(padron: PadronEstacionamiento[]): Map<string, { folio: string; estado: string; anterior: boolean }> {
-  const m = new Map<string, { folio: string; estado: string; anterior: boolean }>();
+function expedientesPorTag(padron: PadronEstacionamiento[]): Map<string, ExpedienteTag> {
+  const m = new Map<string, ExpedienteTag>();
+  const de = (p: PadronEstacionamiento, anterior: boolean): ExpedienteTag => ({ folio: p.folio, estado: p.estado, anterior, placas: p.placas, vehiculo: textoVehiculo(p) });
   const vivo = (p: PadronEstacionamiento) => p.estado !== "baja";
   for (const p of padron) {
     const ya = m.get(p.noDispositivo);
-    if (p.noDispositivo && (!ya || ya.anterior || (!vivo({ estado: ya.estado } as PadronEstacionamiento) && vivo(p)))) m.set(p.noDispositivo, { folio: p.folio, estado: p.estado, anterior: false });
+    if (p.noDispositivo && (!ya || ya.anterior || (!vivo({ estado: ya.estado } as PadronEstacionamiento) && vivo(p)))) m.set(p.noDispositivo, de(p, false));
   }
-  for (const p of padron) for (const t of p.tagsAnteriores) if (t && !m.has(t)) m.set(t, { folio: p.folio, estado: p.estado, anterior: true });
+  for (const p of padron) for (const t of p.tagsAnteriores) if (t && !m.has(t)) m.set(t, de(p, true));
   return m;
 }
 

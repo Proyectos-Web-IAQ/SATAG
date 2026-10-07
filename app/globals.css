@@ -1726,3 +1726,4 @@ a { color: var(--primary-strong); }
 .g-tagc__pares { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 8px 0 0; font-size: 0.82rem; }
 .g-tagc__pares dt { color: var(--muted); }
 .g-tagc__pares dd { margin: 0; overflow-wrap: anywhere; }
+.g-difiere { color: #a3122a; font-weight: 700; }

@@ -51,6 +51,7 @@ import {
   type MovimientoCaso,
 } from "@/lib/supabase/apiPanel";
 import SelectorTipo, { Etiqueta, type ModoSelector } from "@/components/admin/casos/SelectorTipo";
+import { textoVehiculo } from "@/lib/vehiculo";
 import { EntradasSalidas, EvidenciaGraficas, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
@@ -527,6 +528,11 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
   const tarjetas = [...new Set([caso.tarjeta, typeof caso.evidencia?.tagQueSiUsa === "string" ? caso.evidencia.tagQueSiUsa : null].filter((x): x is string => !!x))];
   const nombre = caso.nombre ?? (caso.tarjeta ? nombreDe(caso.tarjeta) : null) ?? "Sin nombre en SATAG ni en ZK";
   const evidencia = evidenciaLegible(caso.evidencia);
+  // El vehiculo con que se registro: el del expediente ligado; si el caso solo tiene TAG, el del padron.
+  const expTag = caso.tarjeta ? expedienteDe(caso.tarjeta) : undefined;
+  const placa = caso.vehiculo?.placas ?? expTag?.placas ?? null;
+  const vehiculo = caso.vehiculo ? textoVehiculo(caso.vehiculo) : expTag?.vehiculo ?? null;
+  const folio = caso.folio ?? expTag?.folio ?? null;
 
   useEffect(() => {
     let vivo = true;
@@ -572,8 +578,10 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
             {t?.queHacer && <div className="tc-qh"><b>Qué hacer</b>{t.queHacer}</div>}
             <div className="tc-r6">
               <div>Persona<b>{nombre}</b></div>
-              <div>Folio<b className="mono">{caso.folio ?? "—"}</b></div>
+              <div>Folio<b className="mono">{folio ?? "—"}</b></div>
               <div>TAG<b className="mono">{caso.tarjeta ?? "—"}</b></div>
+              <div>Placa<b className="mono">{placa ?? "—"}</b></div>
+              <div>Vehículo<b>{vehiculo ?? "—"}</b></div>
               <div>Depto. en ZK<b>{persona?.departamento ?? String(caso.evidencia?.departamentoZk ?? "—")}</b></div>
               <div>Último paso<b>{ultimoPaso ? ultimoPaso.slice(0, 16) : String(caso.evidencia?.ultimoPaso ?? "—")}</b></div>
               <div>Casos vivos<b>{otros.filter((c) => columnaDe(c.estado) !== "cerrado").length}</b></div>
@@ -614,8 +622,10 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
           <>
             <div className="tc-r6">
               <div>Persona<b>{nombre}</b></div>
-              <div>Folio<b className="mono">{caso.folio ?? "—"}</b></div>
+              <div>Folio<b className="mono">{folio ?? "—"}</b></div>
               <div>TAG<b className="mono">{caso.tarjeta ?? "—"}</b></div>
+              <div>Placa en SATAG<b className="mono">{placa ?? "—"}</b></div>
+              <div>Vehículo<b>{vehiculo ?? "—"}</b></div>
               <div>Depto. en ZK<b>{persona?.departamento ?? "—"}</b></div>
               <div>Placa en ZK<b className="mono">{persona?.placa || "—"}</b></div>
               <div>Nombre en ZK<b>{persona?.nombre ?? "—"}</b></div>

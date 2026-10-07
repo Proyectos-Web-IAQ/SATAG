@@ -65,6 +65,9 @@ export interface CasoGuardado {
   esperaTexto: string | null;
   cierreMotivo: string | null;
   veces: number;
+  /** El vehiculo con que se registro el expediente ligado, si lo tiene. */
+  vehiculo: { placas: string | null; marca: string | null; modelo: string | null; color: string | null } | null;
+  estadoExpediente: string | null;
   /** El expediente ligado, si lo tiene. */
   folio: string | null;
   nombre: string | null;

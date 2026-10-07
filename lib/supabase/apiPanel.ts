@@ -982,6 +982,11 @@ export interface PadronEstacionamiento {
   estacionamientos: string[];
   /** Los TAGs que el expediente uso antes (cambios y reposiciones): sus pasadas viejas son suyas. */
   tagsAnteriores: string[];
+  /** El vehiculo con que se registro el expediente (para el cuadro de TAGs de un caso). */
+  placas: string | null;
+  marca: string | null;
+  modelo: string | null;
+  color: string | null;
 }
 
 interface PadronEstRow {
@@ -995,12 +1000,16 @@ interface PadronEstRow {
   origen_expediente: string | null;
   registro_estacionamientos: { estacionamiento_clave: string }[] | null;
   movimientos: { no_dispositivo_anterior: string | null }[] | null;
+  placas: string | null;
+  marca: string | null;
+  modelo: string | null;
+  color: string | null;
 }
 
 export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento[]> {
   const { data, error } = await supabaseAuth
     .from("registros")
-    .select("folio, no_dispositivo, tipo_usuario, area_admin, fecha_instalacion, created_at, estado, origen_expediente, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
+    .select("folio, no_dispositivo, tipo_usuario, area_admin, fecha_instalacion, created_at, estado, origen_expediente, placas, marca, modelo, color, registro_estacionamientos ( estacionamiento_clave ), movimientos ( no_dispositivo_anterior )")
     .not("no_dispositivo", "is", null)
     // El padron completo son ~2,900 expedientes. El tope es holgura, no negocio: si
     // algun dia se rozara, la resolucion del rol baja a la base en vez de subir este
@@ -1023,6 +1032,10 @@ export async function listPadronEstacionamiento(): Promise<PadronEstacionamiento
           .filter((t) => t !== "" && t !== r.no_dispositivo),
       ),
     ],
+    placas: r.placas ?? null,
+    marca: r.marca ?? null,
+    modelo: r.modelo ?? null,
+    color: r.color ?? null,
   }));
 }
 
@@ -1331,7 +1344,7 @@ const SELECT_CASO = `
   id, numero, tipo, registro_id, tarjeta, titulo, detalle, evidencia, estado, origen, regla, clave,
   preguntar_al_presentarse, creado_por, creado_en, actualizado_en, cerrado_por, cerrado_en, cierre_nota,
   urgente, atorado, espera_motivo, espera_hasta, espera_texto, cierre_motivo, veces,
-  registro:registros ( folio, usuario_nombre_completo )
+  registro:registros ( folio, usuario_nombre_completo, placas, marca, modelo, color, estado )
 `;
 
 interface CasoRow {
@@ -1343,7 +1356,12 @@ interface CasoRow {
   urgente: boolean | null; atorado: boolean | null; espera_motivo: string | null; espera_hasta: string | null;
   espera_texto: string | null; cierre_motivo: string | null; veces: number | null;
   // El FK es a-uno, pero se admite la lista por si PostgREST la devuelve asi.
-  registro: { folio: string; usuario_nombre_completo: string } | { folio: string; usuario_nombre_completo: string }[] | null;
+  registro: RegistroDeCaso | RegistroDeCaso[] | null;
+}
+
+interface RegistroDeCaso {
+  folio: string; usuario_nombre_completo: string;
+  placas: string | null; marca: string | null; modelo: string | null; color: string | null; estado: string | null;
 }
 
 function mapCaso(r: CasoRow): CasoGuardado {
@@ -1377,6 +1395,8 @@ function mapCaso(r: CasoRow): CasoGuardado {
     veces: Number(r.veces ?? 1),
     folio: reg?.folio ?? null,
     nombre: reg?.usuario_nombre_completo ?? null,
+    vehiculo: reg ? { placas: reg.placas, marca: reg.marca, modelo: reg.modelo, color: reg.color } : null,
+    estadoExpediente: reg?.estado ?? null,
   };
 }
 

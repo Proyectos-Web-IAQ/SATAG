@@ -31,7 +31,10 @@ import { PasosSemana } from "@/components/admin/FichaPersona";
 import type { PersonaZk } from "@/lib/zk/padron";
 
 /** El expediente de SATAG de un TAG: el vigente, o uno que lo tuvo antes. */
-export interface ExpedienteTag { folio: string; estado: string; anterior: boolean }
+export interface ExpedienteTag { folio: string; estado: string; anterior: boolean; placas?: string | null; vehiculo?: string | null }
+
+/** Placas comparables: sin espacios ni guiones, en mayusculas. */
+const placaNorm = (p: string | null | undefined) => (p ?? "").replace(/[^0-9A-Za-z]/g, "").toUpperCase();
 
 export const SERIE = ["#1F5FA8", "#E69F00"];
 const LOTE: Record<string, string> = { E2: "#1F5FA8", E1: "#1E8A5A" };
@@ -283,6 +286,12 @@ function LosTags({ tags, eventos, ventana, zkDe, expedienteDe, nombreDe }: {
                 <dt>En ZK</dt><dd>{z?.nombre || nombreDe(tarjeta) || <span className="g-falta-dato">no está en el padrón de ZK</span>}</dd>
                 <dt>Departamento</dt><dd>{z?.departamento || "—"}</dd>
                 <dt>Placa en ZK</dt><dd className="mono">{z?.placa || "—"}</dd>
+                <dt>Placa en SATAG</dt>
+                <dd>
+                  <span className="mono">{x?.placas || "—"}</span>
+                  {x?.placas && z?.placa && placaNorm(x.placas) !== placaNorm(z.placa) && <span className="g-difiere"> · no coincide con ZK</span>}
+                </dd>
+                <dt>Vehículo</dt><dd>{x?.vehiculo || "—"}</dd>
                 <dt>En SATAG</dt><dd>{x ? <><span className="mono">{x.folio}</span> · {x.anterior ? `TAG anterior (${x.estado})` : x.estado}</> : <span className="g-falta-dato">sin expediente</span>}</dd>
                 <dt>Pluma</dt><dd>abrió <b>{abrio}</b>{rech ? <> · rechazó <b>{rech}</b></> : " · sin rechazos"}</dd>
                 <dt>Último paso</dt><dd>{ult ? `${diaCorto(ult.dia)} ${hhmm(ult.min)}` : "—"}</dd>
