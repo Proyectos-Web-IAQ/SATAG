@@ -28,6 +28,10 @@ import {
   type Lectura,
 } from "@/lib/casosEvidencia";
 import { PasosSemana } from "@/components/admin/FichaPersona";
+import type { PersonaZk } from "@/lib/zk/padron";
+
+/** El expediente de SATAG de un TAG: el vigente, o uno que lo tuvo antes. */
+export interface ExpedienteTag { folio: string; estado: string; anterior: boolean }
 
 export const SERIE = ["#1F5FA8", "#E69F00"];
 const LOTE: Record<string, string> = { E2: "#1F5FA8", E1: "#1E8A5A" };
@@ -248,6 +252,50 @@ function Llegada({ r }: { r: NonNullable<ReturnType<typeof llegadaHabitual>> }) 
   );
 }
 
+/**
+ * «Los TAGs de este caso»: un renglon por TAG con su color en las graficas, el
+ * numero COMPLETO y como esta en cada sistema. Sin esto, la grafica de dos TAGs no
+ * decia cual era cual (Gerardo, 7-oct, con el caso de los dos TAGs del mismo coche).
+ */
+function LosTags({ tags, eventos, ventana, zkDe, expedienteDe, nombreDe }: {
+  tags: { tarjeta: string; papel: string }[];
+  eventos: EventoZk[];
+  ventana: Ventana;
+  zkDe?: (t: string) => PersonaZk | undefined;
+  expedienteDe?: (t: string) => ExpedienteTag | undefined;
+  nombreDe: (t: string) => string | undefined;
+}) {
+  return (
+    <section className="g-bloque">
+      <div className="g-tit">{tags.length > 1 ? "Los TAGs de este caso" : "El TAG de este caso"}</div>
+      <div className="g-tags">
+        {tags.map(({ tarjeta, papel }, i) => {
+          const z = zkDe?.(tarjeta);
+          const x = expedienteDe?.(tarjeta);
+          const l = lecturasDe(eventos, tarjeta);
+          const abrio = l.filter((y) => y.ok).length, rech = l.length - abrio;
+          const ult = l.filter((y) => y.ok).pop();
+          return (
+            <div className="g-tagc" key={tarjeta} style={{ borderTopColor: SERIE[i] ?? "#657080" }}>
+              <div className="g-tag"><i style={{ background: SERIE[i] ?? "#657080" }} aria-hidden="true" /><b className="mono">{tarjeta}</b></div>
+              <div className="g-papel">{papel}</div>
+              <dl className="g-tagc__pares">
+                <dt>En ZK</dt><dd>{z?.nombre || nombreDe(tarjeta) || <span className="g-falta-dato">no está en el padrón de ZK</span>}</dd>
+                <dt>Departamento</dt><dd>{z?.departamento || "—"}</dd>
+                <dt>Placa en ZK</dt><dd className="mono">{z?.placa || "—"}</dd>
+                <dt>En SATAG</dt><dd>{x ? <><span className="mono">{x.folio}</span> · {x.anterior ? `TAG anterior (${x.estado})` : x.estado}</> : <span className="g-falta-dato">sin expediente</span>}</dd>
+                <dt>Pluma</dt><dd>abrió <b>{abrio}</b>{rech ? <> · rechazó <b>{rech}</b></> : " · sin rechazos"}</dd>
+                <dt>Último paso</dt><dd>{ult ? `${diaCorto(ult.dia)} ${hhmm(ult.min)}` : "—"}</dd>
+              </dl>
+            </div>
+          );
+        })}
+      </div>
+      {!ventana.desde && <div className="g-nota">Sin bitácora cargada: «Abrió» y «Rechazos» salen en cero.</div>}
+    </section>
+  );
+}
+
 /* ------------------------------------------------------------------ por tipo */
 
 interface Props {
@@ -255,13 +303,19 @@ interface Props {
   eventos: EventoZk[];
   ventana: Ventana;
   nombreDe: (tarjeta: string) => string | undefined;
+  zkDe?: (tarjeta: string) => PersonaZk | undefined;
+  expedienteDe?: (tarjeta: string) => ExpedienteTag | undefined;
 }
 
 /** La evidencia en graficas segun el tipo del caso. */
-export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe }: Props) {
+export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe, zkDe, expedienteDe }: Props) {
   const t = caso.tarjeta ?? "";
   const ev = caso.evidencia ?? {};
-  const etiqueta = (x: string) => `${(nombreDe(x) ?? "TAG").split(" ").slice(0, 2).join(" ")} ·${x.slice(-4)}`;
+  // En las graficas el TAG va COMPLETO: es lo que se busca en ZK (Gerardo, 7-oct).
+  const etiqueta = (x: string) => x;
+  const cuadro = (tags: { tarjeta: string; papel: string }[]) => (
+    <LosTags tags={tags} eventos={eventos} ventana={ventana} zkDe={zkDe} expedienteDe={expedienteDe} nombreDe={nombreDe} />
+  );
   const dias = useMemo(() => (ventana.desde && ventana.hasta ? diasHabiles(ventana.desde, ventana.hasta) : []), [ventana.desde, ventana.hasta]);
   const mias = useMemo(() => (t ? lecturasDe(eventos, t) : []), [eventos, t]);
 
@@ -276,12 +330,15 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe }: Props) {
       const juntos = mias.filter((l) => delOtro.some((o) => o.lote === l.lote && o.sentido === l.sentido && Math.abs(o.s - l.s) <= 5)).length;
       const rech = mias.filter((l) => !l.ok).length;
       return (
+        <>
+        {cuadro([{ tarjeta: t, papel: "El del caso" }, { tarjeta: otro, papel: tagPrincipalDe(ev) === otro ? "El principal (según la depuración)" : "El que viaja con él" }])}
         <Bloque
           titulo={juntos ? <>Los dos TAGs pasan juntos en <b>{juntos} de {mias.length}</b> lecturas del TAG del caso</> : <>En la bitácora, los dos TAGs <b>no se leyeron juntos</b> (0 de {mias.length} lecturas)</>}
           sub={juntos ? <>Cada línea gris une dos lecturas a 5 s o menos en el mismo lector.{rech ? ` La pluma rechazó ${rech} veces el TAG del caso: es el TAG de más.` : ""}</> : "Lo de «mismo coche» no lo confirma la pluma: revise la placa con la persona antes de dar de baja un TAG."}
         >
           <TiraPasos series={[{ etiqueta: etiqueta(t), lecturas: mias }, { etiqueta: etiqueta(otro), lecturas: delOtro }]} />
         </Bloque>
+        </>
       );
     }
     case "credencial-sin-nombre": {
@@ -289,6 +346,7 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe }: Props) {
       const otro = comp[0]?.tarjeta;
       return (
         <>
+          {cuadro(otro ? [{ tarjeta: t, papel: "El del caso" }, { tarjeta: otro, papel: "El que viaja con él" }] : [{ tarjeta: t, papel: "El del caso" }])}
           <Bloque titulo={otro ? <>Viaja con <b>{nombreDe(otro) ?? `TAG ${otro}`}</b></> : "No viaja con ningún TAG conocido"} sub="TAGs que se leen a ≤ 5 s en el mismo lector, por número de días.">
             {comp.length > 0 && <Comparar filas={comp.slice(0, 4).map((c) => ({ etiqueta: nombreDe(c.tarjeta) ?? `TAG ${c.tarjeta}`, valor: c.dias, max: comp[0].dias, texto: String(c.dias), sub: "días juntos", color: SERIE[1] }))} />}
           </Bloque>
@@ -307,6 +365,7 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe }: Props) {
       if (L) filas.push({ etiqueta: `Todo ${lote}`, valor: L.incompletas, max: L.total, texto: `${Math.round((L.incompletas / Math.max(1, L.total)) * 100)} %`, sub: `${L.incompletas} de ${L.total}`, color: "#a9b3c1" });
       return (
         <>
+          {cuadro([{ tarjeta: t, papel: "El del caso" }])}
           <Bloque titulo={<>{lote ? `En ${lote}, ` : ""}<b>{r.incompletas} de {r.total}</b> de sus estancias quedan incompletas</>} sub={lote ? `Compare con todo ${lote}: si este TAG falla mucho más, el problema es el TAG o su colocación.` : undefined}>
             <Comparar filas={filas} />
           </Bloque>
@@ -322,12 +381,15 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe }: Props) {
       const dentro = (ls: Lectura[]) => dias.filter((d) => ls.some((l) => l.dia === d && l.ok)).length;
       const diasRech = new Set(mias.filter((l) => !l.ok).map((l) => l.dia)).size;
       return (
+        <>
+        {cuadro(usa ? [{ tarjeta: t, papel: "El que no usa" }, { tarjeta: usa, papel: "El que sí usa" }] : [{ tarjeta: t, papel: "El del caso" }])}
         <Bloque
           titulo={<>El TAG del caso entró <b>{dentro(mias)} de {dias.length}</b> días hábiles{diasRech ? <> y la pluma lo rechazó <b>{diasRech}</b> días</> : null}{usa ? <>; el que usa entró <b>{dentro(suyas)}</b></> : null}</>}
           sub={diasRech ? "Si lo rechaza a diario, el TAG viaja en el coche aunque no sirva: es un TAG de más." : "Un cuadro por día hábil de la bitácora."}
         >
           <CalendarioUso filas={usa ? [{ etiqueta: etiqueta(t), lecturas: mias }, { etiqueta: etiqueta(usa), lecturas: suyas }] : [{ etiqueta: etiqueta(t), lecturas: mias }]} dias={dias} ventana={ventana} />
         </Bloque>
+        </>
       );
     }
     case "departamento-distinto":
@@ -340,6 +402,7 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe }: Props) {
       const max = Math.max(1, ...porLote.flatMap((z) => [z.a, z.r]));
       return (
         <>
+          {cuadro([{ tarjeta: t, papel: "El del caso" }])}
           <Bloque
             titulo={porLote.length ? porLote.map((z, i) => <span key={z.L}>{i ? " · " : ""}{z.L}: <b>{z.a}</b> veces abrió, <b>{z.r}</b> la rechazó</span>) : "Sin pasos en la bitácora"}
             sub={`Departamento en ZK: ${String(ev.departamentoZk ?? "—")} · plumas: ${String(ev.plumas ?? "—")}`}
@@ -364,6 +427,7 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe }: Props) {
   const entro = dias.filter((d) => mias.some((l) => l.dia === d && l.ok)).length;
   return (
     <>
+      {cuadro([{ tarjeta: t, papel: "El del caso" }])}
       <Bloque titulo={<>Entró <b>{entro} de {dias.length}</b> días hábiles</>} sub={typeof ev.ges === "string" ? `GES: ${ev.ges}` : undefined}>
         <CalendarioUso filas={[{ etiqueta: etiqueta(t), lecturas: mias }]} dias={dias} ventana={ventana} />
       </Bloque>

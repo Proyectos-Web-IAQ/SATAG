@@ -111,6 +111,18 @@ async function huella(bytes: ArrayBuffer): Promise<string> {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+/** El expediente de cada TAG, para el cuadro de TAGs de un caso: el vigente manda sobre uno dado de baja; los anteriores, despues. */
+function expedientesPorTag(padron: PadronEstacionamiento[]): Map<string, { folio: string; estado: string; anterior: boolean }> {
+  const m = new Map<string, { folio: string; estado: string; anterior: boolean }>();
+  const vivo = (p: PadronEstacionamiento) => p.estado !== "baja";
+  for (const p of padron) {
+    const ya = m.get(p.noDispositivo);
+    if (p.noDispositivo && (!ya || ya.anterior || (!vivo({ estado: ya.estado } as PadronEstacionamiento) && vivo(p)))) m.set(p.noDispositivo, { folio: p.folio, estado: p.estado, anterior: false });
+  }
+  for (const p of padron) for (const t of p.tagsAnteriores) if (t && !m.has(t)) m.set(t, { folio: p.folio, estado: p.estado, anterior: true });
+  return m;
+}
+
 /** Las vistas que atiende este contenedor: las del panel, las dos de gente y la de los archivos de ZK. */
 export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos" | "casos";
 
@@ -736,6 +748,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
             eventos={VEN_IDENTIDAD.includes(rol) ? lectura?.eventos ?? [] : null}
             ventana={{ desde: lectura?.resumen.desde ?? null, hasta: lectura?.resumen.hasta ?? null }}
             personas={VEN_IDENTIDAD.includes(rol) ? personas ?? null : null}
+            expedientes={expedientesPorTag(padron ?? [])}
           />
         ) : vista === "lotes" || vista === "secciones" ? (
           (() => {

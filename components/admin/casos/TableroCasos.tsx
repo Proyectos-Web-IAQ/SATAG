@@ -51,7 +51,7 @@ import {
   type MovimientoCaso,
 } from "@/lib/supabase/apiPanel";
 import SelectorTipo, { Etiqueta, type ModoSelector } from "@/components/admin/casos/SelectorTipo";
-import { EntradasSalidas, EvidenciaGraficas, type Ventana } from "@/components/admin/casos/GraficasCaso";
+import { EntradasSalidas, EvidenciaGraficas, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -84,7 +84,7 @@ function guardarVistas(v: Vista[]) {
 const pasa = (c: CasoGuardado, f: { tipos: string[]; urgente: boolean }) =>
   (!f.tipos.length || f.tipos.includes(c.tipo)) && (!f.urgente || (c.urgente && columnaDe(c.estado) !== "cerrado"));
 
-export default function TableroCasos({ rol, email, eventos, ventana, personas }: {
+export default function TableroCasos({ rol, email, eventos, ventana, personas, expedientes = null }: {
   rol: RolPanel;
   email: string | null;
   /** La bitacora de ZK ya leida por la pestana; null = este rol no la lee. */
@@ -92,6 +92,8 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas }:
   ventana: Ventana;
   /** El padron de ZK (nombres y departamento), para quien puede ver identidades. */
   personas: Map<string, PersonaZk> | null;
+  /** El expediente de SATAG de cada TAG (vigente o anterior), para el cuadro de TAGs. */
+  expedientes?: Map<string, ExpedienteTag> | null;
 }) {
   const [casos, setCasos] = useState<CasoGuardado[] | null>(null);
   const [tipos, setTipos] = useState<TipoCasoCatalogo[]>([]);
@@ -374,6 +376,8 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas }:
             ventana={ventana}
             nombreDe={nombreDe}
             persona={caso.tarjeta ? personas?.get(caso.tarjeta) ?? null : null}
+            zkDe={(t) => personas?.get(t)}
+            expedienteDe={(t) => expedientes?.get(t)}
             onCerrarPanel={() => setActivo(null)}
             onAbrir={setActivo}
             onCambiarTipo={(ancla) => setSelector({ modo: "asignar", ancla, ids: [caso.id] })}
@@ -493,7 +497,7 @@ function Zona({ abierto, tablero, panel }: { abierto: boolean; tablero: ReactNod
 
 /* ------------------------------------------------------------------ el detalle */
 
-function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, nombreDe, persona, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
+function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, nombreDe, persona, zkDe, expedienteDe, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
   caso: CasoGuardado;
   casos: CasoGuardado[];
   tipos: TipoCasoCatalogo[];
@@ -503,6 +507,8 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
   ventana: Ventana;
   nombreDe: (t: string) => string | undefined;
   persona: PersonaZk | null;
+  zkDe: (t: string) => PersonaZk | undefined;
+  expedienteDe: (t: string) => ExpedienteTag | undefined;
   onCerrarPanel: () => void;
   onAbrir: (id: string) => void;
   onCambiarTipo: (ancla: DOMRect) => void;
@@ -574,7 +580,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
             </div>
             {caso.detalle.trim() && <p className="tc-det__detalle">{caso.detalle}</p>}
             {eventos ? (
-              <EvidenciaGraficas caso={caso} eventos={eventos} ventana={ventana} nombreDe={nombreDe} />
+              <EvidenciaGraficas caso={caso} eventos={eventos} ventana={ventana} nombreDe={nombreDe} zkDe={zkDe} expedienteDe={expedienteDe} />
             ) : (
               <p className="g-vacio">Las gráficas de los pasos por la pluma las ven TI y Contabilidad (leen la bitácora de ZK).</p>
             )}

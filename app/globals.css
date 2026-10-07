@@ -1713,3 +1713,16 @@ a { color: var(--primary-strong); }
   .tc-r6 { grid-template-columns: 1fr 1fr; }
   .tc-pop { left: 8px !important; right: 8px; width: auto !important; }
 }
+
+/* Cuadro «Los TAGs de este caso» */
+.g-tabla--tags { max-height: none; }
+.g-tabla--tags td { vertical-align: top; padding: 6px 10px; }
+.g-tag { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.g-tag i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.g-papel { display: block; font-size: 0.72rem; color: var(--muted); }
+.g-falta-dato { color: var(--muted); font-style: italic; }
+.g-tags { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin-top: 8px; }
+.g-tagc { border: 1px solid var(--line); border-top: 3px solid; border-radius: var(--radius); padding: 10px 12px; }
+.g-tagc__pares { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 8px 0 0; font-size: 0.82rem; }
+.g-tagc__pares dt { color: var(--muted); }
+.g-tagc__pares dd { margin: 0; overflow-wrap: anywhere; }
