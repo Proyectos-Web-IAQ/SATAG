@@ -36,6 +36,7 @@ import {
   type MotivoEspera,
   type NotaCaso,
   type TipoCasoCatalogo,
+  ordenarGruposCaso,
   tiposEnOrden,
 } from "@/lib/casosRegistro";
 import {
@@ -241,7 +242,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
       const k = `${clavePersonaCaso(c)}|${c.tipo}`;
       g.set(k, [...(g.get(k) ?? []), c]);
     }
-    const grupos = [...g.values()].sort((a, b) => Number(b[0].urgente) - Number(a[0].urgente) || a[0].creadoEn.localeCompare(b[0].creadoEn));
+    const grupos = ordenarGruposCaso([...g.values()], ordenTipos);
     const todos = verTodo.has(clave);
     const m = todos ? grupos : grupos.slice(0, POR_COLUMNA);
     return (

@@ -65,6 +65,25 @@ export function reordenar<T>(lista: T[], mover: T, sobre: T): T[] {
   return sin;
 }
 
+/**
+ * El orden de las tarjetas en cada columna (Gerardo, 8-oct): primero los urgentes;
+ * luego por el orden de familias y tipos que guardo el equipo (bloque 91); y dentro
+ * de cada tipo, por llegada (el mas antiguo arriba). Cada grupo son los casos de una
+ * persona con el mismo tipo: es urgente si alguno lo es, y llego con el primero.
+ */
+export function ordenarGruposCaso<C extends Pick<CasoGuardado, "tipo" | "urgente" | "creadoEn">>(grupos: C[][], ordenTipos: string[]): C[][] {
+  const pos = new Map(ordenTipos.map((t, i) => [t, i]));
+  const llave = (g: C[]) => ({
+    urgente: g.some((c) => c.urgente),
+    tipo: pos.get(g[0]?.tipo ?? "") ?? Number.MAX_SAFE_INTEGER,
+    llego: g.map((c) => c.creadoEn).sort()[0] ?? "",
+  });
+  return grupos
+    .map((g) => ({ g, k: llave(g) }))
+    .sort((a, b) => Number(b.k.urgente) - Number(a.k.urgente) || a.k.tipo - b.k.tipo || a.k.llego.localeCompare(b.k.llego))
+    .map((x) => x.g);
+}
+
 export interface CasoGuardado {
   id: string;
   numero: number;
