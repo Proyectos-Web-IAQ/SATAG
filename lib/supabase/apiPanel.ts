@@ -1600,6 +1600,16 @@ export async function borrarTipoCaso(tipo: string): Promise<void> {
 }
 
 /**
+ * Guarda el orden de TODAS las familias y TODOS los tipos (retirados incluidos)
+ * para todo el equipo (bloque 91; ti, contador y super). Si la lista ya no es la
+ * completa, la base no guarda nada y pide volver a abrir.
+ */
+export async function ordenarTiposCaso(familias: string[], tipos: string[], hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("ordenar_tipos_caso", { p_familias: familias, p_tipos: tipos, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+}
+
+/**
  * Da de alta, como `migracion_zk`, cada credencial que abrio la pluma y no tiene
  * expediente (bloque 86, rol ti). Se llama despues de guardar la bitacora o el
  * padron de ZK; repetirla no duplica nada.

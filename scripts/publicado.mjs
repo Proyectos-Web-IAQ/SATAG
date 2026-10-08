@@ -88,6 +88,7 @@ const RUTAS = [
       // El RPC del tablero de casos (bloque 90): solo existe en el cliente nuevo.
       { texto: "mover_casos", que: "el tablero de casos: Nuevo, Por atender, Esperando y Cerrado (bloque 90)" },
       { texto: "entrada no le", que: "la ficha distingue salida sin entrada de entrada sin salida (7-oct)" },
+      { texto: "ordenar_tipos_caso", que: "el orden de familias y tipos de caso, para todos (bloque 91)" },
     ],
   },
 ];

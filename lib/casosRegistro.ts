@@ -42,6 +42,29 @@ export interface FamiliaCaso {
   tinta: string;
 }
 
+/**
+ * Los tipos en el orden que el equipo guardo (bloque 91): primero por el orden de
+ * su familia, luego por el suyo. Asi «Por tipo» y «Por familia» dicen lo mismo.
+ */
+export function tiposEnOrden(familias: FamiliaCaso[], tipos: TipoCasoCatalogo[]): TipoCasoCatalogo[] {
+  const posFamilia = new Map(familias.map((f) => [f.id, f.orden]));
+  const pos = (t: TipoCasoCatalogo) => posFamilia.get(t.familia) ?? Number.MAX_SAFE_INTEGER;
+  return [...tipos].sort((a, b) => pos(a) - pos(b) || a.orden - b.orden || a.titulo.localeCompare(b.titulo, "es"));
+}
+
+/**
+ * Mueve `mover` a donde esta `sobre`: si baja queda despues de el y si sube,
+ * antes (como al arrastrar en una lista). Sin cambios si alguno no esta.
+ */
+export function reordenar<T>(lista: T[], mover: T, sobre: T): T[] {
+  const de = lista.indexOf(mover);
+  const a = lista.indexOf(sobre);
+  if (de < 0 || a < 0 || de === a) return lista;
+  const sin = lista.filter((x) => x !== mover);
+  sin.splice(sin.indexOf(sobre) + (de < a ? 1 : 0), 0, mover);
+  return sin;
+}
+
 export interface CasoGuardado {
   id: string;
   numero: number;

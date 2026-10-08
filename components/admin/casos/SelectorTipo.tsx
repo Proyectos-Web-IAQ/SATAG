@@ -6,10 +6,12 @@
 //   - Las familias son los grupos; ⋮⋮ arrastra un tipo a otra familia.
 //   - ••• abre su editor: nombre, familia, «que hacer», motivos de cierre, retirar
 //     (si tiene casos) o borrar (si no). Un tipo con casos no se borra.
+//   - En «Tipos ▾» (modo editar) se ordenan las familias y los tipos de cada una,
+//     y el orden se guarda para todos (bloque 91; ti, contador y super).
 // Tres modos: asignar el tipo a casos, filtrar el tablero por tipos, o solo editar.
 // La base vuelve a verificar el rol (guardar_tipo_caso es solo ti).
 import { useEffect, useRef, useState } from "react";
-import type { FamiliaCaso, TipoCasoCatalogo } from "@/lib/casosRegistro";
+import { reordenar, tiposEnOrden, type FamiliaCaso, type TipoCasoCatalogo } from "@/lib/casosRegistro";
 
 export type ModoSelector = "asignar" | "filtrar" | "editar";
 
@@ -30,7 +32,7 @@ export function Etiqueta({ tipo, familias, tipos, onClick, titulo }: {
 }
 
 export default function SelectorTipo({
-  modo, ancla, tipos, familias, seleccion, cuentas, puedeEditar, onElegir, onGuardar, onBorrar, onCerrar,
+  modo, ancla, tipos, familias, seleccion, cuentas, puedeEditar, puedeOrdenar = false, onElegir, onGuardar, onBorrar, onOrdenar, onCerrar,
 }: {
   modo: ModoSelector;
   ancla: DOMRect;
@@ -41,9 +43,13 @@ export default function SelectorTipo({
   /** Casos por tipo, para «N casos» y para saber si se puede borrar. */
   cuentas: Map<string, number>;
   puedeEditar: boolean;
+  /** Ordenar familias y tipos para todos (bloque 91): ti, contador y super. */
+  puedeOrdenar?: boolean;
   onElegir: (tipo: string) => void;
   onGuardar: (t: { tipo: string | null; titulo: string; familia: string; queHacer: string; motivos: string[]; activo: boolean; orden?: number | null }) => Promise<string>;
   onBorrar: (tipo: string) => Promise<void>;
+  /** El orden completo: todas las familias y todos los tipos, retirados incluidos. */
+  onOrdenar?: (familias: string[], tipos: string[]) => Promise<void>;
   onCerrar: () => void;
 }) {
   const [texto, setTexto] = useState("");
@@ -87,6 +93,45 @@ export default function SelectorTipo({
       else setEditando(id);
     });
   }
+  // Ordenar solo en «Tipos ▾» y sin busqueda: con la lista filtrada no se ve donde cae.
+  const ordena = modo === "editar" && !q && puedeOrdenar && !!onOrdenar;
+  const arrastrable = ordena || (puedeEditar && modo !== "filtrar");
+  const familiaArrastrada = arrastra?.startsWith("f:") ? arrastra.slice(2) : null;
+  const tipoArrastrado = arrastra && !familiaArrastrada ? arrastra : null;
+
+  async function guardarOrden(fams: string[], ts: string[]) {
+    if (!onOrdenar) return;
+    await correr(() => onOrdenar(fams, ts));
+  }
+  /** Una familia a donde esta otra; los tipos la siguen. */
+  function moverFamilia(familia: string, sobreFamilia: string) {
+    const antes = familias.map((f) => f.id);
+    const fams = reordenar(antes, familia, sobreFamilia);
+    if (fams.join() === antes.join()) return;
+    const nuevas = familias.map((f) => ({ ...f, orden: fams.indexOf(f.id) }));
+    guardarOrden(fams, tiposEnOrden(nuevas, tipos).map((t) => t.tipo));
+  }
+  /** Un tipo a donde esta otro de la MISMA familia. */
+  function moverDentro(tipo: string, sobreTipo: string) {
+    const todos = tiposEnOrden(familias, tipos).map((t) => t.tipo);
+    const nuevo = reordenar(todos, tipo, sobreTipo);
+    if (nuevo.join() === todos.join()) return;
+    guardarOrden(familias.map((f) => f.id), nuevo);
+  }
+  function soltarTipo(tipo: string, familia: string, sobreTipo: string | null) {
+    const t = tipos.find((x) => x.tipo === tipo);
+    if (!t) return;
+    if (t.familia === familia) {
+      if (sobreTipo && ordena) moverDentro(tipo, sobreTipo);
+      return;
+    }
+    if (!puedeEditar) {
+      setError("Cambiar un tipo de familia lo hace TI.");
+      return;
+    }
+    moverAFamilia(tipo, familia, sobreTipo);
+  }
+
   async function moverAFamilia(tipo: string, familia: string, antesDe: string | null) {
     const t = tipos.find((x) => x.tipo === tipo);
     if (!t) return;
@@ -107,13 +152,13 @@ export default function SelectorTipo({
       <div
         key={t.tipo}
         className={`tc-op${sel ? " tc-op--sel" : ""}${sobre === t.tipo ? " tc-op--sobre" : ""}`}
-        draggable={puedeEditar}
-        onDragStart={(e) => { setArrastra(t.tipo); e.dataTransfer.setData("text/plain", t.tipo); }}
+        draggable={arrastrable}
+        onDragStart={(e) => { e.stopPropagation(); setArrastra(t.tipo); e.dataTransfer.setData("text/plain", t.tipo); }}
         onDragEnd={() => { setArrastra(null); setSobre(null); }}
-        onDragOver={(e) => { if (arrastra) { e.preventDefault(); setSobre(t.tipo); } }}
-        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); if (arrastra && arrastra !== t.tipo) moverAFamilia(arrastra, t.familia, t.tipo); setSobre(null); }}
+        onDragOver={(e) => { if (tipoArrastrado) { e.preventDefault(); e.stopPropagation(); setSobre(t.tipo); } }}
+        onDrop={(e) => { if (!tipoArrastrado) return; e.preventDefault(); e.stopPropagation(); if (tipoArrastrado !== t.tipo) soltarTipo(tipoArrastrado, t.familia, t.tipo); setSobre(null); }}
       >
-        {puedeEditar && <span className="tc-op__asa" aria-hidden="true" title="Arrastrar a otra familia">⋮⋮</span>}
+        {arrastrable && <span className="tc-op__asa" aria-hidden="true" title={puedeEditar ? "Arrastrar para ordenar o cambiar de familia" : "Arrastrar para ordenar"}>⋮⋮</span>}
         <button type="button" className="tc-op__elegir" onClick={() => (modo === "editar" ? setEditando(t.tipo) : onElegir(t.tipo))}>
           {modo === "filtrar" && <span className="tc-op__caja" aria-hidden="true">{sel ? "✓" : ""}</span>}
           <span className="tc-etq" style={{ background: f?.fondo, color: f?.tinta }}>{t.titulo}</span>
@@ -158,21 +203,41 @@ export default function SelectorTipo({
             }}
           />
           <div className="tc-pop__ayuda">
-            {modo === "asignar" ? "Elija el tipo." : modo === "filtrar" ? "Mostrar solo estos tipos." : puedeEditar ? "Arrastre ⋮⋮ para cambiar de familia; ••• para editar." : "Los tipos los edita TI."}
+            {modo === "asignar" ? "Elija el tipo." : modo === "filtrar" ? "Mostrar solo estos tipos." : puedeEditar ? "Arrastre ⋮⋮ para ordenar familias y tipos o cambiar de familia; ••• para editar. El orden es para todos." : ordena ? "Arrastre ⋮⋮ para ordenar familias y tipos; el orden es para todos. Los tipos los edita TI." : "Los tipos los edita TI."}
           </div>
           {error && <p className="submit-error" role="alert" style={{ margin: "6px 12px" }}>{error}</p>}
           <div className="tc-pop__lista">
-            {familias.map((f) => {
+            {familias.map((f, i) => {
               const ts = tipos.filter((t) => t.familia === f.id && visibles(t)).sort((a, b) => a.orden - b.orden);
               if (!ts.length && q) return null;
               return (
                 <div
                   key={f.id}
                   className={`tc-fam${sobre === `f:${f.id}` ? " tc-fam--sobre" : ""}`}
-                  onDragOver={(e) => { if (arrastra) { e.preventDefault(); if (sobre !== `f:${f.id}` && !String(sobre).startsWith(f.id)) setSobre(`f:${f.id}`); } }}
-                  onDrop={(e) => { e.preventDefault(); if (arrastra) moverAFamilia(arrastra, f.id, null); setSobre(null); }}
+                  onDragOver={(e) => { if (arrastra) { e.preventDefault(); if (sobre !== `f:${f.id}`) setSobre(`f:${f.id}`); } }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (familiaArrastrada) moverFamilia(familiaArrastrada, f.id);
+                    else if (tipoArrastrado) soltarTipo(tipoArrastrado, f.id, null);
+                    setSobre(null);
+                  }}
                 >
-                  <div className="tc-fam__t">{f.titulo}</div>
+                  <div
+                    className="tc-fam__t"
+                    draggable={ordena}
+                    onDragStart={(e) => { setArrastra(`f:${f.id}`); e.dataTransfer.setData("text/plain", f.id); }}
+                    onDragEnd={() => { setArrastra(null); setSobre(null); }}
+                  >
+                    {ordena && <span className="tc-op__asa" aria-hidden="true" title="Arrastrar para ordenar la familia">⋮⋮</span>}
+                    <span className="tc-fam__nombre">{f.titulo}</span>
+                    {/* Subir y bajar sin arrastrar: la lista se desplaza y no siempre se ven las dos puntas. */}
+                    {ordena && (
+                      <span className="tc-fam__mover">
+                        <button type="button" disabled={ocupado || i === 0} onClick={() => moverFamilia(f.id, familias[i - 1].id)} aria-label={`Subir la familia ${f.titulo}`}>▲</button>
+                        <button type="button" disabled={ocupado || i === familias.length - 1} onClick={() => moverFamilia(f.id, familias[i + 1].id)} aria-label={`Bajar la familia ${f.titulo}`}>▼</button>
+                      </span>
+                    )}
+                  </div>
                   {ts.map(opcion)}
                 </div>
               );

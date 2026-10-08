@@ -36,6 +36,7 @@ import {
   type MotivoEspera,
   type NotaCaso,
   type TipoCasoCatalogo,
+  tiposEnOrden,
 } from "@/lib/casosRegistro";
 import {
   anotarCaso,
@@ -48,6 +49,7 @@ import {
   listTiposCaso,
   marcarCasos,
   moverCasos,
+  ordenarTiposCaso,
   reportarCaso,
   type MovimientoCaso,
   type PadronEstacionamiento,
@@ -61,6 +63,8 @@ import { ROTULO } from "@/lib/glosario";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
+// El orden de familias y tipos, para todos (bloque 91; Gerardo, 8-oct).
+const ORDENAN_TIPOS: RolPanel[] = ["ti", "contador", "super"];
 const POR_COLUMNA = 12;
 
 // En observacion: esperan su fecha y son muchos (191 al 7-oct, y creceran). Mientras
@@ -130,6 +134,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   const [sobre, setSobre] = useState<ColumnaCaso | null>(null);
   const escribe = ESCRIBEN.includes(rol);
   const editaTipos = EDITAN_TIPOS.includes(rol);
+  const ordenaTipos = ORDENAN_TIPOS.includes(rol);
 
   useEffect(() => { setVistas([...VISTAS_BASE, ...leerVistas()]); }, []);
 
@@ -150,6 +155,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   const decir = (t: string) => { setAviso(t); window.setTimeout(() => setAviso((a) => (a === t ? null : a)), 5000); };
   const nombreDe = useCallback((t: string) => personas?.get(t)?.nombre, [personas]);
   const tipoDe = useMemo(() => new Map(tipos.map((t) => [t.tipo, t])), [tipos]);
+  const ordenTipos = useMemo(() => tiposEnOrden(familias, tipos).map((t) => t.tipo), [familias, tipos]);
   const cuentas = useMemo(() => {
     const m = new Map<string, number>();
     for (const c of casos ?? []) m.set(c.tipo, (m.get(c.tipo) ?? 0) + 1);
@@ -293,7 +299,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
     const llave = (c: CasoGuardado) => (agrupar === "familia" ? tipoDe.get(c.tipo)?.familia ?? "otro" : c.tipo);
     const g = new Map<string, CasoGuardado[]>();
     for (const c of l) g.set(llave(c), [...(g.get(llave(c)) ?? []), c]);
-    const orden = agrupar === "familia" ? familias.map((f) => f.id) : tipos.map((t) => t.tipo);
+    const orden = agrupar === "familia" ? familias.map((f) => f.id) : ordenTipos;
     return [...g.entries()].sort((a, b) => orden.indexOf(a[0]) - orden.indexOf(b[0])).map(([k, xs]) => (
       <div className="tc-subg" key={k}>
         <div className="tc-subg__cab">
@@ -454,6 +460,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
           familias={familias}
           cuentas={cuentas}
           puedeEditar={editaTipos}
+          puedeOrdenar={ordenaTipos}
           seleccion={selector.modo === "filtrar" ? filtro.tipos : [...new Set(selector.ids.map((id) => (casos ?? []).find((c) => c.id === id)?.tipo ?? ""))]}
           onCerrar={() => setSelector(null)}
           onElegir={(t) => {
@@ -466,6 +473,12 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
           }}
           onGuardar={async (t) => { const id = await guardarTipoCaso(t, email); setTipos(await listTiposCaso()); return id; }}
           onBorrar={async (t) => { await borrarTipoCaso(t); setTipos(await listTiposCaso()); }}
+          onOrdenar={async (fams, ts) => {
+            await ordenarTiposCaso(fams, ts, email);
+            const [t, f] = await Promise.all([listTiposCaso(), listFamiliasCaso()]);
+            setTipos(t);
+            setFamilias(f);
+          }}
         />
       )}
 

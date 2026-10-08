@@ -1627,7 +1627,16 @@ a { color: var(--primary-strong); }
 .tc-pop__lista { overflow-y: auto; padding: 4px 6px 8px; }
 .tc-fam { border-radius: var(--radius); padding: 2px 0; }
 .tc-fam--sobre { background: var(--field-bg); }
-.tc-fam__t { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 8px 8px 4px; }
+.tc-fam__t { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 8px 8px 4px; display: flex; align-items: center; gap: 4px; }
+.tc-fam__t[draggable="true"] { cursor: grab; padding-left: 4px; }
+.tc-fam__t:hover .tc-op__asa { opacity: 1; }
+.tc-fam__nombre { flex: 1; min-width: 0; }
+.tc-fam__mover { display: flex; gap: 2px; opacity: 0; }
+.tc-fam__t:hover .tc-fam__mover, .tc-fam__mover:focus-within { opacity: 1; }
+.tc-fam__mover button { all: unset; cursor: pointer; font-size: 0.62rem; line-height: 1; padding: 3px 5px; border-radius: 4px; color: var(--muted); }
+.tc-fam__mover button:hover:not(:disabled) { background: var(--field-bg); color: var(--primary); }
+.tc-fam__mover button:disabled { opacity: 0.3; cursor: default; }
+.tc-fam__mover button:focus-visible { outline: 2px solid var(--primary); }
 .tc-op { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 6px; }
 .tc-op:hover { background: #f8fafd; }
 .tc-op--sel { background: var(--field-bg); }
