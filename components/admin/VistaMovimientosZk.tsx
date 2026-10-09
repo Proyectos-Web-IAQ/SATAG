@@ -32,6 +32,7 @@ import {
   listPadronDeTarjetas,
   listTandasZk,
   marcarPasoTandaZk,
+  pedirMovimientoZk,
   type DepartamentoZk,
   type MovimientoZk,
   type TandaZk,
@@ -53,24 +54,84 @@ async function descargarTanda(numero: number, renglones: RenglonTanda[]) {
   descargarArchivo(blob, `zk-tanda-${numero}-${fechaArchivo()}.xlsx`);
 }
 
-/** En el detalle de un caso: en que va lo que pidio hacer en ZK. Nada si no pidio nada. */
-export function EnZkDelCaso({ casoId }: { casoId: string }) {
+/**
+ * En el detalle de un caso: en que va lo que pidio hacer en ZK y, para TI, pedir o
+ * cambiar esa accion (bloque 94), tambien con el caso ya cerrado. Sin movimientos y
+ * sin poder pedir, no se muestra nada.
+ */
+export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: string; conTag: boolean; puedePedir: boolean; email: string | null }) {
   const [movs, setMovs] = useState<Awaited<ReturnType<typeof listMovimientosDeCaso>>>([]);
+  const [deptos, setDeptos] = useState<DepartamentoZk[]>([]);
+  const [abierto, setAbierto] = useState(false);
+  const [accion, setAccion] = useState<{ que: "departamento" | "nombre"; depto: string; nombre: string }>({ que: "departamento", depto: "", nombre: "" });
+  const [error, setError] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
+  const leer = () => listMovimientosDeCaso(casoId).then(setMovs).catch(() => setMovs([]));
   useEffect(() => {
-    let vivo = true;
-    listMovimientosDeCaso(casoId).then((m) => vivo && setMovs(m)).catch(() => vivo && setMovs([]));
-    return () => { vivo = false; };
+    leer();
+    setAbierto(false);
+    setError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [casoId]);
-  if (movs.length === 0) return null;
+  useEffect(() => {
+    if (abierto && deptos.length === 0) listDepartamentosZk().then(setDeptos).catch(() => setDeptos([]));
+  }, [abierto, deptos.length]);
+
+  const pide = puedePedir && conTag;
+  if (movs.length === 0 && !pide) return null;
+
+  async function guardar() {
+    setGuardando(true);
+    setError(null);
+    try {
+      await pedirMovimientoZk(casoId, accion.que === "departamento" ? { que: "departamento", deptoDestino: accion.depto } : { que: "nombre", nombreDestino: accion.nombre }, email);
+      setAbierto(false);
+      await leer();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo pedir la acción en ZK.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
   return (
     <div className="tc-qh">
       <b>En ZK</b>
+      {movs.length === 0 && <div>Este caso no pide nada en ZK.</div>}
       {movs.map((m) => (
         <div key={m.id}>
           {m.que === "nombre" ? `Corregir el nombre a «${m.nombreDestino}»` : `Pasarlo a ${m.deptoNombre ?? "su departamento"}`}: {ROTULO_MOVIMIENTO[m.estado]}
           {m.detalle ? `. ${m.detalle}` : ""}
         </div>
       ))}
+      {pide && !abierto && (
+        <button type="button" className="link-action" onClick={() => setAbierto(true)}>Pedir acción en ZK…</button>
+      )}
+      {pide && abierto && (
+        <div className="chip-row" style={{ alignItems: "center", marginTop: 6 }}>
+          <select className="input" style={{ width: "auto" }} aria-label="Qué hacer en ZK" value={accion.que}
+            onChange={(e) => setAccion((a) => ({ ...a, que: e.target.value as "departamento" | "nombre" }))}>
+            <option value="departamento">Pasarlo a</option>
+            <option value="nombre">Corregir el nombre a</option>
+          </select>
+          {accion.que === "departamento" ? (
+            <select className="input" style={{ width: "auto" }} aria-label="Departamento de ZK" value={accion.depto}
+              onChange={(e) => setAccion((a) => ({ ...a, depto: e.target.value }))}>
+              <option value="">—</option>
+              {deptos.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+            </select>
+          ) : (
+            <input className="input" style={{ width: "14rem" }} aria-label="Nombre como debe quedar en ZK" value={accion.nombre}
+              onChange={(e) => setAccion((a) => ({ ...a, nombre: e.target.value }))} />
+          )}
+          <button type="button" className="ghost-action ghost-action--chico"
+            disabled={guardando || (accion.que === "departamento" ? !accion.depto : !accion.nombre.trim())} onClick={guardar}>
+            Guardar
+          </button>
+          <button type="button" className="link-action" onClick={() => setAbierto(false)}>Cancelar</button>
+        </div>
+      )}
+      {error && <div className="submit-error" role="alert">{error}</div>}
     </div>
   );
 }
@@ -274,7 +335,12 @@ export default function VistaMovimientosZk({ email }: { email: string | null }) 
                             ) : `«${m.nombreDestino}»`}
                             {m.estado === "no_coincide" && <div className="aviso-ficha" style={{ marginTop: 6 }}>{m.detalle}</div>}
                           </td>
-                          <td>{numeroCaso(m.casoNumero)} · {m.casoTitulo}</td>
+                          <td>
+                            {numeroCaso(m.casoNumero)} · {m.casoTitulo}
+                            {(m.casoEstado === "resuelto" || m.casoEstado === "descartado") && (
+                              <div className="hint">Cerrado{m.casoCierre ? `: ${m.casoCierre}` : ""}</div>
+                            )}
+                          </td>
                           <td title={m.ultimaNota ? `${m.ultimaNota.por}, ${fechaHora(m.ultimaNota.en)}` : undefined}>
                             {m.ultimaNota ? m.ultimaNota.texto : "—"}
                           </td>

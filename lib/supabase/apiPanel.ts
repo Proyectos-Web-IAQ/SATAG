@@ -45,7 +45,7 @@ import type { EventoZk } from "@/lib/zk/eventos";
 import type { PersonaZk } from "@/lib/zk/padron";
 import type { ClaseGes, FuenteGes, PersonaGes } from "@/lib/ges/leer";
 import type { IdentidadDecidida, PersonaGesGuardada, VeredictoGes } from "@/lib/personas/identificar";
-import type { EstadoMovimiento, RenglonTanda } from "@/lib/zk/movimientos";
+import type { AccionZk, EstadoMovimiento, RenglonTanda } from "@/lib/zk/movimientos";
 import type { PuertaZk } from "@/lib/zk/puertas";
 
 export interface AccionResultado {
@@ -1507,6 +1507,8 @@ export interface MovimientoZk {
   casoNumero: number;
   casoTitulo: string;
   casoEstado: string;
+  /** La decision con que se cerro el caso (motivo y nota), si esta cerrado. */
+  casoCierre: string | null;
   tarjeta: string;
   que: "departamento" | "nombre";
   deptoDestino: string | null;
@@ -1525,14 +1527,14 @@ export interface MovimientoZk {
 export async function listMovimientosZk(): Promise<MovimientoZk[]> {
   const { data, error } = await supabaseAuth
     .from("zk_movimientos")
-    .select("id, caso_id, tarjeta, que, depto_destino, nombre_destino, estado, tanda_id, detalle, actualizado_en, caso:casos ( numero, titulo, estado )")
+    .select("id, caso_id, tarjeta, que, depto_destino, nombre_destino, estado, tanda_id, detalle, actualizado_en, caso:casos ( numero, titulo, estado, cierre_nota )")
     .neq("estado", "cancelado")
     .order("tarjeta", { ascending: true });
   if (error) throw new Error(traducirError(error.message));
   const filas = (data ?? []) as unknown as {
     id: string; caso_id: string; tarjeta: string; que: "departamento" | "nombre"; depto_destino: string | null; nombre_destino: string | null;
     estado: EstadoMovimiento; tanda_id: string | null; detalle: string; actualizado_en: string;
-    caso: { numero: number; titulo: string; estado: string } | null;
+    caso: { numero: number; titulo: string; estado: string; cierre_nota: string | null } | null;
   }[];
   if (filas.length === 0) return [];
 
@@ -1556,7 +1558,7 @@ export async function listMovimientosZk(): Promise<MovimientoZk[]> {
     }
   }
   return filas.map((f) => ({
-    id: f.id, casoId: f.caso_id, casoNumero: f.caso?.numero ?? 0, casoTitulo: f.caso?.titulo ?? "", casoEstado: f.caso?.estado ?? "",
+    id: f.id, casoId: f.caso_id, casoNumero: f.caso?.numero ?? 0, casoTitulo: f.caso?.titulo ?? "", casoEstado: f.caso?.estado ?? "", casoCierre: f.caso?.cierre_nota ?? null,
     tarjeta: f.tarjeta, que: f.que, deptoDestino: f.depto_destino, nombreDestino: f.nombre_destino, estado: f.estado,
     tandaId: f.tanda_id, detalle: f.detalle, actualizadoEn: f.actualizado_en,
     enZk: enZk.get(f.tarjeta) ?? null, ultimaNota: notas.get(f.caso_id) ?? null,
@@ -1570,6 +1572,17 @@ export async function listMovimientosDeCaso(casoId: string): Promise<(Pick<Movim
   if (error) throw new Error(traducirError(error.message));
   return ((data ?? []) as unknown as { id: string; que: "departamento" | "nombre"; nombre_destino: string | null; estado: EstadoMovimiento; detalle: string; depto: { nombre: string } | null }[])
     .map((r) => ({ id: r.id, que: r.que, deptoNombre: r.depto?.nombre ?? null, nombreDestino: r.nombre_destino, estado: r.estado, detalle: r.detalle }));
+}
+
+/** Pide (o cambia) la accion en ZK de un caso, abierto o cerrado (bloque 94). Solo ti. */
+export async function pedirMovimientoZk(casoId: string, a: AccionZk, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("pedir_movimiento_zk", {
+    p_caso: casoId, p_que: a.que,
+    p_depto_destino: a.que === "departamento" ? a.deptoDestino : null,
+    p_nombre_destino: a.que === "nombre" ? a.nombreDestino : null,
+    p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
 }
 
 export async function generarMovimientosZk(hechoPor: string | null): Promise<{ nuevos: number; cancelados: number; casosSinDestino: string[] }> {

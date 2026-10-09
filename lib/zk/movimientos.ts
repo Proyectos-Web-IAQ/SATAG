@@ -60,3 +60,36 @@ export const ROTULO_MOVIMIENTO: Record<EstadoMovimiento, string> = {
 
 /** «E1» -> «ESTACIONAMIENTO 1»: como se llaman los niveles en ZK. */
 export const nombreNivel = (n: string): string => `ESTACIONAMIENTO ${n.replace(/^E/, "")}`;
+
+/** Lo que se pide hacer en ZK al cerrar un caso (bloque 94). */
+export type AccionZk = { que: "departamento"; deptoDestino: string } | { que: "nombre"; nombreDestino: string };
+
+/** Para comparar nombres de departamento: «Empleado_PPF» = «EMPLEADO PPF», sin acentos. Igual que zk_texto_comparable. */
+export const deptoComparable = (s: string): string =>
+  s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/_/g, " ").replace(/\s+/g, " ").trim();
+
+/**
+ * La accion que se sugiere al cerrar, leida del tipo y del titulo del caso, igual que
+ * generar_movimientos_zk: exempleado -> BAJAS; «… le toca «X»» -> X; «… debe decir
+ * «Y»» -> corregir el nombre (solo con un caso). Si no se puede saber, ninguna: quien
+ * cierra la elige. Es una SUGERENCIA visible, no una decision.
+ */
+export function accionSugerida(casos: { tipo: string; titulo: string }[], deptos: { id: string; nombre: string }[]): AccionZk | null {
+  if (casos.length === 0) return null;
+  const depto = (nombre: string) => deptos.find((d) => deptoComparable(d.nombre) === deptoComparable(nombre))?.id ?? null;
+  if (casos.every((c) => c.tipo === "exempleado-tag-vivo")) {
+    const id = depto("BAJAS");
+    return id ? { que: "departamento", deptoDestino: id } : null;
+  }
+  if (casos.length !== 1) return null;
+  const [c] = casos;
+  if (c.tipo === "departamento-distinto") {
+    const id = depto(/le toca «([^»]+)»/.exec(c.titulo)?.[1] ?? "");
+    return id ? { que: "departamento", deptoDestino: id } : null;
+  }
+  if (c.tipo === "nombre-en-zk") {
+    const n = /debe decir «([^»]+)»/.exec(c.titulo)?.[1]?.trim();
+    return n ? { que: "nombre", nombreDestino: n } : null;
+  }
+  return null;
+}

@@ -182,6 +182,11 @@ export function fechaLarga(dia: string): string {
 
 /** Los motivos generales de cierre, ademas de los del tipo. */
 export const MOTIVOS_RESOLVER = ["Se corrigió en ZK", "Se habló con la persona", "Se confirmó en GES o con RH"];
+/**
+ * Bloque 94: cerrar con la decision tomada y la accion pendiente en Movimientos en
+ * ZK. No es «Se corrigió en ZK»: eso lo dira la tanda, y la verificacion lo comprueba.
+ */
+export const MOTIVO_DECIDIDO_ZK = "Decidido; falta hacerlo en ZK";
 export const MOTIVOS_DESCARTAR = ["No era problema", "Duplicado de otro caso", "Ya no aplica"];
 
 /** De quien es un caso, para agrupar tarjetas: el expediente, o el TAG. */

@@ -22,6 +22,7 @@ import {
   COLUMNAS_CASO,
   MOTIVOS_DESCARTAR,
   MOTIVOS_RESOLVER,
+  MOTIVO_DECIDIDO_ZK,
   clavePersonaCaso,
   coincideBusqueda,
   columnaDe,
@@ -39,7 +40,11 @@ import {
   ordenarGruposCaso,
   tiposEnOrden,
 } from "@/lib/casosRegistro";
+import { accionSugerida, type AccionZk } from "@/lib/zk/movimientos";
 import {
+  listDepartamentosZk,
+  pedirMovimientoZk,
+  type DepartamentoZk,
   anotarCaso,
   borrarTipoCaso,
   guardarTipoCaso,
@@ -136,6 +141,12 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   const [arrastra, setArrastra] = useState<string[] | null>(null);
   const [sobre, setSobre] = useState<ColumnaCaso | null>(null);
   const escribe = ESCRIBEN.includes(rol);
+  // Bloque 94: quien puede pedir la accion en ZK al cerrar (ti; super pasa siempre).
+  const [deptosZk, setDeptosZk] = useState<DepartamentoZk[] | null>(null);
+  useEffect(() => {
+    if (rol !== "ti" && rol !== "super") return;
+    listDepartamentosZk().then(setDeptosZk).catch(() => setDeptosZk(null));
+  }, [rol]);
   const editaTipos = EDITAN_TIPOS.includes(rol);
   const ordenaTipos = ORDENAN_TIPOS.includes(rol);
 
@@ -492,8 +503,18 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
           onListo={(m) => { const ids = dialogo.ids; setDialogo(null); mover(ids, m, "Esperando"); }} />
       )}
       {dialogo?.que === "cerrar" && (
-        <DialogoCerrar ids={dialogo.ids} casos={casos ?? []} tipoDe={tipoDe} onCancelar={() => setDialogo(null)}
-          onListo={(m) => { const ids = dialogo.ids; setDialogo(null); mover(ids, m, m.estado === "resuelto" ? "Resuelto" : "Descartado"); }} />
+        <DialogoCerrar ids={dialogo.ids} casos={casos ?? []} tipoDe={tipoDe} deptosZk={deptosZk} onCancelar={() => setDialogo(null)}
+          onListo={(m, accion) => {
+            const ids = dialogo.ids;
+            setDialogo(null);
+            if (!accion) return mover(ids, m, m.estado === "resuelto" ? "Resuelto" : "Descartado");
+            // Bloque 94: se cierra con la decision y la accion queda pendiente en Movimientos en ZK.
+            hacer(async () => {
+              await moverCasos(ids, m, email);
+              for (const id of ids) await pedirMovimientoZk(id, accion, email);
+              setMarcados(new Set());
+            }, `${ids.length} caso${ids.length === 1 ? "" : "s"} → Resuelto, con su acción en Movimientos en ZK`);
+          }} />
       )}
       {dialogo?.que === "reportar" && (
         <DialogoReportar tipos={tipos} familias={familias} casos={casos ?? []} candidatos={candidatos} cargando={padronUsado === null} onCancelar={() => setDialogo(null)}
@@ -642,7 +663,9 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
           <>
             {t?.queHacer && <div className="tc-qh"><b>Qué hacer</b>{t.queHacer}</div>}
             {/* Bloque 93: lo leen quienes leen el padron de ZK. */}
-            {(rol === "ti" || rol === "contador" || rol === "super") && <EnZkDelCaso casoId={caso.id} />}
+            {(rol === "ti" || rol === "contador" || rol === "super") && (
+              <EnZkDelCaso casoId={caso.id} conTag={!!caso.tarjeta} puedePedir={rol === "ti" || rol === "super"} email={email} />
+            )}
             <div className="tc-r6">
               <div>Persona<b>{nombre}</b></div>
               <div>Folio<b className="mono">{folio ?? "—"}</b></div>
@@ -781,20 +804,29 @@ function DialogoEsperar({ n, onCancelar, onListo }: { n: number; onCancelar: () 
   );
 }
 
-function DialogoCerrar({ ids, casos, tipoDe, onCancelar, onListo }: {
+function DialogoCerrar({ ids, casos, tipoDe, deptosZk, onCancelar, onListo }: {
   ids: string[];
   casos: CasoGuardado[];
   tipoDe: Map<string, TipoCasoCatalogo>;
+  /** Departamentos de ZK si quien cierra puede pedir la accion en ZK (bloque 94); null si no. */
+  deptosZk: DepartamentoZk[] | null;
   onCancelar: () => void;
-  onListo: (m: MovimientoCaso) => void;
+  onListo: (m: MovimientoCaso, accion: AccionZk | null) => void;
 }) {
   const tiposDe = [...new Set(ids.map((id) => casos.find((c) => c.id === id)?.tipo ?? ""))];
   const propios = tiposDe.length === 1 ? tipoDe.get(tiposDe[0])?.motivosCierre ?? [] : [];
-  const resolver = [...new Set([...propios, ...MOTIVOS_RESOLVER])];
-  const [eleccion, setEleccion] = useState(`R|${resolver[0]}`);
+  // La accion en ZK: se sugiere por el tipo y el titulo, y quien cierra la confirma o la cambia.
+  const elegidos = ids.map((id) => casos.find((c) => c.id === id)).filter((c): c is CasoGuardado => !!c);
+  const conTag = elegidos.length > 0 && elegidos.every((c) => c.tarjeta);
+  const sugerida = deptosZk && conTag ? accionSugerida(elegidos, deptosZk) : null;
+  const [accion, setAccion] = useState<AccionZk | null>(sugerida);
+  // Con accion en ZK, el motivo que dice la verdad es «decidido, falta hacerlo»: «Pasado a
+  // BAJAS…» afirmaria algo que todavia no pasa en ZK.
+  const resolver = [...new Set([...(deptosZk && conTag ? [MOTIVO_DECIDIDO_ZK] : []), ...propios, ...MOTIVOS_RESOLVER])];
+  const [eleccion, setEleccion] = useState(`R|${sugerida ? MOTIVO_DECIDIDO_ZK : propios[0] ?? resolver[0]}`);
   const [nota, setNota] = useState("");
   const [como, motivo] = eleccion.split("|");
-  const falta = !motivo && !nota.trim() ? "Escriba qué se hizo o por qué se descarta." : null;
+  const falta = !motivo && !nota.trim() ? "Escriba qué se hizo o por qué se descarta." : accion?.que === "nombre" && !accion.nombreDestino.trim() ? "Escriba el nombre como debe quedar en ZK." : null;
   return (
     <Modal titulo={`Cerrar ${ids.length > 1 ? `${ids.length} casos` : "el caso"}`} onCancelar={onCancelar}>
       <p className="ti-hint">El motivo queda en el historial{ids.length > 1 ? " de cada uno" : ""}.</p>
@@ -804,10 +836,44 @@ function DialogoCerrar({ ids, casos, tipoDe, onCancelar, onListo }: {
         <label><input type="radio" name="cierre" checked={eleccion === "R|"} onChange={() => setEleccion("R|")} /> Otro (escríbalo abajo)</label>
       </div>
       <label className="label">Nota{motivo ? " (opcional)" : ""}<textarea className="textarea" maxLength={4000} value={nota} onChange={(e) => setNota(e.target.value)} /></label>
+      {deptosZk && conTag && como !== "D" && (
+        <fieldset className="tc-motivos" style={{ border: 0, padding: 0, margin: "12px 0 0" }}>
+          <legend className="label">Acción en ZK</legend>
+          <p className="ti-hint" style={{ margin: "0 0 6px" }}>Si se elige, el caso queda cerrado con su decisión y el movimiento pasa a Movimientos en ZK para hacerlo en una tanda.</p>
+          <label><input type="radio" name="acc-zk" checked={accion === null} onChange={() => setAccion(null)} /> Ninguna</label>
+          <label>
+            <input type="radio" name="acc-zk" checked={accion?.que === "departamento"}
+              onChange={() => setAccion({ que: "departamento", deptoDestino: accion?.que === "departamento" ? accion.deptoDestino : deptosZk[0]?.id ?? "" })} />{" "}
+            Pasarlo a{" "}
+            <select className="input" style={{ display: "inline-block", width: "auto" }} aria-label="Departamento de ZK"
+              value={accion?.que === "departamento" ? accion.deptoDestino : ""}
+              onChange={(e) => setAccion({ que: "departamento", deptoDestino: e.target.value })}>
+              {accion?.que !== "departamento" && <option value="">—</option>}
+              {deptosZk.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+            </select>
+          </label>
+          {elegidos.length === 1 && (
+            <label>
+              <input type="radio" name="acc-zk" checked={accion?.que === "nombre"}
+                onChange={() => setAccion({ que: "nombre", nombreDestino: accion?.que === "nombre" ? accion.nombreDestino : "" })} />{" "}
+              Corregir el nombre a{" "}
+              <input className="input" style={{ display: "inline-block", width: "16rem" }} aria-label="Nombre como debe quedar en ZK"
+                value={accion?.que === "nombre" ? accion.nombreDestino : ""}
+                onChange={(e) => setAccion({ que: "nombre", nombreDestino: e.target.value })} />
+            </label>
+          )}
+        </fieldset>
+      )}
       {falta && <p className="ti-hint" role="status">{falta}</p>}
       <div className="tc-modal__pie">
         <button type="button" className="ghost-action" onClick={onCancelar}>Cancelar</button>
-        <button type="button" className="primary-action" disabled={falta !== null} onClick={() => onListo({ estado: como === "D" ? "descartado" : "resuelto", motivo: motivo || null, nota: nota.trim() })}>Cerrar</button>
+        <button type="button" className="primary-action" disabled={falta !== null}
+          onClick={() => onListo(
+            { estado: como === "D" ? "descartado" : "resuelto", motivo: motivo || null, nota: nota.trim() },
+            como !== "D" && deptosZk && conTag && accion && (accion.que === "nombre" || accion.deptoDestino) ? accion : null,
+          )}>
+          Cerrar
+        </button>
       </div>
     </Modal>
   );

@@ -95,6 +95,7 @@ const RUTAS = [
       // Movimientos en ZK (bloque 93): tandas con sus pasos y la carga de las cuatro puertas.
       { texto: "crear_tanda_zk", que: "Datos > Movimientos en ZK arma tandas para importar en ZK (bloque 93)" },
       { texto: "cargar_puertas_zk", que: "Archivos de ZK carga los cuatro Personal de Apertura (bloque 93)" },
+      { texto: "pedir_movimiento_zk", que: "cerrar un caso con su accion en ZK la manda a Movimientos en ZK (bloque 94)" },
     ],
   },
 ];

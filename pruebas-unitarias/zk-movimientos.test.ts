@@ -4,7 +4,26 @@
 // Datos inventados.
 import { describe, it, expect } from "vitest";
 import { parsearPuertaZk, puertaDe } from "@/lib/zk/puertas";
-import { filasDeTanda, nombreNivel } from "@/lib/zk/movimientos";
+import { accionSugerida, filasDeTanda, nombreNivel } from "@/lib/zk/movimientos";
+
+describe("la accion en ZK que se sugiere al cerrar (bloque 94)", () => {
+  const deptos = [{ id: "10", nombre: "BAJAS" }, { id: "19", nombre: "Padres de familia" }, { id: "25", nombre: "Empleado_PPF" }];
+  it("exempleados, uno o varios: a BAJAS", () => {
+    expect(accionSugerida([{ tipo: "exempleado-tag-vivo", titulo: "x" }, { tipo: "exempleado-tag-vivo", titulo: "y" }], deptos)).toEqual({ que: "departamento", deptoDestino: "10" });
+  });
+  it("departamento distinto: el destino del titulo, sin importar mayusculas ni guion bajo", () => {
+    expect(accionSugerida([{ tipo: "departamento-distinto", titulo: "En ZK esta en «BAJAS» y le toca «Padres de familia»" }], deptos)).toEqual({ que: "departamento", deptoDestino: "19" });
+    expect(accionSugerida([{ tipo: "departamento-distinto", titulo: "En ZK esta en «X» y le toca «EMPLEADO PPF»" }], deptos)).toEqual({ que: "departamento", deptoDestino: "25" });
+  });
+  it("nombre en ZK: el nombre del titulo, solo con un caso", () => {
+    expect(accionSugerida([{ tipo: "nombre-en-zk", titulo: "En ZK dice «Ana»: debe decir «Ana Rojo Paz»" }], deptos)).toEqual({ que: "nombre", nombreDestino: "Ana Rojo Paz" });
+  });
+  it("si no se puede saber, ninguna", () => {
+    expect(accionSugerida([{ tipo: "conducta", titulo: "Entro en sentido contrario" }], deptos)).toBeNull();
+    expect(accionSugerida([{ tipo: "departamento-distinto", titulo: "le toca «Otro que no existe»" }], deptos)).toBeNull();
+    expect(accionSugerida([{ tipo: "exempleado-tag-vivo", titulo: "x" }, { tipo: "conducta", titulo: "y" }], deptos)).toBeNull();
+  });
+});
 
 const reporte = (titulo: string, filas: string[][]) =>
   [titulo, ["ID", "Nombre", "Apellido", "Departamento"].join("\t"), ...filas.map((f) => f.join("\t"))].join("\n");
