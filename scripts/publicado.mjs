@@ -98,6 +98,7 @@ const RUTAS = [
       { texto: "pedir_movimiento_zk", que: "cerrar un caso con su accion en ZK la manda a Movimientos en ZK (bloque 94)" },
       { texto: "Ir a Archivos de ZK para subirlos", que: "Movimientos en ZK guia el ciclo y la comprobacion de la tanda (9-oct)" },
       { texto: "Llevar a Consultar con el CP", que: "Casos: la columna Consultar con el CP (bloque 96)" },
+      { texto: "Lecturas por hora", que: "Estacionamiento: Lecturas por hora (9-oct)" },
     ],
   },
 ];

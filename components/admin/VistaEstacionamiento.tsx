@@ -33,6 +33,7 @@ import type { Registro } from "@/lib/mock/types";
 import { textoVehiculo } from "@/lib/vehiculo";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
 import type { ExpedienteTag } from "@/components/admin/casos/GraficasCaso";
+import LecturasZk from "@/components/admin/LecturasZk";
 import {
   cargarEventosZk,
   altasDesdeZk,
@@ -125,7 +126,7 @@ function expedientesPorTag(padron: PadronEstacionamiento[]): Map<string, Expedie
 }
 
 /** Las vistas que atiende este contenedor: las del panel, las dos de gente y la de los archivos de ZK. */
-export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos" | "casos";
+export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos" | "casos" | "lecturas";
 
 export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPanel; email: string | null; vista: VistaEstac }) {
   const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
@@ -761,6 +762,12 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
             personas={VEN_IDENTIDAD.includes(rol) ? personas ?? null : null}
             expedientes={expedientesPorTag(padron ?? [])}
             padron={padron}
+          />
+        ) : vista === "lecturas" ? (
+          <LecturasZk
+            personas={personas}
+            expedientes={expedientesPorTag(padron ?? [])}
+            ultimaHasta={importaciones.map((i) => i.hasta).filter((h): h is string => h !== null).sort().pop() ?? null}
           />
         ) : vista === "lotes" || vista === "secciones" ? (
           (() => {

@@ -1189,6 +1189,48 @@ export async function listPasosDeTarjetas(tarjetas: string[], tope = 400): Promi
     .reverse();
 }
 
+/** Una lectura de la pluma con lo que dijo el controlador, para «Lecturas por hora». */
+export interface LecturaZk extends PasoZk {
+  concedido: boolean;
+  repeticion: boolean;
+  /** El departamento de la tarjeta EN ESE MOMENTO (historia, bloque 78). */
+  departamentoEvento: string | null;
+}
+
+/**
+ * Lo que leyeron las plumas en un rango de hora de pared (`hasta` exclusivo), en
+ * orden de tiempo: concedidos, rechazos y rafagas, para que la pantalla elija. El
+ * indice por `ocurrio_en` (bloque 78) lo hace barato. `tope` evita bajar un dia
+ * entero de golpe: si se alcanza, `truncado` lo dice.
+ */
+export async function listLecturasZk(desde: string, hasta: string, lote: string | null, tope = 2000): Promise<{ lecturas: LecturaZk[]; truncado: boolean }> {
+  let q = supabaseAuth
+    .from("zk_eventos")
+    .select("id_evento, ocurrio_en, lote, sentido, tarjeta, concedido, repeticion, departamento_evento")
+    .gte("ocurrio_en", desde)
+    .lt("ocurrio_en", hasta)
+    .order("ocurrio_en", { ascending: true })
+    .order("id_evento", { ascending: true })
+    .limit(tope + 1);
+  if (lote) q = q.eq("lote", lote);
+  const { data, error } = await q;
+  if (error) throw new Error(traducirError(error.message));
+  const filas = (data ?? []) as unknown as (PasoRow & { concedido: boolean; repeticion: boolean; departamento_evento: string | null })[];
+  return {
+    truncado: filas.length > tope,
+    lecturas: filas.slice(0, tope).map((r) => ({
+      idEvento: Number(r.id_evento),
+      ocurrioEn: String(r.ocurrio_en).replace("T", " ").slice(0, 19),
+      lote: r.lote,
+      sentido: (r.sentido === "salida" ? "salida" : "entrada") as "entrada" | "salida",
+      tarjeta: r.tarjeta,
+      concedido: r.concedido,
+      repeticion: r.repeticion,
+      departamentoEvento: r.departamento_evento,
+    })),
+  };
+}
+
 /**
  * Los eventos guardados, para medir SIN el archivo (2-oct-2026).
  *

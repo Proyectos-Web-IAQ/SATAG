@@ -83,6 +83,8 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         { clave: "lotes", titulo: "Estacionamientos" },
         { clave: "secciones", titulo: "Secciones" },
         { clave: "casos", titulo: "Casos" },
+        // 9-oct: que TAG leyo cada pluma a cierta hora, para encontrar casos.
+        { clave: "lecturas", titulo: "Lecturas por hora" },
         { clave: "plano", titulo: "Plano del plantel" },
         { clave: "vialidad", titulo: "Vialidad", nota: "beta" },
       ],

@@ -1417,6 +1417,15 @@ a { color: var(--primary-strong); }
 .tabla-tipo td { border-bottom: 1px solid var(--line); padding: 9px 10px 9px 0; vertical-align: top; }
 .tabla-tipo td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86rem; }
 .tabla-tipo tr.baja td { color: var(--muted); }
+/* Estacionamiento › Lecturas por hora (9-oct) */
+.lecturas__forma { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 4px 0 8px; }
+.lecturas__forma .label { margin: 0; min-width: 130px; }
+.lecturas__filtros { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: center; margin: 0 0 8px; font-size: 0.88rem; color: var(--muted); }
+.lecturas__tabla tr.lecturas__cerca td { background: var(--field-bg); font-weight: 600; }
+.lecturas__tabla tr.lecturas__rep td { color: var(--muted); }
+.lecturas__marca { color: var(--primary); font-family: inherit; font-size: 0.78rem; font-weight: 700; }
+.lecturas__pluma { white-space: nowrap; }
+.lecturas__rechazo { color: var(--rose); font-weight: 700; }
 .tabla-tipo tr.baja td.mono { text-decoration: line-through; text-decoration-color: var(--line); }
 .pasos svg { display: block; height: auto; min-width: 520px; width: 100%; }
 .pasos__nota { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
