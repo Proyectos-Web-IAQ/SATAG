@@ -36,15 +36,15 @@ export const GLOSARIO = {
     detalle: "ZK guarda el archivo como «Usuarios_» con la fecha y la hora",
   },
   // Bloque 93. En ZK 3.1.5 el reporte se llama «Privilegios por Puerta» y cada archivo
-  // sale como «Entrada 1(1) Personal de Apertura_…».
+  // sale como «Entrada 1(1) Personal de Apertura_…». Rutas confirmadas por Gerardo, 9-oct.
   puertasZk: {
     ui: "Personal de Apertura",
-    ruta: "Acceso → Reportes → Privilegios por Puerta → una puerta a la vez → Exportar",
+    ruta: "Acceso → Reportes → Privilegios por Puerta, exportando cada entrada y cada salida",
     que: "quién tiene acceso a cada puerta; son cuatro archivos: Entrada 1, Salida 1, Entrada 2 y Salida 2",
   },
   importarZk: {
     ui: "Importar",
-    ruta: "Personal → Persona → Importar",
+    ruta: "Personal → Importar → Información del Personal",
     que: "el archivo de la tanda, con «Fila de inicio» 2 y «Actualizar el ID de usuario existente» en Sí",
   },
   cajonesALaVez: {

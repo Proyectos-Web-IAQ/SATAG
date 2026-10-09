@@ -142,7 +142,7 @@ export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: str
 const CICLO = [
   "En el tablero de Casos, cerrar cada caso con su «Acción en ZK» (o «Pedir acción en ZK…» si ya estaba cerrado).",
   "Aquí: elegir los movimientos y armar la tanda. SATAG descarga el archivo para ZK.",
-  `En ZK: ${GLOSARIO.importarZk.ruta} el archivo de la tanda, dar los pasos de niveles que dice la tanda, y palomearlos aquí.`,
+  `En ZK: importar el archivo de la tanda (${GLOSARIO.importarZk.ruta}), dar los pasos de niveles que dice la tanda, y palomearlos aquí.`,
   `En ZK: exportar «${GLOSARIO.personasZk.ui}» (${GLOSARIO.personasZk.ruta}) y los cuatro «${GLOSARIO.puertasZk.ui}» (${GLOSARIO.puertasZk.ruta}).`,
   "En Archivos de ZK: subir esos cinco archivos. SATAG comprueba cada movimiento solo.",
 ];
@@ -294,7 +294,7 @@ export default function VistaMovimientosZk({ email, onIr }: { email: string | nu
             <div>
               <dt>{GLOSARIO.puertasZk.ui}</dt>
               <dd>
-                {GLOSARIO.puertasZk.ruta}: Entrada 1, Salida 1, Entrada 2 y Salida 2.{" "}
+                {GLOSARIO.puertasZk.ruta}: Entrada 1, Salida 1, Entrada 2 y Salida 2 (cuatro archivos).{" "}
                 <strong>{puertasDespues === 4 ? "✓ Ya se subieron los cuatro después de la tanda." : `Faltan ${4 - puertasDespues} de 4.`}</strong>
               </dd>
             </div>
