@@ -24,7 +24,6 @@ import {
   ajustarMovimientoZk,
   cancelarTandaZk,
   crearTandaZk,
-  generarMovimientosZk,
   guardarDepartamentoZk,
   listDepartamentosZk,
   listMovimientosDeCaso,
@@ -177,7 +176,11 @@ export default function VistaMovimientosZk({ email }: { email: string | null }) 
 
   const porId = useMemo(() => new Map(deptos.map((d) => [d.id, d])), [deptos]);
   const abierta = tandas.find((t) => t.estado === "abierta") ?? null;
-  const pendientes = (movs ?? []).filter((m) => PENDIENTE.has(m.estado));
+  // Solo lo DECIDIDO (Gerardo, 9-oct): lo que se cerro con su accion en ZK, y lo que ZK
+  // no confirmo (eso reabre su caso y hay que volverlo a hacer). Un movimiento de un
+  // caso que sigue abierto es una sugerencia, no una decision: no entra a la lista.
+  const decidido = (m: MovimientoZk) => m.estado === "no_coincide" || m.casoEstado === "resuelto";
+  const pendientes = (movs ?? []).filter((m) => PENDIENTE.has(m.estado) && decidido(m));
   const recientes = (movs ?? []).filter((m) => !PENDIENTE.has(m.estado)).slice(0, 200);
   const grupos = useMemo(() => {
     const g = new Map<string, MovimientoZk[]>();
@@ -223,24 +226,11 @@ export default function VistaMovimientosZk({ email }: { email: string | null }) 
             : "No hay movimientos pendientes en ZK."}
       </h2>
       <p className="titular__sub">
-        Lo que los casos piden hacer en ZK. Se arma una tanda, SATAG descarga un solo archivo para importarlo en ZK y dice qué
-        pasos dar después; al palomear el último, los casos se cierran. Al subir Usuarios y los cuatro «Personal de Apertura»
-        en Archivos de ZK, SATAG comprueba cada movimiento y reabre el caso que no coincida.
+        Lo que se decidió hacer en ZK al cerrar un caso («Cerrar…» con su «Acción en ZK», o «Pedir acción en ZK…» en un
+        caso ya cerrado). Se arma una tanda, SATAG descarga un solo archivo para importarlo en ZK y dice qué pasos dar
+        después. Al subir Usuarios y los cuatro «Personal de Apertura» en Archivos de ZK, SATAG comprueba cada movimiento y
+        reabre el caso que no coincida.
       </p>
-      <div className="chip-row" style={{ marginBottom: 12 }}>
-        <button type="button" className="ghost-action ghost-action--chico" disabled={ocupado !== null}
-          onClick={() => hacer("buscar", async () => {
-            const r = await generarMovimientosZk(email);
-            setAviso(
-              `${r.nuevos ? `${n(r.nuevos)} ${r.nuevos === 1 ? "movimiento nuevo" : "movimientos nuevos"}` : "Ningún movimiento nuevo"}${r.cancelados ? `; ${n(r.cancelados)} cancelados porque su caso ya se cerró` : ""}.` +
-                (r.casosSinDestino.length
-                  ? ` ${r.casosSinDestino.length === 1 ? "El caso" : "Los casos"} ${r.casosSinDestino.map((x) => numeroCaso(Number(x))).join(", ")} ${r.casosSinDestino.length === 1 ? "pide" : "piden"} un departamento que no está en el catálogo (por ejemplo Empleado_PPF): regístrelo abajo cuando exista en ZK y vuelva a buscar.`
-                  : ""),
-            );
-          })}>
-          Buscar movimientos en los casos
-        </button>
-      </div>
       {ocupado && <p className="hint" role="status">Trabajando…</p>}
       {error && <p className="submit-error" role="alert">{error}</p>}
       {aviso && <p className="notice" role="status" style={{ margin: "0 0 12px", padding: "10px 12px" }}>{aviso}</p>}
@@ -412,7 +402,7 @@ export default function VistaMovimientosZk({ email }: { email: string | null }) 
             e.preventDefault();
             hacer("depto", async () => {
               await guardarDepartamentoZk(nuevoDepto, email);
-              setAviso(`Departamento ${nuevoDepto.nombre} (${nuevoDepto.id}) guardado. Pulse «Buscar movimientos en los casos» para generar los que lo pedían.`);
+              setAviso(`Departamento ${nuevoDepto.nombre} (${nuevoDepto.id}) guardado. Ya se puede elegir como acción al cerrar un caso.`);
               setNuevoDepto({ id: "", nombre: "", niveles: [] });
             });
           }}>
