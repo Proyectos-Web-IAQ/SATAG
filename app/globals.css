@@ -1470,6 +1470,7 @@ a { color: var(--primary-strong); }
 .casos__estado--abierto { color: var(--rose); }
 .casos__estado--seguimiento { color: var(--primary); }
 .casos__estado--descartado { color: var(--muted); }
+.casos__estado--consultar { color: #8a5a00; }
 
 /* ------------------------------------------------------------------ casos guardados (bloque 89)
    Pensado desde 390 px: la fila es un boton de ancho completo con el titulo arriba, lo
@@ -1553,7 +1554,7 @@ a { color: var(--primary-strong); }
 .tc-zona { display: flex; min-height: 520px; height: calc(100vh - 300px); border-top: 1px solid var(--line); }
 .tc-zona--arr { cursor: col-resize; user-select: none; }
 .tc-zona__tablero { flex: 1; min-width: 0; overflow: auto; padding-top: 12px; }
-.tc-tablero { display: grid; grid-template-columns: repeat(4, minmax(210px, 1fr)); gap: 12px; height: 100%; min-width: 880px; }
+.tc-tablero { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 12px; height: 100%; min-width: 1000px; }
 .tc-col { background: #f8fafd; border-radius: 12px; display: flex; flex-direction: column; min-height: 0; border: 1px solid transparent; }
 .tc-col--sobre { border-color: var(--primary); background: var(--field-bg); }
 .tc-col__cab { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px 0; }
@@ -1583,6 +1584,7 @@ a { color: var(--primary-strong); }
 .tc-tj__pie { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; font-size: 0.72rem; color: var(--muted); }
 .tc-tj__pie b { color: var(--primary); }
 .tc-espera { color: #8a5214; }
+.tc-consulta { color: #8a5a00; flex-basis: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tc-atorado { color: var(--rose); font-weight: 700; }
 
 .tc-divisor { flex: none; width: 9px; margin: 0 -4px; position: relative; z-index: 5; cursor: col-resize; }

@@ -1914,8 +1914,10 @@ export async function reportarCaso(
 
 export interface MovimientoCaso {
   /** «abierto» es Por atender. */
-  estado: "abierto" | "esperando" | "resuelto" | "descartado";
+  estado: "abierto" | "consultar" | "esperando" | "resuelto" | "descartado";
   nota?: string;
+  /** Bloque 96: que hay que consultar con el CP (estado «consultar»). */
+  pregunta?: string | null;
   motivo?: string | null;
   espera?: { motivo: MotivoEspera; hasta?: string | null; texto?: string | null } | null;
 }
@@ -1929,7 +1931,7 @@ export async function moverCasos(ids: string[], m: MovimientoCaso, hechoPor: str
     p_motivo: m.motivo ?? null,
     p_espera_motivo: m.espera?.motivo ?? null,
     p_espera_hasta: m.espera?.hasta ?? null,
-    p_espera_texto: m.espera?.texto ?? null,
+    p_espera_texto: m.espera?.texto ?? m.pregunta ?? null,
     p_hecho_por: hechoPor,
   });
   if (error) throw new Error(traducirError(error.message));

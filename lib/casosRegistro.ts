@@ -11,9 +11,10 @@ import { ROTULO } from "@/lib/glosario";
 
 // Bloque 90: `nuevo` (nadie lo ha revisado) y `esperando` (a la persona, a un
 // tercero o a una fecha). `abierto` es «Por atender»; `seguimiento` queda del 89 y
-// se pinta en Esperando.
+// se pinta en Esperando. Bloque 96: `consultar`, lo que hay que llevar al CP
+// (Gerencia Administrativa) para poder tomar accion; la pregunta va en esperaTexto.
 
-export type EstadoCasoGuardado = "nuevo" | "abierto" | "esperando" | "seguimiento" | "resuelto" | "descartado";
+export type EstadoCasoGuardado = "nuevo" | "abierto" | "consultar" | "esperando" | "seguimiento" | "resuelto" | "descartado";
 export type OrigenCaso = "manual" | "regla" | "migracion";
 export type MotivoEspera = "persona" | "tercero" | "fecha";
 
@@ -131,11 +132,12 @@ export interface NotaCaso {
   hechoEn: string;
 }
 
-export const ESTADOS_CASO: EstadoCasoGuardado[] = ["nuevo", "abierto", "esperando", "seguimiento", "resuelto", "descartado"];
+export const ESTADOS_CASO: EstadoCasoGuardado[] = ["nuevo", "abierto", "consultar", "esperando", "seguimiento", "resuelto", "descartado"];
 
 export const ETIQUETA_ESTADO_CASO: Record<EstadoCasoGuardado, string> = {
   nuevo: "Nuevo",
   abierto: "Por atender",
+  consultar: "Consultar con el CP",
   esperando: "Esperando",
   seguimiento: "En seguimiento",
   resuelto: "Resuelto",
@@ -149,12 +151,13 @@ export const estaVivo = (e: EstadoCasoGuardado): boolean => !esCierre(e);
 
 /* ------------------------------------------------------------------ el tablero (bloque 90) */
 
-export type ColumnaCaso = "nuevo" | "atender" | "esperando" | "cerrado";
+export type ColumnaCaso = "nuevo" | "atender" | "consultar" | "esperando" | "cerrado";
 
-/** Las cuatro columnas del tablero: en que paso va el caso. */
+/** Las columnas del tablero: en que paso va el caso. */
 export const COLUMNAS_CASO: { id: ColumnaCaso; titulo: string; ayuda: string }[] = [
   { id: "nuevo", titulo: "Nuevo", ayuda: "Lo abrió una regla o lo reportó alguien; nadie lo ha revisado." },
   { id: "atender", titulo: "Por atender", ayuda: "Alguien tiene que hacer algo." },
+  { id: "consultar", titulo: "Consultar con el CP", ayuda: "Hay que tocar base con Gerencia Administrativa para poder actuar." },
   { id: "esperando", titulo: "Esperando", ayuda: "A la persona, a alguien de fuera o a una fecha." },
   { id: "cerrado", titulo: "Cerrado", ayuda: "Con motivo. Se puede reabrir." },
 ];
@@ -163,6 +166,7 @@ export const COLUMNAS_CASO: { id: ColumnaCaso; titulo: string; ayuda: string }[]
 export function columnaDe(e: EstadoCasoGuardado): ColumnaCaso {
   if (e === "nuevo") return "nuevo";
   if (e === "abierto") return "atender";
+  if (e === "consultar") return "consultar";
   if (e === "esperando" || e === "seguimiento") return "esperando";
   return "cerrado";
 }
@@ -226,7 +230,7 @@ export function ordenarCasos<T extends Pick<CasoGuardado, "estado" | "actualizad
 }
 
 export function contarPorEstado(casos: Pick<CasoGuardado, "estado">[]): Record<EstadoCasoGuardado, number> {
-  const c: Record<EstadoCasoGuardado, number> = { nuevo: 0, abierto: 0, esperando: 0, seguimiento: 0, resuelto: 0, descartado: 0 };
+  const c: Record<EstadoCasoGuardado, number> = { nuevo: 0, abierto: 0, consultar: 0, esperando: 0, seguimiento: 0, resuelto: 0, descartado: 0 };
   for (const x of casos) c[x.estado] += 1;
   return c;
 }

@@ -3,6 +3,8 @@
 // cada regla se lea como frases y no como JSON.
 import { describe, it, expect } from "vitest";
 import {
+  COLUMNAS_CASO,
+  columnaDe,
   contarPorEstado,
   coincideBusqueda,
   esDeLaPersona,
@@ -67,8 +69,12 @@ describe("orden y cuentas", () => {
   });
   it("cuenta por estado", () => {
     expect(contarPorEstado([caso({}), caso({ estado: "resuelto" }), caso({ estado: "resuelto" })])).toEqual({
-      nuevo: 0, abierto: 1, esperando: 0, seguimiento: 0, resuelto: 2, descartado: 0,
+      nuevo: 0, abierto: 1, consultar: 0, esperando: 0, seguimiento: 0, resuelto: 2, descartado: 0,
     });
+  });
+  it("«Consultar con el CP» es su propia columna, entre Por atender y Esperando (bloque 96)", () => {
+    expect(columnaDe("consultar")).toBe("consultar");
+    expect(COLUMNAS_CASO.map((c) => c.id)).toEqual(["nuevo", "atender", "consultar", "esperando", "cerrado"]);
   });
 });
 

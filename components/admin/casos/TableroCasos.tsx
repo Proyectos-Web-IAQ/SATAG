@@ -137,7 +137,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   const [verTodo, setVerTodo] = useState<Set<string>>(new Set());
   const [colMovil, setColMovil] = useState<ColumnaCaso>("atender");
   const [selector, setSelector] = useState<{ modo: ModoSelector; ancla: DOMRect; ids: string[] } | null>(null);
-  const [dialogo, setDialogo] = useState<{ que: "esperar" | "cerrar" | "reportar"; ids: string[] } | null>(null);
+  const [dialogo, setDialogo] = useState<{ que: "esperar" | "consultar" | "cerrar" | "reportar"; ids: string[] } | null>(null);
   const [arrastra, setArrastra] = useState<string[] | null>(null);
   const [sobre, setSobre] = useState<ColumnaCaso | null>(null);
   const escribe = ESCRIBEN.includes(rol);
@@ -212,7 +212,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
     if (!quedan.length) return;
     if (col === "nuevo") return decir("«Nuevo» es solo para lo que nadie ha revisado.");
     if (col === "atender") return mover(quedan, { estado: "abierto" }, "Por atender");
-    setDialogo({ que: col === "esperando" ? "esperar" : "cerrar", ids: quedan });
+    setDialogo({ que: col === "esperando" ? "esperar" : col === "consultar" ? "consultar" : "cerrar", ids: quedan });
   }
 
   /* -------------------------------------------------------------- vistas */
@@ -299,6 +299,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
             <span>{grupo.length > 1 ? <b>{grupo.length} TAGs</b> : numeroCaso(c.numero)}</span>
             <span>hace {diasDesde(c.creadoEn)} d</span>
             {c.estado === "esperando" && <span className="tc-espera">⏳ {c.esperaMotivo === "persona" ? "a la persona" : c.esperaMotivo === "tercero" ? "a un tercero" : c.esperaHasta ? fechaLarga(c.esperaHasta) : ""}</span>}
+            {c.estado === "consultar" && <span className="tc-consulta" title={c.esperaTexto ?? undefined}>❓ {c.esperaTexto ?? "con el CP"}</span>}
             {c.atorado && <span className="tc-atorado">⚑ atorado</span>}
             {c.veces > 1 && <span>volvió ×{c.veces}</span>}
           </span>
@@ -354,7 +355,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
         {casos === null ? "Leyendo los casos…" : `${(casos ?? []).filter((c) => c.estado === "abierto").length} casos por atender`}
       </h2>
       <p className="titular__sub">
-        {casos === null ? "" : `${(casos ?? []).filter((c) => c.estado === "nuevo").length} nuevos · ${(casos ?? []).filter((c) => columnaDe(c.estado) === "esperando").length} esperando · ${(casos ?? []).filter((c) => c.urgente && columnaDe(c.estado) !== "cerrado").length} urgentes · ${nVivos} vivos en total.`}
+        {casos === null ? "" : `${(casos ?? []).filter((c) => c.estado === "nuevo").length} nuevos · ${(casos ?? []).filter((c) => c.estado === "consultar").length} por consultar con el CP · ${(casos ?? []).filter((c) => columnaDe(c.estado) === "esperando").length} esperando · ${(casos ?? []).filter((c) => c.urgente && columnaDe(c.estado) !== "cerrado").length} urgentes · ${nVivos} vivos en total.`}
       </p>
 
       <div className="tc-herr">
@@ -461,6 +462,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
           <span>{marcados.size} marcado{marcados.size === 1 ? "" : "s"}</span>
           <button type="button" onClick={(e) => setSelector({ modo: "asignar", ancla: e.currentTarget.getBoundingClientRect(), ids: [...marcados] })}>Tipo…</button>
           <button type="button" onClick={() => mover([...marcados], { estado: "abierto" }, "Por atender")}>Por atender</button>
+          <button type="button" onClick={() => setDialogo({ que: "consultar", ids: [...marcados] })}>Consultar con el CP…</button>
           <button type="button" onClick={() => setDialogo({ que: "esperar", ids: [...marcados] })}>Esperar…</button>
           <button type="button" onClick={() => setDialogo({ que: "cerrar", ids: [...marcados] })}>Cerrar…</button>
           <button type="button" onClick={() => setMarcados(new Set())} aria-label="Desmarcar todo">✕</button>
@@ -501,6 +503,10 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
       {dialogo?.que === "esperar" && (
         <DialogoEsperar n={dialogo.ids.length} onCancelar={() => setDialogo(null)}
           onListo={(m) => { const ids = dialogo.ids; setDialogo(null); mover(ids, m, "Esperando"); }} />
+      )}
+      {dialogo?.que === "consultar" && (
+        <DialogoConsultar n={dialogo.ids.length} onCancelar={() => setDialogo(null)}
+          onListo={(m) => { const ids = dialogo.ids; setDialogo(null); mover(ids, m, "Consultar con el CP"); }} />
       )}
       {dialogo?.que === "cerrar" && (
         <DialogoCerrar ids={dialogo.ids} casos={casos ?? []} tipoDe={tipoDe} deptosZk={deptosZk} onCancelar={() => setDialogo(null)}
@@ -600,7 +606,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
   onAbrir: (id: string) => void;
   onCambiarTipo: (ancla: DOMRect) => void;
   onMover: (m: MovimientoCaso, texto: string) => void;
-  onPedir: (que: "esperar" | "cerrar") => void;
+  onPedir: (que: "esperar" | "consultar" | "cerrar") => void;
   onMarcar: (m: { urgente?: boolean; atorado?: boolean }, texto: string) => void;
   onNota: (nota: string) => Promise<unknown>;
 }) {
@@ -643,6 +649,8 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
           <div className="tc-det__acc">
             {col === "nuevo" && <button type="button" className="primary-action" onClick={() => onMover({ estado: "abierto" }, "Por atender")}>Tomarlo → Por atender</button>}
             {(col === "esperando") && <button type="button" className="ghost-action" onClick={() => onMover({ estado: "abierto" }, "Por atender")}>Volver a atender</button>}
+            {col === "consultar" && <button type="button" className="primary-action" onClick={() => onMover({ estado: "abierto", nota: "Ya se consultó con el CP" }, "Por atender")}>Ya se consultó → Por atender</button>}
+            {col !== "cerrado" && col !== "consultar" && <button type="button" className="ghost-action" onClick={() => onPedir("consultar")}>Consultar con el CP…</button>}
             {col !== "cerrado" && col !== "esperando" && <button type="button" className="ghost-action" onClick={() => onPedir("esperar")}>Esperar…</button>}
             {col !== "cerrado" && <button type="button" className={col === "atender" ? "primary-action" : "ghost-action"} onClick={() => onPedir("cerrar")}>Cerrar…</button>}
             {col === "cerrado" && <button type="button" className="ghost-action" onClick={() => onMover({ estado: "abierto", nota: "Reabierto" }, "Por atender")}>Reabrir</button>}
@@ -651,6 +659,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
           </div>
         )}
         {col === "esperando" && <div className="tc-det__espera">Esperando {textoEspera(caso)}.</div>}
+        {col === "consultar" && <div className="tc-det__espera">Por consultar con el CP: {caso.esperaTexto ?? "sin pregunta escrita"}</div>}
         {col === "cerrado" && <div className="tc-det__cerrado">{caso.estado === "resuelto" ? "Resuelto" : "Descartado"}{caso.cerradoPor ? ` por ${caso.cerradoPor}` : ""}: {caso.cierreNota ?? caso.cierreMotivo ?? ""}</div>}
       </div>
       <div className="tc-det__pest" role="tablist">
@@ -799,6 +808,24 @@ function DialogoEsperar({ n, onCancelar, onListo }: { n: number; onCancelar: () 
       <div className="tc-modal__pie">
         <button type="button" className="ghost-action" onClick={onCancelar}>Cancelar</button>
         <button type="button" className="primary-action" disabled={falta !== null} onClick={() => onListo({ estado: "esperando", nota: nota.trim(), espera: { motivo, texto: texto.trim() || null, hasta: motivo === "fecha" ? hasta : null } })}>Esperar</button>
+      </div>
+    </Modal>
+  );
+}
+
+/** Bloque 96: llevar el caso a «Consultar con el CP», con la pregunta. */
+function DialogoConsultar({ n, onCancelar, onListo }: { n: number; onCancelar: () => void; onListo: (m: MovimientoCaso) => void }) {
+  const [pregunta, setPregunta] = useState("");
+  const [nota, setNota] = useState("");
+  return (
+    <Modal titulo={`Consultar con el CP${n > 1 ? ` · ${n} casos` : ""}`} onCancelar={onCancelar}>
+      <p className="ti-hint">El caso espera en esta columna hasta que se toque base con Gerencia Administrativa. Con su respuesta, vuelve a «Por atender» o se cierra.</p>
+      <label className="label">¿Qué hay que consultar?<input className="input" value={pregunta} maxLength={200} autoFocus placeholder="Ej.: ¿pasa a Padres de familia?" onChange={(e) => setPregunta(e.target.value)} /></label>
+      <label className="label">Nota (opcional)<textarea className="textarea" maxLength={4000} value={nota} onChange={(e) => setNota(e.target.value)} /></label>
+      {!pregunta.trim() && <p className="ti-hint" role="status">Escriba qué hay que consultar.</p>}
+      <div className="tc-modal__pie">
+        <button type="button" className="ghost-action" onClick={onCancelar}>Cancelar</button>
+        <button type="button" className="primary-action" disabled={!pregunta.trim()} onClick={() => onListo({ estado: "consultar", nota: nota.trim(), pregunta: pregunta.trim() })}>Llevar a Consultar con el CP</button>
       </div>
     </Modal>
   );
