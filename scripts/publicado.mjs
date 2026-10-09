@@ -99,6 +99,7 @@ const RUTAS = [
       { texto: "Ir a Archivos de ZK para subirlos", que: "Movimientos en ZK guia el ciclo y la comprobacion de la tanda (9-oct)" },
       { texto: "Llevar a Consultar con el CP", que: "Casos: la columna Consultar con el CP (bloque 96)" },
       { texto: "Lecturas por hora", que: "Estacionamiento: Lecturas por hora (9-oct)" },
+      { texto: "Desmarcar todos", que: "Casos: marcar de un clic lo que se ve con busqueda o filtro (9-oct)" },
     ],
   },
 ];

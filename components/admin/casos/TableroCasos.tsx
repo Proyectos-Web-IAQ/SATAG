@@ -422,6 +422,12 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
                   aria-label={col.titulo}
                 >
                   <header className="tc-col__cab"><h3>{col.titulo}</h3><span>{l.length}</span></header>
+                  {/* 9-oct: con busqueda o filtro, marcar de un clic lo que se ve (p. ej. los 18 de Empleado_PPF). */}
+                  {escribe && l.length > 1 && (q.trim() || filtro.tipos.length > 0 || filtro.urgente) && (
+                    <button type="button" className="link-action tc-col__todos" onClick={() => marcar(l.map((c) => c.id))}>
+                      {l.every((c) => marcados.has(c.id)) ? "Desmarcar todos" : `Marcar los ${l.length}`}
+                    </button>
+                  )}
                   <p className="tc-col__ayuda">{col.ayuda}</p>
                   <div className="tc-col__tarjetas">{cuerpoColumna(col.id, l)}</div>
                 </section>

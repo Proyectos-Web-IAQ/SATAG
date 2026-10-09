@@ -15,6 +15,12 @@ describe("la accion en ZK que se sugiere al cerrar (bloque 94)", () => {
     expect(accionSugerida([{ tipo: "departamento-distinto", titulo: "En ZK esta en «BAJAS» y le toca «Padres de familia»" }], deptos)).toEqual({ que: "departamento", deptoDestino: "19" });
     expect(accionSugerida([{ tipo: "departamento-distinto", titulo: "En ZK esta en «X» y le toca «EMPLEADO PPF»" }], deptos)).toEqual({ que: "departamento", deptoDestino: "25" });
   });
+  it("varios departamento distinto: el destino si todos dicen el mismo; si no, ninguna", () => {
+    const ppf = (de: string) => ({ tipo: "departamento-distinto", titulo: `En ZK esta en «${de}» y le toca «Empleado_PPF»` });
+    expect(accionSugerida([ppf("PRIMARIA DOCENTE"), ppf("Admon"), ppf("Padres de familia")], deptos)).toEqual({ que: "departamento", deptoDestino: "25" });
+    expect(accionSugerida([ppf("Admon"), { tipo: "departamento-distinto", titulo: "En ZK esta en «X» y le toca «Padres de familia»" }], deptos)).toBeNull();
+    expect(accionSugerida([ppf("Admon"), ppf("X")], [{ id: "10", nombre: "BAJAS" }])).toBeNull();
+  });
   it("nombre en ZK: el nombre del titulo, solo con un caso", () => {
     expect(accionSugerida([{ tipo: "nombre-en-zk", titulo: "En ZK dice «Ana»: debe decir «Ana Rojo Paz»" }], deptos)).toEqual({ que: "nombre", nombreDestino: "Ana Rojo Paz" });
   });

@@ -1569,6 +1569,7 @@ a { color: var(--primary-strong); }
 .tc-col__cab { display: flex; justify-content: space-between; align-items: baseline; padding: 12px 14px 0; }
 .tc-col__cab h3 { margin: 0; font-size: 0.95rem; color: var(--primary-strong); }
 .tc-col__cab span { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.tc-col__todos { align-self: flex-start; margin: 2px 14px 0; font-size: 0.78rem; }
 .tc-col__ayuda { margin: 2px 14px 8px; font-size: 0.75rem; color: var(--muted); }
 .tc-col__tarjetas { flex: 1; overflow-y: auto; padding: 0 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .tc-vacia { color: #b5bdc8; font-size: 0.75rem; padding: 14px; text-align: center; border: 1px dashed var(--line); border-radius: var(--radius); }

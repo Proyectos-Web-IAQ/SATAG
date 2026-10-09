@@ -81,12 +81,15 @@ export function accionSugerida(casos: { tipo: string; titulo: string }[], deptos
     const id = depto("BAJAS");
     return id ? { que: "departamento", deptoDestino: id } : null;
   }
+  // Varios «departamento distinto» con el MISMO destino (9-oct: los 18 de
+  // Empleado_PPF se cierran juntos). Destinos distintos: ninguna, se elige a mano.
+  if (casos.every((c) => c.tipo === "departamento-distinto")) {
+    const ids = new Set(casos.map((c) => depto(/le toca «([^»]+)»/.exec(c.titulo)?.[1] ?? "")));
+    const [id] = [...ids];
+    return ids.size === 1 && id ? { que: "departamento", deptoDestino: id } : null;
+  }
   if (casos.length !== 1) return null;
   const [c] = casos;
-  if (c.tipo === "departamento-distinto") {
-    const id = depto(/le toca «([^»]+)»/.exec(c.titulo)?.[1] ?? "");
-    return id ? { que: "departamento", deptoDestino: id } : null;
-  }
   if (c.tipo === "nombre-en-zk") {
     const n = /debe decir «([^»]+)»/.exec(c.titulo)?.[1]?.trim();
     return n ? { que: "nombre", nombreDestino: n } : null;
