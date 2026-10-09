@@ -89,6 +89,9 @@ const RUTAS = [
       { texto: "mover_casos", que: "el tablero de casos: Nuevo, Por atender, Esperando y Cerrado (bloque 90)" },
       { texto: "entrada no le", que: "la ficha distingue salida sin entrada de entrada sin salida (7-oct)" },
       { texto: "ordenar_tipos_caso", que: "el orden de familias y tipos de caso, para todos (bloque 91)" },
+      // GES en SATAG (bloque 92): la carga desde Datos y la decision de TI en la ficha.
+      { texto: "cargar_ges", que: "Datos > Archivos de GES carga la consulta reducida (bloque 92)" },
+      { texto: "decidir_identidad_ges", que: "la ficha y el caso dicen quien es la persona segun GES (bloque 92)" },
     ],
   },
 ];

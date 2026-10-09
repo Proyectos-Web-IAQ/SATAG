@@ -43,6 +43,8 @@ import type {
 } from "@/lib/mock/types";
 import type { EventoZk } from "@/lib/zk/eventos";
 import type { PersonaZk } from "@/lib/zk/padron";
+import type { ClaseGes, FuenteGes, PersonaGes } from "@/lib/ges/leer";
+import type { IdentidadDecidida, PersonaGesGuardada, VeredictoGes } from "@/lib/personas/identificar";
 
 export interface AccionResultado {
   id: string;
@@ -1346,6 +1348,133 @@ export async function cargarPadronZk(meta: MetaPadronZk, filas: FilaPadronZk[], 
     };
   }
   return { requiereConfirmacion: false, yaEstaba: r.yaEstaba ?? false, insertadas: r.insertadas ?? 0, actualizadas: r.actualizadas ?? 0, retiradas: r.retiradas ?? 0, vigentes: r.vigentes ?? 0 };
+}
+
+/* ------------------------------------------------------------------ GES (bloque 92) */
+
+export interface CargaGes {
+  fuente: FuenteGes;
+  archivo: string;
+  personas: number;
+  ciclo: number | null;
+  cargadoPor: string;
+  cargadoEn: string;
+}
+
+/** La ultima carga de cada fuente (familias, personal, empleados). */
+export async function listUltimasCargasGes(): Promise<Partial<Record<FuenteGes, CargaGes>>> {
+  const { data, error } = await supabaseAuth
+    .from("ges_cargas")
+    .select("fuente, archivo, personas, ciclo, cargado_por, cargado_en")
+    .order("cargado_en", { ascending: false })
+    .limit(50);
+  if (error) throw new Error(traducirError(error.message));
+  const out: Partial<Record<FuenteGes, CargaGes>> = {};
+  for (const r of (data ?? []) as { fuente: FuenteGes; archivo: string; personas: number; ciclo: number | null; cargado_por: string; cargado_en: string }[]) {
+    out[r.fuente] ??= { fuente: r.fuente, archivo: r.archivo, personas: r.personas, ciclo: r.ciclo, cargadoPor: r.cargado_por, cargadoEn: r.cargado_en };
+  }
+  return out;
+}
+
+/**
+ * Todas las personas de GES, vigentes o no (~2,600 filas chicas). Las no vigentes
+ * hacen falta: son las que dicen «su familia ya no aparece en GES».
+ */
+export async function listPersonasGes(): Promise<PersonaGesGuardada[]> {
+  const PAGINA = 1000;
+  const out: PersonaGesGuardada[] = [];
+  for (let pagina = 0; pagina < 30; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("ges_personas")
+      .select("ges_id, clase, nombre, familia, rol, grupos, area, cargo, activo, fecha_baja, vigente")
+      .order("ges_id", { ascending: true })
+      .range(out.length, out.length + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as {
+      ges_id: string; clase: ClaseGes; nombre: string; familia: string; rol: string; grupos: string[] | null;
+      area: string; cargo: string; activo: boolean; fecha_baja: string | null; vigente: boolean;
+    }[];
+    if (filas.length === 0) break;
+    for (const r of filas) {
+      out.push({
+        gesId: r.ges_id, clase: r.clase, nombre: r.nombre, familia: r.familia,
+        rol: r.rol === "padre" || r.rol === "madre" ? r.rol : "",
+        grupos: r.grupos ?? [], area: r.area, cargo: r.cargo, activo: r.activo, fechaBaja: r.fecha_baja, vigente: r.vigente,
+      });
+    }
+    if (filas.length < PAGINA) break;
+  }
+  return out;
+}
+
+/** Lo que TI decidio de cada TAG, indexado por tarjeta. */
+export async function listIdentidadesGes(): Promise<Map<string, IdentidadDecidida>> {
+  const { data, error } = await supabaseAuth
+    .from("ges_identidades")
+    .select("tarjeta, veredicto, ges_id, familia, nombre, preguntar, nota, decidido_por, decidido_en");
+  if (error) throw new Error(traducirError(error.message));
+  const m = new Map<string, IdentidadDecidida>();
+  for (const r of (data ?? []) as {
+    tarjeta: string; veredicto: VeredictoGes; ges_id: string | null; familia: string; nombre: string;
+    preguntar: boolean; nota: string; decidido_por: string; decidido_en: string;
+  }[]) {
+    m.set(r.tarjeta, {
+      tarjeta: r.tarjeta, veredicto: r.veredicto, gesId: r.ges_id, familia: r.familia, nombre: r.nombre,
+      preguntar: r.preguntar, nota: r.nota, decididoPor: r.decidido_por, decididoEn: r.decidido_en,
+    });
+  }
+  return m;
+}
+
+export interface MetaGes {
+  archivo: string;
+  sha256: string;
+  filasArchivo: number;
+  ciclo: number | null;
+  /** Repetir la llamada con esto en `true` es la unica forma de pasar el freno. */
+  forzar?: boolean;
+}
+
+/**
+ * Lo que contesta `cargar_ges`. Igual que el padron de ZK (bloque 84): o escribio, o
+ * FRENO sin escribir. `retira_muchos`: el archivo dejaria fuera a mas de 20 personas
+ * y mas del 20 % de las vigentes de esa fuente. `ciclo_anterior`: el archivo de
+ * familias es de un ciclo anterior al ya cargado.
+ */
+export type RespuestaCargaGes =
+  | { requiereConfirmacion: false; yaEstaba: boolean; insertadas: number; actualizadas: number; retiradas: number; vigentes: number }
+  | { requiereConfirmacion: true; motivos: ("retira_muchos" | "ciclo_anterior")[]; retiraria: number; vigentes: number; ciclo: number | null; ultimoCiclo: number | null };
+
+export async function cargarGes(fuente: FuenteGes, meta: MetaGes, filas: PersonaGes[], hechoPor: string | null): Promise<RespuestaCargaGes> {
+  const { data, error } = await supabaseAuth.rpc("cargar_ges", { p_fuente: fuente, p_meta: meta, p_filas: filas, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as {
+    requiereConfirmacion?: boolean; motivos?: string[]; retiraria?: number; ciclo?: number | null; ultimoCiclo?: number | null;
+    yaEstaba?: boolean; insertadas?: number; actualizadas?: number; retiradas?: number; vigentes?: number;
+  };
+  if (r.requiereConfirmacion) {
+    return {
+      requiereConfirmacion: true,
+      motivos: (r.motivos ?? []).filter((m): m is "retira_muchos" | "ciclo_anterior" => m === "retira_muchos" || m === "ciclo_anterior"),
+      retiraria: r.retiraria ?? 0,
+      vigentes: r.vigentes ?? 0,
+      ciclo: r.ciclo ?? null,
+      ultimoCiclo: r.ultimoCiclo ?? null,
+    };
+  }
+  return { requiereConfirmacion: false, yaEstaba: r.yaEstaba ?? false, insertadas: r.insertadas ?? 0, actualizadas: r.actualizadas ?? 0, retiradas: r.retiradas ?? 0, vigentes: r.vigentes ?? 0 };
+}
+
+/** Guarda, cambia o (con `veredicto` null) quita lo que TI decidio de un TAG. Solo ti. */
+export async function decidirIdentidadGes(d: {
+  tarjeta: string; veredicto: VeredictoGes | null; gesId?: string | null; familia?: string | null;
+  nombre?: string | null; preguntar?: boolean; nota?: string | null;
+}, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("decidir_identidad_ges", {
+    p_tarjeta: d.tarjeta, p_veredicto: d.veredicto, p_ges_id: d.gesId ?? null, p_familia: d.familia ?? null,
+    p_nombre: d.nombre ?? null, p_preguntar: d.preguntar ?? false, p_nota: d.nota ?? null, p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
 }
 
 /* ------------------------------------------------------------------ casos (bloque 89) */

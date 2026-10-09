@@ -61,6 +61,7 @@ import { buscarCandidatos, construirCandidatos, type CandidatoCaso } from "@/lib
 import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 import { fechaHora } from "@/lib/formato";
 import { ROTULO } from "@/lib/glosario";
+import IdentificacionGes from "@/components/admin/IdentificacionGes";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -423,6 +424,8 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
             tipos={tipos}
             familias={familias}
             escribe={escribe}
+            rol={rol}
+            email={email}
             eventos={eventos}
             ventana={ventana}
             nombreDe={nombreDe}
@@ -556,8 +559,10 @@ function Zona({ abierto, tablero, panel }: { abierto: boolean; tablero: ReactNod
 
 /* ------------------------------------------------------------------ el detalle */
 
-function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, nombreDe, persona, zkDe, expedienteDe, padron, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
+function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos, ventana, nombreDe, persona, zkDe, expedienteDe, padron, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
   caso: CasoGuardado;
+  rol: RolPanel;
+  email: string | null;
   casos: CasoGuardado[];
   tipos: TipoCasoCatalogo[];
   familias: FamiliaCaso[];
@@ -577,7 +582,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
   onMarcar: (m: { urgente?: boolean; atorado?: boolean }, texto: string) => void;
   onNota: (nota: string) => Promise<unknown>;
 }) {
-  const [pestana, setPestana] = useState<"caso" | "pasos" | "persona">("caso");
+  const [pestana, setPestana] = useState<"caso" | "pasos" | "persona" | "identificacion">("caso");
   const [notas, setNotas] = useState<NotaCaso[] | null>(null);
   const [nota, setNota] = useState("");
   const t = tipos.find((x) => x.tipo === caso.tipo);
@@ -627,7 +632,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
         {col === "cerrado" && <div className="tc-det__cerrado">{caso.estado === "resuelto" ? "Resuelto" : "Descartado"}{caso.cerradoPor ? ` por ${caso.cerradoPor}` : ""}: {caso.cierreNota ?? caso.cierreMotivo ?? ""}</div>}
       </div>
       <div className="tc-det__pest" role="tablist">
-        {([["caso", "Caso"], ["pasos", "Entradas y salidas"], ["persona", `Persona · ${otros.length} caso${otros.length === 1 ? "" : "s"}`]] as const).map(([id, x]) => (
+        {([["caso", "Caso"], ["pasos", "Entradas y salidas"], ["persona", `Persona · ${otros.length} caso${otros.length === 1 ? "" : "s"}`], ["identificacion", "Identificación"]] as const).map(([id, x]) => (
           <button key={id} type="button" role="tab" aria-selected={pestana === id} onClick={() => setPestana(id)}>{x}</button>
         ))}
       </div>
@@ -712,6 +717,16 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, eventos, ventana, no
             </ul>
             <p className="ti-hint">La ficha completa (expediente, pagos, firma) está en Consulta → Personas, buscando el folio.</p>
           </>
+        )}
+        {pestana === "identificacion" && (
+          <IdentificacionGes
+            titulo="Quién es según GES"
+            conTitulo={false}
+            nombres={[caso.nombre, persona?.nombre, ...tarjetas.map((x) => nombreDe(x))]}
+            tarjetas={tarjetas}
+            rol={rol}
+            email={email}
+          />
         )}
       </div>
     </div>

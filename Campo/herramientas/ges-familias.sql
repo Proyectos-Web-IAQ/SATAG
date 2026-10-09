@@ -1,6 +1,11 @@
 -- =====================================================================
 -- GES: familias activas con papa y mama — para «Consulta Libre» de GES
 --
+-- HISTORICO DESDE EL 9-OCT-2026. Este machote trae 47 columnas (telefonos,
+-- domicilios, CURP) y SATAG rechaza su archivo. La consulta vigente, reducida,
+-- vive en lib/ges/consultas.ts y se copia desde el panel: Consulta › Datos ›
+-- Archivos de GES.
+--
 -- Machote del jefe de Gerardo (6-oct-2026). Se corre en GES > Exportar
 -- Informacion > Consulta Libre, formato Microsoft Excel, y el archivo se guarda
 -- como Campo/datos/AAAA-MM-DD/ges-familias.xls (fuera de git: datos de menores).

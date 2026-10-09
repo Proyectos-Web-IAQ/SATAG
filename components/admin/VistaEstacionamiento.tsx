@@ -58,6 +58,7 @@ import { exportadoEnDe, huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk
 import { grupoDeExpediente, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import type { RolPanel } from "@/lib/supabase/auth";
 import { fecha, fechaHora as fechaHoraFmt } from "@/lib/formato";
+import { huella } from "@/lib/huella";
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
 const VEN_IDENTIDAD: RolPanel[] = ["ti", "contador", "super"];
@@ -106,12 +107,6 @@ const fechaHora = (iso: string | null | undefined): string => fechaHoraFmt(iso);
 function restarDias(hasta: string, dias: number): string {
   const t = Date.parse(hasta.slice(0, 10) + "T00:00:00Z") - dias * 86_400_000;
   return new Date(t).toISOString().slice(0, 10) + " 00:00:00";
-}
-
-/** El SHA-256 del archivo, que es lo que impide procesarlo dos veces. */
-async function huella(bytes: ArrayBuffer): Promise<string> {
-  const h = await crypto.subtle.digest("SHA-256", bytes);
-  return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 /** El expediente de cada TAG, para el cuadro de TAGs de un caso: el vigente manda sobre uno dado de baja; los anteriores, despues. */

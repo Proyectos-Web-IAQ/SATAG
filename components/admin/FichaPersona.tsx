@@ -28,6 +28,7 @@ import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glos
 import { textoVehiculo } from "@/lib/vehiculo";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import { AvisoPreguntar, SeccionCasos, useCasosDePersona } from "@/components/admin/CasosDePersona";
+import IdentificacionGes from "@/components/admin/IdentificacionGes";
 import { diaSemana, fecha } from "@/lib/formato";
 
 /** Quien lee `zk_eventos` segun la RLS del bloque 78. */
@@ -347,6 +348,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
             <div><dt>Origen</dt><dd>{ORIGEN_LABEL[r.origenExpediente]}</dd></div>
             <div><dt>Folio</dt><dd><code>{r.folio}</code></dd></div>
           </dl>
+          <IdentificacionGes nombres={[r.usuarioNombre]} tarjetas={numerosTag} rol={rol} email={null} />
           {familia.length > 0 && (
             <>
               <h3 style={{ marginTop: 26 }}>Misma familia</h3>

@@ -1,6 +1,11 @@
 -- =====================================================================
 -- GES: personal (docentes y administrativos) — para «Consulta Libre» de GES
 --
+-- HISTORICO DESDE EL 9-OCT-2026. Las consultas vigentes (docentes y empleados,
+-- reducidas) viven en lib/ges/consultas.ts y se copian desde el panel:
+-- Consulta › Datos › Archivos de GES. Este archivo queda como la herramienta de
+-- la depuracion del 6-oct.
+--
 -- Se corre en GES > Exportar Informacion > Consulta Libre, formato Microsoft Excel,
 -- y se guarda como Campo/datos/AAAA-MM-DD/ges-personal.xls (fuera de git).
 --
