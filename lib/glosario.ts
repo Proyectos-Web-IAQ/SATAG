@@ -33,6 +33,19 @@ export const GLOSARIO = {
     ui: "Personas",
     ruta: "Personal → Persona → Exportar",
     que: "el padrón de credenciales del control de acceso, con el departamento de cada una",
+    detalle: "ZK guarda el archivo como «Usuarios_» con la fecha y la hora",
+  },
+  // Bloque 93. En ZK 3.1.5 el reporte se llama «Privilegios por Puerta» y cada archivo
+  // sale como «Entrada 1(1) Personal de Apertura_…».
+  puertasZk: {
+    ui: "Personal de Apertura",
+    ruta: "Acceso → Reportes → Privilegios por Puerta → una puerta a la vez → Exportar",
+    que: "quién tiene acceso a cada puerta; son cuatro archivos: Entrada 1, Salida 1, Entrada 2 y Salida 2",
+  },
+  importarZk: {
+    ui: "Importar",
+    ruta: "Personal → Persona → Importar",
+    que: "el archivo de la tanda, con «Fila de inicio» 2 y «Actualizar el ID de usuario existente» en Sí",
   },
   cajonesALaVez: {
     ui: "Cajones a la vez",

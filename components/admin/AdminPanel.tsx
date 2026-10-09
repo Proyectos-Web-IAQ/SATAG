@@ -190,7 +190,7 @@ function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
     vista === "personas" ? <VistaConsulta rol={rol} />
     : vista === "tablero" ? <PanelInstalacion rol={rol} email={email} />
     : vista === "ges" ? <VistaGes email={email} />
-    : vista === "movimientos" ? <VistaMovimientosZk email={email} />
+    : vista === "movimientos" ? <VistaMovimientosZk email={email} onIr={elegir} />
     : vista === "casos" && rol === "admin" ? <TableroCasos rol={rol} email={email} eventos={null} ventana={{ desde: null, hasta: null }} personas={null} />
     : <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />;
   if (claves.length === 1) return contenido;

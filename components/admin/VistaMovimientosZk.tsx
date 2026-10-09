@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Loader from "@/components/Loader";
 import { numeroCaso } from "@/lib/casosRegistro";
+import { GLOSARIO } from "@/lib/glosario";
 import { fecha, fechaHora } from "@/lib/formato";
 import { filasDeTanda, nombreNivel, ROTULO_MOVIMIENTO, type RenglonTanda } from "@/lib/zk/movimientos";
 import { descargarArchivo, fechaArchivo, generarXlsxZk } from "@/lib/zk/plantillaZk";
@@ -24,6 +25,8 @@ import {
   ajustarMovimientoZk,
   cancelarTandaZk,
   crearTandaZk,
+  getUltimaCargaPadronZk,
+  listUltimasCargasPuertas,
   guardarDepartamentoZk,
   listDepartamentosZk,
   listMovimientosDeCaso,
@@ -135,10 +138,21 @@ export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: str
   );
 }
 
-export default function VistaMovimientosZk({ email }: { email: string | null }) {
+/** Los pasos del ciclo, en palabras de quien lo hace. El que toca se resalta. */
+const CICLO = [
+  "En el tablero de Casos, cerrar cada caso con su «Acción en ZK» (o «Pedir acción en ZK…» si ya estaba cerrado).",
+  "Aquí: elegir los movimientos y armar la tanda. SATAG descarga el archivo para ZK.",
+  `En ZK: ${GLOSARIO.importarZk.ruta} el archivo de la tanda, dar los pasos de niveles que dice la tanda, y palomearlos aquí.`,
+  `En ZK: exportar «${GLOSARIO.personasZk.ui}» (${GLOSARIO.personasZk.ruta}) y los cuatro «${GLOSARIO.puertasZk.ui}» (${GLOSARIO.puertasZk.ruta}).`,
+  "En Archivos de ZK: subir esos cinco archivos. SATAG comprueba cada movimiento solo.",
+];
+
+export default function VistaMovimientosZk({ email, onIr }: { email: string | null; onIr?: (vista: string) => void }) {
   const [movs, setMovs] = useState<MovimientoZk[] | null>(null);
   const [tandas, setTandas] = useState<TandaZk[]>([]);
   const [deptos, setDeptos] = useState<DepartamentoZk[]>([]);
+  // Cuando se subio por ultima vez cada archivo de ZK: para decir si la comprobacion ya tiene con que.
+  const [subidos, setSubidos] = useState<{ usuarios: string | null; puertas: Partial<Record<string, string>> }>({ usuarios: null, puertas: {} });
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -147,10 +161,14 @@ export default function VistaMovimientosZk({ email }: { email: string | null }) 
 
   async function cargar() {
     try {
-      const [m, t, d] = await Promise.all([listMovimientosZk(), listTandasZk(), listDepartamentosZk()]);
+      const [m, t, d, u, p] = await Promise.all([
+        listMovimientosZk(), listTandasZk(), listDepartamentosZk(),
+        getUltimaCargaPadronZk().catch(() => null), listUltimasCargasPuertas().catch(() => ({})),
+      ]);
       setMovs(m);
       setTandas(t);
       setDeptos(d);
+      setSubidos({ usuarios: u?.cargadoEn ?? null, puertas: Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v?.cargadoEn ?? ""])) });
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron leer los movimientos en ZK.");
@@ -192,6 +210,18 @@ export default function VistaMovimientosZk({ email }: { email: string | null }) 
   }, [pendientes]);
   const destino = (m: MovimientoZk) => (m.que === "nombre" ? `nombre «${m.nombreDestino}»` : porId.get(m.deptoDestino ?? "")?.nombre ?? m.deptoDestino ?? "—");
 
+  // Lo que falta comprobar: movimientos hechos en ZK que los archivos todavia no confirman.
+  const porComprobar = (movs ?? []).filter((m) => m.estado === "hecho");
+  const tandaPorComprobar = tandas
+    .filter((t) => t.estado === "hecha" && porComprobar.some((m) => m.tandaId === t.id))
+    .sort((a, b) => (a.hechaEn ?? "").localeCompare(b.hechaEn ?? ""))[0] ?? null;
+  const despuesDe = (cuando: string | null | undefined) => !!cuando && !!tandaPorComprobar?.hechaEn && cuando > tandaPorComprobar.hechaEn;
+  const puertasDespues = (["E1-entrada", "E1-salida", "E2-entrada", "E2-salida"] as const).filter((p) => despuesDe(subidos.puertas[p])).length;
+  // En que paso del ciclo va: 0 cerrar casos, 1 armar tanda, 2 hacerla en ZK, 3 exportar, 4 subir.
+  const etapa = abierta ? 2
+    : tandaPorComprobar ? (despuesDe(subidos.usuarios) || puertasDespues > 0 ? 4 : 3)
+    : pendientes.length ? 1 : 0;
+
   if (movs === null) return <Loader label="Leyendo los movimientos en ZK…" />;
 
   const armar = () =>
@@ -231,6 +261,51 @@ export default function VistaMovimientosZk({ email }: { email: string | null }) 
         después. Al subir Usuarios y los cuatro «Personal de Apertura» en Archivos de ZK, SATAG comprueba cada movimiento y
         reabre el caso que no coincida.
       </p>
+
+      <section className="ficha__bloque" aria-labelledby="ciclo-t">
+        <h3 id="ciclo-t">Cómo va</h3>
+        <ol className="ciclo-zk">
+          {CICLO.map((texto, i) => (
+            <li key={i} aria-current={i === etapa ? "step" : undefined} className={i < etapa ? "ciclo-zk__hecho" : i === etapa ? "ciclo-zk__ahora" : undefined}>
+              {texto}
+              {i === etapa && <strong> ← aquí va</strong>}
+            </li>
+          ))}
+        </ol>
+      </section>
+
+      {tandaPorComprobar && !abierta && (
+        <section className="ficha__bloque" aria-labelledby="comprobar-t">
+          <h3 id="comprobar-t">
+            Falta comprobar la tanda {tandaPorComprobar.numero}: {n(porComprobar.filter((m) => m.tandaId === tandaPorComprobar.id).length)} {porComprobar.filter((m) => m.tandaId === tandaPorComprobar.id).length === 1 ? "movimiento" : "movimientos"}
+          </h3>
+          <p style={{ margin: "0 0 8px" }}>
+            Se hizo en ZK el {fechaHora(tandaPorComprobar.hechaEn)}. Para que SATAG lo confirme, exporte de ZK estos cinco archivos
+            y súbalos en Archivos de ZK:
+          </p>
+          <dl className="props">
+            <div>
+              <dt>{GLOSARIO.personasZk.ui}</dt>
+              <dd>
+                {GLOSARIO.personasZk.ruta}. {GLOSARIO.personasZk.detalle}.{" "}
+                <strong>{despuesDe(subidos.usuarios) ? "✓ Ya se subió después de la tanda." : "Falta subirlo."}</strong>
+              </dd>
+            </div>
+            <div>
+              <dt>{GLOSARIO.puertasZk.ui}</dt>
+              <dd>
+                {GLOSARIO.puertasZk.ruta}: Entrada 1, Salida 1, Entrada 2 y Salida 2.{" "}
+                <strong>{puertasDespues === 4 ? "✓ Ya se subieron los cuatro después de la tanda." : `Faltan ${4 - puertasDespues} de 4.`}</strong>
+              </dd>
+            </div>
+          </dl>
+          {onIr && (
+            <button type="button" className="primary-action" style={{ marginTop: 12 }} onClick={() => onIr("archivos")}>
+              Ir a Archivos de ZK para subirlos
+            </button>
+          )}
+        </section>
+      )}
       {ocupado && <p className="hint" role="status">Trabajando…</p>}
       {error && <p className="submit-error" role="alert">{error}</p>}
       {aviso && <p className="notice" role="status" style={{ margin: "0 0 12px", padding: "10px 12px" }}>{aviso}</p>}

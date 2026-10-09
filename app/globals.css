@@ -1260,6 +1260,11 @@ a { color: var(--primary-strong); }
 /* ---------- Que tan firme es esto: el pie con los limites ---------- */
 .firme { border-top: 1px solid var(--ink); color: var(--muted); display: grid; font-size: 0.9rem; gap: 6px; line-height: 1.5; margin-top: 40px; max-width: 70ch; padding-top: 12px; }
 .firme strong { color: var(--ink); font-weight: 700; }
+/* Movimientos en ZK: el ciclo de una tanda, con el paso que toca resaltado (bloque 93). */
+.ciclo-zk { display: grid; gap: 6px; line-height: 1.45; margin: 0; max-width: 75ch; padding-left: 1.4rem; }
+.ciclo-zk li { color: var(--ink); }
+.ciclo-zk__hecho { color: var(--muted) !important; }
+.ciclo-zk__ahora { color: var(--primary) !important; font-weight: 700; }
 /* La consulta reducida de GES, lista para copiar (Datos › Archivos de GES, bloque 92). */
 .consulta-sql { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.8rem; line-height: 1.45; margin: 6px 0 0; max-height: 280px; overflow: auto; padding: 10px 12px; white-space: pre; }
 

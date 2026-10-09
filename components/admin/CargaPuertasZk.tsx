@@ -11,6 +11,7 @@ import { useEffect, useState } from "react";
 import { leerPuertaZk, NOMBRE_PUERTA, type LecturaPuerta, type PuertaZk } from "@/lib/zk/puertas";
 import { huella } from "@/lib/huella";
 import { fechaHora } from "@/lib/formato";
+import { GLOSARIO } from "@/lib/glosario";
 import {
   cargarPuertasZk,
   listUltimasCargasPuertas,
@@ -28,9 +29,9 @@ export function textoVerificacion(r: ResultadoVerificacionZk): string {
   const partes: string[] = [];
   if (r.verificados) partes.push(`${n(r.verificados)} ${r.verificados === 1 ? "movimiento quedó verificado" : "movimientos quedaron verificados"} en ZK`);
   if (r.yaReflejados) partes.push(`${n(r.yaReflejados)} ${r.yaReflejados === 1 ? "caso se cerró porque ZK ya lo reflejaba" : "casos se cerraron porque ZK ya los reflejaba"}`);
-  if (r.noCoinciden) partes.push(`${n(r.noCoinciden)} ${r.noCoinciden === 1 ? "caso se reabrió porque ZK no coincide" : "casos se reabrieron porque ZK no coincide"} (vea Movimientos en ZK)`);
+  if (r.noCoinciden) partes.push(`${n(r.noCoinciden)} ${r.noCoinciden === 1 ? "caso se reabrió porque ZK no coincide" : "casos se reabrieron porque ZK no coincide"}`);
   if (r.porComprobar) partes.push(`${n(r.porComprobar)} ${r.porComprobar === 1 ? "sigue" : "siguen"} por comprobar${r.puertasCargadas < 4 ? ": faltan los «Personal de Apertura»" : " con archivos más nuevos"}`);
-  return partes.length ? `${partes.join("; ")}.` : "";
+  return partes.length ? `${partes.join("; ")}. El detalle está en Datos › Movimientos en ZK.` : "";
 }
 
 const ORDEN: PuertaZk[] = ["E1-entrada", "E1-salida", "E2-entrada", "E2-salida"];
@@ -101,8 +102,9 @@ export default function CargaPuertasZk({ email, onAviso }: { email: string | nul
         }}
       />
       <p className="hint">
-        Uno por puerta: Entrada 1, Salida 1, Entrada 2 y Salida 2. Dicen quién tiene acceso hoy; con ellos SATAG comprueba
-        que los movimientos en ZK quedaron bien.{" "}
+        Uno por puerta: Entrada 1, Salida 1, Entrada 2 y Salida 2. Se exportan en ZK desde {GLOSARIO.puertasZk.ruta}, y se
+        pueden elegir los cuatro de una vez. Dicen quién tiene acceso hoy; con ellos SATAG comprueba que los movimientos en ZK
+        quedaron bien.{" "}
         {cargas &&
           (ORDEN.every((p) => cargas[p])
             ? `Guardados: ${ORDEN.map((p) => `${NOMBRE_PUERTA[p]} ${n(cargas[p]!.personas)} (${fechaHora(cargas[p]!.exportadoEn ?? cargas[p]!.cargadoEn)})`).join(", ")}.`
