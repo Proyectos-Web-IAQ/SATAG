@@ -45,6 +45,7 @@ import {
   listRegistros,
   idsEventosGuardados,
   listPadronZk,
+  verificarMovimientosZk,
   type CargaPadronZk,
   type FilaPadronZk,
   type ImportacionZk,
@@ -59,6 +60,7 @@ import { grupoDeExpediente, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPad
 import type { RolPanel } from "@/lib/supabase/auth";
 import { fecha, fechaHora as fechaHoraFmt } from "@/lib/formato";
 import { huella } from "@/lib/huella";
+import CargaPuertasZk, { textoVerificacion } from "@/components/admin/CargaPuertasZk";
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
 const VEN_IDENTIDAD: RolPanel[] = ["ti", "contador", "super"];
@@ -302,6 +304,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
           nombre: p.nombre,
           departamentoId: p.departamentoId,
           departamento: p.departamento,
+          idZk: p.idZk ?? "",
           nombres: p.nombres,
           apellidos: p.apellidos,
           placa: p.placa,
@@ -365,6 +368,13 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         : `Padrón guardado: ${r.insertadas.toLocaleString("es-MX")} personas nuevas, ${r.actualizadas.toLocaleString("es-MX")} actualizadas y ${r.retiradas.toLocaleString("es-MX")} que ya no vienen en el export. ${r.vigentes.toLocaleString("es-MX")} vigentes.`;
       setAvisoCarga(avisoPadron);
       await darDeAltaLasQueAbren(avisoPadron);
+      // Bloque 93: con el padron nuevo se comprueban los movimientos en ZK.
+      try {
+        const t = textoVerificacion(await verificarMovimientosZk(email));
+        if (t) setAvisoCarga((a) => `${a ?? ""} ${t}`.trim());
+      } catch {
+        // Sin el 93 aplicado no hay nada que comprobar; la carga ya quedo.
+      }
       const [zk, carga] = await Promise.all([listPadronZk(), getUltimaCargaPadronZk()]);
       setPersonas(zk.length > 0 ? indexarPadron(zk) : null);
       setCargaPadron(carga);
@@ -656,6 +666,8 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
                   : `Sin él la pantalla funciona igual; con él aparece el desglose por departamento de ZK. Se exporta desde ${GLOSARIO.personasZk.ruta} y queda guardado para todos.`}
             </p>
           </div>}
+
+          {puedeCargar && <CargaPuertasZk email={email} onAviso={setAvisoCarga} />}
         </div>
         {!puedeCargar && (
           <p className="ti-hint">

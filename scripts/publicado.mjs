@@ -92,6 +92,9 @@ const RUTAS = [
       // GES en SATAG (bloque 92): la carga desde Datos y la decision de TI en la ficha.
       { texto: "cargar_ges", que: "Datos > Archivos de GES carga la consulta reducida (bloque 92)" },
       { texto: "decidir_identidad_ges", que: "la ficha y el caso dicen quien es la persona segun GES (bloque 92)" },
+      // Movimientos en ZK (bloque 93): tandas con sus pasos y la carga de las cuatro puertas.
+      { texto: "crear_tanda_zk", que: "Datos > Movimientos en ZK arma tandas para importar en ZK (bloque 93)" },
+      { texto: "cargar_puertas_zk", que: "Archivos de ZK carga los cuatro Personal de Apertura (bloque 93)" },
     ],
   },
 ];

@@ -62,6 +62,7 @@ import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type V
 import { fechaHora } from "@/lib/formato";
 import { ROTULO } from "@/lib/glosario";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
+import { EnZkDelCaso } from "@/components/admin/VistaMovimientosZk";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -640,6 +641,8 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
         {pestana === "caso" && (
           <>
             {t?.queHacer && <div className="tc-qh"><b>Qué hacer</b>{t.queHacer}</div>}
+            {/* Bloque 93: lo leen quienes leen el padron de ZK. */}
+            {(rol === "ti" || rol === "contador" || rol === "super") && <EnZkDelCaso casoId={caso.id} />}
             <div className="tc-r6">
               <div>Persona<b>{nombre}</b></div>
               <div>Folio<b className="mono">{folio ?? "—"}</b></div>

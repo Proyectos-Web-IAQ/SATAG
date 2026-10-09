@@ -12,6 +12,7 @@ import ListaIncompletos from "@/components/admin/Incompletos";
 import PanelInstalacion from "@/components/admin/PanelInstalacion";
 import VistaEstacionamiento, { type VistaEstac } from "@/components/admin/VistaEstacionamiento";
 import VistaGes from "@/components/admin/VistaGes";
+import VistaMovimientosZk from "@/components/admin/VistaMovimientosZk";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
 import FichaPersona from "@/components/admin/FichaPersona";
 import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
@@ -94,6 +95,8 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         { clave: "archivos", titulo: "Archivos de ZK" },
         // Bloque 92: quien es cada persona y si sigue en el colegio.
         { clave: "ges", titulo: "Archivos de GES" },
+        // Bloque 93: lo que los casos piden hacer en ZK, en tandas, y su comprobacion.
+        { clave: "movimientos", titulo: "Movimientos en ZK" },
       ],
     });
   }
@@ -187,6 +190,7 @@ function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
     vista === "personas" ? <VistaConsulta rol={rol} />
     : vista === "tablero" ? <PanelInstalacion rol={rol} email={email} />
     : vista === "ges" ? <VistaGes email={email} />
+    : vista === "movimientos" ? <VistaMovimientosZk email={email} />
     : vista === "casos" && rol === "admin" ? <TableroCasos rol={rol} email={email} eventos={null} ventana={{ desde: null, hasta: null }} personas={null} />
     : <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />;
   if (claves.length === 1) return contenido;

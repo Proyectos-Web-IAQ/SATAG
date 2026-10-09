@@ -113,7 +113,11 @@ export function tablaZk(texto: string, rotulos: string[]): TablaZk {
   let inicio = -1;
   let cab: string[] = [];
   for (let i = 0; i < Math.min(lineas.length, 5); i++) {
-    const c = lineas[i].split("\t").map((x) => x.trim());
+    // Sin comillas alrededor: al pasar un Excel a texto, SheetJS escribe «"ID"» cuando
+    // la primera celda es «ID» (para que Excel no lo tome por un archivo SYLK). Sin
+    // esto, ni el ID del padron ni el de los «Personal de Apertura» se encontraban
+    // (9-oct, bloque 93).
+    const c = lineas[i].split("\t").map((x) => x.trim().replace(/^"(.*)"$/, "$1"));
     if (rotulos.every((r) => c.includes(r))) {
       cab = c;
       inicio = i + 1;

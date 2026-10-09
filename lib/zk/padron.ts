@@ -13,7 +13,8 @@
 //
 // ESTE ARCHIVO TOCA DATOS PERSONALES. El export trae nombre, apellido, placa, correo
 // y telefono. Este modulo se queda SOLO con lo que la pantalla necesita —nombre,
-// apellido, departamento, placa— y descarta el resto en el parseo, para que no viaje
+// apellido, departamento, placa y el ID de ZK (bloque 93: liga los reportes de
+// puertas y el import)— y descarta el resto en el parseo, para que no viaje
 // ni se quede en memoria lo que nadie va a mirar. El aviso de privacidad v8 cubre
 // este uso: «operar el control de acceso vehicular del inmueble» y «mantener la
 // seguridad, la trazabilidad, la auditoria y el control interno», con la comunicacion
@@ -53,6 +54,8 @@ export interface PersonaZk {
   departamentoId: string;
   departamento: string;
   placa: string;
+  /** El ID de la persona en ZK (columna «ID»). Lo usan los «Personal de Apertura» y el import (bloque 93). */
+  idZk?: string;
 }
 
 export interface LecturaPadron {
@@ -199,6 +202,7 @@ export function parsearPadronZk(texto: string): LecturaPadron {
       nombre,
       nombres,
       apellidos,
+      idZk: (f["ID"] ?? "").trim(),
       departamentoId: (f["ID de Departamento"] ?? "").trim(),
       departamento: (f["Nombre de Departamento"] ?? "").trim(),
       // La placa viaja en «Placa Vehicular», pero el importador de ZK la escribe en

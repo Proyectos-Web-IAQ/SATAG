@@ -45,6 +45,8 @@ import type { EventoZk } from "@/lib/zk/eventos";
 import type { PersonaZk } from "@/lib/zk/padron";
 import type { ClaseGes, FuenteGes, PersonaGes } from "@/lib/ges/leer";
 import type { IdentidadDecidida, PersonaGesGuardada, VeredictoGes } from "@/lib/personas/identificar";
+import type { EstadoMovimiento, RenglonTanda } from "@/lib/zk/movimientos";
+import type { PuertaZk } from "@/lib/zk/puertas";
 
 export interface AccionResultado {
   id: string;
@@ -1311,6 +1313,8 @@ export interface MetaPadronZk {
 /** `nombres`, `apellidos` y `placa` los guarda el bloque 86; un RPC anterior los ignora sin fallar. */
 export type FilaPadronZk = {
   tarjeta: string;
+  /** Bloque 93: el ID de la persona en ZK. Un RPC anterior lo ignora sin fallar. */
+  idZk: string;
   nombre: string;
   departamentoId: string;
   departamento: string;
@@ -1475,6 +1479,239 @@ export async function decidirIdentidadGes(d: {
     p_nombre: d.nombre ?? null, p_preguntar: d.preguntar ?? false, p_nota: d.nota ?? null, p_hecho_por: hechoPor,
   });
   if (error) throw new Error(traducirError(error.message));
+}
+
+/* ------------------------------------------------------------------ movimientos en ZK (bloque 93) */
+
+export interface DepartamentoZk {
+  id: string;
+  nombre: string;
+  /** E1/E2. Vacio = sin niveles (BAJAS): se le quitan a todos agregando y quitando. */
+  niveles: string[];
+}
+
+export async function listDepartamentosZk(): Promise<DepartamentoZk[]> {
+  const { data, error } = await supabaseAuth.from("zk_departamentos").select("id, nombre, niveles");
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as DepartamentoZk[]).sort((a, b) => Number(a.id) - Number(b.id));
+}
+
+export async function guardarDepartamentoZk(d: DepartamentoZk, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("guardar_departamento_zk", { p_id: d.id, p_nombre: d.nombre, p_niveles: d.niveles, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+}
+
+export interface MovimientoZk {
+  id: string;
+  casoId: string;
+  casoNumero: number;
+  casoTitulo: string;
+  casoEstado: string;
+  tarjeta: string;
+  que: "departamento" | "nombre";
+  deptoDestino: string | null;
+  nombreDestino: string | null;
+  estado: EstadoMovimiento;
+  tandaId: string | null;
+  detalle: string;
+  actualizadoEn: string;
+  /** Como lo tiene ZK segun el ultimo padron cargado; null si la tarjeta no esta. */
+  enZk: { nombre: string; departamento: string; idZk: string } | null;
+  /** La ultima nota escrita en el caso (la de Miguel, por ejemplo). */
+  ultimaNota: { texto: string; por: string; en: string } | null;
+}
+
+/** Todos los movimientos vivos (sin los cancelados), con su caso, su estado en ZK y la ultima nota. */
+export async function listMovimientosZk(): Promise<MovimientoZk[]> {
+  const { data, error } = await supabaseAuth
+    .from("zk_movimientos")
+    .select("id, caso_id, tarjeta, que, depto_destino, nombre_destino, estado, tanda_id, detalle, actualizado_en, caso:casos ( numero, titulo, estado )")
+    .neq("estado", "cancelado")
+    .order("tarjeta", { ascending: true });
+  if (error) throw new Error(traducirError(error.message));
+  const filas = (data ?? []) as unknown as {
+    id: string; caso_id: string; tarjeta: string; que: "departamento" | "nombre"; depto_destino: string | null; nombre_destino: string | null;
+    estado: EstadoMovimiento; tanda_id: string | null; detalle: string; actualizado_en: string;
+    caso: { numero: number; titulo: string; estado: string } | null;
+  }[];
+  if (filas.length === 0) return [];
+
+  const tarjetas = [...new Set(filas.map((f) => f.tarjeta))];
+  const casos = [...new Set(filas.map((f) => f.caso_id))];
+  const enZk = new Map<string, { nombre: string; departamento: string; idZk: string }>();
+  const notas = new Map<string, { texto: string; por: string; en: string }>();
+  for (let i = 0; i < tarjetas.length; i += 100) {
+    const { data: p, error: e } = await supabaseAuth
+      .from("zk_padron").select("tarjeta, nombre, departamento, id_zk").eq("vigente", true).in("tarjeta", tarjetas.slice(i, i + 100));
+    if (e) throw new Error(traducirError(e.message));
+    for (const r of (p ?? []) as { tarjeta: string; nombre: string; departamento: string; id_zk: string }[]) enZk.set(r.tarjeta, { nombre: r.nombre, departamento: r.departamento, idZk: r.id_zk });
+  }
+  for (let i = 0; i < casos.length; i += 100) {
+    const { data: n, error: e } = await supabaseAuth
+      .from("casos_notas").select("caso_id, nota, hecho_por, hecho_en").eq("clase", "nota").in("caso_id", casos.slice(i, i + 100))
+      .order("hecho_en", { ascending: false });
+    if (e) throw new Error(traducirError(e.message));
+    for (const r of (n ?? []) as { caso_id: string; nota: string; hecho_por: string; hecho_en: string }[]) {
+      if (!notas.has(r.caso_id)) notas.set(r.caso_id, { texto: r.nota, por: r.hecho_por, en: r.hecho_en });
+    }
+  }
+  return filas.map((f) => ({
+    id: f.id, casoId: f.caso_id, casoNumero: f.caso?.numero ?? 0, casoTitulo: f.caso?.titulo ?? "", casoEstado: f.caso?.estado ?? "",
+    tarjeta: f.tarjeta, que: f.que, deptoDestino: f.depto_destino, nombreDestino: f.nombre_destino, estado: f.estado,
+    tandaId: f.tanda_id, detalle: f.detalle, actualizadoEn: f.actualizado_en,
+    enZk: enZk.get(f.tarjeta) ?? null, ultimaNota: notas.get(f.caso_id) ?? null,
+  }));
+}
+
+/** Los movimientos de un caso, para mostrar en su detalle en que va. */
+export async function listMovimientosDeCaso(casoId: string): Promise<(Pick<MovimientoZk, "id" | "que" | "nombreDestino" | "estado" | "detalle"> & { deptoNombre: string | null })[]> {
+  const { data, error } = await supabaseAuth
+    .from("zk_movimientos").select("id, que, nombre_destino, estado, detalle, depto:zk_departamentos ( nombre )").eq("caso_id", casoId).neq("estado", "cancelado");
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as unknown as { id: string; que: "departamento" | "nombre"; nombre_destino: string | null; estado: EstadoMovimiento; detalle: string; depto: { nombre: string } | null }[])
+    .map((r) => ({ id: r.id, que: r.que, deptoNombre: r.depto?.nombre ?? null, nombreDestino: r.nombre_destino, estado: r.estado, detalle: r.detalle }));
+}
+
+export async function generarMovimientosZk(hechoPor: string | null): Promise<{ nuevos: number; cancelados: number; casosSinDestino: string[] }> {
+  const { data, error } = await supabaseAuth.rpc("generar_movimientos_zk", { p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as { nuevos?: number; cancelados?: number; casosSinDestino?: string[] };
+  return { nuevos: r.nuevos ?? 0, cancelados: r.cancelados ?? 0, casosSinDestino: r.casosSinDestino ?? [] };
+}
+
+export async function ajustarMovimientoZk(id: string, cambio: { deptoDestino?: string; nombreDestino?: string; cancelar?: boolean }, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("ajustar_movimiento_zk", {
+    p_movimiento: id, p_depto_destino: cambio.deptoDestino ?? null, p_nombre_destino: cambio.nombreDestino ?? null,
+    p_cancelar: cambio.cancelar ?? false, p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+}
+
+export interface PasoTanda {
+  clave: string;
+  texto: string;
+  hecho: boolean;
+  hechoPor?: string | null;
+  hechoEn?: string | null;
+}
+
+export interface TandaZk {
+  id: string;
+  numero: number;
+  estado: "abierta" | "hecha" | "cancelada";
+  pasos: PasoTanda[];
+  creadaPor: string;
+  creadaEn: string;
+  hechaPor: string | null;
+  hechaEn: string | null;
+}
+
+export async function listTandasZk(): Promise<TandaZk[]> {
+  const { data, error } = await supabaseAuth
+    .from("zk_tandas").select("id, numero, estado, pasos, creada_por, creada_en, hecha_por, hecha_en")
+    .order("numero", { ascending: false }).limit(20);
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as { id: string; numero: number; estado: TandaZk["estado"]; pasos: PasoTanda[]; creada_por: string; creada_en: string; hecha_por: string | null; hecha_en: string | null }[])
+    .map((t) => ({ id: t.id, numero: t.numero, estado: t.estado, pasos: t.pasos ?? [], creadaPor: t.creada_por, creadaEn: t.creada_en, hechaPor: t.hecha_por, hechaEn: t.hecha_en }));
+}
+
+/** Abre la tanda; devuelve sus pasos y los renglones para el archivo de importacion. */
+export async function crearTandaZk(ids: string[], hechoPor: string | null): Promise<{ tanda: string; numero: number; pasos: PasoTanda[]; renglones: RenglonTanda[] }> {
+  const { data, error } = await supabaseAuth.rpc("crear_tanda_zk", { p_movimientos: ids, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  return data as { tanda: string; numero: number; pasos: PasoTanda[]; renglones: RenglonTanda[] };
+}
+
+/** Lo que el padron guardado dice de unas tarjetas, para volver a armar el archivo de una tanda abierta. */
+export async function listPadronDeTarjetas(tarjetas: string[]): Promise<Map<string, Omit<RenglonTanda, "nombreDestino">>> {
+  const out = new Map<string, Omit<RenglonTanda, "nombreDestino">>();
+  for (let i = 0; i < tarjetas.length; i += 100) {
+    const { data, error } = await supabaseAuth
+      .from("zk_padron").select("tarjeta, id_zk, nombres, apellidos, placa, departamento_id, departamento")
+      .eq("vigente", true).in("tarjeta", tarjetas.slice(i, i + 100));
+    if (error) throw new Error(traducirError(error.message));
+    for (const r of (data ?? []) as { tarjeta: string; id_zk: string; nombres: string; apellidos: string; placa: string; departamento_id: string; departamento: string }[]) {
+      out.set(r.tarjeta, { tarjeta: r.tarjeta, idZk: r.id_zk, nombres: r.nombres, apellidos: r.apellidos, placa: r.placa, deptoId: r.departamento_id, deptoNombre: r.departamento });
+    }
+  }
+  return out;
+}
+
+export async function marcarPasoTandaZk(tanda: string, clave: string, hecho: boolean, hechoPor: string | null): Promise<{ hecha: boolean }> {
+  const { data, error } = await supabaseAuth.rpc("marcar_paso_tanda_zk", { p_tanda: tanda, p_clave: clave, p_hecho: hecho, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  return { hecha: Boolean((data as { hecha?: boolean } | null)?.hecha) };
+}
+
+export async function cancelarTandaZk(tanda: string, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("cancelar_tanda_zk", { p_tanda: tanda, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+}
+
+export interface ResultadoVerificacionZk {
+  verificados: number;
+  yaReflejados: number;
+  noCoinciden: number;
+  porComprobar: number;
+  puertasCargadas: number;
+}
+
+/** Compara los movimientos con lo ultimo cargado de ZK. Se llama despues de cada carga. */
+export async function verificarMovimientosZk(hechoPor: string | null): Promise<ResultadoVerificacionZk> {
+  const { data, error } = await supabaseAuth.rpc("verificar_movimientos_zk", { p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as Partial<ResultadoVerificacionZk>;
+  return { verificados: r.verificados ?? 0, yaReflejados: r.yaReflejados ?? 0, noCoinciden: r.noCoinciden ?? 0, porComprobar: r.porComprobar ?? 0, puertasCargadas: r.puertasCargadas ?? 0 };
+}
+
+export interface CargaPuertaZk {
+  puerta: PuertaZk;
+  archivo: string;
+  personas: number;
+  exportadoEn: string | null;
+  cargadoEn: string;
+}
+
+/** La ultima carga de cada puerta. */
+export async function listUltimasCargasPuertas(): Promise<Partial<Record<PuertaZk, CargaPuertaZk>>> {
+  const { data, error } = await supabaseAuth
+    .from("zk_puertas_cargas").select("puerta, archivo, personas, exportado_en, cargado_en").order("cargado_en", { ascending: false }).limit(40);
+  if (error) throw new Error(traducirError(error.message));
+  const out: Partial<Record<PuertaZk, CargaPuertaZk>> = {};
+  for (const r of (data ?? []) as { puerta: PuertaZk; archivo: string; personas: number; exportado_en: string | null; cargado_en: string }[]) {
+    out[r.puerta] ??= { puerta: r.puerta, archivo: r.archivo, personas: r.personas, exportadoEn: r.exportado_en, cargadoEn: r.cargado_en };
+  }
+  return out;
+}
+
+export interface MetaPuertaZk {
+  archivo: string;
+  sha256: string;
+  filasArchivo: number;
+  exportadoEn: string | null;
+  forzar?: boolean;
+}
+
+/** Igual que el padron: o escribio, o FRENO sin escribir y pide confirmar. */
+export type RespuestaCargaPuertaZk =
+  | { requiereConfirmacion: false; agregadas: number; quitadas: number; personas: number; yaEstaba: boolean }
+  | { requiereConfirmacion: true; motivos: ("retira_muchos" | "export_anterior")[]; retiraria: number; vigentes: number; exportadoEn: string | null; ultimoExportadoEn: string | null };
+
+export async function cargarPuertasZk(puerta: PuertaZk, meta: MetaPuertaZk, ids: string[], hechoPor: string | null): Promise<RespuestaCargaPuertaZk> {
+  const { data, error } = await supabaseAuth.rpc("cargar_puertas_zk", { p_puerta: puerta, p_meta: meta, p_ids: ids, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as {
+    requiereConfirmacion?: boolean; motivos?: string[]; retiraria?: number; vigentes?: number; exportadoEn?: string | null; ultimoExportadoEn?: string | null;
+    agregadas?: number; quitadas?: number; personas?: number; yaEstaba?: boolean;
+  };
+  if (r.requiereConfirmacion) {
+    return {
+      requiereConfirmacion: true,
+      motivos: (r.motivos ?? []).filter((m): m is "retira_muchos" | "export_anterior" => m === "retira_muchos" || m === "export_anterior"),
+      retiraria: r.retiraria ?? 0, vigentes: r.vigentes ?? 0, exportadoEn: r.exportadoEn ?? null, ultimoExportadoEn: r.ultimoExportadoEn ?? null,
+    };
+  }
+  return { requiereConfirmacion: false, agregadas: r.agregadas ?? 0, quitadas: r.quitadas ?? 0, personas: r.personas ?? 0, yaEstaba: r.yaEstaba ?? false };
 }
 
 /* ------------------------------------------------------------------ casos (bloque 89) */

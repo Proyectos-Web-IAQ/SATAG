@@ -61,7 +61,39 @@ Con eso, el proceso vigente es:
    mano, con la lista que da el aviso de descarga. Maestros, por sección
    (criterio confirmado el 14-sep): preescolar y primaria solo E2; secundaria y
    preparatoria solo E1. Por eso el alta pedirá la sección del maestro (SC-029).
-4. **Bajas.** SATAG no llega a ZK: mover a BAJAS (10) y quitar niveles.
+4. **Bajas.** Mover a BAJAS (10) con el archivo de importación y quitar los
+   niveles en bloque como se describe abajo.
+
+## Movimientos y bajas: lo probado el 9-oct-2026
+
+Prueba con un exempleado (TAG 12463457, ID de ZK 602609) y dos personas que ya
+estaban en BAJAS (IDs 601705 y 602819).
+
+- **El import cambia el departamento y no toca los niveles.** Archivo de una
+  fila a BAJAS (10), «Fila de inicio 2» y «Actualizar ID: Sí»: Correctos 1,
+  Fallidos 0. La persona quedó en BAJAS y con ESTACIONAMIENTO 1 marcado.
+- **Quitar los niveles a una persona:** editarla, pestaña Control de Acceso,
+  desmarcar los niveles, OK. Los cuatro reportes «Personal de Apertura» lo
+  reflejan: su ID ya no aparece en ninguna puerta.
+- **⚠ «Borrar Personal» en Acceso › Por Niveles BORRA A LA PERSONA DE ZK**, no
+  solo del nivel. Nunca se usa para quitar niveles. Si pasa, se restaura
+  importándola de nuevo con su mismo ID desde el último export de Usuarios;
+  **vuelve con los niveles que tenía**: ZK los guarda ligados al ID.
+- **Quitar los niveles en bloque a todo BAJAS** (encontrado por Gerardo):
+  «quitar y volver a poner» no sirve, porque BAJAS no tiene niveles. Lo que
+  sí funciona es al revés: en Acceso › Por Departamento, a BAJAS **agregarle
+  todos los niveles** (ESTACIONAMIENTO 1 y 2), guardar, y **quitárselos**,
+  guardar. Al quitarlos, ZK se los quita a todos sus miembros, incluidos los
+  que los tenían asignados en lo individual.
+  - Entre el «agregar» y el «quitar», **todos los de BAJAS abren la pluma**:
+    hacerlo de corrido y fuera de las horas de entrada y salida.
+- **Departamentos destino con niveles** (Padres de familia, docentes por
+  sección, Empleado_PPF): después del import, «quitar y volver a poner» sus
+  niveles aplica los del departamento a quien llegó. Ojo: también se los
+  devuelve a cualquier miembro de ese departamento a quien se le hubieran
+  quitado a mano.
+- **Comprobación:** exportar Usuarios y los cuatro «Personal de Apertura»
+  después de cada tanda. Nadie de BAJAS debe aparecer en ninguna puerta.
 
 ## Las piezas por línea de comandos (en `Campo/herramientas/`)
 

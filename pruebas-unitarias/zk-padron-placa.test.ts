@@ -29,3 +29,10 @@ describe("padron de ZK: lo que necesita el alta automatica", () => {
     expect(personas[2].placa).toBe("");
   });
 });
+
+describe("el ID de ZK en el padron (bloque 93)", () => {
+  it("se lee aunque el Excel pasado a texto lo traiga entre comillas", () => {
+    const texto = ["Usuarios\t\t\t\t", '"ID"\tNombre\tApellido\tID de Departamento\tNombre de Departamento\tTarjeta\tCelular', "600123\tANA\tROJO\t10\tBAJAS\t12345678\tABC123A"].join("\n");
+    expect(parsearPadronZk(texto).personas[0]).toMatchObject({ idZk: "600123", tarjeta: "12345678", departamentoId: "10" });
+  });
+});
