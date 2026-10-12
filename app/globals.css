@@ -964,28 +964,6 @@ a { color: var(--primary-strong); }
    Lo de abajo es diseno, no decoracion, y cada regla responde a un problema concreto
    de leer numeros en una junta frente a un proyector. */
 
-/* ---------- La credencial que no esta en ningun padron ----------
-   EL UNICO ROJO GRANDE DE ESTA PANTALLA, y por eso significa algo. Todo lo demas del
-   tablero son hallazgos para interpretar; esto es lo unico que hay que resolver hoy:
-   un vehiculo que abre la pluma y del que no se sabe nada, ni en SATAG, ni en la hoja,
-   ni en el control de acceso.
-
-   Va arriba de la navegacion y no dentro de una pestana a proposito: si estuviera en
-   una vista, se veria solo si alguien entra a esa vista, y esto tiene que verse
-   siempre. Cuando no hay ninguna, el bloque no existe —no se deja un recuadro verde
-   diciendo que todo esta bien, porque eso entrena a ignorar el lugar donde aparecen
-   las alertas. */
-.alerta-huerfanas {
-  background: #fdecec; border: 1px solid #f0b4b0; border-left: 5px solid #b3271e;
-  border-radius: var(--radius); margin: 0 0 18px; padding: 14px 16px;
-}
-.alerta-huerfanas__t {
-  color: #8f1f18; font-size: 1.05rem; font-weight: 800; line-height: 1.3; margin: 0 0 6px;
-}
-.alerta-huerfanas__p { color: #6d2a25; font-size: 0.88rem; line-height: 1.5; margin: 0 0 10px; max-width: 78ch; }
-.alerta-huerfanas__l { color: #6d2a25; font-size: 0.85rem; line-height: 1.7; margin: 0; padding-left: 18px; }
-.alerta-huerfanas__l strong { font-variant-numeric: tabular-nums; }
-
 /* ---------- Navegacion entre vistas ----------
    Siete paneles apilados obligan a recorrer la pagina para encontrar uno. Con
    pestanas el panel se elige, y la barra se queda pegada arriba al desplazar porque

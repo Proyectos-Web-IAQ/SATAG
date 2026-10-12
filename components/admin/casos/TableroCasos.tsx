@@ -42,6 +42,7 @@ import {
 } from "@/lib/casosRegistro";
 import { accionSugerida, type AccionZk } from "@/lib/zk/movimientos";
 import {
+  abrirCaso,
   listDepartamentosZk,
   pedirMovimientoZk,
   type DepartamentoZk,
@@ -65,6 +66,7 @@ import { textoVehiculo } from "@/lib/vehiculo";
 import { buscarCandidatos, construirCandidatos, type CandidatoCaso } from "@/lib/buscarPersona";
 import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 import { fechaHora } from "@/lib/formato";
+import { credencialesSinPadron } from "@/lib/casosEvidencia";
 import { ROTULO } from "@/lib/glosario";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
 import { EnZkDelCaso } from "@/components/admin/VistaMovimientosZk";
@@ -165,6 +167,63 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
     }
   }, []);
   useEffect(() => { leer(); }, [leer]);
+
+  // LAS CREDENCIALES SIN PADRON (Gerardo, 12-oct). Hasta hoy eran un letrero rojo
+  // arriba del Resumen; no son analitica sino algo que alguien tiene que averiguar,
+  // asi que cada una abre aqui su caso, una sola vez: la clave no deja duplicar.
+  // Solo con los dos padrones leidos: sin el de SATAG o sin el de ZK, «ningun
+  // padron» seria falso y se abririan casos de gente que si tiene expediente.
+  const sinPadron = useMemo(() => {
+    if (!eventos?.length || !personas?.size || !padron?.length || !expedientes?.size) return [];
+    return credencialesSinPadron(eventos, (t) => expedientes.has(t) || personas.has(t));
+  }, [eventos, personas, padron, expedientes]);
+  const sinCaso = useMemo(
+    () => (casos === null ? [] : sinPadron.filter((x) => !casos.some((c) => c.tarjeta === x.tarjeta && (c.tipo === "sin-padron" || columnaDe(c.estado) !== "cerrado")))),
+    [casos, sinPadron],
+  );
+  const intentados = useRef(new Set<string>());
+  useEffect(() => {
+    const nuevos = sinCaso.filter((x) => !intentados.current.has(x.tarjeta));
+    if (!escribe || !nuevos.length) return;
+    nuevos.forEach((x) => intentados.current.add(x.tarjeta));
+    const desde = ventana.desde?.slice(0, 10), hasta = ventana.hasta?.slice(0, 10);
+    (async () => {
+      let abiertos = 0;
+      try {
+        for (const x of nuevos) {
+          const r = await abrirCaso({
+            tipo: "sin-padron",
+            titulo: `El TAG ${x.tarjeta} abrió la pluma y no está en ningún padrón`,
+            detalle:
+              `Ni SATAG, ni la hoja de cálculo, ni ZKBioSecurity lo conocen. Abrió la pluma ${x.aperturas} ${x.aperturas === 1 ? "vez" : "veces"}` +
+              `${x.rechazos ? ` y la rechazó ${x.rechazos}` : ""} en ${x.dias} ${x.dias === 1 ? "día" : "días"}, por el ${x.plumas.join(" y el ")}; la última lectura fue el ${x.ultima.slice(0, 16)}.`,
+            tarjeta: x.tarjeta,
+            evidencia: {
+              ventana: desde && hasta ? `${desde} a ${hasta}` : undefined,
+              aperturasVentana: x.aperturas,
+              rechazos: x.rechazos,
+              dias: x.dias,
+              desde: x.primera,
+              ultimoPaso: x.ultima,
+              plumas: x.plumas.join("+"),
+            },
+            clave: `sin-padron:${x.tarjeta}`,
+            origen: "regla",
+            regla: "sin-padron",
+          }, email);
+          if (!r.yaExistia) abiertos += 1;
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "No se pudo abrir el caso de una credencial sin padrón.");
+      }
+      if (abiertos) {
+        await leer();
+        const t = `${abiertos} ${abiertos === 1 ? "caso nuevo" : "casos nuevos"}: ${abiertos === 1 ? "una credencial que abrió" : "credenciales que abrieron"} la pluma sin estar en ningún padrón`;
+        setAviso(t);
+        window.setTimeout(() => setAviso((a) => (a === t ? null : a)), 5000);
+      }
+    })();
+  }, [sinCaso, escribe, email, ventana.desde, ventana.hasta, leer]);
 
   const decir = (t: string) => { setAviso(t); window.setTimeout(() => setAviso((a) => (a === t ? null : a)), 5000); };
   const nombreDe = useCallback((t: string) => personas?.get(t)?.nombre, [personas]);
@@ -345,6 +404,11 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
     return m;
   }, [expedientes, padronUsado]);
   const candidatos = useMemo(() => (dialogo?.que === "reportar" ? construirCandidatos(padronUsado ?? [], personas) : []), [dialogo, padronUsado, personas]);
+  // Los TAGs que algun padron conoce: de aqui salen los «parecidos» de una credencial sin padron.
+  const conocidos = useMemo(
+    () => [...new Set([...(personas?.keys() ?? []), ...((expedientes ?? expedientesDelPadron)?.keys() ?? [])])],
+    [personas, expedientes, expedientesDelPadron],
+  );
 
   const nVivos = (casos ?? []).filter((c) => columnaDe(c.estado) !== "cerrado").length;
 
@@ -400,6 +464,12 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
       </div>
 
       {error && <p className="submit-error" role="alert">{error} <button type="button" className="link-action" onClick={() => leer()}>Volver a leer</button></p>}
+      {!escribe && sinCaso.length > 0 && (
+        <p className="ti-hint" role="status">
+          {sinCaso.length === 1 ? "Una credencial abrió" : `${sinCaso.length} credenciales abrieron`} la pluma sin estar en ningún padrón
+          ({sinCaso.map((x) => x.tarjeta).join(", ")}). Su caso se abre solo cuando entra a esta pestaña alguien de TI o Contabilidad.
+        </p>
+      )}
 
       <div className="tc-movil" role="tablist" aria-label="Columna">
         {COLUMNAS_CASO.map((c) => <button key={c.id} type="button" aria-pressed={colMovil === c.id} onClick={() => setColMovil(c.id)}>{c.titulo} {porColumna.get(c.id)!.length}</button>)}
@@ -451,6 +521,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
             persona={caso.tarjeta ? personas?.get(caso.tarjeta) ?? null : null}
             zkDe={(t) => personas?.get(t)}
             expedienteDe={(t) => (expedientes ?? expedientesDelPadron)?.get(t)}
+            conocidos={conocidos}
             padron={padronUsado}
             onCerrarPanel={() => setActivo(null)}
             onAbrir={setActivo}
@@ -593,7 +664,7 @@ function Zona({ abierto, tablero, panel }: { abierto: boolean; tablero: ReactNod
 
 /* ------------------------------------------------------------------ el detalle */
 
-function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos, ventana, nombreDe, persona, zkDe, expedienteDe, padron, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
+function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos, ventana, nombreDe, persona, zkDe, expedienteDe, conocidos, padron, onCerrarPanel, onAbrir, onCambiarTipo, onMover, onPedir, onMarcar, onNota }: {
   caso: CasoGuardado;
   rol: RolPanel;
   email: string | null;
@@ -607,6 +678,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
   persona: PersonaZk | null;
   zkDe: (t: string) => PersonaZk | undefined;
   expedienteDe: (t: string) => ExpedienteTag | undefined;
+  conocidos: string[];
   padron: PadronEstacionamiento[] | null;
   onCerrarPanel: () => void;
   onAbrir: (id: string) => void;
@@ -693,7 +765,7 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
             </div>
             {caso.detalle.trim() && <p className="tc-det__detalle">{caso.detalle}</p>}
             {eventos ? (
-              <EvidenciaGraficas caso={caso} eventos={eventos} ventana={ventana} nombreDe={nombreDe} zkDe={zkDe} expedienteDe={expedienteDe} />
+              <EvidenciaGraficas caso={caso} eventos={eventos} ventana={ventana} nombreDe={nombreDe} zkDe={zkDe} expedienteDe={expedienteDe} conocidos={conocidos} />
             ) : (
               <p className="g-vacio">Las gráficas de los pasos por la pluma las ven TI y Contabilidad (leen la bitácora de ZK).</p>
             )}

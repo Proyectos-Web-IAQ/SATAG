@@ -5,6 +5,8 @@
 import { describe, it, expect } from "vitest";
 import {
   acompanantes,
+  credencialesSinPadron,
+  tagsParecidos,
   diaNormal,
   diasHabiles,
   incompletas,
@@ -118,5 +120,37 @@ describe("el tablero", () => {
   it("la espera se dice en una frase", () => {
     expect(textoEspera({ estado: "esperando", esperaMotivo: "fecha", esperaHasta: "2027-04-06", esperaTexto: null })).toMatch(/hasta el 6 abr/);
     expect(textoEspera({ estado: "esperando", esperaMotivo: "tercero", esperaHasta: null, esperaTexto: "RH" })).toBe("a RH");
+  });
+});
+
+describe("credenciales sin padron (12-oct: son casos, no un letrero del Resumen)", () => {
+  const evs = [
+    ev({ t: "2026-10-02 08:19:24", tarjeta: "13078149" }),
+    ev({ t: "2026-10-02 08:19:25", tarjeta: "13078149", repeticion: true }),
+    ev({ t: "2026-10-02 08:20:00", tarjeta: "13078149", sentido: "salida" }),
+    ev({ t: "2026-10-03 07:00:00", tarjeta: "13078149", concedido: false, lote: "E1" }),
+    ev({ t: "2026-10-02 09:00:00", tarjeta: "99999999", concedido: false }),
+    ev({ t: "2026-10-02 09:00:00", tarjeta: "1111111" }),
+  ];
+  it("solo las que abrieron y nadie conoce; cuenta aperturas, rechazos, dias y plumas sin repeticiones", () => {
+    const r = credencialesSinPadron(evs, (t) => t === "1111111");
+    expect(r.map((x) => x.tarjeta)).toEqual(["13078149"]);
+    expect(r[0]).toMatchObject({ aperturas: 2, rechazos: 1, dias: 2, plumas: ["E1", "E2"], primera: "2026-10-02 08:19:24", ultima: "2026-10-03 07:00:00" });
+  });
+});
+
+describe("TAGs parecidos", () => {
+  it("un digito distinto, dos vecinos cambiados o numero cercano; primero los que viajan juntos", () => {
+    const evs = [
+      ev({ t: "2026-10-02 08:19:24", tarjeta: "13078149" }),
+      ev({ t: "2026-10-02 08:19:26", tarjeta: "55500001" }),
+    ];
+    const r = tagsParecidos("13078149", ["13078148", "13071849", "13078194", "13078190", "13079999", "55500001"], evs);
+    expect(r.map((x) => x.tarjeta)).toEqual(["55500001", "13078148", "13078194", "13071849", "13078190"]);
+    expect(r[0]).toMatchObject({ juntos: 1, digito: false, distancia: null });
+    expect(r[1]).toMatchObject({ digito: true, distancia: -1 });
+    expect(r[2]).toMatchObject({ digito: true, distancia: 45 });
+    expect(r[3]).toMatchObject({ digito: true, distancia: null });
+    expect(r[4]).toMatchObject({ digito: false, distancia: 41 });
   });
 });

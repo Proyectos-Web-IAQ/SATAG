@@ -277,6 +277,7 @@ const ETIQUETAS_EVIDENCIA: Record<string, string> = {
   ventana: "Ventana de la bitácora",
   aperturasVentana: "Aperturas en la ventana",
   aperturasDelQueUsa: "Aperturas del TAG que sí usa",
+  rechazos: "Rechazos en la ventana",
   ultimoPaso: "Último paso por la pluma",
   departamentoZk: ROTULO.departamentoZk,
   plumas: ROTULO.plumas,

@@ -171,3 +171,100 @@ export function tagPrincipalDe(evidencia: Record<string, unknown>): string | nul
   const m = /TAG principal (\d{4,12})/.exec(String(evidencia.fuentes ?? ""));
   return m ? m[1] : null;
 }
+
+/** Una credencial que abrio la pluma y no esta en ningun padron: ni SATAG (vigente o anterior) ni ZK. */
+export interface SinPadron {
+  tarjeta: string;
+  aperturas: number;
+  rechazos: number;
+  /** Dias distintos con alguna lectura. */
+  dias: number;
+  /** Primera y ultima lectura, como las da ZK («2026-10-02 08:19:24»). */
+  primera: string;
+  ultima: string;
+  plumas: string[];
+}
+
+/**
+ * Las credenciales sin padron que ABRIERON la pluma. Antes era un letrero rojo arriba
+ * del Resumen; desde el 12-oct es un caso (Gerardo: «no quiero que este aviso salga en
+ * las analíticas»). Un TAG desconocido que la pluma solo rechaza no entra: que le
+ * niegue el paso es lo esperado.
+ */
+export function credencialesSinPadron(eventos: EventoZk[], conocida: (tarjeta: string) => boolean): SinPadron[] {
+  const m = new Map<string, SinPadron & { _dias: Set<string>; _plumas: Set<string> }>();
+  for (const e of eventos) {
+    if (e.repeticion || !e.tarjeta || conocida(e.tarjeta)) continue;
+    let x = m.get(e.tarjeta);
+    if (!x) {
+      x = { tarjeta: e.tarjeta, aperturas: 0, rechazos: 0, dias: 0, primera: e.ocurrioEn, ultima: e.ocurrioEn, plumas: [], _dias: new Set(), _plumas: new Set() };
+      m.set(e.tarjeta, x);
+    }
+    if (e.concedido) x.aperturas += 1;
+    else x.rechazos += 1;
+    if (e.ocurrioEn < x.primera) x.primera = e.ocurrioEn;
+    if (e.ocurrioEn > x.ultima) x.ultima = e.ocurrioEn;
+    x._dias.add(diaDe(e));
+    x._plumas.add(e.lote);
+  }
+  return [...m.values()]
+    .filter((x) => x.aperturas > 0)
+    .map(({ _dias, _plumas, ...x }) => ({ ...x, dias: _dias.size, plumas: [..._plumas].sort() }))
+    .sort((a, b) => (a.ultima < b.ultima ? 1 : a.ultima > b.ultima ? -1 : 0));
+}
+
+/** Un TAG que se parece al del caso, y por que. */
+export interface TagParecido {
+  tarjeta: string;
+  /** Mismo largo y un solo digito distinto, o dos digitos vecinos cambiados de lugar: un error de captura. */
+  digito: boolean;
+  /** Diferencia numerica (otro − el del caso) si es de `cercania` o menos: TAGs del mismo lote de fabrica. */
+  distancia: number | null;
+  /** Dias en que se leyo a <= 5 s del del caso en el mismo lector: viajan en el mismo coche. */
+  juntos: number;
+}
+
+const unDigito = (a: string, b: string) => {
+  if (a.length !== b.length || a === b) return false;
+  const dif: number[] = [];
+  for (let i = 0; i < a.length && dif.length <= 2; i++) if (a[i] !== b[i]) dif.push(i);
+  if (dif.length === 1) return true;
+  return dif.length === 2 && dif[1] === dif[0] + 1 && a[dif[0]] === b[dif[1]] && a[dif[1]] === b[dif[0]];
+};
+
+/**
+ * Los TAGs conocidos que se parecen al del caso: por el numero (un digito distinto,
+ * o del mismo lote de fabrica) o porque se leen junto a el. Es por donde se empieza a
+ * averiguar de quien es una credencial que nadie conoce: o se capturo mal el numero en
+ * algun padron, o salio de la misma caja que otros, o viaja con un TAG que si tiene dueño.
+ */
+export function tagsParecidos(
+  tarjeta: string,
+  universo: Iterable<string>,
+  eventos: EventoZk[],
+  { max = 8, cercania = 50 }: { max?: number; cercania?: number } = {},
+): TagParecido[] {
+  const out = new Map<string, TagParecido>();
+  const n = /^\d+$/.test(tarjeta) ? Number(tarjeta) : NaN;
+  for (const t of universo) {
+    if (t === tarjeta || !/^\d+$/.test(t)) continue;
+    const digito = unDigito(tarjeta, t);
+    const d = Number.isNaN(n) ? Infinity : Number(t) - n;
+    const distancia = Math.abs(d) <= cercania ? d : null;
+    if (digito || distancia !== null) out.set(t, { tarjeta: t, digito, distancia, juntos: 0 });
+  }
+  for (const a of acompanantes(eventos, tarjeta, 1)) {
+    const ya = out.get(a.tarjeta);
+    if (ya) ya.juntos = a.dias;
+    else out.set(a.tarjeta, { tarjeta: a.tarjeta, digito: false, distancia: null, juntos: a.dias });
+  }
+  return [...out.values()]
+    .sort(
+      (a, b) =>
+        b.juntos - a.juntos ||
+        Number(b.digito) - Number(a.digito) ||
+        Math.abs(a.distancia ?? Infinity) - Math.abs(b.distancia ?? Infinity) ||
+        a.tarjeta.localeCompare(b.tarjeta),
+    )
+    .slice(0, max);
+}

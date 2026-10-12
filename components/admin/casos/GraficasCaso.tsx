@@ -24,6 +24,7 @@ import {
   leidosJuntos,
   llegadaHabitual,
   tagPrincipalDe,
+  tagsParecidos,
   usoPorDia,
   type Lectura,
 } from "@/lib/casosEvidencia";
@@ -331,10 +332,12 @@ interface Props {
   nombreDe: (tarjeta: string) => string | undefined;
   zkDe?: (tarjeta: string) => PersonaZk | undefined;
   expedienteDe?: (tarjeta: string) => ExpedienteTag | undefined;
+  /** Los TAGs que algun padron conoce (SATAG o ZK): de aqui salen los «parecidos» de una credencial sin padron. */
+  conocidos?: string[];
 }
 
 /** La evidencia en graficas segun el tipo del caso. */
-export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe, zkDe, expedienteDe }: Props) {
+export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe, zkDe, expedienteDe, conocidos }: Props) {
   const t = caso.tarjeta ?? "";
   const ev = caso.evidencia ?? {};
   // En las graficas el TAG va COMPLETO: es lo que se busca en ZK (Gerardo, 7-oct).
@@ -344,6 +347,10 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe, zkDe, expe
   );
   const dias = useMemo(() => (ventana.desde && ventana.hasta ? diasHabiles(ventana.desde, ventana.hasta) : []), [ventana.desde, ventana.hasta]);
   const mias = useMemo(() => (t ? lecturasDe(eventos, t) : []), [eventos, t]);
+  const parecidos = useMemo(
+    () => (t && caso.tipo === "sin-padron" ? tagsParecidos(t, new Set([...(conocidos ?? []), ...eventos.map((e) => e.tarjeta)]), eventos) : []),
+    [t, caso.tipo, conocidos, eventos],
+  );
 
   if (!t) return null;
   if (!eventos.length) return <p className="g-vacio">No hay bitácora de ZK cargada: abra «Archivos de ZK» o «Resumen» para leerla.</p>;
@@ -415,6 +422,90 @@ export function EvidenciaGraficas({ caso, eventos, ventana, nombreDe, zkDe, expe
         >
           <CalendarioUso filas={usa ? [{ etiqueta: etiqueta(t), lecturas: mias }, { etiqueta: etiqueta(usa), lecturas: suyas }] : [{ etiqueta: etiqueta(t), lecturas: mias }]} dias={dias} ventana={ventana} />
         </Bloque>
+        </>
+      );
+    }
+    case "sin-padron": {
+      // Gerardo, 12-oct: el caso trae cada lectura con si abrio o no, y los TAGs
+      // parecidos con las suyas. Es lo que hace falta para averiguar de quien es.
+      const abrio = mias.filter((l) => l.ok).length;
+      const quien = (x: string) => {
+        const z = zkDe?.(x);
+        const e = expedienteDe?.(x);
+        if (e) return <>SATAG <span className="mono">{e.folio}</span>{e.anterior ? " (TAG anterior)" : ""}{z?.nombre ? ` · ${z.nombre}` : ""}</>;
+        if (z) return <>ZK: {z.nombre || "sin nombre"} · {z.departamento || "sin departamento"}</>;
+        return <span className="g-falta-dato">tampoco está en ningún padrón</span>;
+      };
+      const porque = (p: (typeof parecidos)[number]) =>
+        [
+          p.juntos ? `se leyó junto ${p.juntos} ${p.juntos === 1 ? "día" : "días"}` : "",
+          p.digito ? "un dígito distinto" : "",
+          p.distancia !== null && !p.digito ? `número cercano (${p.distancia > 0 ? "+" : ""}${p.distancia})` : "",
+        ].filter(Boolean).join(" · ");
+      const primero = parecidos[0];
+      return (
+        <>
+          {cuadro([{ tarjeta: t, papel: "Nadie sabe de quién es" }])}
+          <Bloque
+            titulo={<>La pluma lo leyó <b>{mias.length}</b> {mias.length === 1 ? "vez" : "veces"}: abrió <b>{abrio}</b>, la rechazó <b>{mias.length - abrio}</b></>}
+            sub="Cada lectura de este TAG en la bitácora cargada, sin las repeticiones del lector."
+          >
+            {mias.length > 0 && (
+              <div className="g-tabla">
+                <table>
+                  <thead><tr><th>Día</th><th>Hora</th><th>Pluma</th><th>¿Abrió?</th></tr></thead>
+                  <tbody>
+                    {mias.map((l, i) => (
+                      <tr key={i}>
+                        <td>{diaCorto(l.dia)}</td>
+                        <td className="mono">{hhmm(l.min)}</td>
+                        <td>{l.sentido} {l.lote}</td>
+                        <td>{l.ok ? "Abrió" : <b>La rechazó</b>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Bloque>
+          <Bloque
+            titulo={parecidos.length ? <>{parecidos.length} {parecidos.length === 1 ? "TAG se parece" : "TAGs se parecen"} a este</> : "Ningún TAG conocido se le parece"}
+            sub="Por el número (un dígito distinto: pudo capturarse mal; o cercano: salió de la misma caja) o porque la pluma lo lee a 5 s o menos de este, en el mismo lector."
+          >
+            {parecidos.length > 0 && (
+              <div className="g-tabla">
+                <table>
+                  <thead><tr><th>TAG</th><th>Por qué se parece</th><th>De quién es</th><th>Lecturas</th><th>Último paso</th></tr></thead>
+                  <tbody>
+                    {parecidos.map((p) => {
+                      const l = lecturasDe(eventos, p.tarjeta);
+                      const ok = l.filter((x) => x.ok).length;
+                      const ult = l[l.length - 1];
+                      return (
+                        <tr key={p.tarjeta}>
+                          <td className="mono">{p.tarjeta}</td>
+                          <td>{porque(p)}</td>
+                          <td>{quien(p.tarjeta)}</td>
+                          <td>{l.length ? <>abrió <b>{ok}</b>{l.length - ok ? <> · rechazó <b>{l.length - ok}</b></> : ""}</> : "sin lecturas"}</td>
+                          <td>{ult ? `${diaCorto(ult.dia)} ${hhmm(ult.min)} · ${ult.ok ? "abrió" : "la rechazó"}` : "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Bloque>
+          <Bloque
+            titulo="A qué hora y por dónde"
+            sub={primero && lecturasDe(eventos, primero.tarjeta).length ? `Junto a ${primero.tarjeta}, el más parecido: una línea gris une dos lecturas a 5 s o menos en el mismo lector.` : undefined}
+          >
+            <TiraPasos
+              series={primero && lecturasDe(eventos, primero.tarjeta).length
+                ? [{ etiqueta: etiqueta(t), lecturas: mias }, { etiqueta: etiqueta(primero.tarjeta), lecturas: lecturasDe(eventos, primero.tarjeta) }]
+                : [{ etiqueta: etiqueta(t), lecturas: mias }]}
+            />
+          </Bloque>
         </>
       );
     }

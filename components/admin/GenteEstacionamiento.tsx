@@ -30,7 +30,7 @@ import type { Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import { duracion } from "@/lib/duracion";
 import type { EstanciasRol, Medicion, UsoCredencial } from "@/lib/estacionamiento";
-import { esHuerfana, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
+import { grupoDeExpediente, nombreDepto, SIN_CLASIFICAR, type PersonaZk } from "@/lib/zk/padron";
 import FichaPersona from "@/components/admin/FichaPersona";
 import { HistogramaEstancias } from "@/components/admin/GraficasEstacionamiento";
 import { Segmentado } from "@/components/admin/UiEstacionamiento";
@@ -100,7 +100,6 @@ const nombreLote = (l: string) => `E${l.slice(1)}`;
 interface Gente {
   todos: Map<string, UsoCredencial>;
   porLote: Map<string, Map<string, UsoCredencial>>;
-  huerfanas: UsoCredencial[];
   usoDe: (r: Registro, lote: string) => UsoCredencial | undefined;
   seccionDe: (r: Registro) => string;
   /** Si el expediente es gente de ese estacionamiento: tiene la pluma, o entro por ahi. */
@@ -111,11 +110,10 @@ interface Gente {
 }
 
 /** Lo que las dos vistas saben de cada persona a partir de la medicion y los padrones. */
-function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null, fuentes: Map<string, Fuentes> | null): Gente {
+function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null): Gente {
   const todos = new Map(m.porCredencial.map((u) => [u.tarjeta, u]));
   const porLote = new Map(m.ocupacion.map((o) => [o.lote as string, new Map(o.porCredencial.map((u) => [u.tarjeta, u]))]));
   const normaRota = new Set(m.fueraDeNorma.map((u) => u.tarjeta));
-  const huerfanas = fuentes === null ? [] : m.porCredencial.filter((u) => esHuerfana(fuentes.get(u.tarjeta)));
 
   const usoDe = (r: Registro, lote: string) => {
     if (!r.noDispositivo) return undefined;
@@ -161,7 +159,7 @@ function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null, fue
     }
     return out;
   };
-  return { todos, porLote, huerfanas, usoDe, seccionDe, esDelLote, entradasDe, linea, avisosExtra };
+  return { todos, porLote, usoDe, seccionDe, esDelLote, entradasDe, linea, avisosExtra };
 }
 
 const coincide = (r: Registro, texto: string) =>
@@ -171,32 +169,6 @@ const coincide = (r: Registro, texto: string) =>
     .toLowerCase()
     .includes(texto);
 
-function Huerfanas({ huerfanas }: { huerfanas: UsoCredencial[] }) {
-  if (huerfanas.length === 0) return null;
-  return (
-    <div className="alerta-huerfanas" role="alert">
-      <p className="alerta-huerfanas__t">
-        {huerfanas.length === 1
-          ? "Hay 1 credencial que no está en ningún padrón"
-          : `Hay ${huerfanas.length} credenciales que no están en ningún padrón`}
-      </p>
-      <p className="alerta-huerfanas__p">
-        Ni en SATAG, ni en la hoja de cálculo, ni en ZKBioSecurity. Abrieron la pluma{" "}
-        {huerfanas.reduce((a, u) => a + u.estancias + u.censuradas, 0)} veces y no se sabe de quién son, así que no pueden
-        tener ficha: aquí solo se listan.
-      </p>
-      <ul className="alerta-huerfanas__l">
-        {huerfanas.map((u) => (
-          <li key={u.tarjeta}>
-            <strong>{u.tarjeta}</strong> · {u.estancias + u.censuradas} entradas · {plural(u.dias, "día", "días")} · la más larga{" "}
-            {dur(u.maxMin)} · por el {u.lotes.map((l) => nombreLote(l)).join(" y el ")}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
 interface PropsComunes {
   m: Medicion;
   /** El padron completo de SATAG; se recorta aqui. Vacio mientras carga. */
@@ -205,7 +177,6 @@ interface PropsComunes {
   error: string | null;
   /** El padron de personas de ZK, si esta cargado: da la seccion fina. */
   personas: Map<string, PersonaZk> | null;
-  fuentes: Map<string, Fuentes> | null;
   rol: RolPanel;
   onReintentar: () => void;
 }
@@ -221,7 +192,7 @@ const textoVacio = (cargando: boolean, registros: Registro[], filtrando: boolean
 
 /* ------------------------------------------------------------ Estacionamientos */
 
-export default function GenteEstacionamiento({ m, registros, cargando, error, personas, fuentes, rol, onReintentar }: PropsComunes) {
+export default function GenteEstacionamiento({ m, registros, cargando, error, personas, rol, onReintentar }: PropsComunes) {
   const [lote, setLote] = useState(ultimoLote);
   const [seccion, setSeccion] = useState(ultimaSeccion);
   const [q, setQ] = useState("");
@@ -235,7 +206,7 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
     ultimoOrdenGente = orden;
     ultimoDescGente = desc;
   }, [lote, seccion, orden, desc]);
-  const g = useMemo(() => prepararGente(m, personas, fuentes), [m, personas, fuentes]);
+  const g = useMemo(() => prepararGente(m, personas), [m, personas]);
 
   const delLote = registros.filter((r) => g.esDelLote(r, lote));
   const conteo = new Map<string, number>();
@@ -280,8 +251,6 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
 
   return (
     <>
-      <Huerfanas huerfanas={lote === "ambos" ? g.huerfanas : g.huerfanas.filter((u) => u.lotes.includes(lote as UsoCredencial["lotes"][number]))} />
-
       <p className="titular__migas">
         <span>Estacionamiento</span>
         <span>›</span>
@@ -351,7 +320,6 @@ export function SeccionesEstacionamiento({
   cargando,
   error,
   personas,
-  fuentes,
   rol,
   onReintentar,
 }: PropsComunes & { cupos: Record<string, number | null> }) {
@@ -369,7 +337,7 @@ export function SeccionesEstacionamiento({
     ultimoLoteSeccion = lote;
   }, [abierta, orden, desc, lote]);
   const abrir = (s: string) => setAbierta((v) => (v === s ? null : s));
-  const g = useMemo(() => prepararGente(m, personas, fuentes), [m, personas, fuentes]);
+  const g = useMemo(() => prepararGente(m, personas), [m, personas]);
 
   const porSeccion = m.porDepartamento.length > 0;
   const valorDe = (x: EstanciasRol) =>
@@ -437,8 +405,6 @@ export function SeccionesEstacionamiento({
 
   return (
     <>
-      <Huerfanas huerfanas={g.huerfanas} />
-
       <p className="titular__migas">
         <span>Estacionamiento</span>
         <span>›</span>

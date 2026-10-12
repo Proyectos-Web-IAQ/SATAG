@@ -777,7 +777,6 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
               cargando: cargandoRegistros,
               error: errorRegistros,
               personas,
-              fuentes: datos.fuentes,
               rol,
               onReintentar: cargarRegistros,
             };

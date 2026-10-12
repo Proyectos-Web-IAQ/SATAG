@@ -69,7 +69,7 @@ import {
   type OcupacionLote,
 } from "@/lib/estacionamiento";
 import type { ResumenEventos } from "@/lib/zk/eventos";
-import { esHuerfana, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
+import type { Fuentes, PersonaZk } from "@/lib/zk/padron";
 import { MiniDia, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
 import PlanoPlantel from "@/components/admin/PlanoPlantel";
 import VialidadBeta from "@/components/admin/VialidadBeta";
@@ -173,7 +173,7 @@ export function CoberturaDias({ dias, comparables, excluidos }: { dias: string[]
 }
 
 export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionamiento; vista: VistaPanel }) {
-  const { m, eleccion, resumen, cupos, fuentes } = d;
+  const { m, eleccion, resumen, cupos } = d;
   // Se abre en el estacionamiento MAS LLENO contra su cupo —o contra si mismo, sin
   // cupo—, porque ese es el que trae la noticia. El otro queda a un toque.
   const [lote, setLote] = useState<string>(() => {
@@ -193,18 +193,15 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
 
   const sinCupos = Object.values(cupos).every((c) => c === null);
 
-  // Las credenciales que no estan en ningun padron: lo unico de aqui que hay que
-  // resolver hoy, y por eso va en rojo arriba del Resumen.
-  const huerfanas = fuentes === null ? [] : m.porCredencial.filter((u) => esHuerfana(fuentes.get(u.tarjeta)));
   const oActivo = m.ocupacion.find((o) => o.lote === lote) ?? m.ocupacion[0];
 
   /* ----------------------------------------------------------------- vistas */
 
   return (
     <>
-      {/* Los dos avisos de arriba solo donde importan: el hueco invalida el uso por
-          credencial y las huerfanas son gente, asi que van en el Resumen (las vistas
-          de gente traen los suyos). En el plano y en la calle solo estorbarian. */}
+      {/* El aviso del hueco solo donde importa: invalida el uso por credencial. En el
+          plano y en la calle solo estorbaria. Las credenciales sin padron ya no van
+          aqui: desde el 12-oct son casos (Estacionamiento › Casos), no analitica. */}
       {d.huecoDias !== null && d.huecoDias > 0 && vista !== "plano" && vista !== "vialidad" && (
         <p className="submit-error" role="alert">
           {d.huecoEntre
@@ -214,30 +211,6 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
           {" "}Las cifras de tráfico son válidas, pero el uso por credencial no: una credencial
           que sí pasó en ese hueco aparece aquí como si no se hubiera usado.
         </p>
-      )}
-
-      {huerfanas.length > 0 && vista === "resumen" && (
-        <div className="alerta-huerfanas" role="alert">
-          <p className="alerta-huerfanas__t">
-            {huerfanas.length === 1
-              ? "Hay 1 credencial que no está en ningún padrón"
-              : `Hay ${huerfanas.length} credenciales que no están en ningún padrón`}
-          </p>
-          <p className="alerta-huerfanas__p">
-            Ni en SATAG, ni en la hoja de cálculo, ni en ZKBioSecurity. Abrieron la pluma{" "}
-            {huerfanas.reduce((a, u) => a + u.estancias + u.censuradas, 0)} veces y no se sabe de quién
-            son. Mientras existan, esta pantalla menciona credenciales sin expediente.
-          </p>
-          <ul className="alerta-huerfanas__l">
-            {huerfanas.map((u) => (
-              <li key={u.tarjeta}>
-                <strong>{u.tarjeta}</strong> · {u.estancias + u.censuradas} entradas ·{" "}
-                {u.dias} {u.dias === 1 ? "día" : "días"} · la más larga {dur(u.maxMin)} · vista por última vez
-                el {u.ultimoDia ? diaCorto(u.ultimoDia) : "—"}
-              </li>
-            ))}
-          </ul>
-        </div>
       )}
 
       {/* =============================================== RESUMEN =============== */}
