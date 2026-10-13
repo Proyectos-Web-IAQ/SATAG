@@ -1342,6 +1342,17 @@ export async function listPadronZk(): Promise<PersonaZk[]> {
   return out;
 }
 
+/** El departamento de ZK de unos TAGs (padron guardado, vigente). Para la ficha: un vehiculo del Instituto se dibuja distinto. */
+export async function deptosZkDeTarjetas(tarjetas: string[]): Promise<Map<string, { departamentoId: string; departamento: string }>> {
+  const limpias = [...new Set(tarjetas.map((t) => t.replace(/\D/g, "")).filter(Boolean))];
+  const m = new Map<string, { departamentoId: string; departamento: string }>();
+  if (limpias.length === 0) return m;
+  const { data, error } = await supabaseAuth.from("zk_padron").select("tarjeta, departamento_id, departamento").in("tarjeta", limpias).eq("vigente", true);
+  if (error) throw new Error(traducirError(error.message));
+  for (const r of (data ?? []) as { tarjeta: string; departamento_id: string; departamento: string }[]) m.set(r.tarjeta, { departamentoId: r.departamento_id, departamento: r.departamento });
+  return m;
+}
+
 /** Manda el export entero en una llamada; el RPC escribe solo lo que cambia (rol ti). */
 export interface MetaPadronZk {
   archivo: string;

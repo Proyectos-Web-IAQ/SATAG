@@ -101,6 +101,7 @@ const RUTAS = [
       { texto: "Lecturas por hora", que: "Estacionamiento: Lecturas por hora (9-oct)" },
       { texto: "Desmarcar todos", que: "Casos: marcar de un clic lo que se ve con busqueda o filtro (9-oct)" },
       { texto: "INSTITUCIONALES", que: "Estacionamiento: los vehiculos del Instituto operan al reves (13-oct)" },
+      { texto: "Salidas y regresos", que: "Ficha: un vehiculo del Instituto se dibuja por sus salidas (13-oct)" },
       { texto: "sin-padron:", que: "Casos: la credencial sin padron abre su caso y deja el Resumen (12-oct)" },
     ],
   },

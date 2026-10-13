@@ -20,9 +20,11 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import type { AreaAdmin, Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
-import { asignarAreaAdmin, listPasosDeTarjetas, type PasoZk } from "@/lib/supabase/apiPanel";
+import { asignarAreaAdmin, deptosZkDeTarjetas, listPasosDeTarjetas, type PasoZk } from "@/lib/supabase/apiPanel";
 import { emparejarEstancias, horaCorta, type Estancia } from "@/lib/estacionamiento";
 import type { EventoZk } from "@/lib/zk/eventos";
+import { salidasDelVehiculo, type SalidaVehiculo } from "@/lib/zk/alReves";
+import { GRUPO_INSTITUCIONAL, grupoDeDepto } from "@/lib/zk/padron";
 import { DetalleRegistro } from "@/components/admin/RegistroCard";
 import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { textoVehiculo } from "@/lib/vehiculo";
@@ -148,6 +150,66 @@ export function PasosSemana({ estancias }: { estancias: Estancia[] }) {
   );
 }
 
+/**
+ * Para los vehiculos del Instituto (13-oct): una barra por SALIDA, de que salio a
+ * que volvio. Lo demas del dia estuvo dentro. Misma reja que `PasosSemana`.
+ */
+export function SalidasSemana({ salidas }: { salidas: SalidaVehiculo[] }) {
+  const dias = [...new Set(salidas.map((s) => s.dia))].sort().slice(-7);
+  if (dias.length === 0) return <p className="ficha__vacio">Sin salidas registradas en las ventanas cargadas.</p>;
+  const w = 640, filaH = 30, arriba = 22, izq = 66, der = 26;
+  const alto = arriba + dias.length * filaH + 8;
+  const x = (m: number) => izq + ((Math.min(HASTA, Math.max(DESDE, m)) - DESDE) / (HASTA - DESDE)) * (w - izq - der);
+  const horas: number[] = [];
+  for (let m = DESDE; m <= HASTA; m += 120) horas.push(m);
+  const rotulo = (s: SalidaVehiculo) =>
+    `${s.salio ? `salió ${horaCorta(s.salio.minuto)} por ${s.salio.lote}` : "salida no leída"} · ${s.volvio ? `volvió ${horaCorta(s.volvio.minuto)} por ${s.volvio.lote}` : "regreso no leído"}`;
+  const texto = dias.map((d) => `${diaLegible(d)}: ${salidas.filter((s) => s.dia === d).map(rotulo).join("; ")}`).join(". ");
+  return (
+    <div className="pasos">
+      <div className="viz-scroll">
+        <svg viewBox={`0 0 ${w} ${alto}`} role="img" aria-label={`Salidas del vehículo por día. ${texto}.`}>
+          {horas.map((m) => (
+            <g key={m}>
+              <line className="viz-reja" x1={x(m)} x2={x(m)} y1={arriba - 6} y2={alto - 6} />
+              <text className="viz-marca" x={x(m)} y={12} textAnchor="middle">{horaCorta(m)}</text>
+            </g>
+          ))}
+          {dias.map((d, i) => {
+            const y = arriba + i * filaH;
+            const del = salidas.filter((s) => s.dia === d);
+            return (
+              <g key={d}>
+                <text className="viz-fila" x={0} y={y + 14}>{diaLegible(d)}</text>
+                {del.map((s, j) => {
+                  const x1 = x(s.salio?.minuto ?? DESDE), x2 = Math.max(x(s.volvio?.minuto ?? HASTA), x1 + 3);
+                  const lote = s.salio?.lote ?? s.volvio?.lote;
+                  const sig = del[j + 1];
+                  const cabe = x2 + 70 < (sig ? x(sig.salio?.minuto ?? DESDE) : w - der + 70) && x2 + 66 < w;
+                  return (
+                    <g key={j}>
+                      <rect className={`pasos__barra${lote === "E1" ? " pasos__barra--e1" : ""}${!s.salio || !s.volvio ? " pasos__barra--abierta" : ""}`}
+                        x={x1.toFixed(1)} y={y + 4} width={(x2 - x1).toFixed(1)} height={12} rx={2}>
+                        <title>{rotulo(s)}</title>
+                      </rect>
+                      {cabe && (
+                        <text className="viz-marca" x={x2 + 5} y={y + 14}>
+                          {s.salio ? horaCorta(s.salio.minuto) : "?"}–{s.volvio ? horaCorta(s.volvio.minuto) : "?"}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+      <p className="pasos__nota">Vehículo del Instituto: duerme dentro, sale y regresa. Cada barra es una salida, de que salió a que volvió; lo demás del día estuvo dentro. Azul: salió por E2. Verde: por E1. La punteada tiene un extremo sin leer («?»).</p>
+    </div>
+  );
+}
+
 /* ------------------------------------------------------------------ la ficha */
 
 function Ficha({ r, rol, familia, onIr, extras = [] }: {
@@ -158,7 +220,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
   /** Avisos que trae quien usa la ficha y que el expediente solo no sabe: los de la bitacora y los de ZK. */
   extras?: string[];
 }) {
-  const [pasos, setPasos] = useState<{ para: string; estancias: Estancia[]; error: string | null; cargando: boolean }>({
+  const [pasos, setPasos] = useState<{ para: string; estancias: Estancia[]; error: string | null; cargando: boolean; salidas?: SalidaVehiculo[] }>({
     para: "", estancias: [], error: null, cargando: false,
   });
   const tags = useMemo(() => tagsDe(r), [r]);
@@ -176,8 +238,13 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
     }
     let vivo = true;
     setPasos({ para: r.id, estancias: [], error: null, cargando: true });
-    listPasosDeTarjetas(numeros)
-      .then((p) => {
+    // 13-oct: si ZK lo tiene en INSTITUCIONALES, se dibujan sus salidas y no sus estancias.
+    Promise.all([listPasosDeTarjetas(numeros), deptosZkDeTarjetas(numeros).catch(() => new Map<string, { departamentoId: string; departamento: string }>())])
+      .then(([p, deptos]) => {
+        const alReves = numeros.some((t) => {
+          const d = deptos.get(t);
+          return d !== undefined && grupoDeDepto(d.departamentoId, d.departamento) === GRUPO_INSTITUCIONAL;
+        });
         if (!vivo) return;
         const eventos: EventoZk[] = p.map((e: PasoZk) => ({
           idEvento: e.idEvento,
@@ -190,7 +257,13 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
           departamentoEvento: "",
           repeticion: false,
         }));
-        setPasos({ para: r.id, estancias: emparejarEstancias(eventos).estancias, error: null, cargando: false });
+        setPasos({
+          para: r.id,
+          estancias: emparejarEstancias(eventos, undefined, null, null, () => alReves).estancias,
+          error: null,
+          cargando: false,
+          salidas: alReves ? salidasDelVehiculo(eventos) : undefined,
+        });
       })
       .catch((err: unknown) => {
         if (!vivo) return;
@@ -220,7 +293,8 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
   if (r.estado === "baja" && visitas > 0) avisos.push("Está dado de baja y su TAG sigue abriendo la pluma.");
   for (const a of extras) if (!avisos.includes(a)) avisos.push(a);
 
-  const rolTexto = TIPO_PERSONA[r.tipoUsuario];
+  const salidas = pasos.para === r.id ? pasos.salidas : undefined;
+  const rolTexto = salidas ? `Vehículo del Instituto · en SATAG: ${TIPO_PERSONA[r.tipoUsuario]}` : TIPO_PERSONA[r.tipoUsuario];
   const seccion = r.seccionMaestro ?? (r.apellidosFamilia ? `familia ${r.apellidosFamilia}` : null);
 
   return (
@@ -234,7 +308,11 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
         <span>TAG {r.estado === "baja" ? "" : "vigente "}<b><code>{r.noDispositivo ?? "sin TAG"}</code></b></span>
         <span>{ROTULO.plumas} <b>{textoPlumas(r.estacionamientos)}</b></span>
         {puedeVerPasos && pasos.para === r.id && !pasos.cargando && pasos.error === null && (
-          <span>Últimos días <b>{visitas} {visitas === 1 ? "visita" : "visitas"}</b>{diasConPaso > 0 ? ` en ${diasConPaso} ${diasConPaso === 1 ? "día" : "días"}` : ""}</span>
+          salidas ? (
+            <span>Últimos días <b>{salidas.length} {salidas.length === 1 ? "salida" : "salidas"}</b>{diasConPaso > 0 ? ` en ${diasConPaso} ${diasConPaso === 1 ? "día" : "días"}` : ""}</span>
+          ) : (
+            <span>Últimos días <b>{visitas} {visitas === 1 ? "visita" : "visitas"}</b>{diasConPaso > 0 ? ` en ${diasConPaso} ${diasConPaso === 1 ? "día" : "días"}` : ""}</span>
+          )
         )}
         <span>Folio <b><code>{r.folio}</code></b></span>
       </div>
@@ -255,7 +333,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
           )}
 
           <section className="ficha__bloque">
-            <h3>Entradas y salidas</h3>
+            <h3>{salidas ? "Salidas y regresos" : "Entradas y salidas"}</h3>
             {!puedeVerPasos ? (
               <p className="ficha__vacio">Los pasos por la pluma los ve el personal que opera el padrón.</p>
             ) : pasos.cargando || pasos.para !== r.id ? (
@@ -264,6 +342,8 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
               <p className="submit-error" role="alert">{pasos.error}</p>
             ) : tags.length === 0 ? (
               <p className="ficha__vacio">Sin TAG, no hay pasos que buscar.</p>
+            ) : salidas ? (
+              <SalidasSemana salidas={salidas} />
             ) : (
               <PasosSemana estancias={estancias} />
             )}
