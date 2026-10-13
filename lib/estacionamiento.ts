@@ -45,6 +45,7 @@
 // nadie se solape. Esa es la pregunta de Direccion.
 import { mediana } from "@/lib/duracion";
 import { MIN_ESTANCIA_CORTA, MIN_ESTANCIA_LARGA, type EventoZk, type Lote } from "@/lib/zk/eventos";
+import { GRUPO_INSTITUCIONAL } from "@/lib/zk/padron";
 
 /** Cada cuantos minutos se muestrea la curva que se DIBUJA. El pico no sale de aqui. */
 export const PASO_FRANJA = 15;
@@ -557,6 +558,10 @@ export function emparejarEstancias(
   minutoCierre: number = MINUTO_CIERRE_POR_DEFECTO,
   corte: Corte | null = null,
   inicio: Corte | null = null,
+  // 13-oct: los vehiculos del Instituto salen y luego entran. Sus estancias se
+  // arman igual (la ocupacion sale bien: dentro hasta que salen, dentro desde que
+  // vuelven), pero sus extremos sin leer NO se cuentan como defectos del archivo.
+  alReves: (tarjeta: string) => boolean = () => false,
 ): {
   estancias: Estancia[];
   entradasSinSalida: number;
@@ -589,7 +594,7 @@ export function emparejarEstancias(
       aunDentro += 1;
       return { ...base, dur: Math.max(0, corte.minuto - minuto(e)), censura: "corte" };
     }
-    entradasSinSalida += 1;
+    if (!alReves(e.tarjeta)) entradasSinSalida += 1;
     return { ...base, dur: Math.max(0, minutoCierre - minuto(e)), censura: "derecha" };
   };
 
@@ -637,6 +642,7 @@ export function emparejarEstancias(
         // el coche entro antes de que el archivo empezara a contar. Es la misma
         // censura que el «corte», pero por la izquierda, y se cuenta aparte (el 14-sep
         // eran 134 de los 755 huerfanos).
+        if (alReves(e.tarjeta)) continue;
         if (inicio !== null && dia(e) === inicio.dia) antesDelArchivo += 1;
         else salidasSinEntrada += 1;
       }
@@ -1097,6 +1103,7 @@ export function medirEstacionamiento(eventos: EventoZk[], rolDe: RolDe, op: Opci
     minutoCierre,
     corte,
     op.inicio ?? null,
+    (t) => rolDe(t) === GRUPO_INSTITUCIONAL,
   );
   const { comparables, excluidos } = clasificarDias(ok, dias, corte);
 

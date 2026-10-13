@@ -36,3 +36,12 @@ describe("el ID de ZK en el padron (bloque 93)", () => {
     expect(parsearPadronZk(texto).personas[0]).toMatchObject({ idZk: "600123", tarjeta: "12345678", departamentoId: "10" });
   });
 });
+
+describe("INSTITUCIONALES: los vehiculos del Instituto (13-oct)", () => {
+  it("es un grupo propio, por nombre y por numero", async () => {
+    const { grupoDeDepto, GRUPO_INSTITUCIONAL } = await import("@/lib/zk/padron");
+    expect(grupoDeDepto("26", "INSTITUCIONALES")).toBe(GRUPO_INSTITUCIONAL);
+    expect(grupoDeDepto("", "Vehículos institucionales")).toBe(GRUPO_INSTITUCIONAL);
+    expect(grupoDeDepto("26")).toBe(GRUPO_INSTITUCIONAL);
+  });
+});

@@ -95,6 +95,13 @@ export const GRUPO_ADMON = "Admon";
  * el otro solo para recoger a sus hijos. SATAG todavia no lo exporta: solo lo agrupa.
  */
 export const GRUPO_EMPLEADO_PPF = "Personal que es padre de familia";
+/**
+ * INSTITUCIONALES (ZK 26, 13-oct-2026): los vehiculos del propio Instituto (las dos
+ * Frontier). Abren las dos plumas y operan AL REVES que todos: duermen dentro, salen
+ * a una diligencia y regresan. Su salida sin entrada y su entrada sin salida no son
+ * fallas del lector: no cuentan como incompletas ni abren casos de lector.
+ */
+export const GRUPO_INSTITUCIONAL = "Vehículos del Instituto";
 
 export const GRUPO_POR_NOMBRE_DEPTO: Record<string, string> = {
   "PADRES DE FAMILIA": "Padres de familia",
@@ -110,6 +117,8 @@ export const GRUPO_POR_NOMBRE_DEPTO: Record<string, string> = {
   ADMON: GRUPO_ADMON,
   EMPLEADO_PPF: GRUPO_EMPLEADO_PPF,
   "EMPLEADO PPF": GRUPO_EMPLEADO_PPF,
+  INSTITUCIONALES: GRUPO_INSTITUCIONAL,
+  "VEHICULOS INSTITUCIONALES": GRUPO_INSTITUCIONAL,
   MANTENIMIENTO: "Administración y servicios",
   ALUMNOS: "Alumnos",
   "EX ALUMNOS": "Alumnos",
@@ -120,6 +129,7 @@ export const GRUPO_POR_DEPTO: Record<string, string> = {
   "16": "Administración y servicios",
   "17": GRUPO_ADMON,
   "25": GRUPO_EMPLEADO_PPF,
+  "26": GRUPO_INSTITUCIONAL,
   "20": "Alumnos",
   "21": "Alumnos",
   // Sin cambio.

@@ -13,7 +13,7 @@
 // Es una funcion pura: recibe la bitacora, los expedientes y el padron de ZK, y no
 // sabe de React ni de Supabase. Asi se prueba con datos del tamaño de una prueba.
 import type { EventoZk } from "@/lib/zk/eventos";
-import { grupoDeDepto, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR } from "@/lib/zk/padron";
+import { GRUPO_INSTITUCIONAL, grupoDeDepto, grupoDeExpediente, nombreDepto, SIN_CLASIFICAR } from "@/lib/zk/padron";
 
 export type TipoCaso =
   | "rechazo-diario"
@@ -307,7 +307,8 @@ export function detectarCasos(
       const deSatag = x.tipoUsuario ? grupoDeExpediente(x.tipoUsuario, x.areaAdmin) : undefined;
       if (!p || !deSatag) continue;
       const deZk = grupoDeDepto("", p.departamento);
-      if (deZk === SIN_CLASIFICAR || deZk === deSatag) continue;
+      // Un vehiculo del Instituto (13-oct) no tiene el tipo de una persona: no es caso.
+      if (deZk === SIN_CLASIFICAR || deZk === deSatag || deZk === GRUPO_INSTITUCIONAL) continue;
       const u = aperturas.get(x.noDispositivo);
       casos.push({
         clave: `tipo-distinto:${x.noDispositivo}`,

@@ -36,7 +36,17 @@ const minDe = (s) => Number(s.slice(11, 13)) * 60 + Number(s.slice(14, 16)) + Nu
 const loteDe = (p) => (/1\s*$/.test(p) ? "E1" : /2\s*$/.test(p) ? "E2" : null);
 const sentidoDe = (p) => (/entrada/i.test(p) ? "entrada" : /salida/i.test(p) ? "salida" : null);
 
-const crudos = abrir(dir).zkEventos();
+const fuentes = abrir(dir);
+const crudos = fuentes.zkEventos();
+// 13-oct: los vehiculos del Instituto (ZK «INSTITUCIONALES») salen y luego entran:
+// sus estancias «incompletas» son su forma normal de operar, no el lector.
+let alReves = new Set();
+try {
+  const sinAcentos = (s) => String(s ?? "").normalize("NFD").replace(/\p{M}/gu, "").trim();
+  alReves = new Set(fuentes.zkPersonas().filter((p) => /^(VEHICULOS )?INSTITUCIONALES$/i.test(sinAcentos(p.depto))).map((p) => p.tarjeta));
+} catch {
+  console.log("Sin export de Usuarios en la carpeta: no se apartan los vehiculos del Instituto.");
+}
 const dias = [...new Set(crudos.map((e) => diaDe(e.tiempo)).filter(Boolean))].sort();
 // El primer y el ultimo dia los corta el archivo; los atipicos los dice quien corre esto.
 const excluir = new Set([dias[0], dias[dias.length - 1], ...(arg("--excluir")?.split(",") ?? [])]);
@@ -65,7 +75,7 @@ for (const g of porTarjeta.values()) {
     if (!e.rep) u = e;
   }
 }
-const accesos = ev.filter((e) => e.concedido && !e.rep && e.sentido && e.lote && !excluir.has(e.dia));
+const accesos = ev.filter((e) => e.concedido && !e.rep && e.sentido && e.lote && !excluir.has(e.dia) && !alReves.has(e.tarjeta));
 
 // Emparejar por tarjeta + dia + lote.
 const grupos = new Map();

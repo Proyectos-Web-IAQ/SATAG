@@ -387,3 +387,33 @@ describe("lecturaOcupacion · el globo y el rotulo dicen lo mismo", () => {
     expect(rangoPico({ dentro: 80, hasta: 80, minuto: 600, dia: "2026-09-24" })).toBe("80");
   });
 });
+
+describe("vehiculos del Instituto: salen y luego entran (13-oct)", () => {
+  // Una Frontier: duerme dentro, sale a las 9 y vuelve a las 11; otra vez a las 13 y a las 15.
+  const frontier = (tarjeta: string) => [
+    paso({ tarjeta, hora: "09:00:00", sentido: "salida" }),
+    paso({ tarjeta, hora: "11:00:00" }),
+    paso({ tarjeta, hora: "13:00:00", sentido: "salida" }),
+    paso({ tarjeta, hora: "15:00:00" }),
+  ];
+  const esFrontier = (t: string) => t === "12463425";
+
+  it("sus extremos sin leer no se cuentan como defectos, pero sus estancias siguen para la ocupacion", () => {
+    const r = emparejarEstancias(frontier("12463425"), MINUTO_CIERRE_POR_DEFECTO, null, null, esFrontier);
+    expect(r.salidasSinEntrada).toBe(0);
+    expect(r.entradasSinSalida).toBe(0);
+    // Dentro antes de las 9, de 11 a 13 y desde las 15: tres estancias, como antes.
+    expect(r.estancias.map((s) => s.censura)).toEqual(["izquierda", null, "derecha"]);
+  });
+  it("sin la marca, el mismo vehiculo cuenta como dos defectos, y otro TAG no cambia", () => {
+    expect(emparejarEstancias(frontier("12463425")).salidasSinEntrada).toBe(1);
+    const otro = emparejarEstancias(frontier("11797300"), MINUTO_CIERRE_POR_DEFECTO, null, null, esFrontier);
+    expect(otro.salidasSinEntrada + otro.entradasSinSalida).toBe(2);
+  });
+  it("medirEstacionamiento lo aparta por el grupo de ZK «Vehículos del Instituto»", () => {
+    const rolDe = (t: string) => (esFrontier(t) ? "Vehículos del Instituto" : "Padres de familia");
+    const m = medirEstacionamiento([...frontier("12463425"), ...frontier("11797300")], rolDe);
+    expect(m.salidasSinEntrada).toBe(1);
+    expect(m.entradasSinSalida).toBe(1);
+  });
+});

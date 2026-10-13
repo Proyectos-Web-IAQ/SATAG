@@ -57,7 +57,7 @@ import {
 import { corteDe, inicioDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
 import { GLOSARIO } from "@/lib/glosario";
 import { exportadoEnDe, huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
-import { grupoDeExpediente, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
+import { grupoDeExpediente, GRUPO_INSTITUCIONAL, SIN_CLASIFICAR, grupoDeDepto, indexarPadron, leerPadronZk, type Fuentes, type PersonaZk } from "@/lib/zk/padron";
 import type { RolPanel } from "@/lib/supabase/auth";
 import { fecha, fechaHora as fechaHoraFmt } from "@/lib/formato";
 import { huella } from "@/lib/huella";
@@ -493,6 +493,10 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
   // traduce 'padres' y 'maestro', no '4' ni '15': el respaldo nunca llego a
   // funcionar. Lo corrige grupoDeDepto, que es el mapa del catalogo de ZK.
   const rolDe = (tarjeta: string) => {
+    // 13-oct: un vehiculo del Instituto no es de una persona aunque tenga expediente.
+    // Lo dice su departamento en ZK (INSTITUCIONALES), y ahi manda ZK.
+    const zk = personas?.get(tarjeta);
+    if (zk && grupoDeDepto(zk.departamentoId, zk.departamento) === GRUPO_INSTITUCIONAL) return GRUPO_INSTITUCIONAL;
     const r = expedienteDe(tarjeta);
     const deSatag = r ? grupoDeExpediente(r.tipoUsuario, r.areaAdmin) : undefined;
     if (deSatag) return deSatag;
