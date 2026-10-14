@@ -16,9 +16,15 @@ import VistaMovimientosZk from "@/components/admin/VistaMovimientosZk";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
 import FichaPersona from "@/components/admin/FichaPersona";
 import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
+import VistaCaseta from "@/components/admin/VistaCaseta";
+import AperturasCaseta from "@/components/admin/AperturasCaseta";
 import { ESTADO_EXPEDIENTE, ROTULO } from "@/lib/glosario";
 
-type Vista = "admin" | "ti" | "finanzas" | "consulta";
+type Vista = "admin" | "ti" | "finanzas" | "consulta" | "caseta";
+
+// Las vistas de Consulta que pinta VistaEstacionamiento. Lista BLANCA: una clave
+// que no este aqui no cae al estacionamiento por descarte (14-oct, rol portero).
+const VISTAS_ESTAC: VistaEstac[] = ["resumen", "lotes", "secciones", "casos", "lecturas", "plano", "vialidad", "archivos"];
 
 // Las pestañas son las de TRABAJO (Administración cobra, TI instala, Finanzas
 // corta) más UNA de consulta. Desde el 2-oct Consulta reúne lo que antes eran
@@ -36,14 +42,18 @@ const TABS_POR_ROL: Record<RolPanel, Vista[]> = {
   // TI entra por su pestaña de trabajo; en Consulta ve el Estacionamiento y el
   // Tablero (29-sep: son quienes instalan y quienes salen medidos ahí) y, desde el
   // 2-oct, la ficha de cada persona con sus pasos por la pluma.
-  ti: ["ti", "consulta"],
+  ti: ["ti", "consulta", "caseta"],
   consulta: ["consulta"],
   // L2-02: el contador entra por el dinero. Finanzas primero, porque es su
   // trabajo —es el unico que cierra el corte desde el bloque 74— y Consulta
   // porque un corte se concilia contra expedientes: sin el padron, un cobro es
   // un monto sin dueno. NO lleva la pestana de Administracion: no cobra.
   contador: ["finanzas", "consulta"],
-  super: ["admin", "ti", "finanzas", "consulta"],
+  super: ["admin", "ti", "finanzas", "consulta", "caseta"],
+  // Bloque 97 (Gerardo, 14-oct): el portero solo ve la caseta. TI la ve tambien,
+  // para saber que le aparece al portero; probarla con ti o super NO prueba los
+  // permisos del portero, que entra sin MFA y con otra guardia.
+  portero: ["caseta"],
 };
 
 const ETIQUETA_VISTA: Record<Vista, string> = {
@@ -51,6 +61,7 @@ const ETIQUETA_VISTA: Record<Vista, string> = {
   ti: "TI",
   finanzas: "Finanzas",
   consulta: "Consulta",
+  caseta: "Caseta",
 };
 
 /**
@@ -71,7 +82,7 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         ...(mide ? [{ clave: "tablero", titulo: "Tablero de instalación" }] : []),
         // Administracion abre y sigue casos (bloque 89, Gerardo 6-oct) pero no lee la
         // bitacora de ZK: ve Casos aqui, sin los detectados, y no el grupo Estacionamiento.
-        ...(rol === "admin" ? [{ clave: "casos", titulo: "Casos" }] : []),
+        ...(rol === "admin" ? [{ clave: "casos", titulo: "Casos" }, { clave: "aperturas", titulo: "Aperturas con botón" }] : []),
       ],
     },
   ];
@@ -83,6 +94,8 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         { clave: "lotes", titulo: "Estacionamientos" },
         { clave: "secciones", titulo: "Secciones" },
         { clave: "casos", titulo: "Casos" },
+        // Bloque 97: lo que la caseta abrio con el boton, por vehiculo.
+        { clave: "aperturas", titulo: "Aperturas con botón" },
         // 9-oct: que TAG leyo cada pluma a cierta hora, para encontrar casos.
         { clave: "lecturas", titulo: "Lecturas por hora" },
         { clave: "plano", titulo: "Plano del plantel" },
@@ -113,6 +126,7 @@ const ETIQUETA_ROL: Record<RolPanel, string> = {
   consulta: "Consulta",
   contador: "Contabilidad",
   super: "Super",
+  portero: "Caseta",
 };
 
 export default function AdminPanel({ adminEmail, rol, onSignOut }: {
@@ -130,6 +144,28 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
     // este efecto corriera en cada render sin aportar una validación distinta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rol, vista]);
+
+  // La caseta es una Chromebook compartida por turnos (Gerardo, 14-oct): la sesion
+  // no se cierra sola, asi que quien esta en turno se ve siempre arriba y salir se
+  // llama «Cambiar de turno».
+  if (rol === "portero") {
+    return (
+      <main className="admin-shell admin-shell--caseta">
+        <div className="admin-panel">
+          <div className="admin-header">
+            <div>
+              <h1>Caseta del estacionamiento</h1>
+              <div className="admin-sub">Sesión de: <b>{nombreSesion}</b></div>
+            </div>
+            <div className="admin-header-actions">
+              <button type="button" className="ghost-action" onClick={onSignOut}>Cambiar de turno</button>
+            </div>
+          </div>
+          <VistaCaseta nombreSesion={nombreSesion} />
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="admin-shell">
@@ -162,6 +198,7 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
         {vista === "ti" && <VistaTi nombreSesion={nombreSesion} rol={rol} />}
         {vista === "finanzas" && <VistaFinanzas nombreSesion={nombreSesion} />}
         {vista === "consulta" && <Consulta rol={rol} email={adminEmail} />}
+        {vista === "caseta" && <VistaCaseta nombreSesion={nombreSesion} />}
       </div>
     </main>
   );
@@ -194,7 +231,9 @@ function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
     : vista === "ges" ? <VistaGes email={email} />
     : vista === "movimientos" ? <VistaMovimientosZk email={email} onIr={elegir} />
     : vista === "casos" && rol === "admin" ? <TableroCasos rol={rol} email={email} eventos={null} ventana={{ desde: null, hasta: null }} personas={null} />
-    : <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />;
+    : vista === "aperturas" ? <AperturasCaseta rol={rol} email={email} />
+    : (VISTAS_ESTAC as string[]).includes(vista) ? <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />
+    : null;
   if (claves.length === 1) return contenido;
   return (
     <div className="consulta">

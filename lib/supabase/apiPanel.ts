@@ -11,6 +11,7 @@
 import { supabaseAuth } from "./auth";
 import type { CasoGuardado, EstadoCasoGuardado, FamiliaCaso, MotivoEspera, NotaCaso, OrigenCaso, TipoCasoCatalogo } from "@/lib/casosRegistro";
 import { urlFirmada } from "@/lib/firma";
+import type { ClaseReporte, InicioCaseta, Lote, Puerta, ReporteCaseta, ResultadoCaseta, Veredicto } from "@/lib/caseta";
 import type {
   CambiosRegistro,
   CorteCaja,
@@ -1977,18 +1978,27 @@ export interface MovimientoCaso {
 
 /** Mueve uno o varios casos a otro paso. Cada uno guarda su linea de historial. */
 export async function moverCasos(ids: string[], m: MovimientoCaso, hechoPor: string | null): Promise<number> {
-  const { data, error } = await supabaseAuth.rpc("mover_casos", {
-    p_casos: ids,
-    p_estado: m.estado,
-    p_nota: m.nota ?? "",
-    p_motivo: m.motivo ?? null,
-    p_espera_motivo: m.espera?.motivo ?? null,
-    p_espera_hasta: m.espera?.hasta ?? null,
-    p_espera_texto: m.espera?.texto ?? m.pregunta ?? null,
-    p_hecho_por: hechoPor,
-  });
-  if (error) throw new Error(traducirError(error.message));
-  return Number((data as { movidos?: number } | null)?.movidos ?? 0);
+  // mover_casos acepta hasta 500 por llamada: un bloque grande (14-oct, cerrar por
+  // tipo) va en tandas. Si una tanda falla, las anteriores ya quedaron movidas.
+  let movidos = 0;
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data, error } = await supabaseAuth.rpc("mover_casos", {
+      p_casos: ids.slice(i, i + 500),
+      p_estado: m.estado,
+      p_nota: m.nota ?? "",
+      p_motivo: m.motivo ?? null,
+      p_espera_motivo: m.espera?.motivo ?? null,
+      p_espera_hasta: m.espera?.hasta ?? null,
+      p_espera_texto: m.espera?.texto ?? m.pregunta ?? null,
+      p_hecho_por: hechoPor,
+    });
+    if (error) {
+      const msg = traducirError(error.message);
+      throw new Error(movidos ? `${msg} (Ya se habían movido ${movidos}.)` : msg);
+    }
+    movidos += Number((data as { movidos?: number } | null)?.movidos ?? 0);
+  }
+  return movidos;
 }
 
 /** Urgente, atorado o tipo. Lo que llega en `undefined` no se toca. */
@@ -2090,4 +2100,111 @@ export async function idsEventosGuardados(desdeId: number, hastaId: number): Pro
     for (const r of filas) ids.add(Number(r.id_evento));
   }
   return ids;
+}
+
+/* ------------------------------------------------------------------ la caseta (bloque 97) */
+
+/**
+ * Busca un vehiculo desde la caseta: placa, modelo, nombre o TAG. La busqueda la
+ * hace la base y devuelve como mucho 8, cada uno con su veredicto en esa puerta.
+ * Portero (sin MFA), ti y super; la guardia esta en la base.
+ */
+export async function casetaBuscar(texto: string, lotes: Lote[]): Promise<ResultadoCaseta[]> {
+  const { data, error } = await supabaseAuth.rpc("caseta_buscar", { p_texto: texto, p_lotes: lotes });
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as ResultadoCaseta[]).map((r) => ({ ...r, plumas: r.plumas ?? [], evaluaciones: r.evaluaciones ?? {}, pasos: r.pasos ?? [] }));
+}
+
+/** Los cambios de Sistemas, el seguimiento de los reportes (los propios o, con `todos`, los de la caseta) y la fecha del padron de ZK. */
+export async function casetaInicio(todos = false): Promise<InicioCaseta> {
+  const { data, error } = await supabaseAuth.rpc("caseta_inicio", { p_todos: todos });
+  if (error) throw new Error(traducirError(error.message));
+  const d = (data ?? {}) as Partial<InicioCaseta>;
+  return {
+    cambios: (d.cambios ?? []).map((a) => ({ ...a, lotes: a.lotes ?? [] })),
+    reportes: d.reportes ?? [],
+    eventosHasta: d.eventosHasta ?? null,
+    padronZkAl: d.padronZkAl ?? null,
+    puertasZkAl: d.puertasZkAl ?? null,
+  };
+}
+
+/**
+ * Una apertura con el boton o un reporte para Sistemas. Quien reporta lo toma la
+ * base del JWT: no viaja en la llamada.
+ */
+export async function casetaReportar(r: {
+  clase: ClaseReporte;
+  puerta: Puerta;
+  motivo: string;
+  registroId?: string | null;
+  tarjeta?: string | null;
+  placa?: string | null;
+  vehiculo?: string | null;
+  nota?: string | null;
+}): Promise<{ id: string; caso: number | null; casoNuevo: boolean; veredicto: Veredicto | null }> {
+  const { data, error } = await supabaseAuth.rpc("caseta_reportar", {
+    p_clase: r.clase,
+    p_puerta: r.puerta,
+    p_motivo: r.motivo,
+    p_registro_id: r.registroId ?? null,
+    p_tarjeta: r.tarjeta ?? null,
+    p_placa: r.placa ?? null,
+    p_vehiculo: r.vehiculo ?? null,
+    p_nota: r.nota ?? null,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  const d = (data ?? {}) as { id?: string; caso?: number | null; casoNuevo?: boolean; veredicto?: Veredicto | null };
+  return { id: d.id ?? "", caso: d.caso ?? null, casoNuevo: d.casoNuevo === true, veredicto: d.veredicto ?? null };
+}
+
+/** Liga a un expediente una apertura que el portero no identifico. Solo ti. */
+export async function ligarReporteCaseta(reporte: string, registroId: string, hechoPor: string | null): Promise<number | null> {
+  const { data, error } = await supabaseAuth.rpc("ligar_reporte_caseta", {
+    p_reporte: reporte,
+    p_registro_id: registroId,
+    p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  return (data as { caso?: number | null } | null)?.caso ?? null;
+}
+
+const SELECT_REPORTE_CASETA =
+  "id, clase, puerta, motivo, registro_id, tarjeta, placa_norm, vehiculo_texto, nota, veredicto, hecho_por, hecho_en, ligado_por, ligado_en, " +
+  "registros(usuario_nombre_completo, placas, marca, modelo, color), casos(numero)";
+
+interface ReporteCasetaRow {
+  id: string; clase: ClaseReporte; puerta: string; motivo: string; registro_id: string | null; tarjeta: string | null;
+  placa_norm: string | null; vehiculo_texto: string | null; nota: string | null; veredicto: Veredicto | null;
+  hecho_por: string; hecho_en: string; ligado_por: string | null; ligado_en: string | null;
+  registros: { usuario_nombre_completo: string | null; placas: string | null; marca: string | null; modelo: string | null; color: string | null } | null;
+  casos: { numero: number } | null;
+}
+
+/**
+ * La bitacora de la caseta (aperturas con el boton y reportes) de los ultimos
+ * `dias`, o la de una persona por su expediente y sus TAGs. Leen ti, contador,
+ * admin y super (RLS del 97).
+ */
+export async function listReportesCaseta(filtro: { dias?: number; registroId?: string; tarjetas?: string[] } = {}): Promise<ReporteCaseta[]> {
+  let q = supabaseAuth.from("caseta_reportes").select(SELECT_REPORTE_CASETA).order("hecho_en", { ascending: false }).limit(5000);
+  if (filtro.dias) q = q.gte("hecho_en", new Date(Date.now() - filtro.dias * 86400000).toISOString());
+  if (filtro.registroId !== undefined || filtro.tarjetas !== undefined) {
+    const partes: string[] = [];
+    if (filtro.registroId) partes.push(`registro_id.eq.${filtro.registroId}`);
+    // Los TAGs son solo digitos: nada que escapar en el filtro.
+    const tags = (filtro.tarjetas ?? []).filter((t) => /^[0-9]{4,12}$/.test(t));
+    if (tags.length) partes.push(`tarjeta.in.(${tags.join(",")})`);
+    if (!partes.length) return [];
+    q = q.or(partes.join(","));
+  }
+  const { data, error } = await q;
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as unknown as ReporteCasetaRow[]).map((r) => ({
+    id: r.id, clase: r.clase, puerta: r.puerta, motivo: r.motivo, registroId: r.registro_id, tarjeta: r.tarjeta,
+    placaNorm: r.placa_norm, vehiculoTexto: r.vehiculo_texto, nota: r.nota ?? "", veredicto: r.veredicto,
+    casoNumero: r.casos?.numero ?? null, hechoPor: r.hecho_por, hechoEn: r.hecho_en, ligadoPor: r.ligado_por, ligadoEn: r.ligado_en,
+    nombre: r.registros?.usuario_nombre_completo ?? null, placas: r.registros?.placas ?? null,
+    marca: r.registros?.marca ?? null, modelo: r.registros?.modelo ?? null, color: r.registros?.color ?? null,
+  }));
 }

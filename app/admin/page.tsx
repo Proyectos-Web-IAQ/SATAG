@@ -198,7 +198,11 @@ export default function AdminPage() {
 
   // Con sesion pero sin segundo factor superado (aal2): gate de MFA. Va ANTES de
   // la seleccion de rol y del panel: nadie opera sin pasar el segundo factor.
-  if (email && !mfaOk) {
+  // Salvo el portero (bloque 97, Gerardo 14-oct): entra con contrasena en la
+  // Chromebook de la caseta. No lee ninguna tabla (la RLS exige aal2): solo los
+  // RPC de la caseta, cuya guardia lo deja pasar en aal1. El rol sale del JWT, no
+  // de algo que el usuario pueda editar.
+  if (email && !mfaOk && rol !== "portero") {
     return (
       <GateMfa
         adminEmail={email}

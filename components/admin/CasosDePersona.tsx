@@ -23,6 +23,9 @@ import DetalleCaso, { diaCaso } from "@/components/admin/DetalleCaso";
 
 /** Quien lee los casos segun la RLS del bloque 89. */
 export const VEN_CASOS: RolPanel[] = ["ti", "contador", "admin", "super"];
+// Quien les da seguimiento (abrir_caso / anotar_caso / mover_casos). Lista BLANCA:
+// un rol nuevo no edita por descarte (14-oct, rol portero).
+const ESCRIBEN_CASOS: RolPanel[] = ["ti", "contador", "admin", "super"];
 
 // El catalogo casi no cambia: se baja una vez por sesion de pestana.
 let catalogoEnMemoria: TipoCasoCatalogo[] | null = null;
@@ -138,7 +141,7 @@ export function SeccionCasos({ registroId, casos, tipos, cargando, error, recarg
                   <DetalleCaso
                     caso={c}
                     tipo={tipoDe.get(c.tipo)}
-                    puedeEditar={rol !== "consulta"}
+                    puedeEditar={ESCRIBEN_CASOS.includes(rol)}
                     email={email}
                     onCambio={recargar}
                   />

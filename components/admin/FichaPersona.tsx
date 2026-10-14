@@ -29,7 +29,8 @@ import { DetalleRegistro } from "@/components/admin/RegistroCard";
 import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { textoVehiculo } from "@/lib/vehiculo";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
-import { AvisoPreguntar, SeccionCasos, useCasosDePersona } from "@/components/admin/CasosDePersona";
+import { AvisoPreguntar, SeccionCasos, VEN_CASOS, useCasosDePersona } from "@/components/admin/CasosDePersona";
+import { AperturasDePersona } from "@/components/admin/AperturasCaseta";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
 import { diaSemana, fecha } from "@/lib/formato";
 
@@ -348,6 +349,8 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
               <PasosSemana estancias={estancias} />
             )}
           </section>
+
+          {VEN_CASOS.includes(rol) && <AperturasDePersona registroId={r.id} tarjetas={numerosTag} />}
 
           <section className="ficha__bloque">
             <h3>TAGs</h3>

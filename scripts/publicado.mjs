@@ -103,6 +103,15 @@ const RUTAS = [
       { texto: "INSTITUCIONALES", que: "Estacionamiento: los vehiculos del Instituto operan al reves (13-oct)" },
       { texto: "Salidas y regresos", que: "Ficha: un vehiculo del Instituto se dibuja por sus salidas (13-oct)" },
       { texto: "sin-padron:", que: "Casos: la credencial sin padron abre su caso y deja el Resumen (12-oct)" },
+      // La caseta (bloque 97): los RPC viajan por nombre. Solo deben aparecer DESPUES
+      // de aplicar el 97 (va antes del cliente).
+      { texto: "caseta_buscar", que: "Caseta: el portero busca el vehiculo y ve su veredicto (bloque 97)" },
+      { texto: "caseta_reportar", que: "Caseta: el portero reporta la apertura con el boton (bloque 97)" },
+      { texto: "ligar_reporte_caseta", que: "Aperturas con boton: Sistemas liga una apertura a un expediente (bloque 97)" },
+      { texto: "el proceso es comprar un TAG nuevo", que: "Caseta: el portero ve el motivo de la baja y el proceso (14-oct)" },
+      { texto: "satag.caseta.lotes", que: "Caseta: el estacionamiento que cubre se recuerda en la Chromebook (14-oct)" },
+      { texto: "Ocultar cerrados", que: "Casos: los cerrados no se ven y lo pendiente va en bloques (14-oct)" },
+      { texto: "eventosHasta", que: "Caseta: diseño Mostrador con las ultimas estancias y hasta cuando llegan las lecturas (14-oct)" },
     ],
   },
 ];

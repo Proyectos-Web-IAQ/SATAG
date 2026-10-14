@@ -67,6 +67,7 @@ import { buscarCandidatos, construirCandidatos, type CandidatoCaso } from "@/lib
 import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type Ventana } from "@/components/admin/casos/GraficasCaso";
 import { fechaHora } from "@/lib/formato";
 import { credencialesSinPadron } from "@/lib/casosEvidencia";
+import { lotesDeCaso } from "@/lib/caseta";
 import { ROTULO } from "@/lib/glosario";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
 import { EnZkDelCaso } from "@/components/admin/VistaMovimientosZk";
@@ -235,11 +236,54 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
     return m;
   }, [casos]);
 
-  // Lo cerrado hace mas de 30 dias se archiva: no se ve en el tablero, pero se busca.
-  const visibles = useMemo(
-    () => (casos ?? []).filter((c) => pasa(c, filtro) && coincideBusqueda(c, q) && !enObservacion(c) && !(columnaDe(c.estado) === "cerrado" && !q && c.cerradoEn && diasDesde(c.cerradoEn) > 30)),
-    [casos, filtro, q],
+  // EL ESTACIONAMIENTO DE CADA CASO (14-oct): las plumas del expediente, el lote de
+  // la clave y la puerta de la caseta. Las plumas salen del padron de SATAG: se
+  // pide al elegir el filtro si la pestana no lo trajo. Sin lote conocido, el caso
+  // sale en los dos.
+  const [lote, setLote] = useState<"" | "E1" | "E2">("");
+  const padronUsado = padron ?? padronPropio;
+  useEffect(() => {
+    if (!lote || padron || padronPropio) return;
+    listPadronEstacionamiento().then(setPadronPropio).catch(() => setPadronPropio([]));
+  }, [lote, padron, padronPropio]);
+  const plumasPorExpediente = useMemo(() => new Map((padronUsado ?? []).map((p) => [p.id, p.estacionamientos])), [padronUsado]);
+  const enLote = useCallback(
+    (c: CasoGuardado) => {
+      if (!lote) return true;
+      const l = lotesDeCaso(c, (id) => plumasPorExpediente.get(id));
+      return l.length === 0 || l.includes(lote);
+    },
+    [lote, plumasPorExpediente],
   );
+
+  // LOS CERRADOS NO SE VEN (Gerardo, 14-oct: «ya no quiero verlos, para ir viendo
+  // cuales faltan por cerrar»). La columna queda angosta, con su cuenta, y sigue
+  // recibiendo lo que se suelta para cerrarlo. «Ver cerrados» la abre como antes
+  // (lo cerrado hace mas de 30 dias sigue archivado), y al buscar se ven siempre.
+  const [verCerrados, setVerCerrados] = useState(false);
+  const muestraCerrados = verCerrados || !!q.trim();
+  const visibles = useMemo(
+    () => (casos ?? []).filter((c) => pasa(c, filtro) && coincideBusqueda(c, q) && !enObservacion(c) && enLote(c) &&
+      !(columnaDe(c.estado) === "cerrado" && (!muestraCerrados || (!q && c.cerradoEn && diasDesde(c.cerradoEn) > 30)))),
+    [casos, filtro, q, enLote, muestraCerrados],
+  );
+  const cerradosRecientes = useMemo(
+    () => (casos ?? []).filter((c) => columnaDe(c.estado) === "cerrado" && pasa(c, filtro) && enLote(c) && c.cerradoEn && diasDesde(c.cerradoEn) <= 30).length,
+    [casos, filtro, enLote],
+  );
+
+  // LO QUE FALTA POR CERRAR, EN BLOQUES (14-oct): los casos vivos por tipo, de mas a
+  // menos, para cerrar de un jalon los que se resuelven igual. Respeta la busqueda
+  // y el estacionamiento; los de observacion tienen su propia vista.
+  const [verBloques, setVerBloques] = useState(false);
+  const bloques = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const c of casos ?? []) {
+      if (columnaDe(c.estado) === "cerrado" || enObservacion(c) || !enLote(c) || !coincideBusqueda(c, q)) continue;
+      m.set(c.tipo, [...(m.get(c.tipo) ?? []), c.id]);
+    }
+    return [...m.entries()].map(([tipo, ids]) => ({ tipo, ids })).sort((a, b) => b.ids.length - a.ids.length);
+  }, [casos, enLote, q]);
   const observados = useMemo(() => (casos ?? []).filter((c) => enObservacion(c) && coincideBusqueda(c, q)), [casos, q]);
   const [verObservacion, setVerObservacion] = useState(false);
   const porColumna = useMemo(() => {
@@ -386,7 +430,6 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   }
 
   // El buscador de «Reportar caso»: expedientes de SATAG y padron de ZK, por TAG.
-  const padronUsado = padron ?? padronPropio;
   useEffect(() => {
     if ((dialogo?.que !== "reportar" && !activo) || padron || padronPropio) return;
     listPadronEstacionamiento().then(setPadronPropio).catch(() => setPadronPropio([]));
@@ -461,7 +504,40 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
         <button type="button" className="tc-fchip-add" onClick={(e) => setSelector({ modo: "filtrar", ancla: e.currentTarget.getBoundingClientRect(), ids: [] })}>+ Tipo</button>
         {!filtro.urgente && <button type="button" className="tc-fchip-add" onClick={() => setFiltro((f) => ({ ...f, urgente: true }))}>+ Urgente</button>}
         {(filtro.tipos.length > 0 || filtro.urgente) && <button type="button" className="link-action" onClick={() => setFiltro({ tipos: [], urgente: false })}>Limpiar</button>}
+        <span className="tc-seg tc-seg--chico" role="group" aria-label="Estacionamiento">
+          {(["", "E1", "E2"] as const).map((l) => (
+            <button key={l || "ambos"} type="button" aria-pressed={lote === l} onClick={() => setLote(l)}>{l || "E1 y E2"}</button>
+          ))}
+        </span>
+        <button type="button" className={`tc-fchip-add${verCerrados ? " tc-fchip-add--on" : ""}`} aria-pressed={verCerrados} onClick={() => setVerCerrados((v) => !v)}>
+          {verCerrados ? "Ocultar cerrados" : "Ver cerrados"}
+        </button>
       </div>
+
+      {bloques.length > 0 && (
+        <div className="tc-bloques">
+          <button type="button" className="tc-bloques__cab" aria-expanded={verBloques} onClick={() => setVerBloques((v) => !v)}>
+            Lo que falta por cerrar: <b>{bloques.reduce((n, b) => n + b.ids.length, 0)}</b> en {bloques.length} {bloques.length === 1 ? "tipo" : "tipos"}
+            <span aria-hidden="true"> {verBloques ? "▴" : "▾"}</span>
+          </button>
+          {verBloques && (
+            <ul className="tc-bloques__lista">
+              {bloques.map((b) => (
+                <li key={b.tipo}>
+                  <Etiqueta tipo={b.tipo} tipos={tipos} familias={familias} />
+                  <b className="tc-bloques__n">{b.ids.length}</b>
+                  <button type="button" className="link-action" onClick={() => elegirVista({ id: "", titulo: "", tipos: [b.tipo], urgente: false })}>Ver</button>
+                  {escribe && (
+                    <button type="button" className="link-action" onClick={() => marcar(b.ids)}>
+                      {b.ids.every((id) => marcados.has(id)) ? "Desmarcar" : `Marcar los ${b.ids.length}`}
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {error && <p className="submit-error" role="alert">{error} <button type="button" className="link-action" onClick={() => leer()}>Volver a leer</button></p>}
       {!escribe && sinCaso.length > 0 && (
@@ -479,9 +555,25 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
         tablero={verObservacion ? (
           <TablaObservacion casos={observados} eventos={eventos} nombreDe={nombreDe} activo={activo} onAbrir={setActivo} onVolver={() => setVerObservacion(false)} />
         ) : (
-          <div className="tc-tablero">
+          <div className={`tc-tablero${muestraCerrados ? "" : " tc-tablero--sin-cerrados"}`}>
             {COLUMNAS_CASO.map((col) => {
               const l = porColumna.get(col.id)!;
+              if (col.id === "cerrado" && !muestraCerrados) {
+                return (
+                  <section
+                    key={col.id}
+                    className={`tc-col tc-col--plegada${sobre === col.id ? " tc-col--sobre" : ""}${colMovil === col.id ? " tc-col--vis" : ""}`}
+                    onDragOver={(e) => { if (arrastra) { e.preventDefault(); if (sobre !== col.id) setSobre(col.id); } }}
+                    onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setSobre(null); }}
+                    onDrop={(e) => { e.preventDefault(); const ids = arrastra; setArrastra(null); setSobre(null); if (ids) aColumna(ids, col.id); }}
+                    aria-label={col.titulo}
+                  >
+                    <header className="tc-col__cab"><h3>{col.titulo}</h3><span>{cerradosRecientes}</span></header>
+                    <p className="tc-col__ayuda">{escribe ? "Suelte aquí para cerrar." : ""} Los cerrados no se muestran.</p>
+                    <button type="button" className="link-action" onClick={() => setVerCerrados(true)}>Ver cerrados</button>
+                  </section>
+                );
+              }
               return (
                 <section
                   key={col.id}
@@ -566,8 +658,7 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
               hacer(async () => { await marcarCasos(ids, { tipo: t }, email); setMarcados(new Set()); }, `Tipo cambiado a «${tipoDe.get(t)?.titulo ?? t}»`);
             }
           }}
-          onGuardar={async (t) => { const id = await guardarTipoCaso(t, email); setTipos(await listTiposCaso()); return id; }}
-          onBorrar={async (t) => { await borrarTipoCaso(t); setTipos(await listTiposCaso()); }}
+          onGuardar={async (t) => { const id = await guardarTipoCaso(t, email); setTipos(await listTiposCaso()); return id; }}          onBorrar={async (t) => { await borrarTipoCaso(t); setTipos(await listTiposCaso()); }}
           onOrdenar={async (fams, ts) => {
             await ordenarTiposCaso(fams, ts, email);
             const [t, f] = await Promise.all([listTiposCaso(), listFamiliasCaso()]);

@@ -104,11 +104,13 @@ export async function actualizarContrasena(password: string): Promise<void> {
 // no pasa nada: mientras ningun JWT traiga ese rol, todo lo que depende de el
 // es codigo muerto. Por eso este cambio no tiene orden obligado con su bloque,
 // al contrario del cliente del 73.
-export type RolPanel = "admin" | "ti" | "consulta" | "contador" | "super";
+// Bloque 97: `portero` entra sin MFA y solo ve la caseta. No lee ninguna tabla;
+// todo le llega por los RPC caseta_* (su guardia es caseta_exigir_rol).
+export type RolPanel = "admin" | "ti" | "consulta" | "contador" | "super" | "portero";
 
 // Roles que un admin puede fijar en app_metadata. Es la fuente de verdad de la
 // RLS (bloques 27 y 30) y de la guardia de los RPCs (panel_exigir_rol).
-export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta", "contador", "super"];
+export const ROLES_PANEL: RolPanel[] = ["admin", "ti", "consulta", "contador", "super", "portero"];
 
 function leerRol(meta: Record<string, unknown> | undefined | null): RolPanel | null {
   const rol = meta?.rol;
