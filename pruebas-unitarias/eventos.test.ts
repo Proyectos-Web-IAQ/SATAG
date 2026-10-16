@@ -432,3 +432,21 @@ describe("huecoMayor: el hueco entre ventanas se recalcula con lo que la base sa
     expect(huecoMayor([])).toBeNull();
   });
 });
+
+describe("aperturas con el boton (bloque 99)", () => {
+  it("las separa del ruido sin tarjeta y no las cuenta como eventos", () => {
+    const { eventos, aperturasBoton, resumen } = parsearEventosZk(archivo([
+      cruda({ tarjeta: "12823700" }),
+      cruda({ id: 3981759, tiempo: "2026-10-05 09:28:57", punto: "Salida 2", desc: "Apertura con botón de salida", tarjeta: "" }),
+      cruda({ id: 3981760, tiempo: "2026-10-05 09:29:10", dispositivo: "Estacionamiento 1", punto: "Entrada 1", desc: "Apertura con botón de salida", tarjeta: "" }),
+      cruda({ desc: "Intervalo de operación muy corto", tarjeta: "" }),
+      cruda({ desc: "Error de formato Wiegand", tarjeta: "" }),
+    ]));
+    expect(eventos).toHaveLength(1);
+    expect(resumen.filasSinTarjeta).toBe(4);
+    expect(aperturasBoton).toEqual([
+      { idEvento: 3981759, ocurrioEn: "2026-10-05 09:28:57", lote: "E2", sentido: "salida" },
+      { idEvento: 3981760, ocurrioEn: "2026-10-05 09:29:10", lote: "E1", sentido: "entrada" },
+    ]);
+  });
+});

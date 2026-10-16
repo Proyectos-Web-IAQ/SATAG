@@ -12,6 +12,7 @@ import { supabaseAuth } from "./auth";
 import type { CasoGuardado, EstadoCasoGuardado, FamiliaCaso, MotivoEspera, NotaCaso, OrigenCaso, TipoCasoCatalogo } from "@/lib/casosRegistro";
 import { urlFirmada } from "@/lib/firma";
 import type { ClaseReporte, InicioCaseta, Lote, Puerta, ReporteCaseta, ResultadoCaseta, Veredicto } from "@/lib/caseta";
+import type { AperturaBotonZk } from "@/lib/zk/eventos";
 import type {
   CambiosRegistro,
   CorteCaja,
@@ -2112,7 +2113,8 @@ export async function idsEventosGuardados(desdeId: number, hastaId: number): Pro
 export async function casetaBuscar(texto: string, lotes: Lote[]): Promise<ResultadoCaseta[]> {
   const { data, error } = await supabaseAuth.rpc("caseta_buscar", { p_texto: texto, p_lotes: lotes });
   if (error) throw new Error(traducirError(error.message));
-  return ((data ?? []) as ResultadoCaseta[]).map((r) => ({ ...r, plumas: r.plumas ?? [], evaluaciones: r.evaluaciones ?? {}, pasos: r.pasos ?? [] }));
+  return ((data ?? []) as ResultadoCaseta[]).map((r) => ({ ...r, plumas: r.plumas ?? [], evaluaciones: r.evaluaciones ?? {}, pasos: r.pasos ?? [],
+    avisos: (r.avisos ?? []).map((a) => ({ ...a, respuestas: a.respuestas ?? [] })) }));
 }
 
 /** Los cambios de Sistemas, el seguimiento de los reportes (los propios o, con `todos`, los de la caseta) y la fecha del padron de ZK. */
@@ -2121,7 +2123,7 @@ export async function casetaInicio(todos = false): Promise<InicioCaseta> {
   if (error) throw new Error(traducirError(error.message));
   const d = (data ?? {}) as Partial<InicioCaseta>;
   return {
-    cambios: (d.cambios ?? []).map((a) => ({ ...a, lotes: a.lotes ?? [] })),
+    avisos: (d.avisos ?? []).map((a) => ({ ...a, lotes: a.lotes ?? [], respuestas: a.respuestas ?? [] })),
     reportes: d.reportes ?? [],
     eventosHasta: d.eventosHasta ?? null,
     padronZkAl: d.padronZkAl ?? null,
@@ -2207,4 +2209,101 @@ export async function listReportesCaseta(filtro: { dias?: number; registroId?: s
     nombre: r.registros?.usuario_nombre_completo ?? null, placas: r.registros?.placas ?? null,
     marca: r.registros?.marca ?? null, modelo: r.registros?.modelo ?? null, color: r.registros?.color ?? null,
   }));
+}
+
+/* ------------------------------------------------------------------ aperturas con boton de ZK (bloque 99) */
+
+/**
+ * Guarda las «Apertura con botón de salida» de un export de ZK. Lo ya guardado no se
+ * duplica (la llave es el ID de evento). Lo llama la carga de «Todos los Eventos».
+ */
+export async function cargarAperturasBotonZk(
+  filas: AperturaBotonZk[],
+  hechoPor: string | null,
+): Promise<{ insertadas: number; yaEstaban: number }> {
+  const LOTE = 5000;
+  let insertadas = 0;
+  let yaEstaban = 0;
+  for (let i = 0; i < filas.length; i += LOTE) {
+    const { data, error } = await supabaseAuth.rpc("cargar_aperturas_boton_zk", {
+      p_filas: filas.slice(i, i + LOTE).map((f) => ({ ...f, idEvento: String(f.idEvento) })),
+      p_hecho_por: hechoPor,
+    });
+    if (error) throw new Error(traducirError(error.message));
+    const r = (data ?? {}) as { insertadas?: number; yaEstaban?: number };
+    insertadas += r.insertadas ?? 0;
+    yaEstaban += r.yaEstaban ?? 0;
+  }
+  return { insertadas, yaEstaban };
+}
+
+/** Las aperturas con boton que registro ZK en los ultimos `dias` (ti, contador, admin, super). */
+export async function listAperturasBotonZk(dias: number): Promise<AperturaBotonZk[]> {
+  const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
+  const { data, error } = await supabaseAuth
+    .from("zk_aperturas_boton")
+    .select("id_evento, ocurrio_en, lote, sentido")
+    .gte("ocurrio_en", desde)
+    .order("ocurrio_en", { ascending: false })
+    .limit(20000);
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as { id_evento: number; ocurrio_en: string; lote: string; sentido: string }[]).map((r) => ({
+    idEvento: Number(r.id_evento),
+    ocurrioEn: r.ocurrio_en.replace("T", " ").slice(0, 19),
+    lote: r.lote as AperturaBotonZk["lote"],
+    sentido: r.sentido as AperturaBotonZk["sentido"],
+  }));
+}
+
+/* ------------------------------------------------------------------ avisos de Sistemas a la caseta (bloque 98) */
+
+export interface AvisoDeCaso {
+  id: string;
+  texto: string;
+  lotes: string[];
+  hasta: string | null;
+  creadoPor: string;
+  creadoEn: string;
+  cerradoEn: string | null;
+  respuestas: { respuesta: string; hechoPor: string; hechoEn: string }[];
+}
+
+/** Los avisos de un caso, vivos y retirados, con lo que respondio la caseta. */
+export async function listAvisosCaso(casoId: string): Promise<AvisoDeCaso[]> {
+  const { data, error } = await supabaseAuth
+    .from("caseta_avisos")
+    .select("id, texto, lotes, hasta, creado_por, creado_en, cerrado_en, caseta_respuestas(respuesta, hecho_por, hecho_en)")
+    .eq("caso_id", casoId)
+    .order("creado_en", { ascending: false });
+  if (error) throw new Error(traducirError(error.message));
+  type Fila = { id: string; texto: string; lotes: string[] | null; hasta: string | null; creado_por: string; creado_en: string; cerrado_en: string | null;
+    caseta_respuestas: { respuesta: string; hecho_por: string; hecho_en: string }[] | null };
+  return ((data ?? []) as unknown as Fila[]).map((a) => ({
+    id: a.id, texto: a.texto, lotes: a.lotes ?? [], hasta: a.hasta, creadoPor: a.creado_por, creadoEn: a.creado_en, cerradoEn: a.cerrado_en,
+    respuestas: (a.caseta_respuestas ?? [])
+      .map((r) => ({ respuesta: r.respuesta, hechoPor: r.hecho_por, hechoEn: r.hecho_en }))
+      .sort((x, y) => x.hechoEn.localeCompare(y.hechoEn)),
+  }));
+}
+
+/** Avisar a la caseta desde un caso vivo. Solo ti (super pasa siempre). */
+export async function avisarCaseta(casoId: string, texto: string, lotes: Lote[], hasta: string | null, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("avisar_caseta", {
+    p_caso: casoId, p_texto: texto, p_lotes: lotes, p_hasta: hasta, p_hecho_por: hechoPor,
+  });
+  if (error) throw new Error(traducirError(error.message));
+}
+
+/** Retirar un aviso. Solo ti. */
+export async function retirarAvisoCaseta(avisoId: string, hechoPor: string | null): Promise<void> {
+  const { error } = await supabaseAuth.rpc("retirar_aviso_caseta", { p_aviso: avisoId, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+}
+
+/** La caseta responde un aviso; queda como nota del caso, firmada con la sesion. */
+export async function casetaResponderAviso(avisoId: string, respuesta: string): Promise<{ caso: number | null; porAtender: boolean }> {
+  const { data, error } = await supabaseAuth.rpc("caseta_responder_aviso", { p_aviso: avisoId, p_respuesta: respuesta });
+  if (error) throw new Error(traducirError(error.message));
+  const d = (data ?? {}) as { caso?: number; porAtender?: boolean };
+  return { caso: d.caso ?? null, porAtender: d.porAtender === true };
 }

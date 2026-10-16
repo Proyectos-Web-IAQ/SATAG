@@ -151,18 +151,7 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
   if (rol === "portero") {
     return (
       <main className="admin-shell admin-shell--caseta">
-        <div className="admin-panel">
-          <div className="admin-header">
-            <div>
-              <h1>Caseta del estacionamiento</h1>
-              <div className="admin-sub">Sesión de: <b>{nombreSesion}</b></div>
-            </div>
-            <div className="admin-header-actions">
-              <button type="button" className="ghost-action" onClick={onSignOut}>Cambiar de turno</button>
-            </div>
-          </div>
-          <VistaCaseta nombreSesion={nombreSesion} />
-        </div>
+        <VistaCaseta nombreSesion={nombreSesion} onCambiarTurno={onSignOut} />
       </main>
     );
   }

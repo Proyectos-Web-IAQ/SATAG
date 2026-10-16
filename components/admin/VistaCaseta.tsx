@@ -1,29 +1,32 @@
 "use client";
 
-// La caseta del estacionamiento (bloque 97, Gerardo 14-oct).
+// La caseta del estacionamiento (bloques 97 y 98; Gerardo 14 y 15-oct).
 //
 // Cuando la pluma no le abre a un carro, el portero lo busca aqui ANTES de abrir
-// con el boton: la pantalla le dice en grande si tiene acceso y, si no, por que.
-// Si abre con el boton, lo reporta, y queda firmado con su cuenta.
+// con el boton: la pantalla le dice si tiene acceso y, si no, por que. Si abre con
+// el boton, lo reporta, firmado con su cuenta. Sistemas le deja AVISOS sobre
+// vehiculos concretos («si viene, preguntele quien es») y el portero responde ahi
+// mismo; la respuesta llega al caso.
 //
-// La caseta cubre un estacionamiento completo (entrada y salida) o los dos: se
-// elige una vez y se recuerda en el equipo. Con los dos, el veredicto sale para
-// cada uno. Entrada o salida se elige al reportar.
+// Diseño «Mostrador» (elegido entre tres bocetos el 14-oct) con el sistema de
+// diseño nuevo (15-oct, primera pantalla): UNA columna centrada, el buscador es lo
+// unico grande, el veredicto es una franja de color solido que se lee a distancia,
+// y lo demas son filas con filete, sin cajas ni pastillas. Teclado primero (es una
+// Chromebook): el buscador tiene el foco; ↑ ↓ eligen, Enter abre y Esc limpia.
 //
-// Se usa en una Chromebook compartida por turnos: pantalla de laptop y teclado.
-// El buscador tiene el foco; ↑ ↓ recorren los resultados, Enter abre el veredicto
-// y Esc limpia. Lo que el portero ve lo decide la base (caseta_buscar,
-// caseta_inicio): nombre, vehiculo, placa, plumas y, si es una baja, su motivo;
-// nunca folio, pagos, firma, casos ni notas.
+// Lo que ve el portero lo decide la base (caseta_buscar, caseta_inicio): nombre,
+// vehiculo, placa, plumas, sus ultimas lecturas y, si es una baja, su motivo; nunca
+// folio, pagos, firma, casos ni notas.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CASETAS,
   VEREDICTO,
   PROCESO_BAJA,
   datosComunes,
-  estanciasDe,
   delLote,
   esCaseta,
+  estanciasDe,
+  estadoSeguimiento,
   evaluacionesDe,
   lotesDeCaseta,
   motivosDe,
@@ -31,28 +34,26 @@ import {
   puertasDeCaseta,
   rotuloMotivo,
   tituloPuerta,
-  CLASE_CAMBIO,
-  estadoSeguimiento,
-  textoCambio,
-  type CambioSistemas,
-  type ClaseCambio,
-  type ReporteSeguimiento,
+  type AvisoCaseta,
+  type AvisoDeVehiculo,
   type Caseta,
   type ClaseReporte,
   type InicioCaseta,
-  type Lote,
   type PasoPluma,
   type Puerta,
+  type ReporteSeguimiento,
   type ResultadoCaseta,
 } from "@/lib/caseta";
-import { casetaBuscar, casetaInicio, casetaReportar } from "@/lib/supabase/apiPanel";
+import { casetaBuscar, casetaInicio, casetaReportar, casetaResponderAviso } from "@/lib/supabase/apiPanel";
 import { numeroCaso } from "@/lib/casosRegistro";
 import { diaSemana, fecha, fechaHora, hora } from "@/lib/formato";
-import { TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
+import { ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { textoVehiculo } from "@/lib/vehiculo";
 import type { TipoUsuario } from "@/lib/mock/types";
 
 const CLAVE_CASETA = "satag.caseta.lotes";
+/** Cuantas filas se ven de cada lista antes de «Ver todos». */
+const CORTE = 5;
 
 function leerCaseta(): Caseta | null {
   try {
@@ -65,6 +66,8 @@ function leerCaseta(): Caseta | null {
 
 const tipoPersona = (t: string | null) => (t && t in TIPO_PERSONA ? TIPO_PERSONA[t as TipoUsuario] : null);
 const nombreDe = (r: ResultadoCaseta) => r.nombre ?? datosComunes(r)?.nombreZk ?? "Sin nombre";
+const vehiculoCorto = (v: { placa?: string | null; marca: string | null; modelo: string | null; color: string | null }) =>
+  [v.placa, v.marca || v.modelo ? textoVehiculo(v) : null].filter(Boolean).join(" · ");
 
 /** Lo que se va a reportar: con el vehiculo identificado o sin el. */
 interface Borrador {
@@ -72,10 +75,15 @@ interface Borrador {
   resultado: ResultadoCaseta | null;
 }
 
-export default function VistaCaseta({ nombreSesion }: { nombreSesion: string }) {
+export default function VistaCaseta({ nombreSesion, onCambiarTurno }: {
+  nombreSesion: string;
+  /** Solo el portero: su pantalla no tiene el encabezado del panel. */
+  onCambiarTurno?: () => void;
+}) {
   const [caseta, setCaseta] = useState<Caseta | null>(null);
   const [inicio, setInicio] = useState<InicioCaseta | null>(null);
   const [errorInicio, setErrorInicio] = useState<string | null>(null);
+  const [deTodos, setDeTodos] = useState(false);
   const [q, setQ] = useState("");
   const [resultados, setResultados] = useState<ResultadoCaseta[] | null>(null);
   const [buscando, setBuscando] = useState(false);
@@ -97,14 +105,12 @@ export default function VistaCaseta({ nombreSesion }: { nombreSesion: string }) 
   };
   const lotes = useMemo(() => (caseta ? lotesDeCaseta(caseta) : []), [caseta]);
 
-  // El seguimiento: los reportes propios o los de toda la caseta.
-  const [deTodos, setDeTodos] = useState(false);
   const leerInicio = useCallback(async () => {
     try {
       setInicio(await casetaInicio(deTodos));
       setErrorInicio(null);
     } catch (e) {
-      setErrorInicio(e instanceof Error ? e.message : "No se pudieron leer los cambios de Sistemas.");
+      setErrorInicio(e instanceof Error ? e.message : "No se pudieron leer los avisos de Sistemas.");
     }
   }, [deTodos]);
   useEffect(() => { leerInicio(); }, [leerInicio]);
@@ -165,108 +171,121 @@ export default function VistaCaseta({ nombreSesion }: { nombreSesion: string }) 
     } else if (e.key === "Escape") { e.preventDefault(); limpiar(); }
   }
 
-  function listo(texto: string) {
-    setBorrador(null);
+  function avisar(texto: string) {
     setAviso(texto);
     setTimeout(() => setAviso((a) => (a === texto ? null : a)), 8000);
+  }
+
+  function listo(texto: string) {
+    setBorrador(null);
+    avisar(texto);
     leerInicio();
     limpiar();
   }
 
-  const cambios = useMemo(() => delLote(inicio?.cambios ?? [], lotes.length ? lotes : null), [inicio, lotes]);
-
-  if (!caseta) {
-    return (
-      <div className="caseta">
-        <div className="panel caseta__puerta-inicial">
-          <p className="panel-title">¿Qué estacionamiento cubre esta caseta?</p>
-          <p className="ti-hint">Entrada y salida. Se recuerda en este equipo y puede cambiarlo en cualquier momento.</p>
-          <div className="caseta__puertas">
-            {CASETAS.map((c) => (
-              <button key={c.id} type="button" className="select-chip caseta__puerta" onClick={() => elegirCaseta(c.id)}>
-                {c.id === "E1-E2" ? "E1 y E2" : c.id} <span className="caseta__nota">· {c.titulo}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
+  // Al responder un aviso desde el veredicto, se vuelve a buscar para que el aviso
+  // muestre la respuesta, y se refresca la lista de avisos.
+  async function respondido() {
+    avisar("Respuesta enviada a Sistemas.");
+    leerInicio();
+    if (q.trim()) await buscar(q);
   }
 
+  const avisos = useMemo(() => delLote(inicio?.avisos ?? [], lotes.length ? lotes : null), [inicio, lotes]);
+  const sinResultados = !!resultados && !buscando && resultados.length === 0;
+
   return (
-    <div className="caseta">
-      <div className="caseta__barra">
-        <div className="caseta__puertas" role="group" aria-label="Estacionamiento que cubre la caseta">
-          {CASETAS.map((c) => (
-            <button key={c.id} type="button" className={`select-chip${caseta === c.id ? " on" : ""}`} aria-pressed={caseta === c.id} onClick={() => elegirCaseta(c.id)}>
-              {c.id === "E1-E2" ? "E1 y E2" : c.id}
-            </button>
-          ))}
-        </div>
-        <span className="caseta__fresco">
-          {inicio?.padronZkAl ? <>Datos de ZK al {fecha(inicio.padronZkAl)}</> : null}
-        </span>
-      </div>
+    <div className="cs">
+      {/* El portero no tiene el encabezado del panel: quien esta en turno se ve
+          siempre, y salir se llama «Cambiar de turno» (la sesion no se cierra sola). */}
+      {onCambiarTurno && (
+        <header className="cs-cab">
+          <div>
+            <h1 className="cs-titulo">Caseta del estacionamiento</h1>
+            <p className="ds-nota">Sesión de <b>{nombreSesion}</b></p>
+          </div>
+          <button type="button" className="ghost-action" onClick={onCambiarTurno}>Cambiar de turno</button>
+        </header>
+      )}
 
-      {aviso && <p className="caseta__aviso" role="status">{aviso}</p>}
+      {!caseta ? (
+        <section className="cs-sec" aria-label="Elegir estacionamiento">
+          <p className="cs-pregunta">¿Qué estacionamiento cubre esta caseta?</p>
+          <p className="ds-nota">Entrada y salida. Se recuerda en este equipo y puede cambiarse en cualquier momento.</p>
+          <div className="cs-seg cs-seg--grande" role="group" aria-label="Estacionamiento que cubre la caseta">
+            {CASETAS.map((c) => (
+              <button key={c.id} type="button" onClick={() => elegirCaseta(c.id)}>{c.id === "E1-E2" ? "E1 y E2" : c.id}</button>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <>
+          <div className="cs-barra">
+            <div className="cs-seg" role="group" aria-label="Estacionamiento que cubre la caseta">
+              {CASETAS.map((c) => (
+                <button key={c.id} type="button" aria-pressed={caseta === c.id} onClick={() => elegirCaseta(c.id)}>
+                  {c.id === "E1-E2" ? "E1 y E2" : c.id}
+                </button>
+              ))}
+            </div>
+            {inicio?.eventosHasta && <span className="ds-nota">Lecturas de ZK hasta el {fechaHora(inicio.eventosHasta)}</span>}
+          </div>
 
-      {/* Diseño «Mostrador» (Gerardo, 14-oct): una sola columna al centro. Arriba el
-          buscador; debajo, el veredicto del vehículo o, si no hay ninguno abierto,
-          los cambios de Sistemas y el seguimiento de los reportes. */}
-      <div className="caseta__centro">
-        <section aria-label="Buscar vehículo">
+          {aviso && <p className="ds-aviso ds-aviso--ok" role="status">{aviso}</p>}
+
           <label className="sr-only" htmlFor="caseta-buscar">Buscar el vehículo</label>
           <input
             id="caseta-buscar"
             ref={buscador}
-            className="input caseta__buscar"
+            className="cs-buscar"
             type="search"
             autoFocus
             autoComplete="off"
-            placeholder="Placa, nombre, modelo o número de TAG"
+            placeholder="Placa, nombre, modelo o TAG"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={teclas}
           />
-          <p className="caseta__ayuda">Escriba al menos 3 letras o números · ↑ ↓ para elegir · Enter para ver · Esc para limpiar</p>
-          {error && <p className="submit-error" role="alert">{error}</p>}
-          {buscando && <p className="ti-hint">Buscando…</p>}
-          {resultados && !buscando && resultados.length === 0 && (
-            <div className="caseta__nada">
+          <p className="ds-nota cs-ayuda">Escriba al menos 3 letras o números · ↑ ↓ para elegir · Enter para ver · Esc para limpiar</p>
+          {error && <p className="ds-aviso ds-aviso--error" role="alert">{error}</p>}
+          {buscando && <p className="ds-nota">Buscando…</p>}
+
+          {sinResultados && (
+            <div className="cs-sec">
               <p><b>No aparece en SATAG ni en ZK.</b> Pruebe con otra parte de la placa, el modelo o el apellido.</p>
-              <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "apertura", resultado: null })}>
-                Abrí con el botón a un vehículo que no aparece
-              </button>
+              <div className="ds-acciones">
+                <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "apertura", resultado: null })}>Abrí con el botón a este vehículo</button>
+              </div>
             </div>
           )}
-          {/* Con un solo resultado se abre directo; con varios, la lista queda arriba
-              del veredicto para cambiar de uno a otro. */}
+
+          {/* Con varios resultados, la lista queda arriba del veredicto para cambiar de uno a otro. */}
           {resultados && resultados.length > 1 && (
-            <ul className="caseta__lista" role="listbox" aria-label="Resultados">
+            <ul className="cs-lista" role="listbox" aria-label="Resultados">
               {resultados.map((r, i) => {
                 const evs = evaluacionesDe(r);
-                const comun = datosComunes(r);
-                const todos = evs.every((x) => x.ev.veredicto === evs[0]?.ev.veredicto);
+                const iguales = evs.every((x) => x.ev.veredicto === evs[0]?.ev.veredicto);
                 return (
-                  <li key={`${r.registroId ?? ""}-${comun?.tarjeta ?? i}`}>
+                  <li key={`${r.registroId ?? ""}-${datosComunes(r)?.tarjeta ?? i}`}>
                     <button
                       type="button"
                       role="option"
                       aria-selected={i === sel}
-                      className={`caseta__res caseta__res--${todos ? evs[0]?.ev.veredicto : "mixto"}${i === sel ? " caseta__res--sel" : ""}${abierto === r ? " caseta__res--abierto" : ""}`}
+                      aria-current={abierto === r ? "true" : undefined}
+                      className="cs-fila"
                       onMouseEnter={() => setSel(i)}
                       onClick={() => setAbierto(r)}
                     >
-                      <span className="caseta__punto" aria-hidden="true" />
-                      <span className="caseta__res-txt">
+                      <span className="cs-fila__txt">
                         <b>{nombreDe(r)}</b>
-                        <span>{[r.placa ?? comun?.placaZk, r.marca || r.modelo ? textoVehiculo(r) : null].filter(Boolean).join(" · ")}</span>
+                        <span className="ds-nota">{vehiculoCorto({ ...r, placa: r.placa ?? datosComunes(r)?.placaZk })}</span>
                       </span>
-                      <span className="caseta__res-ver">
-                        {evs.length === 1 || todos
-                          ? VEREDICTO[evs[0].ev.veredicto].titulo
+                      <span className="cs-fila__ver">
+                        {r.avisos.length > 0 && <span className="cs-marca-aviso">Aviso</span>}
+                        {iguales
+                          ? <span className={`cs-texto--${evs[0].ev.veredicto}`}>{VEREDICTO[evs[0].ev.veredicto].titulo}</span>
                           : evs.map((x) => (
-                            <span key={x.lote} className={`caseta__res-lote caseta__res-lote--${x.ev.veredicto}`}>{x.lote} {x.ev.veredicto === "abre" ? "✓" : "✕"}</span>
+                            <span key={x.lote} className={`cs-texto--${x.ev.veredicto}`}>{x.lote} {x.ev.veredicto === "abre" ? "✓" : "✕"}</span>
                           ))}
                       </span>
                     </button>
@@ -275,39 +294,34 @@ export default function VistaCaseta({ nombreSesion }: { nombreSesion: string }) 
               })}
             </ul>
           )}
-          {!abierto && (
-            <div className="caseta__otras">
-              <button type="button" className="link-action" onClick={() => setBorrador({ clase: "apertura", resultado: null })}>Abrí con el botón sin buscar (visita, emergencia, falla)</button>
-              <button type="button" className="link-action" onClick={() => setBorrador({ clase: "reporte", resultado: null })}>Reportar algo a Sistemas</button>
-            </div>
-          )}
-        </section>
 
-        {abierto ? (
-          <Veredicto r={abierto} eventosHasta={inicio?.eventosHasta ?? null}
-            onCerrar={() => { setAbierto(null); buscador.current?.focus(); }}
-            onReportar={(clase) => setBorrador({ clase, resultado: abierto })} />
-        ) : (
-          <>
-            {errorInicio && <p className="submit-error" role="alert">{errorInicio} <button type="button" className="link-action" onClick={leerInicio}>Reintentar</button></p>}
-            {inicio === null && !errorInicio && <p className="ti-hint">Leyendo…</p>}
-            {inicio && (
-              <div className="caseta__tira">
-                <section aria-label="Cambios de Sistemas">
-                  <h2 className="caseta__h">Cambios de Sistemas <span className="caseta__nota">{cambios.length}</span></h2>
-                  <Cambios cambios={cambios} lotes={lotes} />
-                </section>
-                <section aria-label="Mis reportes">
-                  <h2 className="caseta__h">{deTodos ? "Reportes de la caseta" : "Mis reportes"} <span className="caseta__nota">{inicio.reportes.length}</span></h2>
+          {abierto ? (
+            <Veredicto r={abierto} eventosHasta={inicio?.eventosHasta ?? null}
+              onCerrar={() => { setAbierto(null); buscador.current?.focus(); }}
+              onReportar={(clase) => setBorrador({ clase, resultado: abierto })}
+              onRespondido={respondido} />
+          ) : (
+            <>
+              {!sinResultados && (
+                <div className="ds-acciones cs-otras">
+                  <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "apertura", resultado: null })}>Abrí con el botón sin buscar</button>
+                  <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "reporte", resultado: null })}>Reportar algo a Sistemas</button>
+                </div>
+              )}
+              {errorInicio && <p className="ds-aviso ds-aviso--error" role="alert">{errorInicio} <button type="button" className="link-action" onClick={leerInicio}>Reintentar</button></p>}
+              {inicio === null && !errorInicio && <p className="ds-nota">Leyendo…</p>}
+              {inicio && (
+                <>
+                  <Avisos avisos={avisos} onRespondido={() => { avisar("Respuesta enviada a Sistemas."); leerInicio(); }} />
                   <Reportes reportes={inicio.reportes} deTodos={deTodos} onDeTodos={setDeTodos} />
-                </section>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+                </>
+              )}
+            </>
+          )}
+        </>
+      )}
 
-      {borrador && (
+      {borrador && caseta && (
         <FormReporte
           borrador={borrador}
           caseta={caseta}
@@ -326,11 +340,12 @@ export default function VistaCaseta({ nombreSesion }: { nombreSesion: string }) 
 
 /* ------------------------------------------------------------------ el veredicto */
 
-function Veredicto({ r, eventosHasta, onCerrar, onReportar }: {
+function Veredicto({ r, eventosHasta, onCerrar, onReportar, onRespondido }: {
   r: ResultadoCaseta;
   eventosHasta: string | null;
   onCerrar: () => void;
   onReportar: (clase: ClaseReporte) => void;
+  onRespondido: () => void;
 }) {
   const evs = evaluacionesDe(r);
   const comun = datosComunes(r);
@@ -338,76 +353,133 @@ function Veredicto({ r, eventosHasta, onCerrar, onReportar }: {
   const placaZkDistinta = comun?.placaZk && placaNormalizada(comun.placaZk) !== placaNormalizada(r.placa);
   const algunoAbre = evs.some((x) => x.ev.veredicto === "abre");
   const partidas = evs.length > 1 && evs.some((x) => x.ev.veredicto !== evs[0].ev.veredicto);
-  const abrir = useRef<HTMLButtonElement>(null);
-  useEffect(() => { abrir.current?.focus({ preventScroll: true }); }, [r]);
+  // El foco va a la accion que corresponde al veredicto: si no tiene acceso, a
+  // «Volver», nunca a «Abrí con el botón» (un Enter no debe abrir un reporte).
+  const primero = useRef<HTMLButtonElement>(null);
+  useEffect(() => { primero.current?.focus({ preventScroll: true }); }, [r]);
+
+  const motivos = evs.flatMap(({ lote, ev }) => ev.motivos
+      // «Tiene acceso» junto a un rojo confunde: si ese estacionamiento sale en rojo,
+      // no se dice.
+      .filter((m) => !(m.clave === "acceso" && ev.veredicto === "no-abre"))
+      .map((m) => ({ lote, m })))
+    // Un motivo que vale para los dos (una baja) se dice una vez.
+    .filter((x, i, l) => l.findIndex((y) => y.m.texto === x.m.texto) === i);
+
   return (
-    <div className="caseta__ver">
-      {/* Una banda por estacionamiento que cubre la caseta; si los dos dicen lo
-          mismo, una sola, grande. */}
-      <div className={`caseta__bandas${partidas ? " caseta__bandas--dos" : ""}`}>
+    <article className="cs-veredicto" aria-label={`Veredicto de ${nombreDe(r)}`}>
+      <div className={`cs-franjas${partidas ? " cs-franjas--dos" : ""}`}>
         {(partidas ? evs : evs.slice(0, 1)).map(({ lote, ev }) => (
-          <div key={lote} className={`caseta__banda caseta__banda--${ev.veredicto}`}>
-            {partidas && <span className="caseta__banda-lote">{lote}</span>}
-            <span className="caseta__banda-t">{VEREDICTO[ev.veredicto].titulo}</span>
-            <span className="caseta__banda-a">{VEREDICTO[ev.veredicto].ayuda}</span>
+          <div key={lote} className={`cs-franja cs-franja--${ev.veredicto}`}>
+            {partidas && <span className="cs-franja__lote">{lote}</span>}
+            <span className="cs-franja__t">{VEREDICTO[ev.veredicto].titulo}</span>
+            <span className="cs-franja__a">{VEREDICTO[ev.veredicto].ayuda}</span>
           </div>
         ))}
       </div>
-      <div className="caseta__ver-cuerpo">
-        <div className="caseta__persona">
-          <h2>{nombreDe(r)}</h2>
-          <span className="caseta__nota">{tipoPersona(r.tipo) ?? ""}</span>
-        </div>
-        <dl className="caseta__datos">
-          <dt>Vehículo</dt><dd>{r.marca || r.modelo ? textoVehiculo(r) : "Sin registrar"}</dd>
-          <dt>Placa</dt><dd>{r.placa ?? comun?.placaZk ?? "—"}{placaZkDistinta && r.placa ? <span className="caseta__nota"> (en ZK: {comun?.placaZk})</span> : null}</dd>
-          <dt>Plumas</dt><dd>{textoPlumas(r.plumas)}</dd>
-          <dt>TAG</dt><dd className="mono">{comun?.tarjeta ?? "Sin TAG"}</dd>
-          {comun?.departamentoZk && <><dt>En ZK</dt><dd>{comun.departamentoZk}</dd></>}
-        </dl>
 
-        <p className="caseta__sub">Por qué</p>
-        <ul className="caseta__motivos">
-          {evs.flatMap(({ lote, ev }) => ev.motivos
-              // «Tiene acceso» junto a un rojo confunde: si ese estacionamiento sale en
-              // rojo (p. ej. expediente de baja con ZK todavia abierto), no se dice.
-              .filter((m) => !(m.clave === "acceso" && ev.veredicto === "no-abre"))
-              .map((m, i) => ({ lote, m, i })))
-            // Un motivo que vale para los dos (una baja) se dice una vez.
-            .filter((x, i, l) => l.findIndex((y) => y.m.texto === x.m.texto) === i)
-            .map(({ lote, m }) => (
-              <li key={`${lote}-${m.texto}`} className={`caseta__motivo caseta__motivo--${m.veredicto}`}>
-                <span className="caseta__punto" aria-hidden="true" />
-                <span>{evs.length > 1 && m.clave !== "baja" && m.clave !== "sin-tag" ? <b>{lote}: </b> : null}{m.texto}</span>
-              </li>
-            ))}
-        </ul>
+      {r.avisos.map((a) => <AvisoEnVeredicto key={a.id} a={a} onRespondido={onRespondido} />)}
 
-        <UltimasVeces pasos={r.pasos} hasta={eventosHasta} />
-
-        {/* Gerardo, 14-oct: si preguntan por que se dio de baja, el portero tiene la
-            respuesta y el proceso. A donde remitir una queja aun no se decide. */}
-        {baja && (
-          <div className="caseta__baja">
-            <p className="caseta__sub" style={{ marginTop: 0 }}>Si pregunta por qué</p>
-            <p>
-              <b>Motivo de la baja:</b>{" "}
-              {baja.motivo ?? "Sin motivo registrado en SATAG."}
-              {baja.fecha ? <span className="caseta__nota"> · {fecha(baja.fecha)}</span> : null}
-            </p>
-            <p><b>{PROCESO_BAJA}</b></p>
-          </div>
-        )}
-
-        <div className="caseta__acciones">
-          <button ref={abrir} type="button" className={algunoAbre ? "primary-action" : "ghost-action"} onClick={() => onReportar("apertura")}>
-            Abrí con el botón
-          </button>
-          <button type="button" className="ghost-action" onClick={() => onReportar("reporte")}>Reportar algo a Sistemas</button>
-          <button type="button" className="link-action" onClick={onCerrar}>Volver</button>
-        </div>
+      <div className="cs-persona">
+        <h2>{nombreDe(r)}</h2>
+        {tipoPersona(r.tipo) && <span className="ds-nota">{tipoPersona(r.tipo)}</span>}
       </div>
-    </div>
+      <dl className="cs-pares">
+        <dt>Vehículo</dt><dd>{r.marca || r.modelo ? textoVehiculo(r) : "Sin registrar"}</dd>
+        <dt>{ROTULO.placa}</dt><dd className="mono">{r.placa ?? comun?.placaZk ?? "—"}{placaZkDistinta && r.placa ? <span className="ds-nota"> ({ROTULO.placaZk}: {comun?.placaZk})</span> : null}</dd>
+        <dt>{ROTULO.plumas}</dt><dd>{textoPlumas(r.plumas)}</dd>
+        <dt>TAG</dt><dd className="mono">{comun?.tarjeta ?? "Sin TAG"}</dd>
+        {comun?.departamentoZk && <><dt>{ROTULO.departamentoZk}</dt><dd>{comun.departamentoZk}</dd></>}
+      </dl>
+
+      <h3 className="ds-rotulo">Por qué</h3>
+      <ul className="cs-motivos">
+        {motivos.map(({ lote, m }) => (
+          <li key={`${lote}-${m.texto}`}>
+            <span className={`cs-texto--${m.veredicto}`} aria-hidden="true">{m.veredicto === "abre" ? "✓" : "✕"}</span>
+            {/* El estacionamiento se dice solo cuando el veredicto cambia entre los dos. */}
+            <span>{partidas && m.clave !== "baja" && m.clave !== "sin-tag" ? <b>{lote}: </b> : null}{m.texto}</span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Gerardo, 14-oct: si preguntan por que se dio de baja, el portero tiene la
+          respuesta y el proceso. A donde remitir una queja aun no se decide. */}
+      {baja && (
+        <div className="cs-baja">
+          <h3 className="ds-rotulo">Si pregunta por qué</h3>
+          <p><b>Motivo de la baja:</b> {baja.motivo ?? "Sin motivo registrado en SATAG."}{baja.fecha ? <span className="ds-nota"> · {fecha(baja.fecha)}</span> : null}</p>
+          <p>{PROCESO_BAJA}</p>
+        </div>
+      )}
+
+      <UltimasVeces pasos={r.pasos} hasta={eventosHasta} />
+
+      <div className="ds-acciones">
+        {algunoAbre ? (
+          <>
+            <button ref={primero} type="button" className="primary-action" onClick={() => onReportar("apertura")}>Abrí con el botón</button>
+            <button type="button" className="ghost-action" onClick={() => onReportar("reporte")}>Reportar algo a Sistemas</button>
+            <button type="button" className="ghost-action" onClick={onCerrar}>Volver</button>
+          </>
+        ) : (
+          <>
+            <button ref={primero} type="button" className="ghost-action" onClick={onCerrar}>Volver</button>
+            <button type="button" className="ghost-action" onClick={() => onReportar("reporte")}>Reportar algo a Sistemas</button>
+            <button type="button" className="link-action cs-quieto" onClick={() => onReportar("apertura")}>Se abrió con el botón de todos modos</button>
+          </>
+        )}
+      </div>
+    </article>
+  );
+}
+
+/** El aviso de Sistemas dentro del veredicto: lo que pide y donde responderlo. */
+function AvisoEnVeredicto({ a, onRespondido }: { a: AvisoDeVehiculo; onRespondido: () => void }) {
+  return (
+    <section className="cs-pide" aria-label="Aviso de Sistemas">
+      <h3 className="ds-rotulo">Sistemas pide</h3>
+      <p className="cs-pide__t">{a.texto}</p>
+      {a.respuestas.map((s, i) => (
+        <p key={i} className="ds-nota">Respondió {s.mia ? "usted" : "otro turno"} el {fechaHora(s.en)}: {s.respuesta}</p>
+      ))}
+      {/* Ya respondido, el campo se pliega: se puede agregar algo, pero no estorba. */}
+      <Responder key={a.respuestas.length} avisoId={a.id} onRespondido={onRespondido} plegado={a.respuestas.length > 0} />
+    </section>
+  );
+}
+
+/** Responder un aviso: una linea, se manda como nota del caso. */
+function Responder({ avisoId, onRespondido, plegado = false }: { avisoId: string; onRespondido: () => void; plegado?: boolean }) {
+  const [abierto, setAbierto] = useState(!plegado);
+  const [texto, setTexto] = useState("");
+  const [ocupado, setOcupado] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (!abierto) {
+    return <button type="button" className="link-action" onClick={() => setAbierto(true)}>Responder</button>;
+  }
+  async function enviar(e: React.FormEvent) {
+    e.preventDefault();
+    if (texto.trim().length < 2) { setError("Escriba la respuesta."); return; }
+    setOcupado(true);
+    setError(null);
+    try {
+      await casetaResponderAviso(avisoId, texto.trim());
+      setTexto("");
+      onRespondido();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo enviar la respuesta.");
+    } finally {
+      setOcupado(false);
+    }
+  }
+  return (
+    <form className="cs-responder" onSubmit={enviar}>
+      <label className="sr-only" htmlFor={`resp-${avisoId}`}>Respuesta para Sistemas</label>
+      <input id={`resp-${avisoId}`} className="input" value={texto} maxLength={500} placeholder="Qué dijo o qué pasó" onChange={(e) => setTexto(e.target.value)} />
+      <button type="submit" className="ghost-action" disabled={ocupado}>{ocupado ? "Enviando…" : "Enviar"}</button>
+      {error && <p className="ds-aviso ds-aviso--error" role="alert">{error}</p>}
+    </form>
   );
 }
 
@@ -418,74 +490,63 @@ function Veredicto({ r, eventosHasta, onCerrar, onReportar }: {
 // Sistemas, y se dice.
 function UltimasVeces({ pasos, hasta }: { pasos: PasoPluma[]; hasta: string | null }) {
   const filas = estanciasDe(pasos, 5);
-  const hr = (s: string) => hora(s);
   return (
-    <div className="caseta__ult">
-      <div className="caseta__ult-cab">
-        <b>Últimas veces en la pluma</b>
-        {hasta && <span className="caseta__nota">Lecturas hasta el {fechaHora(hasta)} · se actualizan cuando Sistemas sube el archivo de ZK</span>}
-      </div>
-      {filas.length === 0 && <p className="caseta__nota" style={{ margin: "6px 0 0" }}>Sin lecturas en la pluma.</p>}
-      {filas.map((x, i) =>
-        x.tipo === "rechazo" ? (
-          <div key={i} className="caseta__ult-f caseta__ult-f--no">
-            <span className="caseta__ult-d">{diaSemana(x.en)}</span>
-            <span className="caseta__ult-l">{x.lote}</span>
-            <span><b>✕ Rechazado</b> en la {x.sentido} a las {hr(x.en)}</span>
-          </div>
-        ) : (
-          <div key={i} className="caseta__ult-f">
-            <span className="caseta__ult-d">{diaSemana(x.entrada ?? x.salida)}</span>
-            <span className="caseta__ult-l">{x.lote}</span>
-            <span>
-              {x.entrada ? <><b className="caseta__ok">✓</b> Entró {hr(x.entrada)}</> : <span className="caseta__nota">Entrada sin leer</span>}
-              {" → "}
-              {x.salida ? <><b className="caseta__ok">✓</b> Salió {hr(x.salida)}</> : <span className="caseta__nota">salida sin leer</span>}
-            </span>
-          </div>
-        ),
-      )}
-    </div>
+    <section className="cs-sec" aria-label="Últimas veces en la pluma">
+      <h3 className="ds-rotulo">Últimas veces en la pluma</h3>
+      {hasta && <p className="ds-nota">Lecturas de ZK hasta el {fechaHora(hasta)}: se actualizan cuando Sistemas sube el archivo.</p>}
+      {filas.length === 0 && <p className="ds-nota">Sin lecturas en la pluma.</p>}
+      <ul className="cs-ult">
+        {filas.map((x, i) =>
+          x.tipo === "rechazo" ? (
+            <li key={i}>
+              <span className="ds-nota">{diaSemana(x.en)}</span>
+              <span className="cs-ult__l">{x.lote}</span>
+              <span className="cs-texto--no-abre">✕ Rechazado en la {x.sentido} a las {hora(x.en)}</span>
+            </li>
+          ) : (
+            <li key={i}>
+              <span className="ds-nota">{diaSemana(x.entrada ?? x.salida)}</span>
+              <span className="cs-ult__l">{x.lote}</span>
+              <span>
+                {x.entrada ? <>Entró {hora(x.entrada)}</> : <span className="ds-nota">Entrada sin leer</span>}
+                {" → "}
+                {x.salida ? <>salió {hora(x.salida)}</> : <span className="ds-nota">salida sin leer</span>}
+              </span>
+            </li>
+          ),
+        )}
+      </ul>
+    </section>
   );
 }
 
-/* ------------------------------------------------------------------ los cambios de Sistemas */
+/* ------------------------------------------------------------------ los avisos de Sistemas */
 
-function Cambios({ cambios, lotes }: { cambios: CambioSistemas[]; lotes: Lote[] }) {
-  const [clase, setClase] = useState<ClaseCambio | null>(null);
-  const lista = clase ? cambios.filter((c) => c.clase === clase) : cambios;
-  const cuenta = (k: ClaseCambio) => cambios.filter((c) => c.clase === k).length;
+function Avisos({ avisos, onRespondido }: { avisos: AvisoCaseta[]; onRespondido: () => void }) {
+  const [todos, setTodos] = useState(false);
+  const lista = todos ? avisos : avisos.slice(0, CORTE);
   return (
-    <div className="caseta__avisos">
-      <p className="ti-hint">
-        Lo que Sistemas cambió este mes y afecta a {lotes.join(" y ")}. Una baja: la pluma ya no le abre; no abra y niegue el acceso.
-      </p>
-      <div className="chip-row" style={{ marginBottom: 8 }}>
-        <button type="button" className={`select-chip${clase === null ? " on" : ""}`} onClick={() => setClase(null)}>Todos</button>
-        {(Object.keys(CLASE_CAMBIO) as ClaseCambio[]).map((k) => (
-          <button key={k} type="button" className={`select-chip${clase === k ? " on" : ""}`} onClick={() => setClase(k)}>
-            {CLASE_CAMBIO[k].plural} {cuenta(k)}
-          </button>
-        ))}
-      </div>
-      {lista.length === 0 && <p className="caseta__vacio">Sin cambios de Sistemas este mes. Si un carro no abre, búsquelo a la izquierda.</p>}
-      <ul className="caseta__lista-avisos">
-        {lista.map((c) => (
-          <li key={`${c.clase}-${c.tarjeta}`} className={`caseta__aviso-i caseta__aviso-i--${c.clase === "baja" ? "no-abre" : "abre"}`}>
-            <span className="caseta__punto" aria-hidden="true" />
-            <span className="caseta__aviso-txt">
-              <span className="caseta__cambio">{CLASE_CAMBIO[c.clase].titulo}</span>{" "}
-              <b>{c.nombre ?? `TAG ${c.tarjeta}`}</b>
-              <span className="caseta__nota">
-                {" "}{[c.placa, c.marca || c.modelo ? textoVehiculo(c) : null].filter(Boolean).join(" · ")}
-              </span>
-              <span className="caseta__aviso-ind">{textoCambio(c)}</span>
-            </span>
-            <span className="caseta__hora">{fecha(c.en)}</span>
+    <section className="cs-sec" aria-label="Avisos de Sistemas">
+      <h2 className="cs-h">Avisos de Sistemas <span className="ds-nota">{avisos.length}</span></h2>
+      {avisos.length === 0
+        ? <p className="ds-nota">Sistemas no tiene avisos para esta caseta. Si un carro no abre, búsquelo arriba.</p>
+        : <p className="ds-nota">Si llega uno de estos vehículos, haga lo que pide Sistemas y responda aquí.</p>}
+      <ul className="cs-filas">
+        {lista.map((a) => (
+          <li key={a.id}>
+            <p><b>{a.nombre ?? (a.tarjeta ? `TAG ${a.tarjeta}` : "Sin nombre")}</b> <span className="ds-nota">{vehiculoCorto(a)}</span></p>
+            <p className="cs-pide__t">{a.texto}</p>
+            {a.respuestas.map((s, i) => (
+              <p key={i} className="ds-nota">Respondió {s.mia ? "usted" : "otro turno"} el {fechaHora(s.en)}: {s.respuesta}</p>
+            ))}
+            <Responder key={a.respuestas.length} avisoId={a.id} onRespondido={onRespondido} plegado />
           </li>
         ))}
       </ul>
-    </div>
+      {avisos.length > CORTE && (
+        <button type="button" className="link-action" onClick={() => setTodos((v) => !v)}>{todos ? "Ver menos" : `Ver los ${avisos.length}`}</button>
+      )}
+    </section>
   );
 }
 
@@ -496,40 +557,39 @@ function Reportes({ reportes, deTodos, onDeTodos }: {
   deTodos: boolean;
   onDeTodos: (v: boolean) => void;
 }) {
+  const [todos, setTodos] = useState(false);
+  const lista = todos ? reportes : reportes.slice(0, CORTE);
   return (
-    <div className="caseta__avisos">
-      <div className="caseta__avisos-cab">
-        <p className="ti-hint" style={{ margin: 0 }}>En qué va lo que se reportó este mes: Sistemas lo atiende y aquí se ve cuando lo cierra.</p>
-        <label className="caseta__dos">
+    <section className="cs-sec" aria-label="Reportes de la caseta">
+      <div className="cs-sec__cab">
+        <h2 className="cs-h">{deTodos ? "Reportes de la caseta" : "Mis reportes"} <span className="ds-nota">{reportes.length}</span></h2>
+        <label className="cs-casilla">
           <input type="checkbox" checked={deTodos} onChange={(e) => onDeTodos(e.target.checked)} /> De toda la caseta
         </label>
       </div>
-      {reportes.length === 0 && <p className="caseta__vacio">{deTodos ? "La caseta no ha reportado nada este mes." : "Usted no ha reportado nada este mes."}</p>}
-      <ul className="caseta__lista-avisos">
-        {reportes.map((m, i) => {
+      {reportes.length === 0 && <p className="ds-nota">{deTodos ? "La caseta no ha reportado nada este mes." : "Usted no ha reportado nada este mes."}</p>}
+      <ul className="cs-filas">
+        {lista.map((m, i) => {
           const s = estadoSeguimiento(m);
           return (
-            <li key={i} className="caseta__rep">
-              <span className={`caseta__estado caseta__estado--${s.tono}`}>{s.texto}</span>
-              <span className="caseta__aviso-txt">
+            <li key={i}>
+              <p>
+                <b className={`cs-estado cs-estado--${s.tono}`}>{s.texto}</b>
+                <span className="ds-nota"> · {fechaHora(m.en)}{deTodos && !m.mio ? " · otro turno" : ""}</span>
+              </p>
+              <p>
                 <b>{m.quien ?? "Sin vehículo"}</b>
-                <span className="caseta__nota"> · {m.clase === "apertura" ? "abrió con el botón" : "reporte"} en {tituloPuerta(m.puerta)}</span>
-                <span className="caseta__aviso-ind">
-                  {rotuloMotivo(m.clase, m.motivo)}
-                  {m.caso ? <> · {numeroCaso(m.caso)}</> : null}
-                  {m.ligado ? " · Sistemas identificó el vehículo" : ""}
-                </span>
-                {m.cierreMotivo && (
-                  <span className="caseta__aviso-ind"><b>Lo que hizo Sistemas:</b> {m.cierreMotivo}{m.cerradoEn ? ` (${fecha(m.cerradoEn)})` : ""}</span>
-                )}
-                {deTodos && !m.mio && <span className="caseta__nota">Lo reportó otro turno.</span>}
-              </span>
-              <span className="caseta__hora">{fechaHora(m.en)}</span>
+                <span className="ds-nota"> · {m.clase === "apertura" ? "abrió con el botón" : "reporte"} en {tituloPuerta(m.puerta)} · {rotuloMotivo(m.clase, m.motivo)}{m.caso ? ` · ${numeroCaso(m.caso)}` : ""}</span>
+              </p>
+              {m.cierreMotivo && <p>Lo que hizo Sistemas: {m.cierreMotivo}{m.cerradoEn ? <span className="ds-nota"> ({fecha(m.cerradoEn)})</span> : null}</p>}
             </li>
           );
         })}
       </ul>
-    </div>
+      {reportes.length > CORTE && (
+        <button type="button" className="link-action" onClick={() => setTodos((v) => !v)}>{todos ? "Ver menos" : `Ver los ${reportes.length}`}</button>
+      )}
+    </section>
   );
 }
 
@@ -543,6 +603,7 @@ function FormReporte({ borrador, caseta, nombreSesion, onCancelar, onListo }: {
   onListo: (r: { caso: number | null; casoNuevo: boolean }) => void;
 }) {
   const puertas = puertasDeCaseta(caseta);
+  const dialogo = useRef<HTMLDialogElement>(null);
   const [clase, setClase] = useState<ClaseReporte>(borrador.clase);
   // Con un solo estacionamiento, la entrada va marcada (es lo comun); con los dos, se elige.
   const [puerta, setPuerta] = useState<Puerta | null>(puertas.length === 2 ? puertas[0].id : null);
@@ -558,6 +619,15 @@ function FormReporte({ borrador, caseta, nombreSesion, onCancelar, onListo }: {
   const m = motivos.find((x) => x.id === motivo) ?? null;
   const identificado = !!r;
   const pidePlaca = !identificado && clase === "apertura" && !m?.sinPlaca;
+
+  // <dialog> nativo: atrapa el foco y Esc lo cierra.
+  useEffect(() => {
+    const d = dialogo.current;
+    if (d && !d.open) d.showModal();
+    const cerrar = () => onCancelar();
+    d?.addEventListener("cancel", cerrar);
+    return () => d?.removeEventListener("cancel", cerrar);
+  }, [onCancelar]);
 
   const falta =
     !puerta ? "Elija en qué puerta fue."
@@ -592,23 +662,18 @@ function FormReporte({ borrador, caseta, nombreSesion, onCancelar, onListo }: {
   }
 
   return (
-    <div className="caseta__velo" role="dialog" aria-modal="true" aria-label="Reporte de la caseta"
-      onKeyDown={(e) => { if (e.key === "Escape") onCancelar(); }}>
-      <form className="caseta__form panel" onSubmit={enviar}>
-        <div className="caseta__seg" role="group" aria-label="Qué reporta">
+    <dialog ref={dialogo} className="ds-dialogo" aria-label="Reporte de la caseta">
+      <form className="cs-form" onSubmit={enviar}>
+        <div className="cs-seg cs-seg--ancho" role="group" aria-label="Qué reporta">
           <button type="button" aria-pressed={clase === "apertura"} onClick={() => { setClase("apertura"); setMotivo(null); }}>Abrí con el botón</button>
           <button type="button" aria-pressed={clase === "reporte"} onClick={() => { setClase("reporte"); setMotivo(null); }}>Otro reporte</button>
         </div>
 
-        {r && (
-          <p className="caseta__quien">
-            <b>{nombreDe(r)}</b> · {r.placa ?? datosComunes(r)?.placaZk ?? "sin placa"}
-          </p>
-        )}
+        {r && <p><b>{nombreDe(r)}</b> <span className="ds-nota">· {r.placa ?? datosComunes(r)?.placaZk ?? "sin placa"}</span></p>}
 
-        <fieldset className="caseta__motivos-f">
+        <fieldset className="cs-campo">
           <legend>Puerta</legend>
-          <div className="chip-row">
+          <div className="cs-opciones">
             {puertas.map((p) => (
               <button key={p.id} type="button" className={`select-chip${puerta === p.id ? " on" : ""}`} aria-pressed={puerta === p.id} onClick={() => setPuerta(p.id)}>
                 {p.titulo}
@@ -617,11 +682,11 @@ function FormReporte({ borrador, caseta, nombreSesion, onCancelar, onListo }: {
           </div>
         </fieldset>
 
-        <fieldset className="caseta__motivos-f">
+        <fieldset className="cs-campo">
           <legend>Motivo</legend>
-          <div className="chip-row">
-            {motivos.map((x, i) => (
-              <button key={x.id} type="button" autoFocus={i === 0} className={`select-chip${motivo === x.id ? " on" : ""}`} aria-pressed={motivo === x.id} onClick={() => setMotivo(x.id)}>
+          <div className="cs-opciones">
+            {motivos.map((x) => (
+              <button key={x.id} type="button" className={`select-chip${motivo === x.id ? " on" : ""}`} aria-pressed={motivo === x.id} onClick={() => setMotivo(x.id)}>
                 {x.titulo}
               </button>
             ))}
@@ -629,13 +694,13 @@ function FormReporte({ borrador, caseta, nombreSesion, onCancelar, onListo }: {
         </fieldset>
 
         {pidePlaca && (
-          <div className="caseta__placa">
+          <div className="cs-campo">
             {!sinPlacas && (
               <label>Placa
-                <input className="input" value={placa} maxLength={12} autoComplete="off" onChange={(e) => setPlaca(e.target.value.toUpperCase())} placeholder="ABC-123-D" />
+                <input className="input mono" value={placa} maxLength={12} autoComplete="off" onChange={(e) => setPlaca(e.target.value.toUpperCase())} placeholder="ABC-123-D" />
               </label>
             )}
-            <label className="caseta__dos">
+            <label className="cs-casilla">
               <input type="checkbox" checked={sinPlacas} onChange={(e) => setSinPlacas(e.target.checked)} /> No tiene placas
             </label>
             {sinPlacas && (
@@ -646,23 +711,23 @@ function FormReporte({ borrador, caseta, nombreSesion, onCancelar, onListo }: {
           </div>
         )}
         {!identificado && !pidePlaca && clase === "apertura" && (
-          <label>Placa <span className="caseta__nota">(si se alcanzó a ver)</span>
-            <input className="input" value={placa} maxLength={12} onChange={(e) => setPlaca(e.target.value.toUpperCase())} />
+          <label className="cs-campo"><span>Placa <span className="ds-nota">(si se alcanzó a ver)</span></span>
+            <input className="input mono" value={placa} maxLength={12} onChange={(e) => setPlaca(e.target.value.toUpperCase())} />
           </label>
         )}
 
-        <label>
-          Nota {m?.pideNota || (!identificado && clase === "reporte") ? "" : <span className="caseta__nota">(opcional)</span>}
-          <textarea className="textarea" rows={2} maxLength={500} value={nota} onChange={(e) => setNota(e.target.value)} />
+        <label className="cs-campo">
+          <span>Nota {m?.pideNota || (!identificado && clase === "reporte") ? null : <span className="ds-nota">(opcional)</span>}</span>
+          <textarea className="textarea cs-nota" rows={2} maxLength={500} value={nota} onChange={(e) => setNota(e.target.value)} />
         </label>
 
-        <p className="caseta__firma">Reporta: <b>{nombreSesion}</b>. Si no es usted, use «Cambiar de turno» antes de reportar.</p>
-        {error && <p className="submit-error" role="alert">{error}</p>}
-        <div className="caseta__acciones">
+        <p className="ds-nota">Reporta <b>{nombreSesion}</b>. Si no es usted, use «Cambiar de turno» antes de reportar.</p>
+        {error && <p className="ds-aviso ds-aviso--error" role="alert">{error}</p>}
+        <div className="ds-acciones">
           <button type="submit" className="primary-action" disabled={ocupado}>{ocupado ? "Guardando…" : "Guardar reporte"}</button>
           <button type="button" className="ghost-action" onClick={onCancelar} disabled={ocupado}>Cancelar</button>
         </div>
       </form>
-    </div>
+    </dialog>
   );
 }

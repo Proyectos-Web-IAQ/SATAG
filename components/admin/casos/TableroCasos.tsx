@@ -71,6 +71,7 @@ import { lotesDeCaso } from "@/lib/caseta";
 import { ROTULO } from "@/lib/glosario";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
 import { EnZkDelCaso } from "@/components/admin/VistaMovimientosZk";
+import AvisosCaseta from "@/components/admin/casos/AvisosCaseta";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -844,6 +845,10 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
             {(rol === "ti" || rol === "contador" || rol === "super") && (
               <EnZkDelCaso casoId={caso.id} conTag={!!caso.tarjeta} puedePedir={rol === "ti" || rol === "super"} email={email} />
             )}
+            {/* Bloque 98: lo que Sistemas le pide a la caseta sobre este vehiculo. */}
+            <AvisosCaseta casoId={caso.id} cerrado={col === "cerrado"} rol={rol} email={email}
+              lotesSugeridos={lotesDeCaso(caso, (id) => padron?.find((p) => p.id === id)?.estacionamientos)}
+              onCambio={() => { listNotasCaso(caso.id).then(setNotas).catch(() => {}); }} />
             <div className="tc-r6">
               <div>Persona<b>{nombre}</b></div>
               <div>Folio<b className="mono">{folio ?? "—"}</b></div>

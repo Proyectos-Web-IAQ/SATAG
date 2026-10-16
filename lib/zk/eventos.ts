@@ -101,7 +101,23 @@ export interface ResumenEventos {
 export interface LecturaEventos {
   eventos: EventoZk[];
   resumen: ResumenEventos;
+  /**
+   * Bloque 99 (15-oct): «Apertura con botón de salida». No trae tarjeta, así que no
+   * es un evento de la bitácora, pero dice cuándo y por qué puerta se abrió con el
+   * botón; se cruza con los reportes de la caseta. Solo viene al leer un archivo.
+   */
+  aperturasBoton?: AperturaBotonZk[];
 }
+
+export interface AperturaBotonZk {
+  idEvento: number;
+  ocurrioEn: string;
+  lote: Lote;
+  sentido: Sentido;
+}
+
+/** «Apertura con botón de salida» (con o sin acento, como venga el archivo). */
+export const esAperturaBoton = (descripcion: string) => /apertura con bot/i.test(descripcion);
 
 const ROTULOS = ["ID de Evento", "Tiempo", "Tarjeta"];
 
@@ -196,6 +212,7 @@ export function parsearEventosZk(texto: string, nombreArchivo: string | null = n
   // acorta unos minutos y acabaria declarando huecos que no existen.
   const tiemposArchivo: string[] = [];
   let filasSinTarjeta = 0;
+  const aperturasBoton: AperturaBotonZk[] = [];
 
   for (const f of tabla.filas) {
     const tarjeta = normalizarTag(f["Tarjeta"]);
@@ -204,6 +221,12 @@ export function parsearEventosZk(texto: string, nombreArchivo: string | null = n
     const idEvento = Number(String(f["ID de Evento"] ?? "").replace(/[^0-9]/g, ""));
     if (!tarjeta || !ocurrioEn || !Number.isFinite(idEvento) || idEvento <= 0) {
       filasSinTarjeta += 1;
+      // Bloque 99: sin tarjeta, pero una apertura con el boton si importa.
+      const puntoSin = f["Punto del Evento"] ?? "";
+      const sentidoSin = sentidoDe(puntoSin);
+      if (ocurrioEn && idEvento > 0 && sentidoSin && esAperturaBoton(f["Descripción del Evento"] ?? "")) {
+        aperturasBoton.push({ idEvento, ocurrioEn, lote: loteDe(puntoSin, f["Nombre de Dispositivo"] ?? ""), sentido: sentidoSin });
+      }
       continue;
     }
     const punto = f["Punto del Evento"] ?? "";
@@ -226,6 +249,7 @@ export function parsearEventosZk(texto: string, nombreArchivo: string | null = n
 
   return {
     eventos,
+    aperturasBoton,
     resumen: {
       ...resumirEventos(eventos),
       filasArchivo: tabla.total,

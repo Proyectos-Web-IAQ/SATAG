@@ -10,7 +10,9 @@ import {
   agruparPorVehiculo,
   delLote,
   claveVehiculo,
+  cruzarAperturas,
   csvAperturas,
+  paredQueretaro,
   datosComunes,
   estanciasDe,
   evaluacionesDe,
@@ -166,5 +168,39 @@ describe("la caseta cubre estacionamientos, no puertas", () => {
     const r = { evaluaciones: { E2: ev("no-abre", "2"), E1: ev("abre", "1") } } as unknown as ResultadoCaseta;
     expect(evaluacionesDe(r).map((x) => `${x.lote}:${x.ev.veredicto}`)).toEqual(["E1:abre", "E2:no-abre"]);
     expect(datosComunes(r)?.tarjeta).toBe("1");
+  });
+});
+
+describe("ZK contra la caseta (bloque 99)", () => {
+  it("paredQueretaro pasa un instante a la hora de pared de Queretaro", () => {
+    expect(paredQueretaro("2026-10-14T13:00:00Z")).toBe("2026-10-14 07:00:00");
+    expect(paredQueretaro("2026-10-15T05:30:00+00:00")).toBe("2026-10-14 23:30:00");
+  });
+
+  const zk = (id: number, ocurrioEn: string, lote = "E1", sentido = "salida") => ({ idEvento: id, ocurrioEn, lote, sentido });
+
+  it("empareja por estacionamiento y ventana de -5 a +30 minutos, una vez cada reporte", () => {
+    // 07:00 de pared = 13:00Z. El portero reporto a las 07:04 en E1 salida.
+    const r1 = rep({ id: "a", puerta: "E1-salida", hechoEn: "2026-10-14T13:04:00Z" });
+    const { cruces, sinZk } = cruzarAperturas([zk(1, "2026-10-14 07:00:00"), zk(2, "2026-10-14 07:01:00")], [r1]);
+    expect(cruces.map((c) => c.reporte?.id ?? null)).toEqual(["a", null]);
+    expect(sinZk).toEqual([]);
+  });
+
+  it("otro estacionamiento o fuera de la ventana no cuenta; los otros reportes no se cruzan", () => {
+    const enE2 = rep({ id: "e2", puerta: "E2-salida", hechoEn: "2026-10-14T13:02:00Z" });
+    const tarde = rep({ id: "tarde", puerta: "E1-salida", hechoEn: "2026-10-14T13:45:00Z" });
+    const antes = rep({ id: "antes", puerta: "E1-salida", hechoEn: "2026-10-14T12:50:00Z" });
+    const otro = rep({ id: "otro", clase: "reporte", puerta: "E1-salida", hechoEn: "2026-10-14T13:01:00Z" });
+    const { cruces, sinZk } = cruzarAperturas([zk(1, "2026-10-14 07:00:00")], [enE2, tarde, antes, otro]);
+    expect(cruces[0].reporte).toBeNull();
+    expect(sinZk.map((r) => r.id).sort()).toEqual(["antes", "e2", "tarde"]);
+  });
+
+  it("prefiere el mismo sentido aunque el otro este mas cerca", () => {
+    const entrada = rep({ id: "ent", puerta: "E1-entrada", hechoEn: "2026-10-14T13:00:30Z" });
+    const salida = rep({ id: "sal", puerta: "E1-salida", hechoEn: "2026-10-14T13:10:00Z" });
+    const { cruces } = cruzarAperturas([zk(1, "2026-10-14 07:00:00", "E1", "salida")], [entrada, salida]);
+    expect(cruces[0].reporte?.id).toBe("sal");
   });
 });

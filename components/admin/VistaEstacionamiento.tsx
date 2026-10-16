@@ -35,6 +35,7 @@ import TableroCasos from "@/components/admin/casos/TableroCasos";
 import type { ExpedienteTag } from "@/components/admin/casos/GraficasCaso";
 import LecturasZk from "@/components/admin/LecturasZk";
 import {
+  cargarAperturasBotonZk,
   cargarEventosZk,
   altasDesdeZk,
   cargarPadronZk,
@@ -437,10 +438,24 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         setAvance({ hechas, total }),
       );
       const yaEstaban = r.yaEstaban + omitidos;
+      // Bloque 99: las aperturas con boton van aparte (no traen tarjeta). Si fallan,
+      // la bitacora ya quedo guardada: se avisa y se puede volver a subir el archivo.
+      let avisoBoton = "";
+      const botones = l.aperturasBoton ?? [];
+      if (botones.length) {
+        try {
+          const b = await cargarAperturasBotonZk(botones, email);
+          avisoBoton = b.insertadas > 0
+            ? ` Aperturas con botón: ${b.insertadas.toLocaleString("es-MX")} nuevas.`
+            : " Las aperturas con botón ya estaban guardadas.";
+        } catch (e) {
+          avisoBoton = ` No se guardaron las aperturas con botón (${e instanceof Error ? e.message : "error"}); vuelva a subir el archivo.`;
+        }
+      }
       const avisoBitacora =
-        r.insertados === 0
+        (r.insertados === 0
           ? `Esta ventana ya estaba guardada: ${yaEstaban.toLocaleString("es-MX")} eventos ya existían y no se mandó ninguno de más.`
-          : `Se guardaron ${r.insertados.toLocaleString("es-MX")} eventos nuevos${yaEstaban > 0 ? ` y ${yaEstaban.toLocaleString("es-MX")} ya estaban, así que no se volvieron a mandar` : ""}.`;
+          : `Se guardaron ${r.insertados.toLocaleString("es-MX")} eventos nuevos${yaEstaban > 0 ? ` y ${yaEstaban.toLocaleString("es-MX")} ya estaban, así que no se volvieron a mandar` : ""}.`) + avisoBoton;
       setAvisoCarga(avisoBitacora);
       await darDeAltaLasQueAbren(avisoBitacora);
       const imps = await listImportacionesZk();

@@ -112,6 +112,12 @@ const RUTAS = [
       { texto: "satag.caseta.lotes", que: "Caseta: el estacionamiento que cubre se recuerda en la Chromebook (14-oct)" },
       { texto: "Ocultar cerrados", que: "Casos: los cerrados no se ven y lo pendiente va en bloques (14-oct)" },
       { texto: "eventosHasta", que: "Caseta: diseño Mostrador con las ultimas estancias y hasta cuando llegan las lecturas (14-oct)" },
+      // Bloques 98 y 99 (15-oct): van antes del cliente.
+      { texto: "avisar_caseta", que: "Casos: Sistemas avisa a la caseta desde el caso (bloque 98)" },
+      { texto: "caseta_responder_aviso", que: "Caseta: el portero responde el aviso y llega al caso (bloque 98)" },
+      { texto: "cargar_aperturas_boton_zk", que: "Estacionamiento: las aperturas con boton de ZK se guardan al subir Todos los Eventos (bloque 99)" },
+      { texto: "Leyendo las aperturas de ZK", que: "Aperturas con boton: las de ZK cruzadas con los reportes de la caseta (bloque 99)" },
+      { texto: "cs-franja", que: "Caseta: el sistema de diseño nuevo, veredicto en franja solida (15-oct)" },
     ],
   },
 ];

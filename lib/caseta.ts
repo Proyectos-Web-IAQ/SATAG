@@ -130,6 +130,8 @@ export interface ResultadoCaseta {
   evaluaciones: Partial<Record<Lote, EvaluacionCaseta>>;
   /** Sus ultimas lecturas en la pluma, de la mas vieja a la mas nueva (hora de pared de ZK). */
   pasos: PasoPluma[];
+  /** Bloque 98: lo que Sistemas pide sobre este vehiculo. */
+  avisos: AvisoDeVehiculo[];
 }
 
 export interface PasoPluma { en: string; lote: string; sentido: "entrada" | "salida"; concedido: boolean }
@@ -189,37 +191,34 @@ export function evaluacionesDe(r: ResultadoCaseta): { lote: Lote; ev: Evaluacion
 export const datosComunes = (r: ResultadoCaseta): EvaluacionCaseta | null => evaluacionesDe(r)[0]?.ev ?? null;
 
 /**
- * Lo que Sistemas cambio y le importa a la pluma (Gerardo, 14-oct), de los ultimos
- * 30 dias: un TAG dado de baja (de quien sigue viniendo), un cambio de acceso o un
- * TAG nuevo instalado.
+ * Lo que Sistemas le pide a la caseta sobre un vehiculo (bloque 98, Gerardo 14-oct:
+ * «mas que cambios, que sean reportes»). Nace del caso; el portero lo ve al buscar
+ * el carro, responde, y la respuesta llega al caso como nota.
  */
-export type ClaseCambio = "baja" | "acceso" | "instalado";
-export interface CambioSistemas {
-  clase: ClaseCambio;
-  tarjeta: string;
-  en: string;
+export interface AvisoCaseta {
+  id: string;
+  caso: number;
+  texto: string;
+  /** Estacionamientos donde importa; vacio = los dos. */
+  lotes: string[];
+  desde: string;
+  hasta: string | null;
+  tarjeta: string | null;
   nombre: string | null;
   marca: string | null;
   modelo: string | null;
   color: string | null;
   placa: string | null;
-  /** Solo en las bajas: el motivo (null si no se registro). */
-  motivo: string | null;
-  /** Por donde entra (acceso, instalado) o por donde entraba (baja). */
-  lotes: string[];
+  respuestas: { respuesta: string; en: string; mia: boolean }[];
 }
 
-export const CLASE_CAMBIO: Record<ClaseCambio, { titulo: string; plural: string }> = {
-  baja: { titulo: "Baja de TAG", plural: "Bajas" },
-  acceso: { titulo: "Cambio de acceso", plural: "Cambios de acceso" },
-  instalado: { titulo: "TAG nuevo", plural: "TAGs nuevos" },
-};
-
-/** Lo que el portero lee de un cambio, en una linea. */
-export function textoCambio(c: CambioSistemas): string {
-  if (c.clase === "baja") return c.motivo ?? "Sin motivo registrado en SATAG.";
-  const por = c.lotes.length ? `por ${c.lotes.join(" y ")}` : "";
-  return c.clase === "acceso" ? `Ahora entra ${por}.`.replace("  ", " ") : `Se le instaló un TAG nuevo; entra ${por}.`.replace("  ", " ");
+/** El aviso tal como viaja dentro de un resultado de busqueda. */
+export interface AvisoDeVehiculo {
+  id: string;
+  caso: number;
+  texto: string;
+  desde: string;
+  respuestas: { respuesta: string; en: string; mia: boolean }[];
 }
 
 /** Un reporte de la caseta y en que va su caso. */
@@ -259,7 +258,7 @@ export function estadoSeguimiento(r: Pick<ReporteSeguimiento, "caso" | "estadoCa
 }
 
 export interface InicioCaseta {
-  cambios: CambioSistemas[];
+  avisos: AvisoCaseta[];
   reportes: ReporteSeguimiento[];
   /** Hasta donde llegan las lecturas de la pluma: el ultimo archivo de ZK que subio Sistemas. */
   eventosHasta: string | null;
@@ -430,4 +429,56 @@ export function lotesDeCaso(
   const caseta = caso.evidencia?.caseta as { puerta?: unknown } | undefined;
   if (typeof caseta?.puerta === "string" && /^E\d+-/.test(caseta.puerta)) l.add(caseta.puerta.split("-")[0]);
   return [...l].filter((x) => /^E\d+$/.test(x)).sort();
+}
+
+/* ------------------------------------------------------------------ ZK contra la caseta (bloque 99) */
+
+/** Un instante de la base («2026-10-14T13:00:00Z») a hora de pared de Queretaro «2026-10-14 07:00:00». */
+export function paredQueretaro(iso: string): string {
+  const t = new Date(iso);
+  if (Number.isNaN(t.getTime())) return iso;
+  const p = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Mexico_City", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(t).reduce<Record<string, string>>((o, x) => ((o[x.type] = x.value), o), {});
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;
+}
+
+const minutosDe = (pared: string) => Date.parse(pared.replace(" ", "T") + "Z") / 60000;
+
+export interface AperturaZk { idEvento: number; ocurrioEn: string; lote: string; sentido: string }
+
+export interface CruceApertura {
+  zk: AperturaZk;
+  /** El reporte de la caseta que le corresponde, o null si nadie la reporto. */
+  reporte: ReporteCaseta | null;
+}
+
+/**
+ * Empareja cada apertura con boton de ZK con UN reporte de la caseta: mismo
+ * estacionamiento, hecho entre 5 minutos antes y 30 despues (el portero reporta
+ * despues de abrir; el reloj de ZK y el del servidor no coinciden al segundo).
+ * Primero el mismo sentido y el mas cercano. Cada reporte se usa una vez. Las
+ * aperturas que no son de la caseta (falla, emergencia) cuentan igual: son botón.
+ */
+export function cruzarAperturas(zk: AperturaZk[], reportes: ReporteCaseta[]): { cruces: CruceApertura[]; sinZk: ReporteCaseta[] } {
+  const libres = reportes
+    .filter((r) => r.clase === "apertura")
+    .map((r) => ({ r, min: minutosDe(paredQueretaro(r.hechoEn)), lote: r.puerta.split("-")[0], sentido: r.puerta.split("-")[1], usado: false }));
+  const cruces: CruceApertura[] = [];
+  for (const a of [...zk].sort((x, y) => x.ocurrioEn.localeCompare(y.ocurrioEn))) {
+    const m = minutosDe(a.ocurrioEn);
+    let mejor: (typeof libres)[number] | null = null;
+    let puntos = Infinity;
+    for (const l of libres) {
+      if (l.usado || l.lote !== a.lote) continue;
+      const d = l.min - m;
+      if (d < -5 || d > 30) continue;
+      const p = Math.abs(d) + (l.sentido === a.sentido ? 0 : 60);
+      if (p < puntos) { puntos = p; mejor = l; }
+    }
+    if (mejor) mejor.usado = true;
+    cruces.push({ zk: a, reporte: mejor ? mejor.r : null });
+  }
+  return { cruces, sinZk: libres.filter((l) => !l.usado).map((l) => l.r) };
 }
