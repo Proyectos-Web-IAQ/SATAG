@@ -226,6 +226,11 @@ export interface CambiosRegistro {
   color?: string;
   // TI puede corregir propio/escuela (el titular solo lo declara en el alta).
   procedenciaTag?: ProcedenciaTag;
+  // Bloque 100: el tipo solo cambia entre los familiares (padres, alumno y
+  // otro); los apellidos de familia y el parentesco del 'otro' van con él.
+  tipoUsuario?: TipoUsuario;
+  apellidosFamilia?: string;
+  parentescoOtro?: string;
 }
 
 // Entrada del alta de autoservicio (espejo del RPC crear_registro).
@@ -235,8 +240,8 @@ export interface CrearRegistroInput {
   gestionanteNombre: string | null;
   gestionanteNombrePartes?: NombrePersona | null;
   tipoUsuario: TipoUsuario;
-  // Único lugar de todo el sistema donde se escriben los apellidos de la
-  // familia: ninguna pantalla del panel los captura después. Va con el mismo
+  // Aquí se escriben los apellidos de la familia; después solo TI los corrige
+  // desde «Actualizar datos» (bloque 100). Va con el mismo
   // criterio que en `Registro` —`string | null`, no opcional— para que quien
   // arme la entrada tenga que decidir qué manda: `null` cuando el titular no
   // pertenece a una familia de la comunidad, y los apellidos cuando sí.

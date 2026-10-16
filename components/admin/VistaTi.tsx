@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TagInventario, TramiteSolicitado } from "@/lib/mock/types";
+import type { CambiosRegistro, ProcedenciaTag, Registro, RegistroIncompleto, Solicitud, TagInventario, TipoUsuario, TramiteSolicitado } from "@/lib/mock/types";
 import { getMarcas, getModelos, getColores } from "@/lib/supabase/api";
 import {
   listRegistros,
@@ -29,7 +29,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import { textoVehiculo } from "@/lib/vehiculo";
-import { DetalleRegistro, TarjetaRegistro, TRAMITE_LABEL, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
+import { DetalleRegistro, TarjetaRegistro, TRAMITE_LABEL, TIPOS_CON_FAMILIA, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
 import { enFrase, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { fechaHora } from "@/lib/formato";
 
@@ -709,7 +709,7 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
               <span className={`ti-action__count ti-action__count--${sem(porInstalar.length)}`}>{porInstalar.length}</span>
             </button>
             <button type="button" className="ti-action" onClick={() => irA("actualizar")}>
-              <span><span className="ti-action__title">Actualizar datos</span><span className="ti-action__sub">Placas, vehículo o reposición de TAG</span></span>
+              <span><span className="ti-action__title">Actualizar datos</span><span className="ti-action__sub">Tipo, apellidos de familia, vehículo o reposición de TAG</span></span>
               <span className={`ti-action__count ti-action__count--${sem(solicitanActualizar.length)}`}>{solicitanActualizar.length}</span>
             </button>
             <button type="button" className="ti-action" onClick={() => irA("baja")}>
@@ -1499,6 +1499,28 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, guardando,
   const [procedencia, setProcedencia] = useState<ProcedenciaTag>(r.procedenciaTag);
   const [claves, setClaves] = useState<string[]>(r.estacionamientos);
   const [motivo, setMotivo] = useState("");
+  // Bloque 100: el tipo solo cambia entre los familiares, que comparten los
+  // apellidos de familia. Maestro y administrativo arrastran sección, área y
+  // plumas, y no se tocan aquí. El menor de edad queda fijo en alumno.
+  const esFamiliar = TIPOS_CON_FAMILIA.includes(r.tipoUsuario);
+  const [tipo, setTipo] = useState<TipoUsuario>(r.tipoUsuario);
+  const [apellidos, setApellidos] = useState(r.apellidosFamilia ?? "");
+  // No se borra al cambiar de chip: quien toca «otro» por error y regresa no
+  // pierde lo escrito. Solo viaja si el tipo final es 'otro'.
+  const [parentesco, setParentesco] = useState(r.parentescoOtro ?? "");
+
+  const tipoCambia = esFamiliar && tipo !== r.tipoUsuario;
+  // Un dato vacío no es un cambio (igual que la marca): no borra lo capturado.
+  const apellidosFinal = apellidos.trim();
+  const apellidosActuales = r.apellidosFamilia?.trim() ?? "";
+  const apellidosCambian = esFamiliar && apellidosFinal !== "" && apellidosFinal !== apellidosActuales;
+  const faltanApellidos = tipoCambia && apellidosFinal === "";
+  const pideParentesco = esFamiliar && tipo === "otro";
+  const parentescoFinal = parentesco.trim();
+  const parentescoActual = r.parentescoOtro?.trim() ?? "";
+  const parentescoCambia = pideParentesco && parentescoFinal !== "" && parentescoFinal !== parentescoActual;
+  const faltaParentesco = pideParentesco && tipoCambia && parentescoFinal === "";
+  const pierdeParentesco = tipoCambia && r.tipoUsuario === "otro" && parentescoActual !== "";
 
   const tieneTag = r.noDispositivo !== null;
   const tagCambia = tieneTag && tag !== r.noDispositivo;
@@ -1512,6 +1534,13 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, guardando,
   // El orden importa: es el que se le lee al titular en la confirmación.
   const cambios: CambiosRegistro = {};
   const resumen: string[] = [];
+  if (tipoCambia) {
+    cambios.tipoUsuario = tipo;
+    resumen.push(`tipo ${TIPO_PERSONA[r.tipoUsuario]} → ${TIPO_PERSONA[tipo]}`
+      + (pierdeParentesco ? ` (se quita el parentesco «${parentescoActual}»)` : ""));
+  }
+  if (apellidosCambian) { cambios.apellidosFamilia = apellidosFinal; resumen.push(`apellidos de la familia ${apellidosActuales || "sin dato"} → ${apellidosFinal}`); }
+  if (parentescoCambia) { cambios.parentescoOtro = parentescoFinal; resumen.push(`parentesco ${parentescoActual || "sin dato"} → ${parentescoFinal}`); }
   if (tagCambia && tagValido) { cambios.noDispositivo = tag; resumen.push(`TAG ${r.noDispositivo} → ${tag} (reposición; el anterior queda inactivo)`); }
   Object.assign(cambios, veh.cambios);
   resumen.push(...veh.resumen);
@@ -1532,6 +1561,47 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, guardando,
             </button>
           </div>
         </div>
+      )}
+      {esFamiliar ? (
+        <>
+          <div className="field">
+            <span>Tipo de usuario</span>
+            {r.usuarioEsMenor && (
+              <p className="ti-hint" style={{ margin: "0 0 6px" }}>El titular es menor de edad: su tipo queda fijo en alumno.</p>
+            )}
+            <div className="chip-row">
+              {TIPOS_CON_FAMILIA.map((t) => (
+                <button key={t} type="button" disabled={r.usuarioEsMenor && t !== "alumno"}
+                  className={`select-chip ${tipo === t ? "on" : ""}`}
+                  onClick={() => setTipo(t)}>{TIPO_PERSONA[t]}</button>
+              ))}
+            </div>
+            {pierdeParentesco && (
+              <p className="hint">Deja de ser otro familiar: se quita el parentesco «{parentescoActual}» y queda en la bitácora.</p>
+            )}
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <span>Apellidos de la familia</span>
+              <input className={`input ${faltanApellidos ? "invalid" : ""}`} value={apellidos}
+                onChange={(e) => setApellidos(e.target.value)} placeholder="Ej. García López" />
+              {faltanApellidos && <p className="field-error">Capture los apellidos de la familia para cambiar el tipo.</p>}
+              {!faltanApellidos && apellidosFinal === "" && apellidosActuales !== "" && (
+                <p className="hint">Vacío no borra: se conservan «{apellidosActuales}».</p>
+              )}
+            </div>
+            {pideParentesco && (
+              <div className="field">
+                <span>Parentesco con la familia</span>
+                <input className={`input ${faltaParentesco ? "invalid" : ""}`} value={parentesco}
+                  onChange={(e) => setParentesco(e.target.value)} placeholder="Ej. tío del alumno" />
+                {faltaParentesco && <p className="field-error">Escriba el parentesco con la familia.</p>}
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <p className="ti-hint">Tipo de usuario: {TIPO_PERSONA[r.tipoUsuario]}. Desde aquí solo se cambia entre padre o madre, alumno y otro familiar.</p>
       )}
       {tieneTag ? (
         <div className="field">
@@ -1581,7 +1651,7 @@ function FormActualizar({ r, marcas, colores, estacionamientos, busy, guardando,
       </div>
       <div className="field"><span>Atendido por</span><input className="input" value={tiNombre} onChange={(e) => onTiNombre(e.target.value)} placeholder="Su nombre" /></div>
       <button type="button" className="primary-action"
-        disabled={busy || !hayCambios || !tagValido || !veh.placasValidas || (veh.resumen.length > 0 && !veh.vehiculoCompleto) || (r.tagApartado && procedencia === "escuela")}
+        disabled={busy || !hayCambios || !tagValido || !veh.placasValidas || (veh.resumen.length > 0 && !veh.vehiculoCompleto) || (r.tagApartado && procedencia === "escuela") || faltanApellidos || faltaParentesco}
         onClick={() => onSubmit(cambios, estCambia ? claves : null, resumen.join("; "), motivo)}>
         {guardando ? "Guardando…" : "Guardar cambios"}
       </button>

@@ -118,6 +118,9 @@ const RUTAS = [
       { texto: "cargar_aperturas_boton_zk", que: "Estacionamiento: las aperturas con boton de ZK se guardan al subir Todos los Eventos (bloque 99)" },
       { texto: "Leyendo las aperturas de ZK", que: "Aperturas con boton: las de ZK cruzadas con los reportes de la caseta (bloque 99)" },
       { texto: "cs-franja", que: "Caseta: el sistema de diseño nuevo, veredicto en franja solida (15-oct)" },
+      // Bloque 100 (16-oct): va antes del cliente. p_tipo_usuario y p_apellidos_familia
+      // ya viajaban en el cobro y el alta: la marca es el texto del formulario.
+      { texto: "los apellidos de la familia para cambiar el tipo", que: "Actualizar datos corrige el tipo de un familiar y los apellidos de la familia (bloque 100)" },
     ],
   },
 ];

@@ -569,6 +569,12 @@ export async function actualizarRegistroConEstacionamiento(
     p_motivo: motivo.trim() || null,
     p_hecho_por: hechoPor.trim() || null,
     p_procedencia_tag: cambios.procedenciaTag ?? null,
+    // Bloque 100. Solo viajan cuando cambian: PostgREST busca la funcion por
+    // los nombres que recibe, y asi la correccion del vehiculo sigue
+    // funcionando aunque la base aun tenga la firma de 11.
+    ...(cambios.tipoUsuario ? { p_tipo_usuario: cambios.tipoUsuario } : {}),
+    ...(cambios.apellidosFamilia ? { p_apellidos_familia: cambios.apellidosFamilia } : {}),
+    ...(cambios.parentescoOtro ? { p_parentesco_otro: cambios.parentescoOtro } : {}),
   });
 }
 
