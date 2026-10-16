@@ -94,8 +94,10 @@ export function AvisoPreguntar({ casos }: { casos: CasoGuardado[] }) {
   );
 }
 
-export function SeccionCasos({ registroId, casos, tipos, cargando, error, recargar, rol, email }: {
+export function SeccionCasos({ registroId, tarjeta = null, casos, tipos, cargando, error, recargar, rol, email }: {
+  /** Vacio para quien no tiene expediente (solo en ZK): el caso se abre por su TAG. */
   registroId: string;
+  tarjeta?: string | null;
   casos: CasoGuardado[];
   tipos: TipoCasoCatalogo[];
   cargando: boolean;
@@ -155,6 +157,7 @@ export function SeccionCasos({ registroId, casos, tipos, cargando, error, recarg
       {registrando ? (
         <RegistrarCaso
           registroId={registroId}
+          tarjeta={tarjeta}
           tipos={tipos}
           email={email}
           onListo={() => { setRegistrando(false); recargar(); }}
@@ -171,8 +174,9 @@ export function SeccionCasos({ registroId, casos, tipos, cargando, error, recarg
   );
 }
 
-function RegistrarCaso({ registroId, tipos, email, onListo, onCancelar }: {
+function RegistrarCaso({ registroId, tarjeta, tipos, email, onListo, onCancelar }: {
   registroId: string;
+  tarjeta: string | null;
   tipos: TipoCasoCatalogo[];
   email: string | null;
   onListo: () => void;
@@ -195,7 +199,7 @@ function RegistrarCaso({ registroId, tipos, email, onListo, onCancelar }: {
     setGuardando(true);
     setError(null);
     try {
-      await abrirCaso({ tipo: elegido.tipo, titulo: titulo.trim(), detalle: detalle.trim(), registroId, preguntar }, email);
+      await abrirCaso({ tipo: elegido.tipo, titulo: titulo.trim(), detalle: detalle.trim(), registroId: registroId || null, tarjeta, preguntar }, email);
       onListo();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo registrar el caso.");

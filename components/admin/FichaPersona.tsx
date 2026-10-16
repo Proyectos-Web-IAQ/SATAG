@@ -20,11 +20,19 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import type { AreaAdmin, Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
-import { asignarAreaAdmin, deptosZkDeTarjetas, listPasosDeTarjetas, type PasoZk } from "@/lib/supabase/apiPanel";
+import {
+  asignarAreaAdmin,
+  deptosZkDeTarjetas,
+  listLecturasDeTarjetas,
+  listPasosDeTarjetas,
+  type LecturaDeTag,
+  type PasoZk,
+  type PersonaZkConsulta,
+} from "@/lib/supabase/apiPanel";
 import { emparejarEstancias, horaCorta, type Estancia } from "@/lib/estacionamiento";
 import type { EventoZk } from "@/lib/zk/eventos";
 import { salidasDelVehiculo, type SalidaVehiculo } from "@/lib/zk/alReves";
-import { GRUPO_INSTITUCIONAL, grupoDeDepto } from "@/lib/zk/padron";
+import { GRUPO_INSTITUCIONAL, grupoDeDepto, nombreDepto } from "@/lib/zk/padron";
 import { DetalleRegistro } from "@/components/admin/RegistroCard";
 import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { textoVehiculo } from "@/lib/vehiculo";
@@ -211,34 +219,83 @@ export function SalidasSemana({ salidas }: { salidas: SalidaVehiculo[] }) {
   );
 }
 
-/* ------------------------------------------------------------------ la ficha */
+/* ------------------------------------------------------------------ las lecturas */
 
-function Ficha({ r, rol, familia, onIr, extras = [] }: {
-  r: Registro;
-  rol: RolPanel;
-  familia: Registro[];
-  onIr: (id: string) => void;
-  /** Avisos que trae quien usa la ficha y que el expediente solo no sabe: los de la bitacora y los de ZK. */
-  extras?: string[];
-}) {
-  const [pasos, setPasos] = useState<{ para: string; estancias: Estancia[]; error: string | null; cargando: boolean; salidas?: SalidaVehiculo[] }>({
-    para: "", estancias: [], error: null, cargando: false,
-  });
-  const tags = useMemo(() => tagsDe(r), [r]);
-  const puedeVerPasos = VEN_PASOS.includes(rol);
-  // Los casos del expediente y de cualquiera de sus TAGs (bloque 89).
-  const numerosTag = useMemo(() => tags.map((t) => t.numero), [tags]);
-  const casos = useCasosDePersona(r.id, numerosTag, rol);
+/** «jue 16 oct 08:10:41»: los rechazos se cruzan al segundo con el boton y la caseta. */
+const momento = (pared: string) => `${diaSemana(pared)} ${pared.slice(11, 19)}`;
 
+/**
+ * Lo que leyo la pluma de sus TAGs, abriera o no (Gerardo, 16-oct: «a que hora la
+ * rechaza la pluma»). Las barras de arriba solo dibujan lo que abrio; aqui el
+ * rechazo se ve con su hora y su puerta.
+ */
+function LecturasDeTags({ tarjetas, rol }: { tarjetas: string[]; rol: RolPanel }) {
+  const puede = VEN_PASOS.includes(rol);
+  const clave = tarjetas.join(",");
+  const [estado, setEstado] = useState<{ para: string; lecturas: LecturaDeTag[]; error: string | null }>({ para: "", lecturas: [], error: null });
   useEffect(() => {
-    if (!puedeVerPasos) return;
-    const numeros = tags.map((t) => t.numero);
+    if (!puede || !clave) return;
+    let vivo = true;
+    listLecturasDeTarjetas(clave.split(","))
+      .then((l) => vivo && setEstado({ para: clave, lecturas: l, error: null }))
+      .catch((e: unknown) => vivo && setEstado({ para: clave, lecturas: [], error: e instanceof Error ? e.message : "No se pudo leer la bitácora." }));
+    return () => { vivo = false; };
+  }, [clave, puede]);
+  if (!puede || !clave) return null;
+  const listo = estado.para === clave;
+  const rechazos = listo ? estado.lecturas.filter((l) => !l.concedido).length : 0;
+  const varios = tarjetas.length > 1;
+  return (
+    <section className="ficha__bloque">
+      <h3>Lecturas de la pluma{listo && estado.lecturas.length > 0 ? <span className="ds-nota"> ({rechazos} {rechazos === 1 ? "rechazo" : "rechazos"} en las últimas {estado.lecturas.length})</span> : null}</h3>
+      {!listo ? (
+        <p className="ficha__vacio">Leyendo la bitácora…</p>
+      ) : estado.error ? (
+        <p className="submit-error" role="alert">{estado.error}</p>
+      ) : estado.lecturas.length === 0 ? (
+        <p className="ficha__vacio">La pluma no ha leído {varios ? "estos TAGs" : "este TAG"} en las ventanas cargadas.</p>
+      ) : (
+        <div className="table-wrap">
+          <table className="tabla-tipo">
+            <thead><tr><th>Cuándo</th><th>Puerta</th><th>Pluma</th>{varios && <th>TAG</th>}</tr></thead>
+            <tbody>
+              {estado.lecturas.slice(0, 30).map((l, i) => (
+                <tr key={i}>
+                  <td className="mono">{momento(l.ocurrioEn)}</td>
+                  <td>{l.lote} · {l.sentido}</td>
+                  <td>{l.concedido ? "Abrió" : <b>Rechazó</b>}</td>
+                  {varios && <td className="mono">{l.tarjeta}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {listo && estado.lecturas.length > 30 && <p className="ti-hint">Se muestran las 30 más recientes. El resto, en Estacionamiento › Lecturas por hora.</p>}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ los pasos de unos TAGs */
+
+type EstadoPasos = { para: string; estancias: Estancia[]; error: string | null; cargando: boolean; salidas?: SalidaVehiculo[] };
+
+/**
+ * Las estancias de unos TAGs, o sus salidas si ZK los tiene como vehiculo del
+ * Instituto. `para` es la llave de la ficha: lo que llega tarde de otra no se pinta.
+ */
+function usePasos(para: string, numeros: string[], puede: boolean): EstadoPasos {
+  const [pasos, setPasos] = useState<EstadoPasos>({ para: "", estancias: [], error: null, cargando: false });
+  const clave = numeros.join(",");
+  useEffect(() => {
+    if (!puede) return;
+    const numeros = clave ? clave.split(",") : [];
     if (numeros.length === 0) {
-      setPasos({ para: r.id, estancias: [], error: null, cargando: false });
+      setPasos({ para, estancias: [], error: null, cargando: false });
       return;
     }
     let vivo = true;
-    setPasos({ para: r.id, estancias: [], error: null, cargando: true });
+    setPasos({ para, estancias: [], error: null, cargando: true });
     // 13-oct: si ZK lo tiene en INSTITUCIONALES, se dibujan sus salidas y no sus estancias.
     Promise.all([listPasosDeTarjetas(numeros), deptosZkDeTarjetas(numeros).catch(() => new Map<string, { departamentoId: string; departamento: string }>())])
       .then(([p, deptos]) => {
@@ -259,7 +316,7 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
           repeticion: false,
         }));
         setPasos({
-          para: r.id,
+          para,
           estancias: emparejarEstancias(eventos, undefined, null, null, () => alReves).estancias,
           error: null,
           cargando: false,
@@ -268,10 +325,52 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
       })
       .catch((err: unknown) => {
         if (!vivo) return;
-        setPasos({ para: r.id, estancias: [], error: err instanceof Error ? err.message : "No se pudieron leer los pasos.", cargando: false });
+        setPasos({ para, estancias: [], error: err instanceof Error ? err.message : "No se pudieron leer los pasos.", cargando: false });
       });
     return () => { vivo = false; };
-  }, [r.id, tags, puedeVerPasos]);
+  }, [para, clave, puede]);
+  return pasos;
+}
+
+/** Entradas y salidas, o salidas y regresos: la misma seccion en las dos fichas. */
+function SeccionPasos({ pasos, para, puede, hayTags }: { pasos: EstadoPasos; para: string; puede: boolean; hayTags: boolean }) {
+  const salidas = pasos.para === para ? pasos.salidas : undefined;
+  return (
+    <section className="ficha__bloque">
+      <h3>{salidas ? "Salidas y regresos" : "Entradas y salidas"}</h3>
+      {!puede ? (
+        <p className="ficha__vacio">Los pasos por la pluma los ve el personal que opera el padrón.</p>
+      ) : pasos.cargando || pasos.para !== para ? (
+        <p className="ficha__vacio">Leyendo la bitácora…</p>
+      ) : pasos.error ? (
+        <p className="submit-error" role="alert">{pasos.error}</p>
+      ) : !hayTags ? (
+        <p className="ficha__vacio">Sin TAG, no hay pasos que buscar.</p>
+      ) : salidas ? (
+        <SalidasSemana salidas={salidas} />
+      ) : (
+        <PasosSemana estancias={pasos.estancias} />
+      )}
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ la ficha */
+
+function Ficha({ r, rol, familia, onIr, extras = [] }: {
+  r: Registro;
+  rol: RolPanel;
+  familia: Registro[];
+  onIr: (id: string) => void;
+  /** Avisos que trae quien usa la ficha y que el expediente solo no sabe: los de la bitacora y los de ZK. */
+  extras?: string[];
+}) {
+  const tags = useMemo(() => tagsDe(r), [r]);
+  const puedeVerPasos = VEN_PASOS.includes(rol);
+  // Los casos del expediente y de cualquiera de sus TAGs (bloque 89).
+  const numerosTag = useMemo(() => tags.map((t) => t.numero), [tags]);
+  const casos = useCasosDePersona(r.id, numerosTag, rol);
+  const pasos = usePasos(r.id, numerosTag, puedeVerPasos);
 
   const estancias = pasos.para === r.id ? pasos.estancias : [];
   const visitas = estancias.length;
@@ -333,22 +432,9 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
             />
           )}
 
-          <section className="ficha__bloque">
-            <h3>{salidas ? "Salidas y regresos" : "Entradas y salidas"}</h3>
-            {!puedeVerPasos ? (
-              <p className="ficha__vacio">Los pasos por la pluma los ve el personal que opera el padrón.</p>
-            ) : pasos.cargando || pasos.para !== r.id ? (
-              <p className="ficha__vacio">Leyendo la bitácora…</p>
-            ) : pasos.error ? (
-              <p className="submit-error" role="alert">{pasos.error}</p>
-            ) : tags.length === 0 ? (
-              <p className="ficha__vacio">Sin TAG, no hay pasos que buscar.</p>
-            ) : salidas ? (
-              <SalidasSemana salidas={salidas} />
-            ) : (
-              <PasosSemana estancias={estancias} />
-            )}
-          </section>
+          <SeccionPasos pasos={pasos} para={r.id} puede={puedeVerPasos} hayTags={tags.length > 0} />
+
+          <LecturasDeTags tarjetas={numerosTag} rol={rol} />
 
           {VEN_CASOS.includes(rol) && <AperturasDePersona registroId={r.id} tarjetas={numerosTag} />}
 
@@ -458,6 +544,95 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
   );
 }
 
+/* ------------------------------------------------------------------ sin expediente */
+
+/**
+ * Quien tiene TAG en ZK y no tiene expediente en SATAG, o un TAG que solo aparece en
+ * la bitacora (Gerardo, 16-oct: «quiero ver el contexto entero via personas»). Se
+ * lista junto a los expedientes; no es un expediente y no se puede operar desde aqui.
+ */
+export interface SinExpediente {
+  tarjeta: string;
+  /** null: el TAG no esta en el padron de ZK, solo se busco por su numero. */
+  zk: PersonaZkConsulta | null;
+}
+
+const claveSinExpediente = (s: SinExpediente) => `zk:${s.tarjeta}`;
+const nombreSinExpediente = (s: SinExpediente) => s.zk?.nombre.trim() || `TAG ${s.tarjeta}`;
+
+function FichaSinExpediente({ s, rol }: { s: SinExpediente; rol: RolPanel }) {
+  const para = claveSinExpediente(s);
+  const tarjetas = useMemo(() => [s.tarjeta], [s.tarjeta]);
+  const puedeVerPasos = VEN_PASOS.includes(rol);
+  // Sin expediente, los casos y la caseta se buscan solo por el TAG.
+  const casos = useCasosDePersona("", tarjetas, rol);
+  const pasos = usePasos(para, tarjetas, puedeVerPasos);
+  const listos = puedeVerPasos && pasos.para === para && !pasos.cargando && pasos.error === null;
+  const visitas = listos ? (pasos.salidas?.length ?? pasos.estancias.length) : 0;
+  const z = s.zk;
+  const depto = nombreDepto(z?.departamento);
+  const enBajas = depto === "BAJAS";
+  const enStock = depto.includes("STOCK");
+
+  const avisos: string[] = [];
+  if (!z) avisos.push("Este TAG no está en el padrón de ZK ni tiene expediente en SATAG.");
+  else avisos.push("Tiene TAG en ZK y no tiene expediente en SATAG.");
+  if (z && !z.vigente) avisos.push("Ya no viene en el último export de ZK: lo borraron allá.");
+  if (enBajas) avisos.push(visitas > 0 ? "Está en BAJAS de ZK y aun así abrió la pluma." : "Está en BAJAS de ZK: la pluma lo rechaza.");
+  if (enStock && visitas > 0) avisos.push("Es un TAG de stock y abrió la pluma: alguien lo trae puesto.");
+  if (z && !z.placa) avisos.push("ZK no tiene su placa: no aparece al buscarlo por placa.");
+
+  return (
+    <article className="ficha" aria-live="polite">
+      <AvisoPreguntar casos={casos.porPreguntar} />
+      <div className="ficha__ident">
+        <h2>{nombreSinExpediente(s)}</h2>
+        <span className="ficha__rol">{z ? `Solo en ZK · ${z.departamento || "sin departamento"}` : "Solo en la bitácora de la pluma"}</span>
+      </div>
+      <div className="ficha__cifras">
+        <span>TAG <b><code>{s.tarjeta}</code></b></span>
+        {z && <span>Placa en ZK <b>{z.placa ? <code>{z.placa}</code> : "sin placa"}</b></span>}
+        {listos && <span>Últimos días <b>{visitas} {pasos.salidas ? (visitas === 1 ? "salida" : "salidas") : (visitas === 1 ? "visita" : "visitas")}</b></span>}
+        <span>Expediente <b>no tiene</b></span>
+      </div>
+
+      <div className="ficha__cuerpo">
+        <div>
+          {casos.puede && (
+            <SeccionCasos
+              registroId=""
+              tarjeta={s.tarjeta}
+              casos={casos.casos}
+              tipos={casos.tipos}
+              cargando={casos.cargando}
+              error={casos.error}
+              recargar={casos.recargar}
+              rol={rol}
+              email={null}
+            />
+          )}
+          <SeccionPasos pasos={pasos} para={para} puede={puedeVerPasos} hayTags />
+          <LecturasDeTags tarjetas={tarjetas} rol={rol} />
+          {VEN_CASOS.includes(rol) && <AperturasDePersona registroId="" tarjetas={tarjetas} />}
+        </div>
+
+        <aside>
+          <h3>Datos</h3>
+          <dl className="props">
+            <div><dt>En ZK</dt><dd>{z ? (z.vigente ? "Sí" : "Ya no viene en el export") : "No"}</dd></div>
+            {z && <div><dt>Departamento</dt><dd>{z.departamento || "—"}</dd></div>}
+            {z && <div><dt>Placa en ZK</dt><dd>{z.placa || "—"}</dd></div>}
+            <div><dt>En SATAG</dt><dd>Sin expediente</dd></div>
+          </dl>
+          <IdentificacionGes nombres={[z?.nombre]} tarjetas={tarjetas} rol={rol} email={null} />
+          <h3 style={{ marginTop: 26 }}>Lo que no cuadra</h3>
+          {avisos.map((a) => <p className="aviso-ficha" key={a}>{a}</p>)}
+        </aside>
+      </div>
+    </article>
+  );
+}
+
 /* ------------------------------------------------------------------ lista y ficha */
 
 // Bloque 88: el administrativo es de Administración (ZK 16) o de Admon (ZK 17, el
@@ -504,9 +679,11 @@ function AreaAdministrativa({ r, rol }: { r: Registro; rol: RolPanel }) {
   );
 }
 
-export default function FichaPersona({ registros, todos, rol, vacio, linea, avisosExtra, orden }: {
+export default function FichaPersona({ registros, sinExpediente = [], todos, rol, vacio, linea, avisosExtra, orden }: {
   /** Los expedientes que pasan el buscador y los filtros de Consulta. */
   registros: Registro[];
+  /** Quien solo esta en ZK o en la bitacora; va despues de los expedientes. */
+  sinExpediente?: SinExpediente[];
   /** El padrón completo, para enlazar a la misma familia aunque el filtro la deje fuera. */
   todos: Registro[];
   rol: RolPanel;
@@ -520,7 +697,13 @@ export default function FichaPersona({ registros, todos, rol, vacio, linea, avis
 }) {
   const [elegido, setElegido] = useState<string | null>(null);
   const id = useId();
-  const actual = registros.find((r) => r.id === elegido) ?? registros[0] ?? null;
+  const sinExpElegido = elegido?.startsWith("zk:") ? sinExpediente.find((s) => claveSinExpediente(s) === elegido) ?? null : null;
+  const actual = sinExpElegido ? null : registros.find((r) => r.id === elegido) ?? registros[0] ?? null;
+  // Sin expedientes que mostrar, la primera persona sin expediente.
+  const sinExpActual = sinExpElegido ?? (actual ? null : sinExpediente[0] ?? null);
+  const total = registros.length + sinExpediente.length;
+  // Los 300 de la lista: primero expedientes; lo que sobre, para los que no tienen.
+  const sinExpVisibles = sinExpediente.slice(0, Math.max(0, 300 - registros.length));
 
   const señalada = (r: Registro) =>
     (r.noDispositivo !== null && !r.placas && !r.sinPlacas) ||
@@ -536,12 +719,13 @@ export default function FichaPersona({ registros, todos, rol, vacio, linea, avis
     <div className="ficha-app">
       <div className="ficha-lista">
         <p className="ficha-lista__n" id={`${id}-n`}>
-          {registros.length === 0 ? vacio : `${registros.length.toLocaleString("es-MX")} ${registros.length === 1 ? "expediente" : "expedientes"}${orden ? ` · ${orden}` : ""}`}
+          {total === 0 ? vacio : `${registros.length.toLocaleString("es-MX")} ${registros.length === 1 ? "expediente" : "expedientes"}${
+            sinExpediente.length > 0 ? ` · ${sinExpediente.length.toLocaleString("es-MX")} sin expediente` : ""}${orden ? ` · ${orden}` : ""}`}
         </p>
         <ul aria-labelledby={`${id}-n`}>
           {registros.slice(0, 300).map((r) => (
             <li key={r.id}>
-              <button type="button" className="persona" aria-current={actual?.id === r.id} onClick={() => setElegido(r.id)}>
+              <button type="button" className="persona" aria-current={actual?.id === r.id && !sinExpActual} onClick={() => setElegido(r.id)}>
                 <span className="persona__nm">
                   <span>{r.usuarioNombre}</span>
                   {señalada(r) && <span className="persona__punto" title="Hay algo que no cuadra" />}
@@ -554,12 +738,28 @@ export default function FichaPersona({ registros, todos, rol, vacio, linea, avis
               </button>
             </li>
           ))}
-          {registros.length > 300 && (
+          {sinExpVisibles.map((s) => (
+            <li key={claveSinExpediente(s)}>
+              <button type="button" className="persona" aria-current={sinExpActual?.tarjeta === s.tarjeta} onClick={() => setElegido(claveSinExpediente(s))}>
+                <span className="persona__nm">
+                  <span>{nombreSinExpediente(s)}</span>
+                  <span className="persona__punto" title="Sin expediente en SATAG" />
+                </span>
+                <span className="persona__mt">
+                  {s.zk ? `Solo en ZK · ${s.zk.departamento || "sin departamento"}` : "Solo en la bitácora"} · TAG <code>{s.tarjeta}</code>
+                  {s.zk?.placa ? <> · <code>{s.zk.placa}</code></> : ""}
+                </span>
+              </button>
+            </li>
+          ))}
+          {total > 300 && (
             <li className="ficha-lista__n" style={{ padding: "8px 10px" }}>Se muestran 300. Afine la búsqueda para ver el resto.</li>
           )}
         </ul>
       </div>
-      {actual ? (
+      {sinExpActual ? (
+        <FichaSinExpediente key={claveSinExpediente(sinExpActual)} s={sinExpActual} rol={rol} />
+      ) : actual ? (
         <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} />
       ) : (
         <div className="ficha"><p className="ficha__vacio">{vacio}</p></div>

@@ -1191,6 +1191,41 @@ export async function listPasosDeTarjetas(tarjetas: string[], tope = 400): Promi
     .reverse();
 }
 
+/** Una lectura de un TAG en la ficha: abrio o la pluma lo rechazo. */
+export interface LecturaDeTag {
+  ocurrioEn: string;
+  lote: string;
+  sentido: "entrada" | "salida";
+  tarjeta: string;
+  concedido: boolean;
+}
+
+/**
+ * Las ultimas lecturas de unos TAGs, CON los rechazos (Gerardo, 16-oct: «a que hora
+ * la rechaza la pluma»). `listPasosDeTarjetas` solo trae lo que abrio porque dibuja
+ * estancias; esta es la lista cruda, de la mas nueva a la mas vieja. Sin rafagas.
+ * Misma RLS que la bitacora: ti, contador y super.
+ */
+export async function listLecturasDeTarjetas(tarjetas: string[], tope = 60): Promise<LecturaDeTag[]> {
+  const limpias = [...new Set(tarjetas.map((t) => t.replace(/\D/g, "")).filter(Boolean))];
+  if (limpias.length === 0) return [];
+  const { data, error } = await supabaseAuth
+    .from("zk_eventos")
+    .select("ocurrio_en, lote, sentido, tarjeta, concedido")
+    .in("tarjeta", limpias)
+    .eq("repeticion", false)
+    .order("ocurrio_en", { ascending: false })
+    .limit(tope);
+  if (error) throw new Error(traducirError(error.message));
+  return ((data ?? []) as { ocurrio_en: string; lote: string; sentido: string; tarjeta: string; concedido: boolean }[]).map((r) => ({
+    ocurrioEn: String(r.ocurrio_en).replace("T", " ").slice(0, 19),
+    lote: r.lote,
+    sentido: r.sentido === "salida" ? "salida" : "entrada",
+    tarjeta: r.tarjeta,
+    concedido: r.concedido,
+  }));
+}
+
 /** Una lectura de la pluma con lo que dijo el controlador, para «Lecturas por hora». */
 export interface LecturaZk extends PasoZk {
   concedido: boolean;
@@ -1340,6 +1375,42 @@ export async function listPadronZk(): Promise<PersonaZk[]> {
     const filas = (data ?? []) as { tarjeta: string; nombre: string; departamento_id: string; departamento: string; placa: string | null }[];
     if (filas.length === 0) break;
     for (const r of filas) out.push({ tarjeta: r.tarjeta, nombre: r.nombre, departamentoId: r.departamento_id, departamento: r.departamento, nombres: "", apellidos: "", placa: (r.placa ?? "").toUpperCase() });
+  }
+  return out;
+}
+
+/** Una persona del padron de ZK para Consulta › Personas, vigente o no. */
+export interface PersonaZkConsulta {
+  tarjeta: string;
+  nombre: string;
+  departamentoId: string;
+  departamento: string;
+  placa: string;
+  /** false: ya no vino en el ultimo export de ZK (la borraron alla). */
+  vigente: boolean;
+}
+
+/**
+ * Todo el padron de ZK guardado, tambien lo que ya no viene en el export: Personas
+ * lista a quien no tiene expediente (Gerardo, 16-oct: «todos los registros aunque
+ * esten incompletos»). La leen ti, contador y super (RLS del 83); a los demas la
+ * base les devuelve cero filas y Personas sigue con solo los expedientes.
+ */
+export async function listPadronZkConsulta(): Promise<PersonaZkConsulta[]> {
+  const PAGINA = 5000;
+  const out: PersonaZkConsulta[] = [];
+  for (let pagina = 0; pagina < 20; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("zk_padron")
+      .select("tarjeta, nombre, departamento_id, departamento, placa, vigente")
+      .order("tarjeta", { ascending: true })
+      .range(out.length, out.length + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as { tarjeta: string; nombre: string; departamento_id: string; departamento: string; placa: string | null; vigente: boolean }[];
+    if (filas.length === 0) break;
+    for (const r of filas) {
+      out.push({ tarjeta: r.tarjeta, nombre: r.nombre, departamentoId: r.departamento_id, departamento: r.departamento, placa: (r.placa ?? "").toUpperCase(), vigente: r.vigente });
+    }
   }
   return out;
 }

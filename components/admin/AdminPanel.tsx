@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { EstadoRegistro, Registro, RegistroIncompleto } from "@/lib/mock/types";
-import { listRegistros, listRegistrosIncompletos, nombreDesdeEmail } from "@/lib/supabase/apiPanel";
+import { listPadronZkConsulta, listRegistros, listRegistrosIncompletos, nombreDesdeEmail, type PersonaZkConsulta } from "@/lib/supabase/apiPanel";
+import { normalizarBusqueda } from "@/lib/buscarPersona";
 import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
 import VistaAdmin from "@/components/admin/VistaAdmin";
@@ -14,7 +15,7 @@ import VistaEstacionamiento, { type VistaEstac } from "@/components/admin/VistaE
 import VistaGes from "@/components/admin/VistaGes";
 import VistaMovimientosZk from "@/components/admin/VistaMovimientosZk";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
-import FichaPersona from "@/components/admin/FichaPersona";
+import FichaPersona, { type SinExpediente } from "@/components/admin/FichaPersona";
 import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
 import VistaCaseta from "@/components/admin/VistaCaseta";
 import AperturasCaseta from "@/components/admin/AperturasCaseta";
@@ -256,13 +257,43 @@ function IconoFiltro() {
   );
 }
 
+// Quien lee el padron de ZK y la bitacora (RLS de los bloques 78 y 83).
+const LEEN_ZK: RolPanel[] = ["ti", "contador", "super"];
+
+/** Placa sin espacios ni guiones, para que «UKL-661-F» encuentre «UKL661F». */
+const placaCompacta = (p: string | null | undefined) => (p ?? "").replace(/[^0-9A-Za-z]/g, "").toLowerCase();
+
+/** Todas las palabras de la busqueda aparecen, sin importar acentos, mayusculas ni orden. */
+function coincide(partes: (string | null | undefined)[], placas: (string | null | undefined)[], q: string): boolean {
+  const t = normalizarBusqueda(q);
+  if (!t) return true;
+  const indice = `${normalizarBusqueda(partes.filter(Boolean).join(" "))} ${placas.map(placaCompacta).join(" ")}`;
+  return t.split(" ").every((p) => indice.includes(p)) || placas.some((p) => p && placaCompacta(p) === placaCompacta(q));
+}
+
+/** Los TAGs que ya tienen dueño en SATAG: el vigente, el apartado y los que tuvo antes. */
+function tagsConExpediente(registros: Registro[]): Set<string> {
+  const s = new Set<string>();
+  for (const r of registros) {
+    if (r.noDispositivo) s.add(r.noDispositivo);
+    if (r.tagApartadoNo) s.add(r.tagApartadoNo);
+    for (const m of r.movimientos) if (m.noDispositivoAnterior) s.add(m.noDispositivoAnterior);
+  }
+  return s;
+}
+
 // Consulta es la lista del padrón que se abre a la ficha de una persona
 // (DISEÑO.md §3.4): buscador y filtros rápidos arriba, la lista a un lado y la
 // ficha al otro, en modo solo lectura. Desde octubre de 2026 la ficha junta lo
 // que antes estaba repartido —expediente, TAGs, vehículo, bitácora y los pasos
 // por la pluma— y lo que no cuadra lo dice en una columna aparte.
+//
+// Desde el 16-oct también lista a quien NO tiene expediente (Gerardo: «quiero
+// tener todos los registros aunque estén incompletos»): quien tiene TAG en ZK y
+// nada en SATAG, y un TAG buscado por número que solo aparece en la bitácora.
 function VistaConsulta({ rol }: { rol: RolPanel }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
+  const [padronZk, setPadronZk] = useState<PersonaZkConsulta[]>([]);
   // CC-02: el reporte de incompletos vive aquí porque Consulta es la vista de
   // investigación del padrón. TI lo tiene también en su propia pantalla: es
   // quien resuelve cinco de los siete motivos y no ve esta pestaña.
@@ -300,17 +331,42 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
 
   useEffect(() => { refresh(); }, []);
 
-  const q = query.trim().toLowerCase();
+  // Sin el padron de ZK, Personas sigue con los expedientes: no es motivo de error.
+  useEffect(() => {
+    if (!LEEN_ZK.includes(rol)) return;
+    let vivo = true;
+    listPadronZkConsulta().then((zk) => vivo && setPadronZk(zk)).catch(() => {});
+    return () => { vivo = false; };
+  }, [rol]);
+
+  const q = query.trim();
   const filtrados = useMemo(() => registros.filter((r) => {
     if (estados.length && !estados.includes(r.estado)) return false;
     if (soloSinPlacas && !r.sinPlacas) return false;
     if (tagFiltro === "con" && !r.noDispositivo) return false;
     if (tagFiltro === "sin" && r.noDispositivo) return false;
     if (estacs.length && !r.estacionamientos.some((e) => estacs.includes(e))) return false;
-    if (q && ![r.usuarioNombre, r.gestionanteNombre ?? "", r.placas ?? "", r.noDispositivo ?? "", r.folio, r.marca, r.modelo]
-      .join(" ").toLowerCase().includes(q)) return false;
+    if (q && !coincide([r.usuarioNombre, r.gestionanteNombre, r.noDispositivo, r.folio, r.marca, r.modelo, r.color], [r.placas], q)) return false;
     return true;
   }), [registros, estados, soloSinPlacas, tagFiltro, estacs, q]);
+
+  // Quien no tiene expediente no tiene estado, plumas ni placas en SATAG: los
+  // filtros de esas cosas lo dejan fuera. «Con TAG» no, porque si lo tiene.
+  const conTags = useMemo(() => tagsConExpediente(registros), [registros]);
+  const sinExpediente = useMemo<SinExpediente[]>(() => {
+    if (estados.length || soloSinPlacas || estacs.length || tagFiltro === "sin") return [];
+    const out: SinExpediente[] = padronZk
+      .filter((p) => !conTags.has(p.tarjeta))
+      .filter((p) => !q || coincide([p.nombre, p.tarjeta, p.departamento], [p.placa], q))
+      .sort((a, b) => Number(b.vigente) - Number(a.vigente) || a.nombre.localeCompare(b.nombre, "es"))
+      .map((p) => ({ tarjeta: p.tarjeta, zk: p }));
+    // Un número de TAG que no es de nadie: su ficha muestra lo que leyó la pluma.
+    const tag = q.replace(/\s/g, "");
+    if (LEEN_ZK.includes(rol) && /^[0-9]{6,11}$/.test(tag) && !conTags.has(tag) && !padronZk.some((p) => p.tarjeta === tag)) {
+      out.push({ tarjeta: tag, zk: null });
+    }
+    return out;
+  }, [padronZk, conTags, q, estados, soloSinPlacas, estacs, tagFiltro, rol]);
 
   // Opciones que se muestran: solo estados y estacionamientos presentes en el
   // padrón, para no ofrecer filtros que no devolverían nada.
@@ -387,8 +443,8 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
       </div>
 
       <div className="panel">
-        <p className="panel-title">Padrón completo ({filtrados.length})</p>
-        <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG o folio…"
+        <p className="panel-title">Padrón completo ({(filtrados.length + sinExpediente.length).toLocaleString("es-MX")})</p>
+        <input className="input search" type="search" placeholder="Buscar por nombre, placa, No. de TAG, folio o vehículo…"
           value={query} onChange={(e) => setQuery(e.target.value)} style={{ marginBottom: 12 }} />
 
         <div className="consulta-filtros">
@@ -464,6 +520,7 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
         )}
         <FichaPersona
           registros={filtrados}
+          sinExpediente={sinExpediente}
           todos={registros}
           rol={rol}
           vacio={q || hayFiltros ? "Sin resultados con los filtros actuales." : "Aún no hay registros en el padrón."}
