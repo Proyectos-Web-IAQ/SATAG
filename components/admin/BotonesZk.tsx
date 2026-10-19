@@ -18,7 +18,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RolPanel } from "@/lib/supabase/auth";
 import {
+  contarEntradasZk,
   listAperturasBotonZk,
+  listImportacionesZk,
   listLecturasZk,
   listPadronEstacionamiento,
   listPadronZkConsulta,
@@ -28,8 +30,8 @@ import {
 } from "@/lib/supabase/apiPanel";
 import type { AperturaBotonZk } from "@/lib/zk/eventos";
 import { PUERTAS, cruzarAperturas, paredQueretaro, rotuloMotivo, tituloPuerta, type ReporteCaseta } from "@/lib/caseta";
-import { diaDe, minutoDelDia, pistasDe, porDia, porHora, sinLecturaDelDia, type Pista } from "@/lib/aperturasBoton";
-import { diaSemana, fechaHora, hora } from "@/lib/formato";
+import { DIA_COMPLETO, antesDespues, diaDe, diaDeLaSemana, minutoDelDia, pistasDe, porDia, porHora, sinLecturaDelDia, type Pista } from "@/lib/aperturasBoton";
+import { diaSemana, fecha, fechaHora, hora } from "@/lib/formato";
 import { textoVehiculo } from "@/lib/vehiculo";
 import Loader from "@/components/Loader";
 
@@ -44,6 +46,10 @@ interface Item {
 
 const PUERTA = (a: { lote: string; sentido: string }) => `${a.lote}-${a.sentido}`;
 const LEEN_EVENTOS: RolPanel[] = ["ti", "contador", "super"];
+/** Gerardo, 19-oct: el canal Sistemas <-> caseta empezo el jueves 15-oct. Se puede cambiar en pantalla. */
+const HITO_INICIAL = "2026-10-15";
+const CLAVE_HITO = "satag.botones.hito";
+const ES_FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 export default function BotonesZk({ rol, dias, lote, reportes }: {
   rol: RolPanel;
@@ -59,7 +65,19 @@ export default function BotonesZk({ rol, dias, lote, reportes }: {
   const [dia, setDia] = useState<string | null>(null);
   const [sel, setSel] = useState<number | null>(null);
   const [lecturasDia, setLecturasDia] = useState<LecturaZk[] | null>(null);
+  // La ultima lectura de ZK guardada: el corte real del dia de hoy (la ultima
+  // apertura puede ser anterior). Si el rol no lee las importaciones, la ultima apertura.
+  const [ultimaLectura, setUltimaLectura] = useState<string | null>(null);
   const leeEventos = LEEN_EVENTOS.includes(rol);
+  const [hito, setHito] = useState(HITO_INICIAL);
+  useEffect(() => {
+    try { const v = localStorage.getItem(CLAVE_HITO); if (v && ES_FECHA.test(v)) setHito(v); } catch { /* sin almacenamiento */ }
+  }, []);
+  const cambiarHito = (v: string) => {
+    if (!ES_FECHA.test(v)) return;
+    setHito(v);
+    try { localStorage.setItem(CLAVE_HITO, v); } catch { /* sin almacenamiento */ }
+  };
 
   // Las aperturas y los rechazos del periodo.
   useEffect(() => {
@@ -70,6 +88,9 @@ export default function BotonesZk({ rol, dias, lote, reportes }: {
       .then((r) => { if (vivo) { setZk(r); setError(null); } })
       .catch((e) => { if (vivo) { setError(e instanceof Error ? e.message : "No se pudieron leer las aperturas de ZK."); setZk([]); } });
     if (leeEventos) {
+      listImportacionesZk()
+        .then((imps) => { if (vivo) setUltimaLectura(imps[0]?.hasta ? String(imps[0].hasta).replace("T", " ").slice(0, 19) : null); })
+        .catch(() => { /* se queda con la ultima apertura */ });
       listRechazosZk(desde)
         .then((r) => { if (vivo) setRechazos(r); })
         .catch(() => { if (vivo) setRechazos([]); });
@@ -107,7 +128,8 @@ export default function BotonesZk({ rol, dias, lote, reportes }: {
   const datos = useMemo(() => {
     if (!zk) return null;
     const deZk = zk.filter((a) => !lote || a.lote === lote);
-    const hasta = deZk.reduce<string | null>((m, a) => (!m || a.ocurrioEn > m ? a.ocurrioEn : m), null);
+    const ultimaApertura = deZk.reduce<string | null>((m, a) => (!m || a.ocurrioEn > m ? a.ocurrioEn : m), null);
+    const hasta = ultimaLectura && (!ultimaApertura || ultimaLectura > ultimaApertura) ? ultimaLectura : ultimaApertura;
     const cruzables = reportes.filter((r) => (!lote || r.puerta.startsWith(lote)) && (!hasta || paredQueretaro(r.hechoEn) <= hasta));
     const { cruces, sinZk } = cruzarAperturas(deZk, cruzables);
     const todos: Item[] = cruces.map((c) => ({ a: c.zk as AperturaBotonZk, reporte: c.reporte, pistas: rechazos ? pistasDe(c.zk as AperturaBotonZk, rechazos) : [] }));
@@ -126,7 +148,7 @@ export default function BotonesZk({ rol, dias, lote, reportes }: {
       horas: porHora(items.map((x) => ({ ocurrioEn: x.a.ocurrioEn, con: !!x.reporte })), (x) => x.con),
       dias: porDia(items.map((x) => ({ ocurrioEn: x.a.ocurrioEn, con: !!x.reporte })), (x) => x.con),
     };
-  }, [zk, reportes, lote, puerta, rechazos]);
+  }, [zk, reportes, lote, puerta, rechazos, ultimaLectura]);
 
   // El dia elegido: el ultimo con aperturas, si el elegido ya no esta.
   useEffect(() => {
@@ -181,9 +203,11 @@ export default function BotonesZk({ rol, dias, lote, reportes }: {
         </div>
       </div>
 
+      <AntesYDespues items={datos.items} hasta={datos.hasta} lote={lote} hito={hito} onHito={cambiarHito} leeEventos={leeEventos} />
+
       <div className="bz-graficas">
         <Horas horas={datos.horas} />
-        <Dias dias={datos.dias} dia={dia} onDia={(d) => { setDia(d); setSel(null); }} />
+        <Dias dias={datos.dias} dia={dia} hito={hito} onDia={(d) => { setDia(d); setSel(null); }} />
       </div>
 
       {dia && (
@@ -237,15 +261,17 @@ function Horas({ horas }: { horas: { hora: number; sin: number; con: number }[] 
   );
 }
 
-function Dias({ dias, dia, onDia }: { dias: { dia: string; sin: number; con: number }[]; dia: string | null; onDia: (d: string) => void }) {
+function Dias({ dias, dia, hito, onDia }: { dias: { dia: string; sin: number; con: number }[]; dia: string | null; hito: string; onDia: (d: string) => void }) {
   const max = Math.max(1, ...dias.map((d) => d.sin + d.con));
+  const primeroDespues = dias.find((d) => d.dia >= hito)?.dia;
   return (
     <figure className="bz-graf" aria-label="Aperturas por día">
       <figcaption className="bz-graf__t">Por día <span className="ds-nota">· elija uno para verlo</span></figcaption>
       <div className="bz-barras bz-barras--dias">
         {dias.map((d) => (
-          <button key={d.dia} type="button" className="bz-col bz-col--dia" aria-pressed={d.dia === dia} onClick={() => onDia(d.dia)}
+          <button key={d.dia} type="button" className={`bz-col bz-col--dia${d.dia === primeroDespues ? " bz-col--hito" : ""}`} aria-pressed={d.dia === dia} onClick={() => onDia(d.dia)}
             title={`${diaSemana(d.dia)} · ${d.sin + d.con} aperturas · ${d.sin} sin reporte`}>
+            {d.dia === primeroDespues && <span className="bz-hito">Canal con la caseta</span>}
             <span className="bz-col__n">{d.sin + d.con}</span>
             <span className="bz-col__pila" style={{ height: `${((d.sin + d.con) / max) * 100}%` }}>
               {d.con > 0 && <span className="bz-seg bz-seg--con" style={{ flexGrow: d.con }} />}
@@ -256,6 +282,138 @@ function Dias({ dias, dia, onDia }: { dias: { dia: string; sin: number; con: num
         ))}
       </div>
     </figure>
+  );
+}
+
+/* ------------------------------------------------------------------ antes y despues del canal */
+
+const pct = (c: number | null) => (c === null ? "—" : `${c < 0 ? "−" : "+"}${Math.abs(Math.round(c * 100))} %`);
+const uno = (n: number | null) => (n === null ? "—" : n.toLocaleString("es-MX", { maximumFractionDigits: 1 }));
+
+/**
+ * Gerardo, 19-oct: demostrar que bajaron las aperturas con boton desde que empezo el
+ * canal con la caseta. Por dia habil y por cada 100 entradas (el trafico del dia),
+ * y cada dia contra el mismo dia de la semana de antes (lib/aperturasBoton.ts).
+ */
+function AntesYDespues({ items, hasta, lote, hito, onHito, leeEventos }: {
+  items: Item[];
+  hasta: string | null;
+  lote: "" | "E1" | "E2";
+  hito: string;
+  onHito: (v: string) => void;
+  leeEventos: boolean;
+}) {
+  const [entradas, setEntradas] = useState<Map<string, number> | null>(null);
+  const [entradasHasta, setEntradasHasta] = useState<Map<string, number> | null>(null);
+  const horaHasta = hasta ? hasta.slice(11, 16) : null;
+  const diaHasta = hasta ? hasta.slice(0, 10) : null;
+
+  // Los dias habiles del periodo, del primero con aperturas al de la ultima lectura.
+  const habiles = useMemo(() => {
+    if (!items.length || !diaHasta) return [];
+    const ini = items.reduce((m, x) => (x.a.ocurrioEn < m ? x.a.ocurrioEn : m), items[0].a.ocurrioEn).slice(0, 10);
+    const out: string[] = [];
+    for (let t = Date.parse(ini + "T12:00:00Z"); t <= Date.parse(diaHasta + "T12:00:00Z"); t += 86400000) {
+      const d = new Date(t).toISOString().slice(0, 10);
+      const w = diaDeLaSemana(d);
+      if (w >= 1 && w <= 5) out.push(d);
+    }
+    return out;
+  }, [items, diaHasta]);
+
+  // Las entradas de cada dia, contadas en la base (solo cuenta, no baja filas).
+  useEffect(() => {
+    if (!leeEventos || !habiles.length) { setEntradas(null); setEntradasHasta(null); return; }
+    let vivo = true;
+    setEntradas(null);
+    setEntradasHasta(null);
+    const siguiente = (d: string) => new Date(Date.parse(d + "T12:00:00Z") + 86400000).toISOString().slice(0, 10);
+    const parcial = diaHasta && horaHasta && horaHasta < DIA_COMPLETO ? diaHasta : null;
+    const mismos = parcial ? habiles.filter((d) => diaDeLaSemana(d) === diaDeLaSemana(parcial)) : [];
+    (async () => {
+      const m = new Map<string, number>();
+      const mh = new Map<string, number>();
+      const tareas: (() => Promise<void>)[] = [
+        ...habiles.map((d) => async () => { m.set(d, await contarEntradasZk(`${d} 00:00:00`, `${siguiente(d)} 00:00:00`, lote || null)); }),
+        ...mismos.map((d) => async () => { mh.set(d, await contarEntradasZk(`${d} 00:00:00`, `${d} ${horaHasta}:59`, lote || null)); }),
+      ];
+      // De 6 en 6, para no saturar la base.
+      for (let i = 0; i < tareas.length; i += 6) await Promise.all(tareas.slice(i, i + 6).map((f) => f()));
+      if (vivo) { setEntradas(m); setEntradasHasta(mh); }
+    })().catch(() => { if (vivo) { setEntradas(null); setEntradasHasta(null); } });
+    return () => { vivo = false; };
+  }, [habiles, lote, leeEventos, diaHasta, horaHasta]);
+
+  const r = useMemo(
+    () => antesDespues(items.map((x) => x.a.ocurrioEn), entradas, entradasHasta, hito, hasta),
+    [items, entradas, entradasHasta, hito, hasta],
+  );
+  const signo = (c: number | null) => (c === null ? "" : c < 0 ? " bz-ad__cambio--baja" : " bz-ad__cambio--sube");
+
+  return (
+    <section className="bz-ad" aria-label="Antes y después del canal con la caseta">
+      <div className="bz-ad__cab">
+        <h3 className="bz-h">Antes y después del canal con la caseta</h3>
+        <label className="bz-ad__hito">Desde el
+          <input className="input" type="date" value={hito} onChange={(e) => onHito(e.target.value)} />
+        </label>
+      </div>
+      {!r.antes.dias ? (
+        <p className="ds-nota">No hay días hábiles antes del {fecha(hito)} en este periodo: amplíe los días.</p>
+      ) : (
+        <>
+          <div className="bz-ad__cifras">
+            <div className="bz-ad__col">
+              <span className="ds-rotulo">Antes · {r.antes.dias} días hábiles</span>
+              <p><b className="bz-ad__n">{uno(r.antes.porDia)}</b> por día</p>
+              <p className="ds-nota">{r.antes.tasa === null ? (leeEventos ? "Contando entradas…" : "") : `${uno(r.antes.tasa)} de cada 100 entradas`}</p>
+            </div>
+            <div className="bz-ad__col bz-ad__col--despues">
+              <span className="ds-rotulo">Desde el {fecha(hito)} · {r.despues.dias} {r.despues.dias === 1 ? "día hábil completo" : "días hábiles completos"}</span>
+              <p><b className="bz-ad__n">{r.despues.dias ? uno(r.despues.porDia) : "—"}</b> por día</p>
+              <p className="ds-nota">{r.despues.tasa === null ? (leeEventos && r.despues.dias ? "Contando entradas…" : "") : `${uno(r.despues.tasa)} de cada 100 entradas`}</p>
+            </div>
+            <div className="bz-ad__col">
+              <span className="ds-rotulo">Cambio</span>
+              <p><b className={`bz-ad__n${signo(r.cambioPorDia)}`}>{pct(r.cambioPorDia)}</b> por día</p>
+              {r.cambioTasa !== null && <p><b className={signo(r.cambioTasa).trim()}>{pct(r.cambioTasa)}</b> <span className="ds-nota">por cada 100 entradas</span></p>}
+            </div>
+          </div>
+
+          {r.dias.length > 0 && (
+            <table className="aperturas__tabla bz-ad__tabla">
+              <caption>Cada día contra el mismo día de la semana antes del corte</caption>
+              <thead>
+                <tr>
+                  <th>Día</th><th className="num">Aperturas</th><th className="num">Promedio antes (días)</th><th className="num">Cambio</th>
+                  {leeEventos && <><th className="num">Por 100 entradas</th><th className="num">Antes</th></>}
+                </tr>
+              </thead>
+              <tbody>
+                {r.dias.map((d) => {
+                  const c = d.antes && d.antes.botones > 0 ? d.botones / d.antes.botones - 1 : null;
+                  return (
+                    <tr key={d.dia}>
+                      <td>{diaSemana(d.dia)}{d.parcialHasta && <span className="ds-nota"> · hasta las {d.parcialHasta}</span>}</td>
+                      <td className="num"><b>{d.botones}</b></td>
+                      <td className="num">{d.antes ? `${uno(d.antes.botones)} (${d.antes.dias})` : "—"}</td>
+                      <td className={`num${signo(c)}`}>{pct(c)}</td>
+                      {leeEventos && <><td className="num">{uno(d.tasa)}</td><td className="num">{uno(d.antes?.tasa ?? null)}</td></>}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+          <p className="ds-nota">
+            Se cuentan días hábiles. Un día que el archivo no cubre hasta las {DIA_COMPLETO} se compara contra los mismos días hasta la
+            misma hora y no entra en los promedios.
+            {r.finDeSemana.dias > 0 && ` Los fines de semana van aparte: desde el corte, ${r.finDeSemana.botones} aperturas en ${r.finDeSemana.dias} ${r.finDeSemana.dias === 1 ? "día" : "días"}.`}
+            {leeEventos && " «Entradas» son las lecturas de entrada concedidas, sin ráfagas: el tráfico de ese día."}
+          </p>
+        </>
+      )}
+    </section>
   );
 }
 

@@ -2044,3 +2044,23 @@ a { color: var(--primary-strong); }
 .aperturas__candidatos { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; max-height: 300px; overflow-y: auto; }
 .aperturas__candidatos label { align-items: baseline; border-radius: var(--radius); cursor: pointer; display: flex; gap: 8px; font-weight: 500; padding: 6px 8px; }
 .aperturas__candidatos label.on { background: var(--field-bg); }
+
+/* Antes y despues del canal con la caseta (19-oct). Bajar es bueno: verde; subir, rojo. Siempre con su signo. */
+.bz-ad { border: 1px solid var(--line); border-radius: var(--r-lg); display: grid; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); background: #fff; }
+.bz-ad__cab { align-items: center; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); justify-content: space-between; }
+.bz-ad__hito { align-items: center; display: inline-flex; gap: var(--sp-2); font-weight: 700; font-size: 0.9rem; }
+.bz-ad__hito .input { margin: 0; min-height: 38px; width: auto; }
+.bz-ad__cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); }
+.bz-ad__col { display: grid; gap: 2px; align-content: start; }
+.bz-ad__col .ds-rotulo { margin: 0; }
+.bz-ad__col--despues { border-left: 3px solid var(--primary); padding-left: var(--sp-4); }
+.bz-ad__n { font-size: 2rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.bz-ad__cambio--baja { color: var(--ok); }
+.bz-ad__cambio--sube { color: var(--alert); }
+.bz-ad__tabla { width: 100%; }
+.bz-ad__tabla td:first-child { white-space: nowrap; }
+.bz-col { position: relative; }
+.bz-col--hito { box-shadow: inset 2px 0 0 var(--primary); }
+.bz-barras--dias { margin-top: 18px; height: 132px; }
+.bz-hito { position: absolute; top: -18px; right: calc(100% - 2px); padding-right: 4px; color: var(--primary); font-size: 0.66rem; font-weight: 800; white-space: nowrap; }
+@media (max-width: 900px) { .bz-ad__cifras { grid-template-columns: 1fr; } }

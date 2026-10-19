@@ -1312,6 +1312,26 @@ export async function listRechazosZk(desde: string): Promise<LecturaZk[]> {
 }
 
 /**
+ * Cuantas ENTRADAS concedidas (sin rafagas) leyo la pluma en un rango de hora de
+ * pared, para comparar las aperturas con boton contra el trafico del dia (19-oct).
+ * Solo cuenta (head): no baja filas. Ti, contador y super (RLS del 78).
+ */
+export async function contarEntradasZk(desde: string, hasta: string, lote: string | null): Promise<number> {
+  let q = supabaseAuth
+    .from("zk_eventos")
+    .select("id_evento", { count: "exact", head: true })
+    .gte("ocurrio_en", desde)
+    .lt("ocurrio_en", hasta)
+    .eq("concedido", true)
+    .eq("repeticion", false)
+    .eq("sentido", "entrada");
+  if (lote) q = q.eq("lote", lote);
+  const { count, error } = await q;
+  if (error) throw new Error(traducirError(error.message));
+  return count ?? 0;
+}
+
+/**
  * Los eventos guardados, para medir SIN el archivo (2-oct-2026).
  *
  * Pagina con `.range()` y sigue hasta una pagina VACIA, no hasta una «corta»: si
@@ -2354,19 +2374,31 @@ export async function cargarAperturasBotonZk(
 /** Las aperturas con boton que registro ZK en los ultimos `dias` (ti, contador, admin, super). */
 export async function listAperturasBotonZk(dias: number): Promise<AperturaBotonZk[]> {
   const desde = new Date(Date.now() - dias * 86400000).toISOString().slice(0, 10);
-  const { data, error } = await supabaseAuth
-    .from("zk_aperturas_boton")
-    .select("id_evento, ocurrio_en, lote, sentido")
-    .gte("ocurrio_en", desde)
-    .order("ocurrio_en", { ascending: false })
-    .limit(20000);
-  if (error) throw new Error(traducirError(error.message));
-  return ((data ?? []) as { id_evento: number; ocurrio_en: string; lote: string; sentido: string }[]).map((r) => ({
-    idEvento: Number(r.id_evento),
-    ocurrioEn: r.ocurrio_en.replace("T", " ").slice(0, 19),
-    lote: r.lote as AperturaBotonZk["lote"],
-    sentido: r.sentido as AperturaBotonZk["sentido"],
-  }));
+  // Se pagina hasta una pagina vacia: 30 dias ya son mas de 1,000 y PostgREST corta
+  // sin avisar en su tope de filas (19-oct: salian exactamente 1,000).
+  const PAGINA = 1000;
+  const out: AperturaBotonZk[] = [];
+  for (let pagina = 0; pagina < 50; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("zk_aperturas_boton")
+      .select("id_evento, ocurrio_en, lote, sentido")
+      .gte("ocurrio_en", desde)
+      .order("ocurrio_en", { ascending: false })
+      .order("id_evento", { ascending: false })
+      .range(out.length, out.length + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as { id_evento: number; ocurrio_en: string; lote: string; sentido: string }[];
+    if (filas.length === 0) break;
+    for (const r of filas) {
+      out.push({
+        idEvento: Number(r.id_evento),
+        ocurrioEn: r.ocurrio_en.replace("T", " ").slice(0, 19),
+        lote: r.lote as AperturaBotonZk["lote"],
+        sentido: r.sentido as AperturaBotonZk["sentido"],
+      });
+    }
+  }
+  return out;
 }
 
 /* ------------------------------------------------------------------ avisos de Sistemas a la caseta (bloque 98) */
