@@ -25,6 +25,7 @@ import {
   datosComunes,
   delLote,
   esCaseta,
+  paredQueretaro,
   estanciasDe,
   estadoSeguimiento,
   evaluacionesDe,
@@ -52,8 +53,6 @@ import { textoVehiculo } from "@/lib/vehiculo";
 import type { TipoUsuario } from "@/lib/mock/types";
 
 const CLAVE_CASETA = "satag.caseta.lotes";
-/** Cuantas filas se ven de cada lista antes de «Ver todos». */
-const CORTE = 5;
 
 function leerCaseta(): Caseta | null {
   try {
@@ -220,6 +219,7 @@ export default function VistaCaseta({ nombreSesion, onCambiarTurno }: {
         </section>
       ) : (
         <>
+          <div className="cs-mostrador">
           <div className="cs-barra">
             <div className="cs-seg" role="group" aria-label="Estacionamiento que cubre la caseta">
               {CASETAS.map((c) => (
@@ -300,21 +300,24 @@ export default function VistaCaseta({ nombreSesion, onCambiarTurno }: {
               onCerrar={() => { setAbierto(null); buscador.current?.focus(); }}
               onReportar={(clase) => setBorrador({ clase, resultado: abierto })}
               onRespondido={respondido} />
-          ) : (
+          ) : !sinResultados && (
+            <div className="ds-acciones cs-otras">
+              <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "apertura", resultado: null })}>Abrí con el botón sin buscar</button>
+              <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "reporte", resultado: null })}>Reportar algo a Sistemas</button>
+            </div>
+          )}
+          </div>
+
+          {!abierto && (
             <>
-              {!sinResultados && (
-                <div className="ds-acciones cs-otras">
-                  <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "apertura", resultado: null })}>Abrí con el botón sin buscar</button>
-                  <button type="button" className="ghost-action" onClick={() => setBorrador({ clase: "reporte", resultado: null })}>Reportar algo a Sistemas</button>
-                </div>
-              )}
               {errorInicio && <p className="ds-aviso ds-aviso--error" role="alert">{errorInicio} <button type="button" className="link-action" onClick={leerInicio}>Reintentar</button></p>}
               {inicio === null && !errorInicio && <p className="ds-nota">Leyendo…</p>}
               {inicio && (
-                <>
-                  <Avisos avisos={avisos} onRespondido={() => { avisar("Respuesta enviada a Sistemas."); leerInicio(); }} />
+                <div className="cs-tablero">
+                  <Avisos avisos={avisos} onRespondido={() => { avisar("Respuesta enviada a Sistemas."); leerInicio(); }}
+                    onVer={(texto) => { setQ(texto); buscar(texto); window.scrollTo({ top: 0, behavior: "smooth" }); buscador.current?.focus(); }} />
                   <Reportes reportes={inicio.reportes} deTodos={deTodos} onDeTodos={setDeTodos} />
-                </>
+                </div>
               )}
             </>
           )}
@@ -450,13 +453,18 @@ function AvisoEnVeredicto({ a, onRespondido }: { a: AvisoDeVehiculo; onRespondid
 }
 
 /** Responder un aviso: una linea, se manda como nota del caso. */
-function Responder({ avisoId, onRespondido, plegado = false }: { avisoId: string; onRespondido: () => void; plegado?: boolean }) {
+function Responder({ avisoId, onRespondido, plegado = false, etiqueta = "Responder" }: {
+  avisoId: string;
+  onRespondido: () => void;
+  plegado?: boolean;
+  etiqueta?: string;
+}) {
   const [abierto, setAbierto] = useState(!plegado);
   const [texto, setTexto] = useState("");
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!abierto) {
-    return <button type="button" className="link-action" onClick={() => setAbierto(true)}>Responder</button>;
+    return <button type="button" className="ghost-action ghost-action--chico" onClick={() => setAbierto(true)}>{etiqueta}</button>;
   }
   async function enviar(e: React.FormEvent) {
     e.preventDefault();
@@ -476,7 +484,7 @@ function Responder({ avisoId, onRespondido, plegado = false }: { avisoId: string
   return (
     <form className="cs-responder" onSubmit={enviar}>
       <label className="sr-only" htmlFor={`resp-${avisoId}`}>Respuesta para Sistemas</label>
-      <input id={`resp-${avisoId}`} className="input" value={texto} maxLength={500} placeholder="Qué dijo o qué pasó" onChange={(e) => setTexto(e.target.value)} />
+      <input id={`resp-${avisoId}`} className="input" value={texto} maxLength={500} autoFocus={plegado} placeholder="Qué dijo o qué pasó" onChange={(e) => setTexto(e.target.value)} />
       <button type="submit" className="ghost-action" disabled={ocupado}>{ocupado ? "Enviando…" : "Enviar"}</button>
       {error && <p className="ds-aviso ds-aviso--error" role="alert">{error}</p>}
     </form>
@@ -522,74 +530,160 @@ function UltimasVeces({ pasos, hasta }: { pasos: PasoPluma[]; hasta: string | nu
 
 /* ------------------------------------------------------------------ los avisos de Sistemas */
 
-function Avisos({ avisos, onRespondido }: { avisos: AvisoCaseta[]; onRespondido: () => void }) {
-  const [todos, setTodos] = useState(false);
-  const lista = todos ? avisos : avisos.slice(0, CORTE);
+// Gerardo, 19-oct: que el portero vea mas facil lo que le pasa Sistemas y lo que el
+// ya reporto. Dos paneles lado a lado debajo del mostrador; el vehiculo se reconoce
+// por la placa (grande), lo que falta por atender va primero y lo atendido se pliega.
+
+/** «Hoy 09:12», «Ayer 18:40» o «lun 13 oct, 07:55», en hora de Queretaro; en minuscula a media frase. */
+function cuando(iso: string, enFrase = false): string {
+  const d = paredQueretaro(iso).slice(0, 10);
+  const hoy = paredQueretaro(new Date().toISOString()).slice(0, 10);
+  const ayer = paredQueretaro(new Date(Date.now() - 86400000).toISOString()).slice(0, 10);
+  const t = d === hoy ? `Hoy ${hora(iso)}` : d === ayer ? `Ayer ${hora(iso)}` : `${diaSemana(iso)}, ${hora(iso)}`;
+  return enFrase ? t.charAt(0).toLowerCase() + t.slice(1) : t;
+}
+
+function Avisos({ avisos, onRespondido, onVer }: {
+  avisos: AvisoCaseta[];
+  onRespondido: () => void;
+  /** Busca el vehiculo del aviso para ver su veredicto. */
+  onVer: (texto: string) => void;
+}) {
+  const [verAtendidos, setVerAtendidos] = useState(false);
+  const pendientes = avisos.filter((a) => a.respuestas.length === 0);
+  const atendidos = avisos.filter((a) => a.respuestas.length > 0);
   return (
-    <section className="cs-sec" aria-label="Avisos de Sistemas">
-      <h2 className="cs-h">Avisos de Sistemas <span className="ds-nota">{avisos.length}</span></h2>
-      {avisos.length === 0
-        ? <p className="ds-nota">Sistemas no tiene avisos para esta caseta. Si un carro no abre, búsquelo arriba.</p>
-        : <p className="ds-nota">Si llega uno de estos vehículos, haga lo que pide Sistemas y responda aquí.</p>}
-      <ul className="cs-filas">
-        {lista.map((a) => (
-          <li key={a.id}>
-            <p><b>{a.nombre ?? (a.tarjeta ? `TAG ${a.tarjeta}` : "Sin nombre")}</b> <span className="ds-nota">{vehiculoCorto(a)}</span></p>
-            <p className="cs-pide__t">{a.texto}</p>
-            {a.respuestas.map((s, i) => (
-              <p key={i} className="ds-nota">Respondió {s.mia ? "usted" : "otro turno"} el {fechaHora(s.en)}: {s.respuesta}</p>
-            ))}
-            <Responder key={a.respuestas.length} avisoId={a.id} onRespondido={onRespondido} plegado />
-          </li>
-        ))}
+    <section className="cs-panel" aria-label="Avisos de Sistemas">
+      <header className="cs-panel__cab">
+        <h2 className="cs-panel__t">Avisos de Sistemas</h2>
+        {pendientes.length > 0
+          ? <span className="cs-cuenta cs-cuenta--warn">{pendientes.length} por atender</span>
+          : avisos.length > 0 && <span className="cs-cuenta cs-cuenta--ok">✓ Todos respondidos</span>}
+      </header>
+      {avisos.length === 0 ? (
+        <p className="cs-vacio">Sistemas no tiene avisos para esta caseta.</p>
+      ) : (
+        <p className="ds-nota">Si llega uno de estos vehículos, haga lo que pide Sistemas y responda aquí.</p>
+      )}
+      <ul className="cs-tarjetas">
+        {pendientes.map((a) => <TarjetaAviso key={a.id} a={a} onRespondido={onRespondido} onVer={onVer} />)}
       </ul>
-      {avisos.length > CORTE && (
-        <button type="button" className="link-action" onClick={() => setTodos((v) => !v)}>{todos ? "Ver menos" : `Ver los ${avisos.length}`}</button>
+      {atendidos.length > 0 && (
+        <>
+          <button type="button" className="link-action cs-plegar" aria-expanded={verAtendidos} onClick={() => setVerAtendidos((v) => !v)}>
+            {verAtendidos ? "Ocultar" : "Ver"} {atendidos.length === 1 ? "el aviso ya respondido" : `los ${atendidos.length} avisos ya respondidos`}
+          </button>
+          {verAtendidos && (
+            <ul className="cs-tarjetas">
+              {atendidos.map((a) => <TarjetaAviso key={a.id} a={a} onRespondido={onRespondido} onVer={onVer} />)}
+            </ul>
+          )}
+        </>
       )}
     </section>
   );
 }
 
+function TarjetaAviso({ a, onRespondido, onVer }: { a: AvisoCaseta; onRespondido: () => void; onVer: (texto: string) => void }) {
+  const respondido = a.respuestas.length > 0;
+  // La hora de cuando se dibujo la tarjeta: la lista se vuelve a leer cada 5 minutos.
+  const [ahora] = useState(() => Date.now());
+  const nuevo = !respondido && ahora - Date.parse(a.desde) < 86400000;
+  const auto = [a.marca, a.modelo].filter(Boolean).join(" ");
+  const buscarCon = a.placa ?? a.tarjeta ?? a.nombre;
+  return (
+    <li className={`cs-aviso${respondido ? " cs-aviso--resp" : ""}`}>
+      <div className="cs-aviso__veh">
+        <span className="cs-placa mono">{a.placa ?? "Sin placa"}</span>
+        <span className="cs-aviso__auto">{[auto, a.color].filter(Boolean).join(" · ") || "Vehículo sin registrar"}</span>
+        {nuevo && <span className="cs-nuevo">Nuevo</span>}
+      </div>
+      <p className="cs-aviso__quien">
+        {a.nombre ?? (a.tarjeta ? `TAG ${a.tarjeta}` : "Sin nombre")}
+        {a.lotes.length === 1 && <span className="ds-nota"> · solo en {a.lotes[0]}</span>}
+      </p>
+      <p className="cs-aviso__pide"><span className="cs-aviso__rot">Sistemas pide</span> {a.texto}</p>
+      {a.respuestas.map((s, i) => (
+        <p key={i} className="cs-aviso__resp">✓ Respondió {s.mia ? "usted" : "otro turno"} · {cuando(s.en, true)}: {s.respuesta}</p>
+      ))}
+      <div className="cs-aviso__acc">
+        <Responder key={a.respuestas.length} avisoId={a.id} onRespondido={onRespondido} plegado
+          etiqueta={respondido ? "Agregar algo" : "Responder"} />
+        {buscarCon && <button type="button" className="ghost-action ghost-action--chico" onClick={() => onVer(buscarCon)}>Ver si tiene acceso</button>}
+      </div>
+      <p className="ds-nota">Desde {cuando(a.desde, true)}{a.hasta ? ` · hasta el ${fecha(a.hasta)}` : ""}</p>
+    </li>
+  );
+}
+
 /* ------------------------------------------------------------------ el seguimiento de los reportes */
+
+const PASOS = ["Recibido", "En atención", "Resuelto"] as const;
+const PASO_DE: Record<"nuevo" | "curso" | "espera" | "listo", number> = { nuevo: 0, curso: 1, espera: 1, listo: 2 };
 
 function Reportes({ reportes, deTodos, onDeTodos }: {
   reportes: ReporteSeguimiento[];
   deTodos: boolean;
   onDeTodos: (v: boolean) => void;
 }) {
-  const [todos, setTodos] = useState(false);
-  const lista = todos ? reportes : reportes.slice(0, CORTE);
+  const [verResueltos, setVerResueltos] = useState(false);
+  const enCurso = reportes.filter((m) => estadoSeguimiento(m).tono !== "listo");
+  const resueltos = reportes.filter((m) => estadoSeguimiento(m).tono === "listo");
   return (
-    <section className="cs-sec" aria-label="Reportes de la caseta">
-      <div className="cs-sec__cab">
-        <h2 className="cs-h">{deTodos ? "Reportes de la caseta" : "Mis reportes"} <span className="ds-nota">{reportes.length}</span></h2>
-        <label className="cs-casilla">
+    <section className="cs-panel" aria-label="Reportes de la caseta">
+      <header className="cs-panel__cab">
+        <h2 className="cs-panel__t">{deTodos ? "Reportes de la caseta" : "Mis reportes"}</h2>
+        {enCurso.length > 0 && <span className="cs-cuenta">{enCurso.length} en curso</span>}
+        <label className="cs-casilla cs-panel__fin">
           <input type="checkbox" checked={deTodos} onChange={(e) => onDeTodos(e.target.checked)} /> De toda la caseta
         </label>
-      </div>
-      {reportes.length === 0 && <p className="ds-nota">{deTodos ? "La caseta no ha reportado nada este mes." : "Usted no ha reportado nada este mes."}</p>}
-      <ul className="cs-filas">
-        {lista.map((m, i) => {
-          const s = estadoSeguimiento(m);
-          return (
-            <li key={i}>
-              <p>
-                <b className={`cs-estado cs-estado--${s.tono}`}>{s.texto}</b>
-                <span className="ds-nota"> · {fechaHora(m.en)}{deTodos && !m.mio ? " · otro turno" : ""}</span>
-              </p>
-              <p>
-                <b>{m.quien ?? "Sin vehículo"}</b>
-                <span className="ds-nota"> · {m.clase === "apertura" ? "abrió con el botón" : "reporte"} en {tituloPuerta(m.puerta)} · {rotuloMotivo(m.clase, m.motivo)}{m.caso ? ` · ${numeroCaso(m.caso)}` : ""}</span>
-              </p>
-              {m.cierreMotivo && <p>Lo que hizo Sistemas: {m.cierreMotivo}{m.cerradoEn ? <span className="ds-nota"> ({fecha(m.cerradoEn)})</span> : null}</p>}
-            </li>
-          );
-        })}
-      </ul>
-      {reportes.length > CORTE && (
-        <button type="button" className="link-action" onClick={() => setTodos((v) => !v)}>{todos ? "Ver menos" : `Ver los ${reportes.length}`}</button>
+      </header>
+      {reportes.length === 0 && (
+        <p className="cs-vacio">{deTodos ? "La caseta no ha reportado nada este mes." : "Usted no ha reportado nada este mes."}</p>
+      )}
+      {reportes.length > 0 && enCurso.length === 0 && <p className="ds-nota">Sistemas ya atendió todo lo reportado.</p>}
+      <ol className="cs-tarjetas">
+        {enCurso.map((m, i) => <TarjetaReporte key={`c${i}`} m={m} deTodos={deTodos} />)}
+      </ol>
+      {resueltos.length > 0 && (
+        <>
+          <button type="button" className="link-action cs-plegar" aria-expanded={verResueltos} onClick={() => setVerResueltos((v) => !v)}>
+            {verResueltos ? "Ocultar" : "Ver"} {resueltos.length === 1 ? "el reporte resuelto" : `los ${resueltos.length} reportes resueltos`}
+          </button>
+          {verResueltos && (
+            <ol className="cs-tarjetas">
+              {resueltos.map((m, i) => <TarjetaReporte key={`r${i}`} m={m} deTodos={deTodos} />)}
+            </ol>
+          )}
+        </>
       )}
     </section>
+  );
+}
+
+function TarjetaReporte({ m, deTodos }: { m: ReporteSeguimiento; deTodos: boolean }) {
+  const s = estadoSeguimiento(m);
+  const paso = PASO_DE[s.tono];
+  return (
+    <li className={`cs-rep cs-rep--${s.tono}`}>
+      <div className="cs-rep__cab">
+        <span className={`cs-pill cs-pill--${s.tono}`}>{s.tono === "listo" ? "✓ " : ""}{s.texto}</span>
+        <span className="ds-nota">{cuando(m.en)}{deTodos && !m.mio ? " · otro turno" : ""}</span>
+      </div>
+      <p className="cs-rep__quien">{m.quien ?? "Sin vehículo identificado"}</p>
+      <p className="ds-nota">{m.clase === "apertura" ? "Abrió con el botón" : "Reporte"} · {tituloPuerta(m.puerta)} · {rotuloMotivo(m.clase, m.motivo)}</p>
+      {/* Donde va su reporte, en tres pasos. «En espera» es un alto dentro de «En atención». */}
+      <ol className="cs-pasos" aria-label={`Estado: ${s.texto}`}>
+        {PASOS.map((p, i) => (
+          <li key={p} className={i < paso ? "cs-pasos__hecho" : i === paso ? `cs-pasos__ahora cs-pasos__ahora--${s.tono}` : undefined}>
+            {i === 1 && s.tono === "espera" ? "En espera" : p}
+          </li>
+        ))}
+      </ol>
+      {m.cierreMotivo && (
+        <p className="cs-rep__hizo"><b>Lo que hizo Sistemas:</b> {m.cierreMotivo}{m.cerradoEn ? <span className="ds-nota"> · {fecha(m.cerradoEn)}</span> : null}</p>
+      )}
+    </li>
   );
 }
 
