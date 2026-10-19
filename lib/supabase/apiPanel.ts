@@ -1275,6 +1275,43 @@ export async function listLecturasZk(desde: string, hasta: string, lote: string 
 }
 
 /**
+ * Los rechazos de la pluma desde un dia (hora de pared), sin rafagas: las pistas de
+ * a quien se le abrio con el boton (19-oct). Son ~1,200 en 30 dias; se pagina hasta
+ * una pagina vacia. Los leen ti, contador y super (RLS del 78).
+ */
+export async function listRechazosZk(desde: string): Promise<LecturaZk[]> {
+  const PAGINA = 1000;
+  const out: LecturaZk[] = [];
+  for (let pagina = 0; pagina < 50; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("zk_eventos")
+      .select("id_evento, ocurrio_en, lote, sentido, tarjeta, departamento_evento")
+      .gte("ocurrio_en", desde)
+      .eq("concedido", false)
+      .eq("repeticion", false)
+      .order("ocurrio_en", { ascending: true })
+      .order("id_evento", { ascending: true })
+      .range(out.length, out.length + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as unknown as (PasoRow & { departamento_evento: string | null })[];
+    if (filas.length === 0) break;
+    for (const r of filas) {
+      out.push({
+        idEvento: Number(r.id_evento),
+        ocurrioEn: String(r.ocurrio_en).replace("T", " ").slice(0, 19),
+        lote: r.lote,
+        sentido: r.sentido === "salida" ? "salida" : "entrada",
+        tarjeta: r.tarjeta,
+        concedido: false,
+        repeticion: false,
+        departamentoEvento: r.departamento_evento,
+      });
+    }
+  }
+  return out;
+}
+
+/**
  * Los eventos guardados, para medir SIN el archivo (2-oct-2026).
  *
  * Pagina con `.range()` y sigue hasta una pagina VACIA, no hasta una «corta»: si

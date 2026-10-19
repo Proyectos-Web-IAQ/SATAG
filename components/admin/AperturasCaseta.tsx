@@ -9,21 +9,19 @@
 //     portero no identifico se juntan por la placa que escribio; TI los liga a un
 //     expediente cuando sabe de quien son.
 //   - Resumen: cuantas fueron del TAG o del lector y cuantas sin acceso.
-//   - Según ZK (bloque 99, 15-oct): las aperturas con boton que registro ZK, cruzadas
-//     con los reportes. ZK sabe cuando y por que puerta; la caseta, a quien y por que.
+//   - Aperturas (bloque 99; Gerardo, 19-oct, la vista principal): las que registro
+//     ZK, a que hora y de que puerta, a quien o a quien probablemente, resaltadas las
+//     que nadie reporto (components/admin/BotonesZk.tsx).
 // Leen ti, contador, admin y super (RLS del 97 y 99); ligar es solo de ti (y super).
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { RolPanel } from "@/lib/supabase/auth";
-import { listAperturasBotonZk, listPadronEstacionamiento, listReportesCaseta, ligarReporteCaseta, nombreDesdeEmail, type PadronEstacionamiento } from "@/lib/supabase/apiPanel";
-import type { AperturaBotonZk } from "@/lib/zk/eventos";
+import { listPadronEstacionamiento, listReportesCaseta, ligarReporteCaseta, nombreDesdeEmail, type PadronEstacionamiento } from "@/lib/supabase/apiPanel";
 import {
   MOTIVOS_APERTURA,
   MOTIVOS_REPORTE,
   VEREDICTO,
   agruparPorVehiculo,
-  cruzarAperturas,
   csvAperturas,
-  paredQueretaro,
   placaNormalizada,
   resumenAperturas,
   rotuloMotivo,
@@ -36,8 +34,9 @@ import { diaSemana, fechaHora } from "@/lib/formato";
 import { normalizarBusqueda } from "@/lib/buscarPersona";
 import { textoVehiculo } from "@/lib/vehiculo";
 import Loader from "@/components/Loader";
+import BotonesZk from "@/components/admin/BotonesZk";
 
-type Modo = "bitacora" | "vehiculo" | "resumen" | "zk";
+type Modo = "aperturas" | "bitacora" | "vehiculo" | "resumen";
 const LIGAN: RolPanel[] = ["ti", "super"];
 const DIAS = [7, 30, 90] as const;
 
@@ -45,7 +44,7 @@ export default function AperturasCaseta({ rol, email }: { rol: RolPanel; email: 
   const [dias, setDias] = useState<number>(30);
   const [reportes, setReportes] = useState<ReporteCaseta[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [modo, setModo] = useState<Modo>("vehiculo");
+  const [modo, setModo] = useState<Modo>("aperturas");
   const [lote, setLote] = useState<"" | "E1" | "E2">("");
   const [clase, setClase] = useState<"" | "apertura" | "reporte">("apertura");
   const [motivo, setMotivo] = useState("");
@@ -54,20 +53,7 @@ export default function AperturasCaseta({ rol, email }: { rol: RolPanel; email: 
   const [abierto, setAbierto] = useState<string | null>(null);
   const [ligando, setLigando] = useState<ReporteCaseta[] | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [zk, setZk] = useState<AperturaBotonZk[] | null>(null);
-  const [errorZk, setErrorZk] = useState<string | null>(null);
   const liga = LIGAN.includes(rol);
-
-  // Lo de ZK se lee solo al abrir ese modo.
-  useEffect(() => {
-    if (modo !== "zk") return;
-    let vivo = true;
-    setZk(null);
-    listAperturasBotonZk(dias)
-      .then((r) => { if (vivo) { setZk(r); setErrorZk(null); } })
-      .catch((e) => { if (vivo) { setErrorZk(e instanceof Error ? e.message : "No se pudieron leer las aperturas de ZK."); setZk([]); } });
-    return () => { vivo = false; };
-  }, [modo, dias]);
 
   const leer = useCallback(async () => {
     setError(null);
@@ -112,21 +98,25 @@ export default function AperturasCaseta({ rol, email }: { rol: RolPanel; email: 
   return (
     <div className="aperturas">
       <p className="titular__migas"><span>Estacionamiento</span><span>›</span><span>Aperturas con botón</span></p>
-      <h2 className="titular">{resumen.total} {resumen.total === 1 ? "apertura" : "aperturas"} con el botón</h2>
-      <p className="titular__sub">
-        En los últimos {dias} días{lote ? ` en ${lote}` : ""}: {resumen.tagOLector} del TAG o del lector, {resumen.sinAcceso} sin acceso y {resumen.sinIdentificar} sin identificar.
-        {" "}Las reporta la caseta; en «Según ZK» se cruzan con las que registró ZK.
-      </p>
+      {modo !== "aperturas" && (
+        <>
+          <h2 className="titular">{resumen.total} {resumen.total === 1 ? "reporte" : "reportes"} de la caseta</h2>
+          <p className="titular__sub">
+            En los últimos {dias} días{lote ? ` en ${lote}` : ""}: {resumen.tagOLector} del TAG o del lector, {resumen.sinAcceso} sin acceso y {resumen.sinIdentificar} sin identificar.
+            {" "}Lo que reportaron los porteros; las aperturas que registró ZK están en «Aperturas».
+          </p>
+        </>
+      )}
 
       <div className="aperturas__herr">
         <div className="tc-seg" role="group" aria-label="Modo">
-          {(["vehiculo", "bitacora", "resumen", "zk"] as const).map((m) => (
+          {(["aperturas", "vehiculo", "bitacora", "resumen"] as const).map((m) => (
             <button key={m} type="button" aria-pressed={modo === m} onClick={() => setModo(m)}>
-              {m === "vehiculo" ? "Por vehículo" : m === "bitacora" ? "Bitácora" : m === "resumen" ? "Resumen" : "Según ZK"}
+              {m === "aperturas" ? "Aperturas" : m === "vehiculo" ? "Reportes por vehículo" : m === "bitacora" ? "Bitácora de la caseta" : "Resumen de reportes"}
             </button>
           ))}
         </div>
-        {modo !== "zk" && <input className="input search aperturas__buscar" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Placa, nombre, vehículo o TAG" />}
+        {modo !== "aperturas" && <input className="input search aperturas__buscar" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Placa, nombre, vehículo o TAG" />}
         <select className="select" value={dias} onChange={(e) => setDias(Number(e.target.value))} aria-label="Días">
           {DIAS.map((d) => <option key={d} value={d}>Últimos {d} días</option>)}
         </select>
@@ -135,8 +125,8 @@ export default function AperturasCaseta({ rol, email }: { rol: RolPanel; email: 
           <option value="E1">E1</option>
           <option value="E2">E2</option>
         </select>
-        {/* ZK no sabe a quien ni por que: en «Según ZK» solo valen los dias y el estacionamiento. */}
-        {modo !== "zk" && (
+        {/* En «Aperturas» solo valen los dias y el estacionamiento: lo demas filtra reportes. */}
+        {modo !== "aperturas" && (
           <>
             <select className="select" value={clase} onChange={(e) => { setClase(e.target.value as "" | "apertura" | "reporte"); setMotivo(""); }} aria-label="Tipo">
               <option value="apertura">Aperturas con botón</option>
@@ -158,12 +148,9 @@ export default function AperturasCaseta({ rol, email }: { rol: RolPanel; email: 
 
       {error && <p className="submit-error" role="alert">{error} <button type="button" className="link-action" onClick={() => leer()}>Volver a leer</button></p>}
       {aviso && <p className="ds-aviso ds-aviso--ok" role="status">{aviso}</p>}
-      {modo !== "zk" && !visibles.length && <p className="ti-hint">Sin reportes de la caseta con estos filtros.</p>}
+      {modo !== "aperturas" && !visibles.length && <p className="ti-hint">Sin reportes de la caseta con estos filtros.</p>}
 
-      {modo === "zk" && (
-        zk === null ? <Loader label="Leyendo las aperturas de ZK…" />
-        : <SegunZk zk={zk} reportes={reportes} lote={lote} error={errorZk} />
-      )}
+      {modo === "aperturas" && <BotonesZk rol={rol} dias={dias} lote={lote} reportes={reportes} />}
 
       {modo === "vehiculo" && visibles.length > 0 && (
         <ul className="aperturas__vehiculos">
@@ -216,94 +203,6 @@ export default function AperturasCaseta({ rol, email }: { rol: RolPanel; email: 
             await leer();
           }}
         />
-      )}
-    </div>
-  );
-}
-
-/**
- * Las aperturas con boton de ZK contra los reportes de la caseta. Lo que ZK registro
- * y nadie reporto es lo que hay que preguntar en la caseta. Lo que la caseta reporto
- * despues del ultimo archivo de ZK todavia no se puede cruzar, y no se cuenta como
- * faltante.
- */
-function SegunZk({ zk, reportes, lote, error }: {
-  zk: AperturaBotonZk[];
-  reportes: ReporteCaseta[];
-  lote: "" | "E1" | "E2";
-  error: string | null;
-}) {
-  const [todas, setTodas] = useState(false);
-  const datos = useMemo(() => {
-    const deZk = zk.filter((a) => !lote || a.lote === lote);
-    const hasta = deZk.reduce<string | null>((m, a) => (!m || a.ocurrioEn > m ? a.ocurrioEn : m), null);
-    const deCaseta = reportes.filter((r) => (!lote || r.puerta.startsWith(lote)) && (!hasta || paredQueretaro(r.hechoEn) <= hasta));
-    const { cruces, sinZk } = cruzarAperturas(deZk, deCaseta);
-    const dias = new Map<string, { dia: string; zk: number; reportadas: number }>();
-    for (const c of cruces) {
-      const d = c.zk.ocurrioEn.slice(0, 10);
-      const x = dias.get(d) ?? { dia: d, zk: 0, reportadas: 0 };
-      x.zk++;
-      if (c.reporte) x.reportadas++;
-      dias.set(d, x);
-    }
-    const sinReporte = cruces.filter((c) => !c.reporte).sort((a, b) => b.zk.ocurrioEn.localeCompare(a.zk.ocurrioEn));
-    return { total: cruces.length, reportadas: cruces.length - sinReporte.length, sinReporte, sinZk, hasta, dias: [...dias.values()].sort((a, b) => b.dia.localeCompare(a.dia)) };
-  }, [zk, reportes, lote]);
-
-  if (error) return <p className="submit-error" role="alert">{error}</p>;
-  if (!datos.total) {
-    return (
-      <p className="ti-hint">
-        ZK no tiene aperturas con botón guardadas en estos días. Se guardan al subir «Todos los Eventos» en
-        Estacionamiento; los archivos subidos antes del 15-oct hay que volver a subirlos (lo ya guardado no se duplica).
-      </p>
-    );
-  }
-  const pct = Math.round((datos.reportadas / datos.total) * 100);
-  const lista = todas ? datos.sinReporte : datos.sinReporte.slice(0, 30);
-  return (
-    <div className="aperturas__resumen aperturas__resumen--zk">
-      <div>
-        <p>
-          ZK registró <b>{datos.total}</b> aperturas con botón{lote ? ` en ${lote}` : ""}; la caseta reportó <b>{datos.reportadas}</b> ({pct}%).
-          {" "}<b>{datos.sinReporte.length}</b> sin reporte.
-        </p>
-        <p className="ds-nota">
-          Lecturas de ZK hasta el {datos.hasta ? fechaHora(datos.hasta) : "—"}. Una apertura cuenta como reportada si la caseta
-          reportó en el mismo estacionamiento entre 5 minutos antes y 30 después.
-          {datos.sinZk.length > 0 && ` La caseta reportó ${datos.sinZk.length} que ZK no registró como botón (pudo abrirse por otro medio).`}
-        </p>
-      </div>
-      <table className="aperturas__tabla">
-        <caption>Por día</caption>
-        <thead><tr><th>Día</th><th>ZK</th><th>Reportadas</th><th>Sin reporte</th></tr></thead>
-        <tbody>
-          {datos.dias.map((d) => (
-            <tr key={d.dia}>
-              <td>{diaSemana(d.dia)}</td>
-              <td className="num">{d.zk}</td>
-              <td className="num">{d.reportadas}</td>
-              <td className="num">{d.zk - d.reportadas}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {datos.sinReporte.length > 0 && (
-        <table className="aperturas__tabla">
-          <caption>Sin reporte de la caseta</caption>
-          <thead><tr><th>Cuándo</th><th>Puerta</th></tr></thead>
-          <tbody>
-            {lista.map((c) => (
-              <tr key={c.zk.idEvento}><td>{fechaHora(c.zk.ocurrioEn)}</td><td>{tituloPuerta(`${c.zk.lote}-${c.zk.sentido}`)}</td></tr>
-            ))}
-          </tbody>
-          {datos.sinReporte.length > 30 && (
-            <tfoot><tr><td colSpan={2}>
-              <button type="button" className="link-action" onClick={() => setTodas((v) => !v)}>{todas ? "Ver menos" : `Ver las ${datos.sinReporte.length}`}</button>
-            </td></tr></tfoot>
-          )}
-        </table>
       )}
     </div>
   );

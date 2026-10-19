@@ -1927,9 +1927,92 @@ a { color: var(--primary-strong); }
 .tc-avisos__form label { display: grid; gap: var(--sp-1); font-weight: 700; font-size: 0.9rem; }
 .tc-avisos__fila { align-items: end; display: flex; flex-wrap: wrap; gap: var(--sp-3); }
 .tc-avisos__hasta .input { min-height: 38px; margin: 0; }
-.aperturas__resumen--zk > div:first-child { grid-column: 1 / -1; display: grid; gap: var(--sp-1); }
-.aperturas__resumen--zk p { margin: 0; }
-.aperturas__resumen--zk td:first-child { white-space: nowrap; }
+/* =====================================================================
+   Aperturas con el boton vistas desde ZK (bloque 99; Gerardo, 19-oct).
+   Sin reporte = rojo de alerta con su texto; con reporte = gris. Lo que no
+   se reporto resalta; el orden es siempre el de la hora.
+   ===================================================================== */
+.bz { display: grid; gap: var(--sp-5); }
+.bz p { margin: 0; }
+/* Siempre a la vista al bajar por la lista. */
+.bz-resumen { position: sticky; top: var(--header-h); z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); padding: var(--sp-3) 0; display: grid; grid-template-columns: minmax(220px, auto) 1fr; gap: var(--sp-3) var(--sp-5); align-items: center; }
+.bz-cifras { display: grid; gap: 2px; }
+.bz-total { font-size: 1.05rem; }
+.bz-total b { color: var(--primary); font-size: 2rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.bz-sin { color: var(--alert); font-weight: 700; }
+.bz-sin b { font-size: 1.35rem; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.bz-puertas { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--sp-2); }
+.bz-puerta { background: #fff; border: 1px solid var(--line); border-radius: var(--r-md); color: var(--ink); cursor: pointer; display: grid; gap: 2px; justify-items: start; min-height: var(--tap); padding: var(--sp-2) var(--sp-3); text-align: left; font: inherit; }
+.bz-puerta[aria-pressed="true"] { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); background: var(--field-bg); }
+.bz-puerta__t { color: var(--muted); font-size: 0.8rem; font-weight: 800; }
+.bz-puerta__n { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.bz-puerta__s { color: var(--alert); font-size: 0.8rem; font-weight: 700; }
+
+/* Graficas: a que hora y por dia. Barras apiladas ancladas a la base, 2px entre segmentos. */
+.bz-graficas { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+.bz-graf { margin: 0; min-width: 0; }
+.bz-graf__t { align-items: baseline; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); font-weight: 800; margin: 0 0 var(--sp-2); }
+.bz-leyenda { display: inline-flex; gap: var(--sp-3); color: var(--muted); font-size: 0.8rem; font-weight: 600; }
+.bz-leyenda i { border-radius: 2px; display: inline-block; height: 10px; margin-right: 4px; vertical-align: -1px; width: 10px; }
+.bz-barras { align-items: end; border-bottom: 1px solid var(--line); display: grid; gap: 4px; grid-auto-columns: minmax(0, 1fr); grid-auto-flow: column; height: 150px; }
+.bz-col { align-items: center; display: grid; grid-template-rows: auto 1fr auto; height: 100%; min-width: 0; }
+.bz-col--dia { background: none; border: 0; border-radius: var(--r-sm); cursor: pointer; font: inherit; padding: 0; color: inherit; }
+.bz-col--dia:hover { background: var(--field-bg); }
+.bz-col--dia[aria-pressed="true"] { background: var(--field-bg); box-shadow: inset 0 -3px 0 var(--primary); }
+.bz-col__n { color: var(--muted); font-size: 0.7rem; font-variant-numeric: tabular-nums; text-align: center; }
+.bz-col__pila { align-self: end; display: flex; flex-direction: column; gap: 2px; justify-self: center; min-height: 0; width: min(70%, 22px); }
+.bz-seg { border-radius: 3px 3px 0 0; display: block; min-height: 2px; }
+.bz-seg + .bz-seg { border-radius: 0; }
+.bz-seg--sin { background: var(--alert); }
+.bz-seg--con { background: #b4bccb; }
+.bz-col__x { color: var(--muted); font-size: 0.7rem; padding-top: 2px; text-align: center; white-space: nowrap; overflow: hidden; }
+
+/* El dia: linea de tiempo con un carril por puerta. */
+.bz-dia { display: grid; gap: var(--sp-3); }
+.bz-h { font-size: 1.15rem; margin: 0; }
+.bz-h::first-letter { text-transform: uppercase; }
+.bz-h__sin { color: var(--alert); font-size: 0.95rem; }
+.bz-tiempo { border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--sp-3) var(--sp-4) var(--sp-2); background: #fff; }
+.bz-carril { display: grid; grid-template-columns: 110px 1fr; align-items: center; min-height: 34px; }
+.bz-carril + .bz-carril { border-top: 1px solid #f0f2f5; }
+.bz-carril__t { color: var(--muted); font-size: 0.82rem; font-weight: 800; }
+.bz-carril__pista { position: relative; height: 34px; }
+.bz-carril--eje { border-top: 0 !important; min-height: 18px; }
+.bz-carril--eje .bz-carril__pista { height: 18px; }
+.bz-guia { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #e3e7ec; }
+.bz-eje { position: absolute; transform: translateX(-50%); color: var(--muted); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.bz-punto { position: absolute; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; border: 2px solid #fff; cursor: pointer; padding: 0; }
+.bz-punto--sin { background: var(--alert); box-shadow: 0 0 0 1px var(--alert); }
+.bz-punto--con { background: #fff; box-shadow: 0 0 0 2px #8a94a3; }
+.bz-punto--sel { width: 20px; height: 20px; margin: -10px 0 0 -10px; z-index: 2; outline: 3px solid var(--amber); }
+.bz-punto:hover { z-index: 3; transform: scale(1.25); }
+
+/* La lista del dia: en orden de hora; las que no tienen reporte, con barra roja. */
+.bz-lista { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.bz-fila { border-bottom: 1px solid var(--line); border-left: 4px solid transparent; cursor: pointer; display: grid; gap: 2px var(--sp-4); grid-template-columns: 70px 110px 120px 1fr; align-items: baseline; padding: var(--sp-3) var(--sp-3); scroll-margin-top: 240px; }
+.bz-fila--sin { border-left-color: var(--alert); background: #fffafa; }
+.bz-fila--sel { outline: 2px solid var(--amber); outline-offset: -2px; }
+.bz-fila__hora { font-size: 1.15rem; font-weight: 800; }
+.bz-fila__puerta { font-weight: 700; }
+.bz-fila__quien { display: grid; gap: 2px; min-width: 0; }
+.bz-etq { color: var(--muted); font-size: 0.85rem; font-weight: 700; }
+.bz-etq--sin { color: var(--alert); font-weight: 800; }
+.bz-probable { color: var(--warn); font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+.bz-baja { color: var(--alert); }
+
+.bz-posibles { border: 1px solid var(--line); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); }
+.bz-posibles summary { cursor: pointer; font-weight: 700; color: var(--primary); }
+.bz-posibles[open] { display: grid; gap: var(--sp-2); }
+.bz-posibles__cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--sp-2) var(--sp-5); }
+.bz-posibles ul { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; display: grid; gap: 2px; }
+.bz-posibles .ds-rotulo { margin-top: var(--sp-2); }
+.bz-pie { max-width: 900px; }
+@media (max-width: 900px) {
+  .bz-resumen { grid-template-columns: 1fr; }
+  .bz-graficas { grid-template-columns: 1fr; }
+  .bz-fila { grid-template-columns: 60px 1fr; }
+  .bz-fila__estado, .bz-fila__quien { grid-column: 2; }
+}
 
 /* Aperturas con boton (vista de Sistemas, bloque 97) */
 .aperturas__herr { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 14px; }
