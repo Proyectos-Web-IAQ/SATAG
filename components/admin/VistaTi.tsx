@@ -33,7 +33,7 @@ import { DetalleRegistro, TarjetaRegistro, TRAMITE_LABEL, TIPOS_CON_FAMILIA, Bad
 import { enFrase, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { fechaHora } from "@/lib/formato";
 
-type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
+export type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
 type Accion = "instalar" | "actualizar" | "baja";
 
 // Lo que hay que guardar ANTES de instalar cuando el coche que se presenta no es
@@ -129,7 +129,15 @@ const grupoTi = (r: Registro): number => {
 // que abren un flujo enfocado, y abajo el padrón completo con las mismas acciones.
 // Lee de Supabase (lib/supabase/apiPanel); TI también define el estacionamiento
 // al instalar o actualizar (SC-002).
-export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; rol: RolPanel }) {
+// Rediseño de TI (21-oct): la pestaña nueva abre cada sección en su modo
+// («Instalar», «Actualizar datos»…) y sin «← Inicio»; sin esos parámetros, la
+// vista se comporta como siempre.
+export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sinInicio = false }: {
+  nombreSesion?: string;
+  rol: RolPanel;
+  modoInicial?: Modo;
+  sinInicio?: boolean;
+}) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [notas, setNotas] = useState<Solicitud[]>([]);
   // CC-02: expedientes a los que les falta algo para operar. No es una cola de
@@ -172,7 +180,7 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
   // quitó el respaldo inventado.
   const [estacionamientos, setEstacionamientos] = useState<string[] | null | undefined>(undefined);
 
-  const [modo, setModo] = useState<Modo>("inicio");
+  const [modo, setModo] = useState<Modo>(modoInicial);
   const [query, setQuery] = useState("");
   // Padrón real: se pagina y se filtra (ver VistaAdmin).
   const [filtroTi, setFiltroTi] = useState<"todos" | "pendiente" | "activo" | "baja">("todos");
@@ -789,7 +797,7 @@ export default function VistaTi({ nombreSesion, rol }: { nombreSesion?: string; 
       ) : (
         <>
           <div className="ti-topbar">
-            <button type="button" className="ti-back" onClick={() => irA("inicio")}>← Inicio</button>
+            {!sinInicio && <button type="button" className="ti-back" onClick={() => irA("inicio")}>← Inicio</button>}
             <h2>{modo === "instalar" ? "Instalar TAG" : modo === "actualizar" ? "Actualizar datos" : modo === "notas" ? "Notas sin expediente" : modo === "incompletos" ? "Expedientes incompletos" : modo === "tags" ? "TAGs de la escuela" : "Dar de baja"}</h2>
             {botonActualizar}
           </div>

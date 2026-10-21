@@ -7,7 +7,7 @@ import { normalizarBusqueda } from "@/lib/buscarPersona";
 import type { RolPanel } from "@/lib/supabase/auth";
 import Loader from "@/components/Loader";
 import VistaAdmin from "@/components/admin/VistaAdmin";
-import VistaTi from "@/components/admin/VistaTi";
+import PestanaTi from "@/components/admin/ti/PestanaTi";
 import VistaFinanzas from "@/components/admin/VistaFinanzas";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import PanelInstalacion from "@/components/admin/PanelInstalacion";
@@ -141,6 +141,10 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
   const vistasPermitidas = TABS_POR_ROL[rol];
   const [vista, setVista] = useState<Vista>(vistasPermitidas[0]);
   const nombreSesion = nombreDesdeEmail(adminEmail);
+  // Rediseño de TI (21-oct): «＋ Instalar» siempre a la vista para quien instala,
+  // con cuántas familias esperan su TAG (lo cuenta la Bandeja al leer).
+  const [esperanTag, setEsperanTag] = useState<number | null>(null);
+  const [pideInstalar, setPideInstalar] = useState(0);
 
   useEffect(() => {
     if (!vistasPermitidas.includes(vista)) setVista(vistasPermitidas[0]);
@@ -169,6 +173,11 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
             <div className="admin-sub">Administración y TI · IAQ</div>
           </div>
           <div className="admin-header-actions">
+            {vistasPermitidas.includes("ti") && (
+              <button type="button" className="ti2-fijo" onClick={() => { setVista("ti"); setPideInstalar((n) => n + 1); }}>
+                ＋ Instalar{esperanTag !== null && <b className={esperanTag ? "" : "ti2-fijo--cero"}>{esperanTag || "✓"}</b>}
+              </button>
+            )}
             {vistasPermitidas.length > 1 && (
               <div className="admin-tabs" aria-label="Vistas del panel">
                 {vistasPermitidas.map((v) => (
@@ -188,7 +197,10 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
         </div>
 
         {vista === "admin" && <VistaAdmin nombreSesion={nombreSesion} rol={rol} />}
-        {vista === "ti" && <VistaTi nombreSesion={nombreSesion} rol={rol} />}
+        {vista === "ti" && (
+          <PestanaTi rol={rol} email={adminEmail} nombreSesion={nombreSesion} personas={<VistaConsulta rol={rol} />}
+            pideInstalar={pideInstalar} onCuentaInstalar={setEsperanTag} />
+        )}
         {vista === "finanzas" && <VistaFinanzas nombreSesion={nombreSesion} />}
         {vista === "consulta" && <Consulta rol={rol} email={adminEmail} />}
         {vista === "caseta" && <VistaCaseta nombreSesion={nombreSesion} />}
