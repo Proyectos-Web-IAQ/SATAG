@@ -36,6 +36,7 @@ import type {
   ResultadoCorte,
   Solicitud,
   TagInventario,
+  TarjetaZk,
   TipoMovimiento,
   TipoSolicitud,
   TipoUsuario,
@@ -647,35 +648,35 @@ export async function retirarTagInventario(noDispositivo: string, hechoPor: stri
   });
 }
 
-// ---- Tarjeta -> ID de ZK, para que el import ACTUALICE en vez de duplicar ----
-//
-// Hasta el 20-oct-2026 salia de un mapa aparte (zk_tarjetas, bloque 54) que TI
-// tenia que subir desde Sistemas y que se quedo en el 28-sep con UNA tarjeta: el
-// padron para ZK mando casi todo con el No. de TAG como ID y ZK rechazo las
-// tarjetas que ya tenia con otro ID («el numero de tarjeta ya existe»). Ahora se
-// lee del padron de ZK que Estacionamiento guarda al subir Usuarios (bloque 83,
-// con el ID desde el 93): una sola copia, la que si se mantiene al dia. Solo las
-// vigentes: una tarjeta que ya no viene en el export no esta en ZK y nace con el
-// No. de TAG. Misma paginacion que listPadronZk.
-export async function listIdsZk(): Promise<Map<string, string>> {
-  const PAGINA = 5000;
-  const out = new Map<string, string>();
-  let leidas = 0;
-  for (let pagina = 0; pagina < 20; pagina += 1) {
-    const { data, error } = await supabaseAuth
-      .from("zk_padron")
-      .select("tarjeta, id_zk")
-      .eq("vigente", true)
-      .neq("id_zk", "")
-      .order("tarjeta", { ascending: true })
-      .range(leidas, leidas + PAGINA - 1);
-    if (error) throw new Error(traducirError(error.message));
-    const filas = (data ?? []) as { tarjeta: string; id_zk: string }[];
-    if (filas.length === 0) break;
-    leidas += filas.length;
-    for (const r of filas) out.set(r.tarjeta, r.id_zk);
-  }
-  return out;
+// ---- SC-027: mapa tarjeta -> ID de ZK guardado en la base (bloque 54) ----
+
+interface TarjetaZkRow {
+  no_dispositivo: string;
+  zk_id: string;
+  cargado_en: string;
+  cargado_por: string;
+}
+
+export async function listMapaZk(): Promise<TarjetaZk[]> {
+  const { data, error } = await supabaseAuth
+    .from("zk_tarjetas")
+    .select("no_dispositivo, zk_id, cargado_en, cargado_por")
+    .limit(10000);
+  if (error) throw new Error(traducirError(error.message));
+  return (data as unknown as TarjetaZkRow[]).map((t) => ({
+    noDispositivo: t.no_dispositivo,
+    zkId: t.zk_id,
+    cargadoEn: t.cargado_en,
+    cargadoPor: t.cargado_por,
+  }));
+}
+
+// Reemplaza el mapa completo con el export de ZK ya leido por el cliente.
+export async function cargarMapaZk(filas: { tarjeta: string; id: string }[], hechoPor: string): Promise<AccionResultado> {
+  return rpc("cargar_mapa_zk", {
+    p_filas: filas,
+    p_hecho_por: hechoPor.trim() || null,
+  });
 }
 
 // (La captura desde hoja fisica —RPC capturar_expediente_ti, bloque 53— quedo
