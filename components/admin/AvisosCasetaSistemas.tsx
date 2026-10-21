@@ -15,6 +15,7 @@ import { pedirCaso } from "@/lib/irACaso";
 import { fecha } from "@/lib/formato";
 import { cuando } from "@/components/admin/SeguimientoCaseta";
 import Loader from "@/components/Loader";
+import NuevoAvisoCaseta from "@/components/admin/NuevoAvisoCaseta";
 
 const RETIRAN: RolPanel[] = ["ti", "super"];
 const DIAS = [7, 30, 90] as const;
@@ -36,6 +37,7 @@ export default function AvisosCasetaSistemas({ rol, email, onIr }: { rol: RolPan
   const [error, setError] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [verViejos, setVerViejos] = useState(false);
+  const [creando, setCreando] = useState(false);
   const [hoy] = useState(hoyLocal);
   const retira = RETIRAN.includes(rol);
 
@@ -87,10 +89,11 @@ export default function AvisosCasetaSistemas({ rol, email, onIr }: { rol: RolPan
         {grupos.esperando.length > 0 && <span className="rc-titular__sin"> · {grupos.esperando.length} {grupos.esperando.length === 1 ? "espera" : "esperan"} respuesta</span>}
       </h2>
       <p className="titular__sub">
-        Lo que la caseta ve hoy en «Avisos de Sistemas» y al buscar cada vehículo. Los avisos se crean desde su caso, con «Avisar a la caseta…».
+        Lo que la caseta ve hoy en «Avisos de Sistemas» y al buscar cada vehículo. Cada aviso vive en un caso: se crea aquí o desde el caso.
       </p>
 
       <div className="aperturas__herr">
+        {retira && <button type="button" className="primary-action" onClick={() => setCreando(true)}>Nuevo aviso…</button>}
         <div className="tc-seg" role="group" aria-label="Caseta">
           {(["", "E1", "E2"] as const).map((l) => (
             <button key={l || "todas"} type="button" aria-pressed={lote === l} onClick={() => setLote(l)}>{l ? `Caseta ${l}` : "Las dos casetas"}</button>
@@ -116,6 +119,16 @@ export default function AvisosCasetaSistemas({ rol, email, onIr }: { rol: RolPan
         <p className="ds-nota">La caseta ya contestó y los sigue viendo. Si ya no hacen falta, retírelos o cierre su caso.</p>
         {grupos.respondidos.length === 0 ? <p className="cs-vacio">Ninguno.</p> : <ul className="rc-tarjetas">{grupos.respondidos.map(tarjeta)}</ul>}
       </section>
+
+      {creando && (
+        <NuevoAvisoCaseta email={email} onCancelar={() => setCreando(false)}
+          onListo={async (t) => {
+            setCreando(false);
+            setAviso(t);
+            setTimeout(() => setAviso((x) => (x === t ? null : x)), 8000);
+            await leer();
+          }} />
+      )}
 
       {grupos.viejos.length > 0 && (
         <section className="rc-grupo" aria-label="Ya no se muestran">
