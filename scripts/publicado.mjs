@@ -117,6 +117,8 @@ const RUTAS = [
       { texto: "caseta_responder_aviso", que: "Caseta: el portero responde el aviso y llega al caso (bloque 98)" },
       { texto: "cargar_aperturas_boton_zk", que: "Estacionamiento: las aperturas con boton de ZK se guardan al subir Todos los Eventos (bloque 99)" },
       { texto: "Leyendo las aperturas de ZK", que: "Aperturas con boton: las de ZK cruzadas con los reportes de la caseta (bloque 99)" },
+      { texto: "rc-confirma", que: "Caseta: Sistemas ve y retira los avisos a la caseta desde su pestaña (21-oct)" },
+      { texto: "se le canaliza con el contador", que: "Caseta: a donde remitir las quejas de una baja (21-oct)" },
       { texto: "reportes-caseta", que: "Reportes de la caseta: Sistemas ve lo que reporto la caseta y en que va, como el portero (21-oct)" },
       { texto: "cs-tablero", que: "Caseta: avisos y reportes del portero en dos paneles con tarjetas (19-oct)" },
       { texto: "satag.botones.hito", que: "Aperturas con boton: antes y despues del canal con la caseta (19-oct)" },

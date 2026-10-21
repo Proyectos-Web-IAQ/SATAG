@@ -55,6 +55,8 @@ export const VEREDICTO: Record<Veredicto, { titulo: string; ayuda: string }> = {
 
 /** Lo que se le dice a quien pregunta por un TAG dado de baja (Gerardo, 14-oct). */
 export const PROCESO_BAJA = "Para volver a entrar, el proceso es comprar un TAG nuevo.";
+/** Gerardo, 21-oct: las quejas van a Sistemas; si se complican, al contador. */
+export const QUEJAS_BAJA = "Si tiene una queja, remítalo a Sistemas. Si se complica, se le canaliza con el contador, Vicente.";
 
 export interface Motivo {
   id: string;
@@ -527,3 +529,21 @@ export function comoSeguimiento(r: ReporteCaseta): ReporteSeguimiento {
     cerradoEn: r.casoCerradoEn ?? null,
   };
 }
+
+/* ------------------------------------------------------------------ los avisos vistos por Sistemas (21-oct) */
+
+// Un aviso esta VIVO (la caseta lo ve) si nadie lo retiro, no vencio y su caso sigue
+// abierto: la misma regla que caseta_avisos_de y caseta_inicio (bloque 98).
+export type EstadoAviso = "esperando" | "respondido" | "retirado" | "vencido" | "caso-cerrado";
+
+export function estadoAviso(
+  a: { cerradoEn: string | null; casoEstado: string | null; hasta: string | null; respuestas: unknown[] },
+  hoy: string,
+): EstadoAviso {
+  if (a.cerradoEn) return "retirado";
+  if (a.casoEstado === "resuelto" || a.casoEstado === "descartado") return "caso-cerrado";
+  if (a.hasta && a.hasta < hoy) return "vencido";
+  return a.respuestas.length ? "respondido" : "esperando";
+}
+
+export const avisoVivo = (e: EstadoAviso) => e === "esperando" || e === "respondido";

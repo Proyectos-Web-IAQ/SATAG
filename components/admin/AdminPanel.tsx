@@ -84,7 +84,7 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         ...(mide ? [{ clave: "tablero", titulo: "Tablero de instalación" }] : []),
         // Administracion abre y sigue casos (bloque 89, Gerardo 6-oct) pero no lee la
         // bitacora de ZK: ve Casos aqui, sin los detectados, y no el grupo Estacionamiento.
-        ...(rol === "admin" ? [{ clave: "casos", titulo: "Casos" }, { clave: "reportes-caseta", titulo: "Reportes de la caseta" }, { clave: "aperturas", titulo: "Aperturas con botón" }] : []),
+        ...(rol === "admin" ? [{ clave: "casos", titulo: "Casos" }, { clave: "reportes-caseta", titulo: "Caseta: reportes y avisos" }, { clave: "aperturas", titulo: "Aperturas con botón" }] : []),
       ],
     },
   ];
@@ -97,7 +97,7 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         { clave: "secciones", titulo: "Secciones" },
         { clave: "casos", titulo: "Casos" },
         // 21-oct: lo que reporto la caseta y en que va, como lo ve el portero.
-        { clave: "reportes-caseta", titulo: "Reportes de la caseta" },
+        { clave: "reportes-caseta", titulo: "Caseta: reportes y avisos" },
         // Bloque 97: lo que la caseta abrio con el boton, por vehiculo.
         { clave: "aperturas", titulo: "Aperturas con botón" },
         // 9-oct: que TAG leyo cada pluma a cierta hora, para encontrar casos.

@@ -2139,3 +2139,13 @@ a { color: var(--primary-strong); }
 .rc-acc { display: flex; flex-wrap: wrap; gap: var(--sp-2); margin-top: var(--sp-1); }
 .cs-rep__marcas { align-items: center; display: inline-flex; flex-wrap: wrap; gap: var(--sp-2); }
 @media (max-width: 1100px) { .rc-cifras { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Avisos a la caseta, vistos por Sistemas (21-oct). Mismas tarjetas que la caseta (.cs-aviso). */
+.rc-partes { justify-self: start; }
+.rc-titular__sin { color: var(--warn); font-size: 0.7em; }
+.cs-aviso--viejo { border-left-color: #c7cdd6; opacity: 0.8; }
+.rc-aviso__estado { margin-left: auto; }
+.rc-retirar { color: var(--alert); border-color: var(--alert); }
+.rc-confirma { align-items: center; background: var(--alert-bg); border-radius: var(--r-md); display: flex; flex-wrap: wrap; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); }
+.rc-confirma span { color: var(--alert); font-weight: 700; margin-right: auto; }
+.rc-confirma .primary-action { background: var(--alert); min-height: 38px; }

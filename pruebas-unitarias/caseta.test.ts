@@ -11,6 +11,7 @@ import {
   delLote,
   claveVehiculo,
   comoSeguimiento,
+  estadoAviso,
   seguimientoDeReporte,
   cruzarAperturas,
   csvAperturas,
@@ -219,5 +220,17 @@ describe("los reportes vistos por Sistemas (21-oct)", () => {
   it("se dibuja como el portero: quien es el expediente, la placa o lo que escribio", () => {
     const m = comoSeguimiento(rep({ casoNumero: 7, casoEstado: "resuelto", casoCierre: "Se cambio el TAG", placaNorm: "ABC123" }));
     expect(m).toMatchObject({ caso: 7, estadoCaso: "resuelto", cierreMotivo: "Se cambio el TAG", quien: "ABC123", mio: false });
+  });
+});
+
+describe("estadoAviso: lo que la caseta ve hoy", () => {
+  const a = { cerradoEn: null, casoEstado: "abierto", hasta: null, respuestas: [] as unknown[] };
+  it("vivo sin respuesta, vivo respondido, retirado, vencido y caso cerrado", () => {
+    expect(estadoAviso(a, "2026-10-21")).toBe("esperando");
+    expect(estadoAviso({ ...a, respuestas: [1] }, "2026-10-21")).toBe("respondido");
+    expect(estadoAviso({ ...a, cerradoEn: "2026-10-20T10:00:00Z" }, "2026-10-21")).toBe("retirado");
+    expect(estadoAviso({ ...a, hasta: "2026-10-20" }, "2026-10-21")).toBe("vencido");
+    expect(estadoAviso({ ...a, hasta: "2026-10-21" }, "2026-10-21")).toBe("esperando");
+    expect(estadoAviso({ ...a, casoEstado: "resuelto" }, "2026-10-21")).toBe("caso-cerrado");
   });
 });

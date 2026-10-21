@@ -22,6 +22,7 @@ import {
   CASETAS,
   VEREDICTO,
   PROCESO_BAJA,
+  QUEJAS_BAJA,
   datosComunes,
   delLote,
   esCaseta,
@@ -405,12 +406,13 @@ function Veredicto({ r, eventosHasta, onCerrar, onReportar, onRespondido }: {
       </ul>
 
       {/* Gerardo, 14-oct: si preguntan por que se dio de baja, el portero tiene la
-          respuesta y el proceso. A donde remitir una queja aun no se decide. */}
+          respuesta y el proceso. 21-oct: las quejas, a Sistemas; si se complican, al contador. */}
       {baja && (
         <div className="cs-baja">
           <h3 className="ds-rotulo">Si pregunta por qué</h3>
           <p><b>Motivo de la baja:</b> {baja.motivo ?? "Sin motivo registrado en SATAG."}{baja.fecha ? <span className="ds-nota"> · {fecha(baja.fecha)}</span> : null}</p>
           <p>{PROCESO_BAJA}</p>
+          <p>{QUEJAS_BAJA}</p>
         </div>
       )}
 

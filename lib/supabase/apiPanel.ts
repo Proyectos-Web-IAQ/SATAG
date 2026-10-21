@@ -2436,6 +2436,61 @@ export async function listAvisosCaso(casoId: string): Promise<AvisoDeCaso[]> {
   }));
 }
 
+/** Un aviso a la caseta visto por Sistemas (21-oct): de quien, en que caso y que respondieron. */
+export interface AvisoSistemas {
+  id: string;
+  texto: string;
+  lotes: string[];
+  hasta: string | null;
+  tarjeta: string | null;
+  creadoPor: string;
+  creadoEn: string;
+  cerradoPor: string | null;
+  cerradoEn: string | null;
+  casoNumero: number | null;
+  casoEstado: string | null;
+  nombre: string | null;
+  placa: string | null;
+  marca: string | null;
+  modelo: string | null;
+  color: string | null;
+  respuestas: { respuesta: string; hechoPor: string; hechoEn: string }[];
+}
+
+/**
+ * Los avisos a la caseta creados en los ultimos `dias`, vivos o no, con su caso, su
+ * vehiculo y las respuestas. Leen ti, contador, admin y super (RLS del 98).
+ */
+export async function listAvisosCaseta(dias: number): Promise<AvisoSistemas[]> {
+  const desde = new Date(Date.now() - dias * 86400000).toISOString();
+  const { data, error } = await supabaseAuth
+    .from("caseta_avisos")
+    .select("id, texto, lotes, hasta, tarjeta, creado_por, creado_en, cerrado_por, cerrado_en, " +
+      "casos(numero, estado), registros(usuario_nombre_completo, placas, marca, modelo, color), " +
+      "caseta_respuestas(respuesta, hecho_por, hecho_en)")
+    .or(`creado_en.gte.${desde},cerrado_en.is.null`)
+    .order("creado_en", { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(traducirError(error.message));
+  type Fila = {
+    id: string; texto: string; lotes: string[] | null; hasta: string | null; tarjeta: string | null;
+    creado_por: string; creado_en: string; cerrado_por: string | null; cerrado_en: string | null;
+    casos: { numero: number; estado: string } | null;
+    registros: { usuario_nombre_completo: string | null; placas: string | null; marca: string | null; modelo: string | null; color: string | null } | null;
+    caseta_respuestas: { respuesta: string; hecho_por: string; hecho_en: string }[] | null;
+  };
+  return ((data ?? []) as unknown as Fila[]).map((a) => ({
+    id: a.id, texto: a.texto, lotes: a.lotes ?? [], hasta: a.hasta, tarjeta: a.tarjeta,
+    creadoPor: a.creado_por, creadoEn: a.creado_en, cerradoPor: a.cerrado_por, cerradoEn: a.cerrado_en,
+    casoNumero: a.casos?.numero ?? null, casoEstado: a.casos?.estado ?? null,
+    nombre: a.registros?.usuario_nombre_completo ?? null, placa: a.registros?.placas ?? null,
+    marca: a.registros?.marca ?? null, modelo: a.registros?.modelo ?? null, color: a.registros?.color ?? null,
+    respuestas: (a.caseta_respuestas ?? [])
+      .map((r) => ({ respuesta: r.respuesta, hechoPor: r.hecho_por, hechoEn: r.hecho_en }))
+      .sort((x, y) => x.hechoEn.localeCompare(y.hechoEn)),
+  }));
+}
+
 /** Avisar a la caseta desde un caso vivo. Solo ti (super pasa siempre). */
 export async function avisarCaseta(casoId: string, texto: string, lotes: Lote[], hasta: string | null, hechoPor: string | null): Promise<void> {
   const { error } = await supabaseAuth.rpc("avisar_caseta", {

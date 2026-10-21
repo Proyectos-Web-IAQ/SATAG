@@ -18,6 +18,7 @@ import { pedirCaso } from "@/lib/irACaso";
 import { TarjetaReporte } from "@/components/admin/SeguimientoCaseta";
 import { DialogoLigar } from "@/components/admin/AperturasCaseta";
 import Loader from "@/components/Loader";
+import AvisosCasetaSistemas from "@/components/admin/AvisosCasetaSistemas";
 
 const GRUPOS: { id: SeguimientoSistemas; titulo: string; ayuda: string }[] = [
   { id: "sin-seguimiento", titulo: "Sin seguimiento", ayuda: "Su caso sigue en Nuevo: nadie de Sistemas lo ha tomado. Del más viejo al más nuevo." },
@@ -31,7 +32,27 @@ const VIEJO_PRIMERO: SeguimientoSistemas[] = ["sin-seguimiento", "sin-caso"];
 const LIGAN: RolPanel[] = ["ti", "super"];
 const DIAS = [7, 30, 90] as const;
 
+/**
+ * La vista entera: lo que reporta la caseta y lo que Sistemas le avisa (21-oct),
+ * en dos partes de la misma pestaña.
+ */
 export default function ReportesCaseta({ rol, email, onIr }: { rol: RolPanel; email: string; onIr: (vista: string) => void }) {
+  const [parte, setParte] = useState<"reportes" | "avisos">("reportes");
+  return (
+    <div className="rc">
+      <p className="titular__migas"><span>Estacionamiento</span><span>›</span><span>Caseta</span></p>
+      <div className="tc-seg rc-partes" role="group" aria-label="Qué ver">
+        <button type="button" aria-pressed={parte === "reportes"} onClick={() => setParte("reportes")}>Reportes de la caseta</button>
+        <button type="button" aria-pressed={parte === "avisos"} onClick={() => setParte("avisos")}>Avisos a la caseta</button>
+      </div>
+      {parte === "reportes"
+        ? <ReportesParte rol={rol} email={email} onIr={onIr} />
+        : <AvisosCasetaSistemas rol={rol} email={email} onIr={onIr} />}
+    </div>
+  );
+}
+
+function ReportesParte({ rol, email, onIr }: { rol: RolPanel; email: string; onIr: (vista: string) => void }) {
   const [dias, setDias] = useState(30);
   const [lote, setLote] = useState<"" | "E1" | "E2">("");
   const [portero, setPortero] = useState("");
@@ -74,7 +95,6 @@ export default function ReportesCaseta({ rol, email, onIr }: { rol: RolPanel; em
 
   return (
     <div className="rc">
-      <p className="titular__migas"><span>Estacionamiento</span><span>›</span><span>Reportes de la caseta</span></p>
       <h2 className="titular">
         {sinSeguimiento === 0 ? "Todos los reportes tienen seguimiento" : `${sinSeguimiento} ${sinSeguimiento === 1 ? "reporte" : "reportes"} sin seguimiento`}
       </h2>
