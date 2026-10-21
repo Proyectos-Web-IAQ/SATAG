@@ -117,6 +117,7 @@ const RUTAS = [
       { texto: "caseta_responder_aviso", que: "Caseta: el portero responde el aviso y llega al caso (bloque 98)" },
       { texto: "cargar_aperturas_boton_zk", que: "Estacionamiento: las aperturas con boton de ZK se guardan al subir Todos los Eventos (bloque 99)" },
       { texto: "Leyendo las aperturas de ZK", que: "Aperturas con boton: las de ZK cruzadas con los reportes de la caseta (bloque 99)" },
+      { texto: "reportes-caseta", que: "Reportes de la caseta: Sistemas ve lo que reporto la caseta y en que va, como el portero (21-oct)" },
       { texto: "cs-tablero", que: "Caseta: avisos y reportes del portero en dos paneles con tarjetas (19-oct)" },
       { texto: "satag.botones.hito", que: "Aperturas con boton: antes y despues del canal con la caseta (19-oct)" },
       { texto: "bz-resumen", que: "Aperturas con boton: la vista visual de ZK, por hora y por dia, con el probable de cada una (19-oct)" },
@@ -124,6 +125,9 @@ const RUTAS = [
       // Bloque 100 (16-oct): va antes del cliente. p_tipo_usuario y p_apellidos_familia
       // ya viajaban en el cobro y el alta: la marca es el texto del formulario.
       { texto: "los apellidos de la familia para cambiar el tipo", que: "Actualizar datos corrige el tipo de un familiar y los apellidos de la familia (bloque 100)" },
+      // Sin acentos: la frase va en el aviso de Sistemas y solo existe desde que el
+      // padron para ZK toma los IDs del padron guardado, sin mapa aparte (20-oct).
+      { texto: "guardado desde Archivos de ZK", que: "Sistemas: el padron para ZK toma los IDs del padron de ZK guardado en Estacionamiento (20-oct)" },
     ],
   },
 ];

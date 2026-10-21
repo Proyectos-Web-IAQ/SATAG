@@ -296,6 +296,12 @@ export interface ReporteCaseta {
   marca: string | null;
   modelo: string | null;
   color: string | null;
+  /** En que va su caso (21-oct). Opcionales: la ficha de la persona no los usa. */
+  casoEstado?: string | null;
+  casoUrgente?: boolean;
+  casoCierre?: string | null;
+  casoCerradoEn?: string | null;
+  casoActualizadoEn?: string | null;
 }
 
 /**
@@ -481,4 +487,43 @@ export function cruzarAperturas(zk: AperturaZk[], reportes: ReporteCaseta[]): { 
     cruces.push({ zk: a, reporte: mejor ? mejor.r : null });
   }
   return { cruces, sinZk: libres.filter((l) => !l.usado).map((l) => l.r) };
+}
+
+/* ------------------------------------------------------------------ los reportes vistos por Sistemas (21-oct) */
+
+// Gerardo, 21-oct: «ver que reportes de caseta no le hemos dado seguimiento».
+//   - sin-seguimiento: su caso sigue en Nuevo: nadie de Sistemas lo ha tomado.
+//   - sin-caso: la caseta no identifico el vehiculo (o fue una falla sin vehiculo):
+//     solo esta en la bitacora; una apertura se puede ligar a un expediente.
+//   - curso / espera / listo: como lo ve el portero.
+export type SeguimientoSistemas = "sin-seguimiento" | "sin-caso" | "curso" | "espera" | "listo";
+
+export function seguimientoDeReporte(r: Pick<ReporteCaseta, "casoNumero" | "casoEstado">): SeguimientoSistemas {
+  if (!r.casoNumero || !r.casoEstado) return "sin-caso";
+  switch (r.casoEstado) {
+    case "nuevo": return "sin-seguimiento";
+    case "esperando":
+    case "seguimiento": return "espera";
+    case "resuelto":
+    case "descartado": return "listo";
+    default: return "curso";
+  }
+}
+
+/** Un reporte de Sistemas con la forma que dibuja la tarjeta del portero. */
+export function comoSeguimiento(r: ReporteCaseta): ReporteSeguimiento {
+  return {
+    en: r.hechoEn,
+    clase: r.clase,
+    puerta: r.puerta,
+    motivo: r.motivo,
+    veredicto: r.veredicto,
+    quien: r.nombre ?? r.placas ?? r.placaNorm ?? r.vehiculoTexto ?? null,
+    mio: false,
+    ligado: !!r.ligadoEn,
+    caso: r.casoNumero,
+    estadoCaso: r.casoEstado ?? null,
+    cierreMotivo: r.casoCierre ?? null,
+    cerradoEn: r.casoCerradoEn ?? null,
+  };
 }

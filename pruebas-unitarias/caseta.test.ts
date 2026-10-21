@@ -10,6 +10,8 @@ import {
   agruparPorVehiculo,
   delLote,
   claveVehiculo,
+  comoSeguimiento,
+  seguimientoDeReporte,
   cruzarAperturas,
   csvAperturas,
   paredQueretaro,
@@ -202,5 +204,20 @@ describe("ZK contra la caseta (bloque 99)", () => {
     const salida = rep({ id: "sal", puerta: "E1-salida", hechoEn: "2026-10-14T13:10:00Z" });
     const { cruces } = cruzarAperturas([zk(1, "2026-10-14 07:00:00", "E1", "salida")], [entrada, salida]);
     expect(cruces[0].reporte?.id).toBe("sal");
+  });
+});
+
+describe("los reportes vistos por Sistemas (21-oct)", () => {
+  it("sin caso, sin seguimiento (Nuevo), en curso, en espera y cerrado", () => {
+    expect(seguimientoDeReporte({ casoNumero: null, casoEstado: null })).toBe("sin-caso");
+    expect(seguimientoDeReporte({ casoNumero: 630, casoEstado: "nuevo" })).toBe("sin-seguimiento");
+    expect(seguimientoDeReporte({ casoNumero: 630, casoEstado: "abierto" })).toBe("curso");
+    expect(seguimientoDeReporte({ casoNumero: 630, casoEstado: "consultar" })).toBe("curso");
+    expect(seguimientoDeReporte({ casoNumero: 630, casoEstado: "esperando" })).toBe("espera");
+    expect(seguimientoDeReporte({ casoNumero: 630, casoEstado: "descartado" })).toBe("listo");
+  });
+  it("se dibuja como el portero: quien es el expediente, la placa o lo que escribio", () => {
+    const m = comoSeguimiento(rep({ casoNumero: 7, casoEstado: "resuelto", casoCierre: "Se cambio el TAG", placaNorm: "ABC123" }));
+    expect(m).toMatchObject({ caso: 7, estadoCaso: "resuelto", cierreMotivo: "Se cambio el TAG", quien: "ABC123", mio: false });
   });
 });

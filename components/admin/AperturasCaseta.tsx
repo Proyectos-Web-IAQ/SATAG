@@ -297,7 +297,7 @@ function TablaBitacora({ items, liga, onLigar }: { items: ReporteCaseta[]; liga:
  * (tambien a quien aun no tiene TAG: justo ese suele ser el que llega sin que la
  * pluma le abra) y sugiere el que tenga la misma placa que escribio el portero.
  */
-function DialogoLigar({ reportes, onCancelar, onLigar }: {
+export function DialogoLigar({ reportes, onCancelar, onLigar }: {
   reportes: ReporteCaseta[];
   onCancelar: () => void;
   onLigar: (registroId: string) => Promise<void>;

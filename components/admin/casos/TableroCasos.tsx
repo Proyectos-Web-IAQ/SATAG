@@ -72,6 +72,7 @@ import { ROTULO } from "@/lib/glosario";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
 import { EnZkDelCaso } from "@/components/admin/VistaMovimientosZk";
 import AvisosCaseta from "@/components/admin/casos/AvisosCaseta";
+import { tomarCasoPedido } from "@/lib/irACaso";
 
 const ESCRIBEN: RolPanel[] = ["ti", "contador", "admin", "super"];
 const EDITAN_TIPOS: RolPanel[] = ["ti", "super"];
@@ -137,6 +138,10 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   const [filtro, setFiltro] = useState<{ tipos: string[]; urgente: boolean }>({ tipos: [], urgente: false });
   const [agrupar, setAgrupar] = useState<"nada" | "familia" | "tipo">("nada");
   const [activo, setActivo] = useState<string | null>(null);
+  // 21-oct: otra vista (Reportes de la caseta) pidio abrir un caso: se busca por su
+  // numero y se abre su detalle una sola vez, en cuanto llegan los casos.
+  const [casoPedido] = useState(() => tomarCasoPedido());
+  const pedidoAbierto = useRef(false);
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
   const [verTodo, setVerTodo] = useState<Set<string>>(new Set());
   const [colMovil, setColMovil] = useState<ColumnaCaso>("atender");
@@ -145,6 +150,12 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
   const [arrastra, setArrastra] = useState<string[] | null>(null);
   const [sobre, setSobre] = useState<ColumnaCaso | null>(null);
   const escribe = ESCRIBEN.includes(rol);
+  useEffect(() => { if (casoPedido) setQ(numeroCaso(casoPedido)); }, [casoPedido]);
+  useEffect(() => {
+    if (!casoPedido || !casos || pedidoAbierto.current) return;
+    const c = casos.find((x) => x.numero === casoPedido);
+    if (c) { setActivo(c.id); pedidoAbierto.current = true; }
+  }, [casoPedido, casos]);
   // Bloque 94: quien puede pedir la accion en ZK al cerrar (ti; super pasa siempre).
   const [deptosZk, setDeptosZk] = useState<DepartamentoZk[] | null>(null);
   useEffect(() => {

@@ -19,6 +19,7 @@ import FichaPersona, { type SinExpediente } from "@/components/admin/FichaPerson
 import LadoVistas, { type GrupoLado } from "@/components/admin/LadoVistas";
 import VistaCaseta from "@/components/admin/VistaCaseta";
 import AperturasCaseta from "@/components/admin/AperturasCaseta";
+import ReportesCaseta from "@/components/admin/ReportesCaseta";
 import { ESTADO_EXPEDIENTE, ROTULO } from "@/lib/glosario";
 
 type Vista = "admin" | "ti" | "finanzas" | "consulta" | "caseta";
@@ -83,7 +84,7 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         ...(mide ? [{ clave: "tablero", titulo: "Tablero de instalación" }] : []),
         // Administracion abre y sigue casos (bloque 89, Gerardo 6-oct) pero no lee la
         // bitacora de ZK: ve Casos aqui, sin los detectados, y no el grupo Estacionamiento.
-        ...(rol === "admin" ? [{ clave: "casos", titulo: "Casos" }, { clave: "aperturas", titulo: "Aperturas con botón" }] : []),
+        ...(rol === "admin" ? [{ clave: "casos", titulo: "Casos" }, { clave: "reportes-caseta", titulo: "Reportes de la caseta" }, { clave: "aperturas", titulo: "Aperturas con botón" }] : []),
       ],
     },
   ];
@@ -95,6 +96,8 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         { clave: "lotes", titulo: "Estacionamientos" },
         { clave: "secciones", titulo: "Secciones" },
         { clave: "casos", titulo: "Casos" },
+        // 21-oct: lo que reporto la caseta y en que va, como lo ve el portero.
+        { clave: "reportes-caseta", titulo: "Reportes de la caseta" },
         // Bloque 97: lo que la caseta abrio con el boton, por vehiculo.
         { clave: "aperturas", titulo: "Aperturas con botón" },
         // 9-oct: que TAG leyo cada pluma a cierta hora, para encontrar casos.
@@ -222,6 +225,7 @@ function Consulta({ rol, email }: { rol: RolPanel; email: string }) {
     : vista === "movimientos" ? <VistaMovimientosZk email={email} onIr={elegir} />
     : vista === "casos" && rol === "admin" ? <TableroCasos rol={rol} email={email} eventos={null} ventana={{ desde: null, hasta: null }} personas={null} />
     : vista === "aperturas" ? <AperturasCaseta rol={rol} email={email} />
+    : vista === "reportes-caseta" ? <ReportesCaseta rol={rol} email={email} onIr={elegir} />
     : (VISTAS_ESTAC as string[]).includes(vista) ? <VistaEstacionamiento rol={rol} email={email} vista={vista as VistaEstac} />
     : null;
   if (claves.length === 1) return contenido;

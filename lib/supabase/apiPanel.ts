@@ -36,7 +36,6 @@ import type {
   ResultadoCorte,
   Solicitud,
   TagInventario,
-  TarjetaZk,
   TipoMovimiento,
   TipoSolicitud,
   TipoUsuario,
@@ -648,35 +647,35 @@ export async function retirarTagInventario(noDispositivo: string, hechoPor: stri
   });
 }
 
-// ---- SC-027: mapa tarjeta -> ID de ZK guardado en la base (bloque 54) ----
-
-interface TarjetaZkRow {
-  no_dispositivo: string;
-  zk_id: string;
-  cargado_en: string;
-  cargado_por: string;
-}
-
-export async function listMapaZk(): Promise<TarjetaZk[]> {
-  const { data, error } = await supabaseAuth
-    .from("zk_tarjetas")
-    .select("no_dispositivo, zk_id, cargado_en, cargado_por")
-    .limit(10000);
-  if (error) throw new Error(traducirError(error.message));
-  return (data as unknown as TarjetaZkRow[]).map((t) => ({
-    noDispositivo: t.no_dispositivo,
-    zkId: t.zk_id,
-    cargadoEn: t.cargado_en,
-    cargadoPor: t.cargado_por,
-  }));
-}
-
-// Reemplaza el mapa completo con el export de ZK ya leido por el cliente.
-export async function cargarMapaZk(filas: { tarjeta: string; id: string }[], hechoPor: string): Promise<AccionResultado> {
-  return rpc("cargar_mapa_zk", {
-    p_filas: filas,
-    p_hecho_por: hechoPor.trim() || null,
-  });
+// ---- Tarjeta -> ID de ZK, para que el import ACTUALICE en vez de duplicar ----
+//
+// Hasta el 20-oct-2026 salia de un mapa aparte (zk_tarjetas, bloque 54) que TI
+// tenia que subir desde Sistemas y que se quedo en el 28-sep con UNA tarjeta: el
+// padron para ZK mando casi todo con el No. de TAG como ID y ZK rechazo las
+// tarjetas que ya tenia con otro ID («el numero de tarjeta ya existe»). Ahora se
+// lee del padron de ZK que Estacionamiento guarda al subir Usuarios (bloque 83,
+// con el ID desde el 93): una sola copia, la que si se mantiene al dia. Solo las
+// vigentes: una tarjeta que ya no viene en el export no esta en ZK y nace con el
+// No. de TAG. Misma paginacion que listPadronZk.
+export async function listIdsZk(): Promise<Map<string, string>> {
+  const PAGINA = 5000;
+  const out = new Map<string, string>();
+  let leidas = 0;
+  for (let pagina = 0; pagina < 20; pagina += 1) {
+    const { data, error } = await supabaseAuth
+      .from("zk_padron")
+      .select("tarjeta, id_zk")
+      .eq("vigente", true)
+      .neq("id_zk", "")
+      .order("tarjeta", { ascending: true })
+      .range(leidas, leidas + PAGINA - 1);
+    if (error) throw new Error(traducirError(error.message));
+    const filas = (data ?? []) as { tarjeta: string; id_zk: string }[];
+    if (filas.length === 0) break;
+    leidas += filas.length;
+    for (const r of filas) out.set(r.tarjeta, r.id_zk);
+  }
+  return out;
 }
 
 // (La captura desde hoja fisica —RPC capturar_expediente_ti, bloque 53— quedo
@@ -2307,14 +2306,14 @@ export async function ligarReporteCaseta(reporte: string, registroId: string, he
 
 const SELECT_REPORTE_CASETA =
   "id, clase, puerta, motivo, registro_id, tarjeta, placa_norm, vehiculo_texto, nota, veredicto, hecho_por, hecho_en, ligado_por, ligado_en, " +
-  "registros(usuario_nombre_completo, placas, marca, modelo, color), casos(numero)";
+  "registros(usuario_nombre_completo, placas, marca, modelo, color), casos(numero, estado, urgente, cierre_motivo, cierre_nota, cerrado_en, actualizado_en)";
 
 interface ReporteCasetaRow {
   id: string; clase: ClaseReporte; puerta: string; motivo: string; registro_id: string | null; tarjeta: string | null;
   placa_norm: string | null; vehiculo_texto: string | null; nota: string | null; veredicto: Veredicto | null;
   hecho_por: string; hecho_en: string; ligado_por: string | null; ligado_en: string | null;
   registros: { usuario_nombre_completo: string | null; placas: string | null; marca: string | null; modelo: string | null; color: string | null } | null;
-  casos: { numero: number } | null;
+  casos: { numero: number; estado: string; urgente: boolean; cierre_motivo: string | null; cierre_nota: string | null; cerrado_en: string | null; actualizado_en: string | null } | null;
 }
 
 /**
@@ -2342,6 +2341,10 @@ export async function listReportesCaseta(filtro: { dias?: number; registroId?: s
     casoNumero: r.casos?.numero ?? null, hechoPor: r.hecho_por, hechoEn: r.hecho_en, ligadoPor: r.ligado_por, ligadoEn: r.ligado_en,
     nombre: r.registros?.usuario_nombre_completo ?? null, placas: r.registros?.placas ?? null,
     marca: r.registros?.marca ?? null, modelo: r.registros?.modelo ?? null, color: r.registros?.color ?? null,
+    // 21-oct: en que va su caso, para la vista «Reportes de la caseta» de Sistemas.
+    casoEstado: r.casos?.estado ?? null, casoUrgente: r.casos?.urgente === true,
+    casoCierre: r.casos?.cierre_motivo ?? r.casos?.cierre_nota ?? null, casoCerradoEn: r.casos?.cerrado_en ?? null,
+    casoActualizadoEn: r.casos?.actualizado_en ?? null,
   }));
 }
 
