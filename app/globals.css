@@ -2244,3 +2244,12 @@ a { color: var(--primary-strong); }
   .ti2-tarea__ir { display: none; }
   .ti2-fijo { min-height: 36px; padding: 0 10px; }
 }
+/* Personas que ZK ya tiene en BAJAS (21-oct) */
+.ti2-bajaszk { display: grid; gap: var(--sp-3); }
+.ti2-bajaszk__l { border-top: 1px solid var(--line); list-style: none; margin: 0; padding: 0; }
+.ti2-bajaszk__l li { border-bottom: 1px solid var(--line); }
+.ti2-bajaszk__l label { align-items: baseline; cursor: pointer; display: flex; gap: var(--sp-3); padding: var(--sp-2) var(--sp-1); }
+.ti2-bajaszk__l input { height: 18px; width: 18px; }
+.ti2-bajaszk__acc { align-items: end; display: flex; flex-wrap: wrap; gap: var(--sp-3); }
+.ti2-bajaszk__acc label { display: grid; flex: 1 1 320px; font-weight: 700; gap: var(--sp-1); }
+.ti2-bajaszk__acc .input { margin: 0; }

@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { diasDesde, hechoPorPersona, lunesDe, tagsPorLunes, tareasBandeja, umbralInventario, type EntradaBandeja } from "@/lib/bandeja";
+import { diasDesde, hechoPorPersona, lunesDe, tagsPorLunes, tareasBandeja, umbralInventario, vivosEnBajasZk, type EntradaBandeja } from "@/lib/bandeja";
 
 const vacia: EntradaBandeja = {
   casetaSinAcceso: [], casetaSinCaso: 0, avisosSinRespuesta: { n: 0, masViejoDias: 0 },
   casosNuevos: { n: 0, masViejoDias: 0, urgentes: 0 }, inventario: { disponibles: 50, lunes: [5, 7, 4, 6] },
-  archivos: { eventos: 1, personas: 2, puertas: 3 }, zk: { pendientes: 0, noCoincide: 0, porVerificar: 0, tandaAbierta: null }, notasBuzon: 0,
+  archivos: { eventos: 1, personas: 2, puertas: 3 }, zk: { pendientes: 0, noCoincide: 0, porVerificar: 0, tandaAbierta: null }, notasBuzon: 0, enBajasZk: 0,
 };
 
 describe("inventario: avisar antes de quedarse sin TAGs", () => {
@@ -67,5 +67,26 @@ describe("utilidades", () => {
     ]);
     expect(g.map((x) => `${x.quien}:${x.n}`)).toEqual(["Lidia:2", "Gerardo:1"]);
     expect(g[0].ultimos[0].en).toBe("2026-10-21T11:00:00Z");
+  });
+});
+
+describe("vivos en SATAG que ZK ya tiene en BAJAS", () => {
+  const padron = [
+    { tarjeta: "111", departamentoId: "10", departamento: "BAJAS" },
+    { tarjeta: "222", departamentoId: "2", departamento: "Padres de familia" },
+    { tarjeta: "333", departamentoId: "10", departamento: "BAJAS" },
+  ];
+  it("solo los vivos, con TAG, cuyo TAG está en BAJAS", () => {
+    const r = vivosEnBajasZk([
+      { id: "a", estado: "activo", noDispositivo: "111" },
+      { id: "b", estado: "activo", noDispositivo: "222" },
+      { id: "c", estado: "baja", noDispositivo: "333" },
+      { id: "d", estado: "pendiente", noDispositivo: null },
+    ], padron);
+    expect(r.map((x) => x.id)).toEqual(["a"]);
+  });
+  it("va en Ahora y lleva a Personas", () => {
+    const t = tareasBandeja({ ...vacia, enBajasZk: 3 });
+    expect(t[0]).toMatchObject({ id: "bajas-zk", grupo: "ahora", ir: { seccion: "personas", sub: "bajaszk" } });
   });
 });

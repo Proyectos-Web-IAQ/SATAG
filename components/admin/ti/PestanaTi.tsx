@@ -21,6 +21,7 @@ import VistaMovimientosZk from "@/components/admin/VistaMovimientosZk";
 import ReportesCaseta from "@/components/admin/ReportesCaseta";
 import VistaGes from "@/components/admin/VistaGes";
 import BandejaTi from "@/components/admin/ti/BandejaTi";
+import BajasDeZk from "@/components/admin/ti/BajasDeZk";
 
 const SECCIONES: { id: SeccionTi; titulo: string; ico: string; corto?: string }[] = [
   { id: "bandeja", titulo: "Bandeja", ico: "☰" },
@@ -34,7 +35,7 @@ const SECCIONES: { id: SeccionTi; titulo: string; ico: string; corto?: string }[
 
 const SUBS: Partial<Record<SeccionTi, [string, string][]>> = {
   zk: [["archivos", "Archivos de ZK"], ["movimientos", "Movimientos y tandas"]],
-  personas: [["buscar", "Buscar persona"], ["actualizar", "Actualizar datos"], ["baja", "Dar de baja"], ["incompletos", "Incompletos"], ["notas", "Notas del buzón"]],
+  personas: [["buscar", "Buscar persona"], ["bajaszk", "En BAJAS en ZK"], ["actualizar", "Actualizar datos"], ["baja", "Dar de baja"], ["incompletos", "Incompletos"], ["notas", "Notas del buzón"]],
   config: [["tags", "TAGs de la escuela"], ["ges", "Archivos de GES"]],
 };
 
@@ -89,7 +90,8 @@ export default function PestanaTi({ rol, email, nombreSesion, personas, pideInst
     caseta: { n: e.casetaSinAcceso.length + e.casetaSinCaso, tono: e.casetaSinAcceso.length ? "alerta" : "aviso" },
   } : {};
 
-  const subs = (SUBS[seccion] ?? []).filter(([k]) => k !== "notas" || (e?.notasBuzon ?? 0) > 0);
+  // Las partes que solo existen cuando hay algo: el buzón y las bajas hechas en ZK.
+  const subs = (SUBS[seccion] ?? []).filter(([k]) => (k !== "notas" || (e?.notasBuzon ?? 0) > 0) && (k !== "bajaszk" || (e?.enBajasZk ?? 0) > 0 || sub === "bajaszk"));
   const subActual = sub && subs.some(([k]) => k === sub) ? sub : subs[0]?.[0] ?? null;
 
   let contenido: ReactNode = null;
@@ -101,6 +103,7 @@ export default function PestanaTi({ rol, email, nombreSesion, personas, pideInst
   else if (seccion === "casos") contenido = <VistaEstacionamiento rol={rol} email={email} vista="casos" />;
   else if (seccion === "caseta") contenido = <ReportesCaseta rol={rol} email={email} onIr={(v) => { if (v === "casos") ir("casos"); }} />;
   else if (seccion === "personas") contenido = subActual === "buscar" ? personas
+    : subActual === "bajaszk" ? <BajasDeZk rol={rol} nombreSesion={nombreSesion} onHecho={leer} />
     : <VistaTi key={subActual} nombreSesion={nombreSesion} rol={rol} modoInicial={subActual as "actualizar" | "baja" | "incompletos" | "notas"} sinInicio />;
   else if (seccion === "config") contenido = subActual === "ges"
     ? <VistaGes email={email} />
@@ -126,7 +129,7 @@ export default function PestanaTi({ rol, email, nombreSesion, personas, pideInst
           <div className="tc-seg ti2-subs" role="group" aria-label="Partes de la sección">
             {subs.map(([k, t]) => (
               <button key={k} type="button" aria-pressed={subActual === k} onClick={() => ir(seccion, k)}>
-                {t}{k === "notas" && e?.notasBuzon ? ` ${e.notasBuzon}` : ""}
+                {t}{k === "notas" && e?.notasBuzon ? ` ${e.notasBuzon}` : ""}{k === "bajaszk" && e?.enBajasZk ? ` ${e.enBajasZk}` : ""}
               </button>
             ))}
           </div>

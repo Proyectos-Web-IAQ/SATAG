@@ -12,6 +12,7 @@ import {
   listImportacionesZk,
   listMovimientosZk,
   listNotasSinExpediente,
+  listPadronZk,
   listRegistros,
   listReportesCaseta,
   listTagsInventario,
@@ -20,7 +21,7 @@ import {
   nombreDesdeEmail,
 } from "./apiPanel";
 import { avisoVivo, estadoAviso, seguimientoDeReporte } from "@/lib/caseta";
-import { diasDesde, tagsPorLunes, type EntradaBandeja, type HechoHoy } from "@/lib/bandeja";
+import { diasDesde, tagsPorLunes, vivosEnBajasZk, type EntradaBandeja, type HechoHoy } from "@/lib/bandeja";
 import { fechaHora } from "@/lib/formato";
 import { textoVehiculo } from "@/lib/vehiculo";
 import type { Registro } from "@/lib/mock/types";
@@ -66,7 +67,7 @@ export async function leerBandeja(): Promise<LecturaBandeja> {
   const r = await Promise.allSettled([
     listRegistros(), listTagsInventario(), listCasos(), listReportesCaseta({ dias: 30 }), listAvisosCaseta(30),
     listImportacionesZk(), getUltimaCargaPadronZk(), listUltimasCargasPuertas(), listMovimientosZk(), listTandasZk(),
-    listNotasSinExpediente(),
+    listNotasSinExpediente(), listPadronZk(),
   ] as const);
   const registros = valor(r[0], "expedientes", fallas, []);
   const inventario = valor(r[1], "inventario", fallas, []);
@@ -79,6 +80,7 @@ export async function leerBandeja(): Promise<LecturaBandeja> {
   const movs = valor(r[8], "movimientos de ZK", fallas, []);
   const tandas = valor(r[9], "tandas de ZK", fallas, []);
   const notas = valor(r[10], "buzón", fallas, []);
+  const padronZk = valor(r[11], "padrón de ZK", fallas, []);
 
   const nuevos = casos.filter((c) => c.estado === "nuevo");
   const sinAcceso = reportes.filter((r) => r.clase === "apertura" && r.veredicto === "no-abre" && seguimientoDeReporte(r) === "sin-seguimiento");
@@ -117,8 +119,15 @@ export async function leerBandeja(): Promise<LecturaBandeja> {
       tandaAbierta: tandaAbierta ? { numero: tandaAbierta.numero, faltan: tandaAbierta.pasos.filter((p) => !p.hecho).length } : null,
     },
     notasBuzon: notas.length,
+    enBajasZk: vivosEnBajasZk(registros, padronZk).length,
   };
   return { entrada, porInstalar: enEsperaDeTag(registros), fallas };
+}
+
+/** Los expedientes vivos en SATAG que ZK ya tiene en BAJAS, para darlos de baja aquí también. */
+export async function leerVivosEnBajasZk(): Promise<{ registros: Registro[]; padronAl: string | null }> {
+  const [registros, padron, carga] = await Promise.all([listRegistros(), listPadronZk(), getUltimaCargaPadronZk()]);
+  return { registros: vivosEnBajasZk(registros, padron), padronAl: carga?.cargadoEn ?? null };
 }
 
 /**

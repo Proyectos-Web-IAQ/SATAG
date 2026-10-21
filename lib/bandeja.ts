@@ -45,6 +45,8 @@ export interface EntradaBandeja {
   archivos: { eventos: number | null; personas: number | null; puertas: number | null };
   zk: { pendientes: number; noCoincide: number; porVerificar: number; tandaAbierta: { numero: number; faltan: number } | null };
   notasBuzon: number;
+  /** Expedientes vivos en SATAG cuyo TAG ZK ya tiene en BAJAS (Gerardo, 21-oct). */
+  enBajasZk: number;
 }
 
 /** Cuándo avisar que se acaban los TAGs: lo de un lunes y medio, nunca menos de 8. */
@@ -103,6 +105,12 @@ export function tareasBandeja(e: EntradaBandeja): Tarea[] {
     titulo: `${e.zk.noCoincide} ${plural(e.zk.noCoincide, "cambio no quedó", "cambios no quedaron")} en ZK como se pidió`,
     detalle: "La verificación con el último archivo de ZK no coincide: revisar y volver a pedir",
     edad: null, vieja: true, ir: { seccion: "zk", sub: "movimientos" },
+  });
+  if (e.enBajasZk) t.push({
+    id: "bajas-zk", grupo: "ahora",
+    titulo: `${e.enBajasZk} ${plural(e.enBajasZk, "persona está en BAJAS en ZK y sigue activa", "personas están en BAJAS en ZK y siguen activas")} en SATAG`,
+    detalle: "Se dieron de baja directo en ZK. Revisar y darlas de baja también en SATAG",
+    edad: null, vieja: true, ir: { seccion: "personas", sub: "bajaszk" },
   });
   const umbral = umbralInventario(e.inventario.lunes);
   if (e.inventario.disponibles < umbral) {
@@ -186,4 +194,22 @@ export function hechoPorPersona(xs: HechoHoy[]): { quien: string; n: number; ult
   return [...m.entries()]
     .map(([quien, v]) => ({ quien, n: v.length, ultimos: v.sort((a, b) => b.en.localeCompare(a.en)) }))
     .sort((a, b) => b.n - a.n || a.quien.localeCompare(b.quien, "es"));
+}
+
+/** El departamento BAJAS de ZK (bloque 93: id 10, sin niveles). */
+export const esBajasZk = (p: { departamentoId: string; departamento: string }) =>
+  p.departamentoId === "10" || /^bajas$/i.test(p.departamento.trim());
+
+/**
+ * Los expedientes que SATAG tiene vivos (activo, pendiente o bloqueado) y cuyo TAG
+ * está en BAJAS en el padrón de ZK. ZK manda: si ya no abre allá, en SATAG también
+ * es una baja (Gerardo, 21-oct, el caso de una familia dada de baja en ZK que
+ * SATAG seguía mostrando como activa).
+ */
+export function vivosEnBajasZk<R extends { estado: string; noDispositivo: string | null }>(
+  registros: R[],
+  padron: { tarjeta: string; departamentoId: string; departamento: string }[],
+): R[] {
+  const bajas = new Set(padron.filter(esBajasZk).map((p) => p.tarjeta));
+  return registros.filter((r) => r.estado !== "baja" && !!r.noDispositivo && bajas.has(r.noDispositivo));
 }

@@ -117,6 +117,7 @@ const RUTAS = [
       { texto: "caseta_responder_aviso", que: "Caseta: el portero responde el aviso y llega al caso (bloque 98)" },
       { texto: "cargar_aperturas_boton_zk", que: "Estacionamiento: las aperturas con boton de ZK se guardan al subir Todos los Eventos (bloque 99)" },
       { texto: "Leyendo las aperturas de ZK", que: "Aperturas con boton: las de ZK cruzadas con los reportes de la caseta (bloque 99)" },
+      { texto: "Dar de baja en SATAG (", que: "TI: dar de baja en SATAG a quien ZK ya tiene en BAJAS (21-oct)" },
       { texto: "ti2-lado", que: "TI: pestaña rediseñada con la Bandeja de Sistemas y el acceso fijo a Instalar (21-oct)" },
       { texto: "na-candidato", que: "Caseta: Sistemas crea avisos a la caseta desde su pestaña, con su caso (21-oct)" },
       { texto: "rc-confirma", que: "Caseta: Sistemas ve y retira los avisos a la caseta desde su pestaña (21-oct)" },
