@@ -2165,6 +2165,33 @@ a { color: var(--primary-strong); }
 .na-casos > label.na-tipo { cursor: default; display: grid; font-weight: 700; font-size: 0.9rem; padding-left: 32px; }
 .na-campo { display: grid; gap: var(--sp-1); font-weight: 700; }
 .na-campo .textarea { margin: 0; }
+/* 22-oct: el aviso a varios, con la barra de los cerrados de la semana para arrastrarlos. */
+.na--con-barra { max-width: 1020px; width: 100%; }
+.na-cuerpo { align-items: start; display: grid; gap: var(--sp-4); grid-template-columns: 300px minmax(0, 1fr); }
+.na-form { display: grid; gap: var(--sp-3); min-width: 0; }
+.na-barra { background: var(--field-bg); border-radius: var(--r-md); display: grid; gap: var(--sp-2); max-height: 70vh; overflow-y: auto; padding: var(--sp-3); position: sticky; top: 0; }
+.na-barra .ds-rotulo, .na-barra p { margin: 0; }
+.na-barra .select, .na-barra .input { margin: 0; }
+.na-todos { justify-self: start; min-height: 34px; }
+.na-cerrados { display: grid; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.na-cerrado { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-md); color: var(--ink); cursor: grab; display: grid; font: inherit; gap: 1px; padding: 6px 8px; text-align: left; width: 100%; }
+.na-cerrado:hover, .na-cerrado:focus-visible { border-color: var(--primary); }
+.na-cerrado:active { cursor: grabbing; }
+.na-cerrado__t { align-items: baseline; display: flex; gap: var(--sp-2); justify-content: space-between; }
+.na-cerrado__nota { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.na-mas { color: var(--primary); font-weight: 700; }
+.na-destino { border-radius: var(--r-md); transition: background-color 0.15s, outline-color 0.15s; outline: 2px dashed transparent; outline-offset: 4px; }
+.na-destino--sobre { background: var(--field-bg); outline-color: var(--primary); }
+.na-suelte { border: 2px dashed var(--line); border-radius: var(--r-md); color: var(--muted); margin: 0; padding: var(--sp-3); text-align: center; }
+.na-lista { display: grid; gap: 4px; list-style: none; margin: 0; max-height: 40vh; overflow-y: auto; padding: 0; }
+.na-lista .na-elegido { position: relative; padding-right: 72px; }
+.na-quitar { position: absolute; right: var(--sp-3); top: var(--sp-2); }
+.na-encaso { display: grid; font-size: 0.9rem; font-weight: 700; gap: 2px; justify-self: stretch; }
+.na-encaso .select { margin: 0; }
+@media (max-width: 760px) {
+  .na-cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .na-barra { max-height: 40vh; position: static; }
+}
 
 /* =====================================================================
    Pestaña TI rediseñada (fase 1, 21-oct; Desarrollo/09 §9). Barra lateral en la

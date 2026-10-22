@@ -53,8 +53,9 @@ export const VEREDICTO: Record<Veredicto, { titulo: string; ayuda: string }> = {
   },
 };
 
-/** Lo que se le dice a quien pregunta por un TAG dado de baja (Gerardo, 14-oct). */
-export const PROCESO_BAJA = "Para volver a entrar, el proceso es comprar un TAG nuevo.";
+/** Lo que se le dice a quien pregunta por un TAG dado de baja (Gerardo, 14-oct).
+ *  22-oct: ya no es «comprar un TAG nuevo»; Sistemas evalua cada caso. */
+export const PROCESO_BAJA = "Para reactivar su TAG, pida en el acceso principal hablar con Sistemas para que evaluemos su caso.";
 /** Gerardo, 21-oct: las quejas van a Sistemas; si se complican, al contador. */
 export const QUEJAS_BAJA = "Si tiene una queja, remítalo a Sistemas. Si se complica, se le canaliza con el contador, Vicente.";
 
