@@ -132,11 +132,15 @@ const grupoTi = (r: Registro): number => {
 // Rediseño de TI (21-oct): la pestaña nueva abre cada sección en su modo
 // («Instalar», «Actualizar datos»…) y sin «← Inicio»; sin esos parámetros, la
 // vista se comporta como siempre.
-export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sinInicio = false }: {
+export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sinInicio = false, registroFijo, onHecho }: {
   nombreSesion?: string;
   rol: RolPanel;
   modoInicial?: Modo;
   sinInicio?: boolean;
+  /** 22-oct: solo «Actualizar datos» de este expediente, sin colas ni buscador (la ficha de persona lo abre). */
+  registroFijo?: string;
+  /** Despues de cada accion guardada: quien la abrio vuelve a leer lo suyo. */
+  onHecho?: () => void;
 }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [notas, setNotas] = useState<Solicitud[]>([]);
@@ -358,6 +362,7 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
       setSelId(null); setAccionPadron(null);
       setFeedback(typeof ok === "function" ? ok(res) : ok);
       after?.();
+      onHecho?.();
     } catch (e) {
       const mensaje = e instanceof Error ? e.message : "Error";
       if (mensaje.startsWith(SIN_CONEXION)) {
@@ -693,6 +698,32 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
           <button type="button" className="link-action" onClick={() => refresh()}>Reintentar</button>
         </p>
       </div>
+    );
+  }
+
+  const dialogo = confirm && (
+    <ConfirmDialog
+      title={confirm.title}
+      message={confirm.message}
+      dato={confirm.dato}
+      confirmLabel={confirm.confirmLabel}
+      danger={confirm.danger}
+      onCancel={() => setConfirm(null)}
+      onConfirm={() => { const c = confirm; setConfirm(null); run(c.action, c.ok, c.after); }}
+    />
+  );
+
+  // Gerardo, 22-oct: buscar, reactivar y corregir datos sin salir de la ficha de persona.
+  if (registroFijo) {
+    const r = registros.find((x) => x.id === registroFijo);
+    return (
+      <>
+        {banners}
+        {!r ? <p className="ti-hint">No se encontró el expediente. {botonActualizar}</p>
+          : r.estado === "baja" ? <p className="ti-hint">Está dado de baja: reactívelo primero para corregirle datos.</p>
+          : formPara("actualizar", r)}
+        {dialogo}
+      </>
     );
   }
 
@@ -1049,17 +1080,7 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
         </>
       )}
 
-      {confirm && (
-        <ConfirmDialog
-          title={confirm.title}
-          message={confirm.message}
-          dato={confirm.dato}
-          confirmLabel={confirm.confirmLabel}
-          danger={confirm.danger}
-          onCancel={() => setConfirm(null)}
-          onConfirm={() => { const c = confirm; setConfirm(null); run(c.action, c.ok, c.after); }}
-        />
-      )}
+      {dialogo}
     </>
   );
 }

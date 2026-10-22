@@ -41,6 +41,7 @@ import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import { AvisoPreguntar, SeccionCasos, VEN_CASOS, useCasosDePersona } from "@/components/admin/CasosDePersona";
 import { AperturasDePersona } from "@/components/admin/AperturasCaseta";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
+import VistaTi from "@/components/admin/VistaTi";
 import { diaSemana, fecha } from "@/lib/formato";
 
 /** Quien lee `zk_eventos` segun la RLS del bloque 78. */
@@ -358,7 +359,7 @@ function SeccionPasos({ pasos, para, puede, hayTags }: { pasos: EstadoPasos; par
 
 /* ------------------------------------------------------------------ la ficha */
 
-function Ficha({ r, rol, familia, onIr, extras = [], onCambio }: {
+function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion }: {
   r: Registro;
   rol: RolPanel;
   familia: Registro[];
@@ -366,7 +367,9 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio }: {
   /** Avisos que trae quien usa la ficha y que el expediente solo no sabe: los de la bitacora y los de ZK. */
   extras?: string[];
   onCambio?: () => void;
+  nombreSesion?: string;
 }) {
+  const [editando, setEditando] = useState(false);
   const tags = useMemo(() => tagsDe(r), [r]);
   const puedeVerPasos = VEN_PASOS.includes(rol);
   // Los casos del expediente y de cualquiera de sus TAGs (bloque 89).
@@ -419,7 +422,22 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio }: {
         <span>Folio <b><code>{r.folio}</code></b></span>
       </div>
 
-      {REACTIVAN.includes(rol) && <ReactivarExpediente r={r} onCambio={onCambio} />}
+      {REACTIVAN.includes(rol) && <ReactivarExpediente r={r} onCambio={onCambio} onReactivado={() => setEditando(true)} />}
+      {/* Gerardo, 22-oct: el proceso completo en una pantalla —buscar, reactivar y
+          corregir datos—; es el mismo formulario de «Actualizar datos». */}
+      {REACTIVAN.includes(rol) && r.estado !== "baja" && (
+        editando ? (
+          <section className="ficha__editar" aria-label="Modificar datos">
+            <div className="ficha__editar-cab">
+              <h3 className="ds-rotulo">Modificar datos</h3>
+              <button type="button" className="link-action" onClick={() => setEditando(false)}>Cerrar</button>
+            </div>
+            <VistaTi rol={rol} nombreSesion={nombreSesion} modoInicial="actualizar" sinInicio registroFijo={r.id} onHecho={onCambio} />
+          </section>
+        ) : (
+          <button type="button" className="ghost-action ghost-action--chico ficha__editar-abrir" onClick={() => setEditando(true)}>Modificar datos…</button>
+        )
+      )}
 
       <div className="ficha__cuerpo">
         <div>
@@ -688,7 +706,7 @@ function AreaAdministrativa({ r, rol }: { r: Registro; rol: RolPanel }) {
 // «pendiente» si nunca tuvo. Lo de ZK va aparte, desde su caso.
 const REACTIVAN: RolPanel[] = ["ti", "super"];
 
-function ReactivarExpediente({ r, onCambio }: { r: Registro; onCambio?: () => void }) {
+function ReactivarExpediente({ r, onCambio, onReactivado }: { r: Registro; onCambio?: () => void; onReactivado?: () => void }) {
   const [abierto, setAbierto] = useState(false);
   const [motivo, setMotivo] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -700,7 +718,7 @@ function ReactivarExpediente({ r, onCambio }: { r: Registro; onCambio?: () => vo
       <div className="ds-aviso ds-aviso--ok ficha__baja" role="status">
         <b>Expediente reactivado.</b>{" "}
         {hecho.estado === "activo" ? `Queda activo con su TAG ${hecho.tag}.` : "Queda pendiente: no tenía TAG instalado."}{" "}
-        Si hay que corregirle datos, ya puede hacerlo en «Actualizar datos». Si está en BAJAS en ZK, pida desde su caso la acción en ZK para regresarlo a su departamento.
+        Corríjale los datos aquí abajo. Si está en BAJAS en ZK, pida desde su caso la acción en ZK para regresarlo a su departamento.
       </div>
     );
   }
@@ -713,6 +731,7 @@ function ReactivarExpediente({ r, onCambio }: { r: Registro; onCambio?: () => vo
     try {
       setHecho(await reactivarExpediente(r.id, motivo.trim()));
       onCambio?.();
+      onReactivado?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo reactivar el expediente.");
       setGuardando(false);
@@ -744,7 +763,7 @@ function ReactivarExpediente({ r, onCambio }: { r: Registro; onCambio?: () => vo
   );
 }
 
-export default function FichaPersona({ registros, sinExpediente = [], todos, rol, vacio, linea, avisosExtra, orden, onCambio }: {
+export default function FichaPersona({ registros, sinExpediente = [], todos, rol, vacio, linea, avisosExtra, orden, onCambio, nombreSesion }: {
   /** Los expedientes que pasan el buscador y los filtros de Consulta. */
   registros: Registro[];
   /** Quien solo esta en ZK o en la bitacora; va despues de los expedientes. */
@@ -759,8 +778,10 @@ export default function FichaPersona({ registros, sinExpediente = [], todos, rol
   avisosExtra?: (r: Registro) => string[];
   /** Como viene ordenada la lista, dicho junto a la cuenta: «por entradas, de más a menos». */
   orden?: string;
-  /** Para volver a leer el padrón cuando la ficha cambia un expediente (reactivarlo). */
+  /** Para volver a leer el padrón cuando la ficha cambia un expediente (reactivarlo, corregir datos). */
   onCambio?: () => void;
+  /** Quien tiene la sesión: firma «Actualizar datos» dentro de la ficha. */
+  nombreSesion?: string;
 }) {
   const [elegido, setElegido] = useState<string | null>(null);
   const id = useId();
@@ -827,7 +848,7 @@ export default function FichaPersona({ registros, sinExpediente = [], todos, rol
       {sinExpActual ? (
         <FichaSinExpediente key={claveSinExpediente(sinExpActual)} s={sinExpActual} rol={rol} />
       ) : actual ? (
-        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} onCambio={onCambio} />
+        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} onCambio={onCambio} nombreSesion={nombreSesion} />
       ) : (
         <div className="ficha"><p className="ficha__vacio">{vacio}</p></div>
       )}

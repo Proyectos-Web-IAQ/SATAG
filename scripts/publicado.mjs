@@ -112,6 +112,7 @@ const RUTAS = [
       { texto: "Cerrados esta semana", que: "Avisos a la caseta: barra de cerrados de la semana para arrastrar, y un aviso a varios (22-oct)" },
       // Bloque 101 (22-oct): va antes del cliente. El RPC viaja por nombre.
       { texto: "reactivar_expediente", que: "Ficha de persona: Sistemas reactiva un expediente dado de baja (bloque 101)" },
+      { texto: "primero para corregirle datos", que: "Ficha de persona: Actualizar datos dentro de la ficha, sin cambiar de pantalla (22-oct)" },
       { texto: "satag.caseta.lotes", que: "Caseta: el estacionamiento que cubre se recuerda en la Chromebook (14-oct)" },
       { texto: "Ocultar cerrados", que: "Casos: los cerrados no se ven y lo pendiente va en bloques (14-oct)" },
       { texto: "eventosHasta", que: "Caseta: diseño Mostrador con las ultimas estancias y hasta cuando llegan las lecturas (14-oct)" },

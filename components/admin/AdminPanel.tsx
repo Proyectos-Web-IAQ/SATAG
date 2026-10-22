@@ -198,7 +198,7 @@ export default function AdminPanel({ adminEmail, rol, onSignOut }: {
 
         {vista === "admin" && <VistaAdmin nombreSesion={nombreSesion} rol={rol} />}
         {vista === "ti" && (
-          <PestanaTi rol={rol} email={adminEmail} nombreSesion={nombreSesion} personas={<VistaConsulta rol={rol} />}
+          <PestanaTi rol={rol} email={adminEmail} nombreSesion={nombreSesion} personas={<VistaConsulta rol={rol} nombreSesion={nombreSesion} />}
             pideInstalar={pideInstalar} onCuentaInstalar={setEsperanTag} />
         )}
         {vista === "finanzas" && <VistaFinanzas nombreSesion={nombreSesion} />}
@@ -307,7 +307,7 @@ function tagsConExpediente(registros: Registro[]): Set<string> {
 // Desde el 16-oct también lista a quien NO tiene expediente (Gerardo: «quiero
 // tener todos los registros aunque estén incompletos»): quien tiene TAG en ZK y
 // nada en SATAG, y un TAG buscado por número que solo aparece en la bitácora.
-function VistaConsulta({ rol }: { rol: RolPanel }) {
+function VistaConsulta({ rol, nombreSesion }: { rol: RolPanel; nombreSesion?: string }) {
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [padronZk, setPadronZk] = useState<PersonaZkConsulta[]>([]);
   // CC-02: el reporte de incompletos vive aquí porque Consulta es la vista de
@@ -541,6 +541,7 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
           rol={rol}
           vacio={q || hayFiltros ? "Sin resultados con los filtros actuales." : "Aún no hay registros en el padrón."}
           onCambio={() => { refresh(); }}
+          nombreSesion={nombreSesion}
         />
       </div>
     </>
