@@ -21,6 +21,7 @@ import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import type { AreaAdmin, Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import {
+  altaDesdeZkTarjeta,
   asignarAreaAdmin,
   deptosZkDeTarjetas,
   listLecturasDeTarjetas,
@@ -359,7 +360,7 @@ function SeccionPasos({ pasos, para, puede, hayTags }: { pasos: EstadoPasos; par
 
 /* ------------------------------------------------------------------ la ficha */
 
-function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion }: {
+function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion, editarAlAbrir = false }: {
   r: Registro;
   rol: RolPanel;
   familia: Registro[];
@@ -368,8 +369,10 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion }: {
   extras?: string[];
   onCambio?: () => void;
   nombreSesion?: string;
+  /** Abre con «Modificar datos» a la vista (el expediente recien creado desde ZK). */
+  editarAlAbrir?: boolean;
 }) {
-  const [editando, setEditando] = useState(false);
+  const [editando, setEditando] = useState(editarAlAbrir);
   const tags = useMemo(() => tagsDe(r), [r]);
   const puedeVerPasos = VEN_PASOS.includes(rol);
   // Los casos del expediente y de cualquiera de sus TAGs (bloque 89).
@@ -582,7 +585,36 @@ export interface SinExpediente {
 const claveSinExpediente = (s: SinExpediente) => `zk:${s.tarjeta}`;
 const nombreSinExpediente = (s: SinExpediente) => s.zk?.nombre.trim() || `TAG ${s.tarjeta}`;
 
-function FichaSinExpediente({ s, rol }: { s: SinExpediente; rol: RolPanel }) {
+// Bloque 102 (22-oct): quien esta vigente en ZK y nunca paso por la pluma no entra
+// solo a SATAG (altas_desde_zk pide que haya abierto). Sistemas le crea el expediente
+// aqui, a pedido, para irle llenando los datos.
+function CrearExpedienteZk({ tarjeta, nombre, onCreado }: { tarjeta: string; nombre: string; onCreado?: (id: string) => void }) {
+  const [creando, setCreando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function crear() {
+    if (!window.confirm(`¿Crear en SATAG el expediente de ${nombre} (TAG ${tarjeta}) con lo que dice ZK? Después se le capturan los datos que falten.`)) return;
+    setCreando(true);
+    setError(null);
+    try {
+      const r = await altaDesdeZkTarjeta(tarjeta);
+      onCreado?.(r.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo crear el expediente.");
+      setCreando(false);
+    }
+  }
+  return (
+    <div className="ficha__baja">
+      <p>No tiene expediente en SATAG. Se crea con su nombre, departamento y placa de ZK; el vehículo y lo demás se capturan después.</p>
+      <button type="button" className="ghost-action ghost-action--chico" disabled={creando} onClick={crear}>
+        {creando ? "Creando…" : "Crear su expediente en SATAG"}
+      </button>
+      {error && <p className="submit-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function FichaSinExpediente({ s, rol, onCreado }: { s: SinExpediente; rol: RolPanel; onCreado?: (id: string) => void }) {
   const para = claveSinExpediente(s);
   const tarjetas = useMemo(() => [s.tarjeta], [s.tarjeta]);
   const puedeVerPasos = VEN_PASOS.includes(rol);
@@ -617,6 +649,10 @@ function FichaSinExpediente({ s, rol }: { s: SinExpediente; rol: RolPanel }) {
         {listos && <span>Últimos días <b>{visitas} {pasos.salidas ? (visitas === 1 ? "salida" : "salidas") : (visitas === 1 ? "visita" : "visitas")}</b></span>}
         <span>Expediente <b>no tiene</b></span>
       </div>
+
+      {REACTIVAN.includes(rol) && z && z.vigente && !enBajas && !enStock && (
+        <CrearExpedienteZk tarjeta={s.tarjeta} nombre={nombreSinExpediente(s)} onCreado={onCreado} />
+      )}
 
       <div className="ficha__cuerpo">
         <div>
@@ -784,6 +820,8 @@ export default function FichaPersona({ registros, sinExpediente = [], todos, rol
   nombreSesion?: string;
 }) {
   const [elegido, setElegido] = useState<string | null>(null);
+  // El expediente recien creado desde ZK abre con «Modificar datos» a la vista.
+  const [editarAlAbrir, setEditarAlAbrir] = useState<string | null>(null);
   const id = useId();
   const sinExpElegido = elegido?.startsWith("zk:") ? sinExpediente.find((s) => claveSinExpediente(s) === elegido) ?? null : null;
   const actual = sinExpElegido ? null : registros.find((r) => r.id === elegido) ?? registros[0] ?? null;
@@ -846,9 +884,10 @@ export default function FichaPersona({ registros, sinExpediente = [], todos, rol
         </ul>
       </div>
       {sinExpActual ? (
-        <FichaSinExpediente key={claveSinExpediente(sinExpActual)} s={sinExpActual} rol={rol} />
+        <FichaSinExpediente key={claveSinExpediente(sinExpActual)} s={sinExpActual} rol={rol}
+          onCreado={(nuevo) => { setElegido(nuevo); setEditarAlAbrir(nuevo); onCambio?.(); }} />
       ) : actual ? (
-        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} onCambio={onCambio} nombreSesion={nombreSesion} />
+        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} onCambio={onCambio} nombreSesion={nombreSesion} editarAlAbrir={editarAlAbrir === actual.id} />
       ) : (
         <div className="ficha"><p className="ficha__vacio">{vacio}</p></div>
       )}

@@ -600,6 +600,14 @@ export async function reactivarExpediente(id: string, motivo: string): Promise<{
   return { estado: d.estado ?? "activo", tag: d.tag ?? null };
 }
 
+// Bloque 102: el expediente de quien solo esta en ZK, a pedido (sin haber abierto la pluma).
+export async function altaDesdeZkTarjeta(tarjeta: string): Promise<{ id: string; folio: string }> {
+  const { data, error } = await supabaseAuth.rpc("alta_desde_zk_tarjeta", { p_tarjeta: tarjeta });
+  if (error) throw new Error(traducirError(error.message));
+  const d = (data ?? {}) as { id?: string; folio?: string };
+  return { id: d.id ?? "", folio: d.folio ?? "" };
+}
+
 // CC-01: activa el TAG apartado (reposicion). no_dispositivo pasa al numero
 // apartado, la procedencia queda en escuela y se limpia la reserva. El TAG
 // anterior queda inactivo (RPC usar_tag_apartado, rol ti).
