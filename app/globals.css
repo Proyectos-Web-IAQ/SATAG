@@ -1388,6 +1388,11 @@ a { color: var(--primary-strong); }
 .ficha__ident { align-items: baseline; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 .ficha__ident h2 { color: var(--primary); font-size: 1.6rem; font-weight: 800; line-height: 1.2; margin: 0; }
 .ficha__rol { color: var(--muted); font-size: 1rem; }
+/* Bloque 101: el expediente de baja dice por que y se puede reactivar desde aqui. */
+.ficha__baja { background: var(--field-bg); border-left: 3px solid var(--muted); border-radius: var(--r-md); display: grid; gap: var(--sp-2); justify-items: start; margin-top: var(--sp-3); padding: var(--sp-2) var(--sp-3); }
+.ficha__baja p { margin: 0; }
+.ficha__baja .na-campo { justify-self: stretch; }
+.ficha__baja.ds-aviso { display: block; }
 .ficha__cifras { color: var(--muted); display: flex; flex-wrap: wrap; font-size: 0.9rem; gap: 6px 22px; margin-top: 8px; }
 .ficha__cifras b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 700; }
 .ficha__cifras code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.86rem; }

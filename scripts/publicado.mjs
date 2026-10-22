@@ -110,6 +110,8 @@ const RUTAS = [
       { texto: "ligar_reporte_caseta", que: "Aperturas con boton: Sistemas liga una apertura a un expediente (bloque 97)" },
       { texto: "pida en el acceso principal hablar con Sistemas", que: "Caseta: el portero ve el motivo de la baja y el proceso, que ya no es comprar un TAG (22-oct)" },
       { texto: "Cerrados esta semana", que: "Avisos a la caseta: barra de cerrados de la semana para arrastrar, y un aviso a varios (22-oct)" },
+      // Bloque 101 (22-oct): va antes del cliente. El RPC viaja por nombre.
+      { texto: "reactivar_expediente", que: "Ficha de persona: Sistemas reactiva un expediente dado de baja (bloque 101)" },
       { texto: "satag.caseta.lotes", que: "Caseta: el estacionamiento que cubre se recuerda en la Chromebook (14-oct)" },
       { texto: "Ocultar cerrados", que: "Casos: los cerrados no se ven y lo pendiente va en bloques (14-oct)" },
       { texto: "eventosHasta", que: "Caseta: diseño Mostrador con las ultimas estancias y hasta cuando llegan las lecturas (14-oct)" },

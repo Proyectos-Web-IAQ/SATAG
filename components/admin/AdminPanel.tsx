@@ -540,6 +540,7 @@ function VistaConsulta({ rol }: { rol: RolPanel }) {
           todos={registros}
           rol={rol}
           vacio={q || hayFiltros ? "Sin resultados con los filtros actuales." : "Aún no hay registros en el padrón."}
+          onCambio={() => { refresh(); }}
         />
       </div>
     </>

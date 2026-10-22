@@ -592,6 +592,14 @@ export async function darBaja(id: string, motivo: string, hechoPor: string): Pro
   });
 }
 
+// Bloque 101: la baja tiene regreso. Quien reactiva sale de la sesion.
+export async function reactivarExpediente(id: string, motivo: string): Promise<{ estado: string; tag: string | null }> {
+  const { data, error } = await supabaseAuth.rpc("reactivar_expediente", { p_registro_id: id, p_motivo: motivo });
+  if (error) throw new Error(traducirError(error.message));
+  const d = (data ?? {}) as { estado?: string; tag?: string | null };
+  return { estado: d.estado ?? "activo", tag: d.tag ?? null };
+}
+
 // CC-01: activa el TAG apartado (reposicion). no_dispositivo pasa al numero
 // apartado, la procedencia queda en escuela y se limpia la reserva. El TAG
 // anterior queda inactivo (RPC usar_tag_apartado, rol ti).

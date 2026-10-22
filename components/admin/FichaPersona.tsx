@@ -25,6 +25,7 @@ import {
   deptosZkDeTarjetas,
   listLecturasDeTarjetas,
   listPasosDeTarjetas,
+  reactivarExpediente,
   type LecturaDeTag,
   type PasoZk,
   type PersonaZkConsulta,
@@ -357,13 +358,14 @@ function SeccionPasos({ pasos, para, puede, hayTags }: { pasos: EstadoPasos; par
 
 /* ------------------------------------------------------------------ la ficha */
 
-function Ficha({ r, rol, familia, onIr, extras = [] }: {
+function Ficha({ r, rol, familia, onIr, extras = [], onCambio }: {
   r: Registro;
   rol: RolPanel;
   familia: Registro[];
   onIr: (id: string) => void;
   /** Avisos que trae quien usa la ficha y que el expediente solo no sabe: los de la bitacora y los de ZK. */
   extras?: string[];
+  onCambio?: () => void;
 }) {
   const tags = useMemo(() => tagsDe(r), [r]);
   const puedeVerPasos = VEN_PASOS.includes(rol);
@@ -416,6 +418,8 @@ function Ficha({ r, rol, familia, onIr, extras = [] }: {
         )}
         <span>Folio <b><code>{r.folio}</code></b></span>
       </div>
+
+      {REACTIVAN.includes(rol) && <ReactivarExpediente r={r} onCambio={onCambio} />}
 
       <div className="ficha__cuerpo">
         <div>
@@ -679,7 +683,68 @@ function AreaAdministrativa({ r, rol }: { r: Registro; rol: RolPanel }) {
   );
 }
 
-export default function FichaPersona({ registros, sinExpediente = [], todos, rol, vacio, linea, avisosExtra, orden }: {
+// Bloque 101 (22-oct): la baja ya tiene regreso. Lo decide Sistemas (rol ti; super
+// pasa siempre), con motivo, y el expediente vuelve a «activo» si conserva su TAG o a
+// «pendiente» si nunca tuvo. Lo de ZK va aparte, desde su caso.
+const REACTIVAN: RolPanel[] = ["ti", "super"];
+
+function ReactivarExpediente({ r, onCambio }: { r: Registro; onCambio?: () => void }) {
+  const [abierto, setAbierto] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hecho, setHecho] = useState<{ estado: string; tag: string | null } | null>(null);
+
+  if (hecho) {
+    return (
+      <div className="ds-aviso ds-aviso--ok ficha__baja" role="status">
+        <b>Expediente reactivado.</b>{" "}
+        {hecho.estado === "activo" ? `Queda activo con su TAG ${hecho.tag}.` : "Queda pendiente: no tenía TAG instalado."}{" "}
+        Si hay que corregirle datos, ya puede hacerlo en «Actualizar datos». Si está en BAJAS en ZK, pida desde su caso la acción en ZK para regresarlo a su departamento.
+      </div>
+    );
+  }
+  if (r.estado !== "baja") return null;
+
+  async function reactivar() {
+    if (motivo.trim().length < 5) { setError("Escriba por qué se reactiva."); return; }
+    setGuardando(true);
+    setError(null);
+    try {
+      setHecho(await reactivarExpediente(r.id, motivo.trim()));
+      onCambio?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo reactivar el expediente.");
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <div className="ficha__baja">
+      <p>
+        <b>Dado de baja{r.fechaBaja ? ` el ${fechaCorta(r.fechaBaja)}` : ""}.</b>{" "}
+        {r.motivoBaja ? `Motivo: ${r.motivoBaja}` : "Sin motivo registrado."}
+      </p>
+      {abierto ? (
+        <>
+          <label className="na-campo">Por qué se reactiva
+            <textarea className="textarea" rows={2} maxLength={500} value={motivo} autoFocus onChange={(e) => setMotivo(e.target.value)}
+              placeholder="Ej.: Se presentó en la caseta y se identificó: es la mamá de un alumno de primaria." />
+          </label>
+          <div className="ds-acciones">
+            <button type="button" className="primary-action" disabled={guardando} onClick={reactivar}>{guardando ? "Reactivando…" : "Reactivar"}</button>
+            <button type="button" className="ghost-action" disabled={guardando} onClick={() => { setAbierto(false); setError(null); }}>Cancelar</button>
+          </div>
+        </>
+      ) : (
+        <button type="button" className="ghost-action ghost-action--chico" onClick={() => setAbierto(true)}>Reactivar expediente…</button>
+      )}
+      {error && <p className="submit-error" role="alert">{error}</p>}
+    </div>
+  );
+}
+
+export default function FichaPersona({ registros, sinExpediente = [], todos, rol, vacio, linea, avisosExtra, orden, onCambio }: {
   /** Los expedientes que pasan el buscador y los filtros de Consulta. */
   registros: Registro[];
   /** Quien solo esta en ZK o en la bitacora; va despues de los expedientes. */
@@ -694,6 +759,8 @@ export default function FichaPersona({ registros, sinExpediente = [], todos, rol
   avisosExtra?: (r: Registro) => string[];
   /** Como viene ordenada la lista, dicho junto a la cuenta: «por entradas, de más a menos». */
   orden?: string;
+  /** Para volver a leer el padrón cuando la ficha cambia un expediente (reactivarlo). */
+  onCambio?: () => void;
 }) {
   const [elegido, setElegido] = useState<string | null>(null);
   const id = useId();
@@ -760,7 +827,7 @@ export default function FichaPersona({ registros, sinExpediente = [], todos, rol
       {sinExpActual ? (
         <FichaSinExpediente key={claveSinExpediente(sinExpActual)} s={sinExpActual} rol={rol} />
       ) : actual ? (
-        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} />
+        <Ficha key={actual.id} r={actual} rol={rol} familia={familia} onIr={setElegido} extras={avisosExtra ? avisosExtra(actual) : []} onCambio={onCambio} />
       ) : (
         <div className="ficha"><p className="ficha__vacio">{vacio}</p></div>
       )}
