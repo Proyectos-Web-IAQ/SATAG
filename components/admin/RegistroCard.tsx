@@ -112,7 +112,7 @@ export function TarjetaRegistro({ r, abierto, onToggle, children, chip, espera }
       <button type="button" className="ti-card__head" onClick={onToggle} aria-expanded={abierto}>
         <span className="ti-card__row">
           <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? ROTULO.sinPlacas : "—")}</span>
-          {chip ?? <EstadoChip estado={r.estado} />}
+          {chip ?? <EstadoChip estado={r.estado} conPago={r.pagos.length > 0} deSatag={r.origenExpediente === "satag"} />}
         </span>
         <span className="ti-card__veh">{textoVehiculo(r)}</span>
         <span className="ti-card__sub">{r.usuarioNombre} · {TIPO_PERSONA[r.tipoUsuario] ?? r.tipoUsuario}</span>

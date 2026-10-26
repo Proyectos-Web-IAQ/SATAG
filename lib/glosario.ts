@@ -78,13 +78,29 @@ export const GLOSARIO = {
 // una vez, con mayuscula inicial; cuando el rotulo va a media frase se deriva con
 // `enFrase`, nunca con un segundo mapa en minusculas.
 
-/** El estado del expediente en SATAG. */
+/**
+ * El estado del expediente tal cual lo guarda la base. `pendiente` dura desde el alta
+ * hasta que Sistemas instala el TAG, y en medio pasa el cobro: por eso aqui se llama
+ * «Por instalar» y no «Pendiente de cobro». Sirve para filtros y para lo que no sabe
+ * del pago; en una tarjeta o una ficha se usa `rotuloExpediente`, que si lo sabe.
+ */
 export const ESTADO_EXPEDIENTE: Record<EstadoRegistro, string> = {
-  pendiente: "Pendiente de cobro",
+  pendiente: "Por instalar",
   activo: "Activo",
   bloqueado: "Bloqueado",
   baja: "Dado de baja",
 };
+
+/**
+ * El rotulo del expediente cuando se conoce el pago. Hasta el 26-oct el chip escribia
+ * el estado a secas y le decia «Pendiente de cobro» a quien ya habia pagado y solo
+ * esperaba a Sistemas. Un expediente del padron historico nunca paso por caja: su
+ * `pendiente` se queda en «Por instalar».
+ */
+export function rotuloExpediente(estado: EstadoRegistro, conPago: boolean, deSatag = true): string {
+  if (estado !== "pendiente" || !deSatag) return ESTADO_EXPEDIENTE[estado];
+  return conPago ? "Pagado, por instalar" : "Pendiente de cobro";
+}
 
 /** Quien conduce: el tipo que se declara en el alta y que Administracion confirma al cobrar. */
 export const TIPO_PERSONA: Record<TipoUsuario, string> = {

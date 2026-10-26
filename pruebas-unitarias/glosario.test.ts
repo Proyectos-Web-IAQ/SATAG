@@ -4,7 +4,7 @@
 // «Ninguna»; y a media frase el rotulo se deriva del mismo mapa con `enFrase`.
 import { describe, it, expect } from "vitest";
 import type { EstadoRegistro, TipoUsuario } from "@/lib/mock/types";
-import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, enFrase, textoPlumas } from "@/lib/glosario";
+import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, enFrase, rotuloExpediente, textoPlumas } from "@/lib/glosario";
 
 // Si se agrega un estado o un tipo en lib/mock/types.ts, el compilador obliga a
 // sumarlo al mapa; estas listas obligan a sumarlo tambien a la prueba.
@@ -41,11 +41,30 @@ describe("ESTADO_EXPEDIENTE", () => {
   });
   it("con las palabras canonicas y mayuscula inicial", () => {
     expect(ESTADO_EXPEDIENTE).toEqual({
-      pendiente: "Pendiente de cobro",
+      pendiente: "Por instalar",
       activo: "Activo",
       bloqueado: "Bloqueado",
       baja: "Dado de baja",
     });
+  });
+});
+
+// 26-oct: el chip decia «Pendiente de cobro» a quien ya habia pagado. El rotulo de
+// un pendiente se deriva del pago; los demas estados no lo miran.
+describe("rotuloExpediente", () => {
+  it("un pendiente sin pago espera a Administracion; con pago, a Sistemas", () => {
+    expect(rotuloExpediente("pendiente", false)).toBe("Pendiente de cobro");
+    expect(rotuloExpediente("pendiente", true)).toBe("Pagado, por instalar");
+  });
+  it("un pendiente del padron historico nunca paso por caja", () => {
+    expect(rotuloExpediente("pendiente", false, false)).toBe("Por instalar");
+    expect(rotuloExpediente("pendiente", true, false)).toBe("Por instalar");
+  });
+  it("los demas estados escriben lo mismo con o sin pago", () => {
+    for (const e of ESTADOS.filter((x) => x !== "pendiente")) {
+      expect(rotuloExpediente(e, true)).toBe(ESTADO_EXPEDIENTE[e]);
+      expect(rotuloExpediente(e, false)).toBe(ESTADO_EXPEDIENTE[e]);
+    }
   });
 });
 
@@ -76,7 +95,7 @@ describe("ROTULO", () => {
 describe("enFrase", () => {
   it("baja la mayuscula inicial de una palabra comun", () => {
     expect(enFrase(ESTADO_EXPEDIENTE.baja)).toBe("dado de baja");
-    expect(enFrase(ESTADO_EXPEDIENTE.pendiente)).toBe("pendiente de cobro");
+    expect(enFrase(ESTADO_EXPEDIENTE.pendiente)).toBe("por instalar");
     expect(enFrase(TIPO_PERSONA.padres)).toBe("padre / madre / tutor");
     expect(enFrase(ROTULO.sinPlacas)).toBe("sin placas");
     expect(enFrase(textoPlumas([]))).toBe("ninguna");

@@ -36,7 +36,7 @@ import type { EventoZk } from "@/lib/zk/eventos";
 import { salidasDelVehiculo, type SalidaVehiculo } from "@/lib/zk/alReves";
 import { GRUPO_INSTITUCIONAL, grupoDeDepto, nombreDepto } from "@/lib/zk/padron";
 import { DetalleRegistro } from "@/components/admin/RegistroCard";
-import { ESTADO_EXPEDIENTE, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
+import { ESTADO_EXPEDIENTE, ROTULO, rotuloExpediente, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { textoVehiculo } from "@/lib/vehiculo";
 import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import { AvisoPreguntar, SeccionCasos, VEN_CASOS, useCasosDePersona } from "@/components/admin/CasosDePersona";
@@ -494,7 +494,7 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion, edi
                   <tr className={r.estado === "baja" ? "baja" : undefined}>
                     <td className="mono">{r.placas ?? (r.sinPlacas ? ROTULO.sinPlacas : "—")}</td>
                     <td>{textoVehiculo(r)}</td>
-                    <td>{ESTADO_EXPEDIENTE[r.estado]}</td>
+                    <td>{rotuloExpediente(r.estado, r.pagos.length > 0, r.origenExpediente === "satag")}</td>
                   </tr>
                 </tbody>
               </table>
@@ -538,7 +538,7 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion, edi
             {r.tipoUsuario === "admin" && <AreaAdministrativa r={r} rol={rol} />}
             {r.apellidosFamilia && <div><dt>Familia</dt><dd>{r.apellidosFamilia}</dd></div>}
             <div><dt>{ROTULO.plumas}</dt><dd>{textoPlumas(r.estacionamientos)}</dd></div>
-            <div><dt>Estado</dt><dd>{ESTADO_EXPEDIENTE[r.estado]}</dd></div>
+            <div><dt>Estado</dt><dd>{rotuloExpediente(r.estado, r.pagos.length > 0, r.origenExpediente === "satag")}</dd></div>
             <div><dt>Origen</dt><dd>{ORIGEN_LABEL[r.origenExpediente]}</dd></div>
             <div><dt>Folio</dt><dd><code>{r.folio}</code></dd></div>
           </dl>

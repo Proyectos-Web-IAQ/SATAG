@@ -56,6 +56,7 @@ const RUTAS = [
       // solo su capa de datos.
       { texto: "cargar_eventos_zk", que: "la bitacora se puede guardar en SATAG (bloque 78)" },
       { texto: "origen_expediente", que: "el panel distingue un alta de un expediente migrado (bloque 79)" },
+      { texto: "Pagado, por instalar", que: "el chip del expediente distingue cobrado de por cobrar (26-oct)" },
       // `alerta-huerfanas` seria la marca natural, pero es una clase CSS y este
       // script solo baja los chunks de JavaScript: habria fallado siempre. Se usa en
       // su lugar el valor de una clave del catalogo de senales, que es una cadena del

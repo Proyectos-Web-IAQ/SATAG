@@ -113,7 +113,8 @@ export default function ListaIncompletos({ items, vacio }: {
           <div className="incompleto">
             <span className="ti-card__row">
               <span className="ti-card__placas">{r.placas ?? (r.sinPlacas ? ROTULO.sinPlacas : "—")}</span>
-              <EstadoChip estado={r.estado} />
+              {/* La vista no trae pagos: los dias desde el pago son null mientras no hay uno vigente. */}
+              <EstadoChip estado={r.estado} conPago={r.diasDesdePago !== null} />
             </span>
             <span className="ti-card__veh">
               {r.marca.trim() || "Marca sin capturar"} {r.modelo} · {r.color.trim() || "color sin capturar"}
