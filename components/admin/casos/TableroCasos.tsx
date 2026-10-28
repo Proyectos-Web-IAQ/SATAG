@@ -695,9 +695,11 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
             setDialogo(null);
             if (!accion) return mover(ids, m, m.estado === "resuelto" ? "Resuelto" : "Descartado");
             // Bloque 94: se cierra con la decision y la accion queda pendiente en Movimientos en ZK.
+            // Primero la accion: si el RPC la rechaza (ya va en una tanda o esta hecha en ZK),
+            // el caso no queda cerrado sin ella.
             hacer(async () => {
-              await moverCasos(ids, m, email);
               for (const id of ids) await pedirMovimientoZk(id, accion, email);
+              await moverCasos(ids, m, email);
               setMarcados(new Set());
             }, `${ids.length} caso${ids.length === 1 ? "" : "s"} → Resuelto, con su acción en Movimientos en ZK`);
           }} />
