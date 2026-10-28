@@ -18,19 +18,23 @@
 // familia, en «Datos», para ir de uno a otro.
 
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
-import type { AreaAdmin, Registro } from "@/lib/mock/types";
+import type { AreaAdmin, NombrePersona, Registro } from "@/lib/mock/types";
 import type { RolPanel } from "@/lib/supabase/auth";
 import {
   altaDesdeZkTarjeta,
   asignarAreaAdmin,
+  corregirNombre,
   deptosZkDeTarjetas,
+  leerNombreParaCorregir,
   listLecturasDeTarjetas,
   listPasosDeTarjetas,
   reactivarExpediente,
   type LecturaDeTag,
+  type NombreCorregido,
   type PasoZk,
   type PersonaZkConsulta,
 } from "@/lib/supabase/apiPanel";
+import { numeroCaso } from "@/lib/casosRegistro";
 import { emparejarEstancias, horaCorta, type Estancia } from "@/lib/estacionamiento";
 import type { EventoZk } from "@/lib/zk/eventos";
 import { salidasDelVehiculo, type SalidaVehiculo } from "@/lib/zk/alReves";
@@ -373,6 +377,7 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion, edi
   editarAlAbrir?: boolean;
 }) {
   const [editando, setEditando] = useState(editarAlAbrir);
+  const [corrigiendo, setCorrigiendo] = useState(false);
   const tags = useMemo(() => tagsDe(r), [r]);
   const puedeVerPasos = VEN_PASOS.includes(rol);
   // Los casos del expediente y de cualquiera de sus TAGs (bloque 89).
@@ -411,6 +416,9 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion, edi
       <div className="ficha__ident">
         <h2>{r.usuarioNombre}</h2>
         <span className="ficha__rol">{rolTexto}{seccion ? ` · ${seccion}` : ""}</span>
+        {REACTIVAN.includes(rol) && !corrigiendo && (
+          <button type="button" className="link-action" onClick={() => setCorrigiendo(true)}>Corregir nombre</button>
+        )}
       </div>
       <div className="ficha__cifras">
         <span>TAG {r.estado === "baja" ? "" : "vigente "}<b><code>{r.noDispositivo ?? "sin TAG"}</code></b></span>
@@ -425,6 +433,9 @@ function Ficha({ r, rol, familia, onIr, extras = [], onCambio, nombreSesion, edi
         <span>Folio <b><code>{r.folio}</code></b></span>
       </div>
 
+      {REACTIVAN.includes(rol) && corrigiendo && (
+        <CorregirNombre r={r} onCerrar={() => setCorrigiendo(false)} onCambio={onCambio} onCasos={casos.recargar} />
+      )}
       {REACTIVAN.includes(rol) && <ReactivarExpediente r={r} onCambio={onCambio} onReactivado={() => setEditando(true)} />}
       {/* Gerardo, 22-oct: el proceso completo en una pantalla —buscar, reactivar y
           corregir datos—; es el mismo formulario de «Actualizar datos». */}
@@ -796,6 +807,107 @@ function ReactivarExpediente({ r, onCambio, onReactivado }: { r: Registro; onCam
       )}
       {error && <p className="submit-error" role="alert">{error}</p>}
     </div>
+  );
+}
+
+// Bloque 103 (28-oct): el nombre se corrige aqui, en SATAG y en ZK de una vez
+// (Gerardo: «hay que cambiarlo tanto de satag como de zk, hay que tener ese proceso
+// sistematizado»). SATAG cambia en el acto; ZK, con el caso «Corregir el nombre en
+// ZK», que sale en la siguiente tanda de Movimientos en ZK y se cierra cuando el
+// padron de ZK lo confirma.
+function textoNombreCorregido(h: NombreCorregido): string {
+  const satag = h.satag ? `En SATAG ya dice «${h.nombre}».` : `SATAG ya decía «${h.nombre}».`;
+  const zk = {
+    pedido: `En ZK quedó pedido en el caso ${h.caso ? numeroCaso(h.caso) : ""}: sale en la siguiente tanda de Datos › Movimientos en ZK, y el caso se cierra cuando el padrón de ZK lo confirme.`,
+    coincide: "ZK ya lo tiene así: no hay nada que hacer allá.",
+    sin_tag: "No tiene TAG vigente: no hay nada que cambiar en ZK.",
+    sin_zk: "Su TAG no está vigente en el padrón de ZK guardado: no hay nada que cambiar allá.",
+  }[h.zk];
+  return `${satag} ${zk}`;
+}
+
+function CorregirNombre({ r, onCerrar, onCambio, onCasos }: { r: Registro; onCerrar: () => void; onCambio?: () => void; onCasos?: () => void }) {
+  const id = useId();
+  const tarjeta = r.estado !== "baja" ? r.noDispositivo : null;
+  const [partes, setPartes] = useState<NombrePersona | null>(null);
+  const [zkDice, setZkDice] = useState<string | null>(null);
+  const [motivo, setMotivo] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hecho, setHecho] = useState<NombreCorregido | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    leerNombreParaCorregir(r.id, tarjeta)
+      .then((d) => { if (vivo) { setPartes(d.partes); setZkDice(d.zkDice); } })
+      .catch((e) => { if (vivo) setError(e instanceof Error ? e.message : "No se pudo leer el nombre."); });
+    return () => { vivo = false; };
+  }, [r.id, tarjeta]);
+
+  const nuevo = partes ? [partes.nombre, partes.apellidoPaterno, partes.apellidoMaterno].map((s) => s.trim().replace(/\s+/g, " ")).filter(Boolean).join(" ") : "";
+  const cambiar = (campo: keyof NombrePersona) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setPartes((p) => (p ? { ...p, [campo]: e.target.value } : p));
+
+  async function corregir() {
+    if (!partes) return;
+    if (!partes.nombre.trim() || !partes.apellidoPaterno.trim()) { setError("Escriba el nombre y el apellido paterno."); return; }
+    if (motivo.trim().length < 5) { setError("Escriba por qué se corrige el nombre."); return; }
+    setGuardando(true);
+    setError(null);
+    try {
+      setHecho(await corregirNombre(r.id, partes, motivo.trim()));
+      onCambio?.();
+      onCasos?.();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo corregir el nombre.");
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <section className="ficha__editar" aria-label="Corregir nombre">
+      <div className="ficha__editar-cab">
+        <h3 className="ds-rotulo">Corregir nombre</h3>
+        <button type="button" className="link-action" onClick={onCerrar}>Cerrar</button>
+      </div>
+      {hecho ? (
+        <p className="ds-aviso ds-aviso--ok" role="status"><b>Nombre corregido.</b> {textoNombreCorregido(hecho)}</p>
+      ) : (
+        <div className="ficha__nombre">
+          <p className="ds-nota">
+            Se corrige en SATAG en este momento y, si ZK lo tiene distinto, queda pedido en ZK en un caso.{" "}
+            {tarjeta ? (zkDice ? <>En ZK dice: <b>«{zkDice}»</b>.</> : "Su TAG no está vigente en el padrón de ZK guardado.") : "No tiene TAG vigente: solo cambia en SATAG."}
+          </p>
+          {partes && (
+            <>
+              <div className="ficha__nombre-partes">
+                <label className="na-campo" htmlFor={`${id}-n`}>Nombre(s)
+                  <input id={`${id}-n`} className="input" maxLength={50} value={partes.nombre} autoFocus onChange={cambiar("nombre")} />
+                </label>
+                <label className="na-campo" htmlFor={`${id}-p`}>Apellido paterno
+                  <input id={`${id}-p`} className="input" maxLength={50} value={partes.apellidoPaterno} onChange={cambiar("apellidoPaterno")} />
+                </label>
+                <label className="na-campo" htmlFor={`${id}-m`}>Apellido materno (opcional)
+                  <input id={`${id}-m`} className="input" maxLength={50} value={partes.apellidoMaterno} onChange={cambiar("apellidoMaterno")} />
+                </label>
+              </div>
+              <p className="ds-nota">Así quedará: <b>{nuevo || "—"}</b></p>
+              <label className="na-campo" htmlFor={`${id}-mo`}>Por qué se corrige
+                <textarea id={`${id}-mo`} className="textarea" rows={2} maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)}
+                  placeholder="Ej.: Se identificó en la caseta con su credencial." />
+              </label>
+              <div className="ds-acciones">
+                <button type="button" className="primary-action" disabled={guardando} onClick={corregir}>{guardando ? "Corrigiendo…" : "Corregir nombre"}</button>
+                <button type="button" className="ghost-action" disabled={guardando} onClick={onCerrar}>Cancelar</button>
+              </div>
+            </>
+          )}
+          {!partes && !error && <p className="ds-nota">Leyendo el nombre…</p>}
+        </div>
+      )}
+      {error && <p className="submit-error" role="alert">{error}</p>}
+    </section>
   );
 }
 

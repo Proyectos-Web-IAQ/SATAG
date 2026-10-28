@@ -25,6 +25,7 @@ import type {
   InstalacionMedida,
   Movimiento,
   MotivoIncompleto,
+  NombrePersona,
   Pago,
   PagoDevuelto,
   PagoReciente,
@@ -606,6 +607,51 @@ export async function altaDesdeZkTarjeta(tarjeta: string): Promise<{ id: string;
   if (error) throw new Error(traducirError(error.message));
   const d = (data ?? {}) as { id?: string; folio?: string };
   return { id: d.id ?? "", folio: d.folio ?? "" };
+}
+
+// Bloque 103: el nombre de la persona, en sus tres partes, y lo que dice ZK de su TAG
+// (el padron guardado). Es lo que «Corregir nombre» pone en el formulario.
+export async function leerNombreParaCorregir(id: string, tarjeta: string | null): Promise<{ partes: NombrePersona; zkDice: string | null }> {
+  const [reg, zk] = await Promise.all([
+    supabaseAuth.from("registros").select("usuario_nombres, usuario_apellido_paterno, usuario_apellido_materno").eq("id", id).maybeSingle(),
+    tarjeta
+      ? supabaseAuth.from("zk_padron").select("nombres, apellidos").eq("tarjeta", tarjeta).eq("vigente", true).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (reg.error) throw new Error(traducirError(reg.error.message));
+  const r = (reg.data ?? {}) as { usuario_nombres?: string; usuario_apellido_paterno?: string; usuario_apellido_materno?: string | null };
+  const z = zk.data as { nombres: string; apellidos: string } | null;
+  return {
+    partes: { nombre: r.usuario_nombres ?? "", apellidoPaterno: r.usuario_apellido_paterno ?? "", apellidoMaterno: r.usuario_apellido_materno ?? "" },
+    zkDice: z ? [z.nombres, z.apellidos].filter((s) => s.trim()).join(" ") || null : null,
+  };
+}
+
+export interface NombreCorregido {
+  nombre: string;
+  antes: string;
+  /** false: SATAG ya lo tenia asi y solo se pidio el cambio en ZK. */
+  satag: boolean;
+  /** pedido: quedo la accion en ZK en un caso; coincide: ZK ya lo dice; sin_tag / sin_zk: no hay a quien cambiar en ZK. */
+  zk: "pedido" | "coincide" | "sin_tag" | "sin_zk";
+  zkDice: string | null;
+  caso: number | null;
+  casoNuevo: boolean;
+}
+
+// Bloque 103: corrige el nombre en SATAG y pide el mismo cambio en ZK (caso
+// «Corregir el nombre en ZK» con su accion), en una transaccion. Quien corrige sale
+// de la sesion.
+export async function corregirNombre(id: string, partes: NombrePersona, motivo: string): Promise<NombreCorregido> {
+  const { data, error } = await supabaseAuth.rpc("corregir_nombre", {
+    p_registro_id: id,
+    p_nombres: partes.nombre,
+    p_apellido_paterno: partes.apellidoPaterno,
+    p_apellido_materno: partes.apellidoMaterno.trim() || null,
+    p_motivo: motivo,
+  });
+  if (error) throw new Error(traducirError(error.message));
+  return data as NombreCorregido;
 }
 
 // CC-01: activa el TAG apartado (reposicion). no_dispositivo pasa al numero
