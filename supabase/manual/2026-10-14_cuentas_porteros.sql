@@ -61,6 +61,42 @@ select email, raw_app_meta_data ->> 'rol' as rol, last_sign_in_at
 
 
 -- ---------------------------------------------------------------------
+-- PASO 3b · Fijar su estacionamiento (28-oct). Con esto la pantalla ya no le
+-- deja cambiarlo: no puede trabajar por error como si estuviera en el otro.
+-- Cambie 'E?' por el suyo: 'E1', 'E2' o 'E1-E2' (si cubre los dos).
+-- Al terminar: que SALGA del panel y vuelva a entrar.
+-- ---------------------------------------------------------------------
+do $fijar$
+declare
+    v_caseta text := 'E?';
+    v_n int;
+begin
+    if v_caseta not in ('E1', 'E2', 'E1-E2') then
+        raise exception 'Estacionamiento invalido: %. Use E1, E2 o E1-E2.', v_caseta;
+    end if;
+    update auth.users
+       set raw_app_meta_data = raw_app_meta_data || jsonb_build_object('caseta', v_caseta)
+     where lower(email) = 'portero.uno@asuncionqro.edu.mx'
+       and raw_app_meta_data ->> 'rol' = 'portero';
+    get diagnostics v_n = row_count;
+    if v_n <> 1 then
+        raise exception 'No se fijo: la cuenta no existe o todavia no es portero.';
+    end if;
+    raise notice 'Listo: % queda fijo en %.', 'portero.uno@asuncionqro.edu.mx', v_caseta;
+end;
+$fijar$;
+
+-- Comprobar (ok = true):
+select email, raw_app_meta_data ->> 'caseta' as estacionamiento,
+       raw_app_meta_data ->> 'caseta' in ('E1', 'E2', 'E1-E2') as ok
+  from auth.users where lower(email) = 'portero.uno@asuncionqro.edu.mx';
+
+-- Para quitarlo (vuelve a poder elegir en el equipo):
+-- update auth.users set raw_app_meta_data = raw_app_meta_data - 'caseta'
+--  where lower(email) = 'portero.uno@asuncionqro.edu.mx';
+
+
+-- ---------------------------------------------------------------------
 -- PASO 4 · La prueba, CON UNA CUENTA PORTERO REAL (con super no prueba
 -- nada: super pasa todas las guardias). En la Chromebook:
 --   1. Entra sin pedir código y ve solo «Caseta del estacionamiento».

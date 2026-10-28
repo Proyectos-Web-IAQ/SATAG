@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CASETAS,
   VEREDICTO,
+  casetaFijaDe,
   PROCESO_BAJA,
   QUEJAS_BAJA,
   datosComunes,
@@ -44,6 +45,7 @@ import {
   type ResultadoCaseta,
 } from "@/lib/caseta";
 import { casetaBuscar, casetaInicio, casetaReportar, casetaResponderAviso } from "@/lib/supabase/apiPanel";
+import { supabaseAuth } from "@/lib/supabase/auth";
 import { numeroCaso } from "@/lib/casosRegistro";
 import { diaSemana, fecha, fechaHora, hora } from "@/lib/formato";
 import { ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
@@ -79,6 +81,9 @@ export default function VistaCaseta({ nombreSesion, onCambiarTurno }: {
   onCambiarTurno?: () => void;
 }) {
   const [caseta, setCaseta] = useState<Caseta | null>(null);
+  // La que Sistemas le fijo a la cuenta: manda sobre lo recordado en el equipo.
+  const [fija, setFija] = useState<Caseta | null>(null);
+  const [leida, setLeida] = useState(false);
   const [inicio, setInicio] = useState<InicioCaseta | null>(null);
   const [errorInicio, setErrorInicio] = useState<string | null>(null);
   const [deTodos, setDeTodos] = useState(false);
@@ -93,7 +98,18 @@ export default function VistaCaseta({ nombreSesion, onCambiarTurno }: {
   const buscador = useRef<HTMLInputElement>(null);
   const folio = useRef(0);
 
-  useEffect(() => { setCaseta(leerCaseta()); }, []);
+  useEffect(() => {
+    let activo = true;
+    supabaseAuth.auth.getSession()
+      .then(({ data }) => casetaFijaDe(data.session?.user.app_metadata), () => null)
+      .then((f) => {
+        if (!activo) return;
+        setFija(f);
+        setCaseta(f ?? leerCaseta());
+        setLeida(true);
+      });
+    return () => { activo = false; };
+  }, []);
   const elegirCaseta = (c: Caseta) => {
     setCaseta(c);
     setResultados(null);
@@ -206,7 +222,7 @@ export default function VistaCaseta({ nombreSesion, onCambiarTurno }: {
         </header>
       )}
 
-      {!caseta ? (
+      {!leida ? null : !caseta ? (
         <section className="cs-sec" aria-label="Elegir estacionamiento">
           <p className="cs-pregunta">¿Qué estacionamiento cubre esta caseta?</p>
           <p className="ds-nota">Entrada y salida. Se recuerda en este equipo y puede cambiarse en cualquier momento.</p>
@@ -220,13 +236,17 @@ export default function VistaCaseta({ nombreSesion, onCambiarTurno }: {
         <>
           <div className="cs-mostrador">
           <div className="cs-barra">
-            <div className="cs-seg" role="group" aria-label="Estacionamiento que cubre la caseta">
-              {CASETAS.map((c) => (
-                <button key={c.id} type="button" aria-pressed={caseta === c.id} onClick={() => elegirCaseta(c.id)}>
-                  {c.id === "E1-E2" ? "E1 y E2" : c.id}
-                </button>
-              ))}
-            </div>
+            {fija ? (
+              <p className="cs-fija">{CASETAS.find((c) => c.id === fija)?.titulo}<span className="ds-nota"> · asignado a su cuenta por Sistemas</span></p>
+            ) : (
+              <div className="cs-seg" role="group" aria-label="Estacionamiento que cubre la caseta">
+                {CASETAS.map((c) => (
+                  <button key={c.id} type="button" aria-pressed={caseta === c.id} onClick={() => elegirCaseta(c.id)}>
+                    {c.id === "E1-E2" ? "E1 y E2" : c.id}
+                  </button>
+                ))}
+              </div>
+            )}
             {inicio?.eventosHasta && <span className="ds-nota">Lecturas de ZK hasta el {fechaHora(inicio.eventosHasta)}</span>}
           </div>
 

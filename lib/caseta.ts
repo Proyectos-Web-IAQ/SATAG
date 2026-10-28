@@ -36,6 +36,13 @@ export const CASETAS: { id: Caseta; titulo: string; lotes: Lote[] }[] = [
   { id: "E1-E2", titulo: "Los dos", lotes: ["E1", "E2"] },
 ];
 export const esCaseta = (v: unknown): v is Caseta => CASETAS.some((c) => c.id === v);
+/**
+ * El estacionamiento que Sistemas le fijo a la cuenta del portero
+ * (app_metadata.caseta, Gerardo 28-oct): con el, la pantalla ya no le deja
+ * cambiarlo y no puede trabajar por error como si estuviera en el otro.
+ */
+export const casetaFijaDe = (meta: Record<string, unknown> | null | undefined): Caseta | null =>
+  esCaseta(meta?.caseta) ? meta.caseta : null;
 export const lotesDeCaseta = (c: Caseta): Lote[] => CASETAS.find((x) => x.id === c)?.lotes ?? ["E1"];
 /** Las puertas donde puede reportar una caseta: entrada y salida de cada estacionamiento que cubre. */
 export const puertasDeCaseta = (c: Caseta): { id: Puerta; lote: Lote; titulo: string }[] =>

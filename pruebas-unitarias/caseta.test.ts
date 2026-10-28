@@ -20,6 +20,7 @@ import {
   estanciasDe,
   evaluacionesDe,
   lotesDeCaseta,
+  casetaFijaDe,
   puertasDeCaseta,
   type ResultadoCaseta,
   lotesDeCaso,
@@ -232,5 +233,15 @@ describe("estadoAviso: lo que la caseta ve hoy", () => {
     expect(estadoAviso({ ...a, hasta: "2026-10-20" }, "2026-10-21")).toBe("vencido");
     expect(estadoAviso({ ...a, hasta: "2026-10-21" }, "2026-10-21")).toBe("esperando");
     expect(estadoAviso({ ...a, casoEstado: "resuelto" }, "2026-10-21")).toBe("caso-cerrado");
+  });
+});
+
+describe("estacionamiento fijo en la cuenta del portero", () => {
+  it("solo vale E1, E2 o los dos; lo demás no fija nada", () => {
+    expect(casetaFijaDe({ rol: "portero", caseta: "E2" })).toBe("E2");
+    expect(casetaFijaDe({ caseta: "E1-E2" })).toBe("E1-E2");
+    expect(casetaFijaDe({ caseta: "e2" })).toBeNull();
+    expect(casetaFijaDe({ rol: "portero" })).toBeNull();
+    expect(casetaFijaDe(undefined)).toBeNull();
   });
 });
