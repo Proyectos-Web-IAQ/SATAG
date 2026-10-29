@@ -25,7 +25,7 @@
 // la misma razon de siempre: es la misma funcion para las dos fuentes, y una ventana
 // son ~9,600 filas que bajan en diez peticiones.
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Loader from "@/components/Loader";
 import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
 import GenteEstacionamiento, { SeccionesEstacionamiento } from "@/components/admin/GenteEstacionamiento";
@@ -34,6 +34,8 @@ import { textoVehiculo } from "@/lib/vehiculo";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
 import type { ExpedienteTag } from "@/components/admin/casos/GraficasCaso";
 import LecturasZk from "@/components/admin/LecturasZk";
+import { useGes } from "@/components/admin/IdentificacionGes";
+import { indexarRecogida, salidaPorClave, salidaPorGrupo, viajesPorSeccion } from "@/lib/recogida";
 import {
   cargarAperturasBotonZk,
   cargarEventosZk,
@@ -66,6 +68,8 @@ import CargaPuertasZk, { textoVerificacion } from "@/components/admin/CargaPuert
 
 /** Quien puede ver el detalle con nombres. Direccion mira agregados. */
 const VEN_IDENTIDAD: RolPanel[] = ["ti", "contador", "super"];
+/** Quien puede leer GES (RLS del bloque 92): con eso los papas se parten por la seccion de sus hijos. */
+const LEEN_GES: RolPanel[] = ["ti", "contador", "admin", "super"];
 /** Quien puede AGREGAR ventanas: los mismos que pasa `panel_exigir_rol` en cargar_eventos_zk (bloque 78). */
 const CARGAN: RolPanel[] = ["ti", "super"];
 
@@ -259,6 +263,43 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     // Solo cuando se entra a una vista de gente sin padron: lo demas es estado propio.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vista]);
+
+  // POR QUIEN VIENE CADA AUTO (lib/recogida.ts). Con GES, los papas se parten por la
+  // seccion de sus hijos y la tarde se dibuja por grupo. Solo para quien puede leer
+  // GES (bloque 92); sin GES, todo sigue por departamento de ZK como antes. Son
+  // hooks: van aqui, antes de cualquier `return` de la vista.
+  const ges = useGes(LEEN_GES.includes(rol) && personas !== null);
+  const recogida = useMemo(() => {
+    if (!ges.datos || (personas === null && padron === null)) return null;
+    const expedientes = new Map(
+      (padron ?? []).map((p) => [p.noDispositivo, { nombre: p.nombre, tipoUsuario: p.tipoUsuario, areaAdmin: p.areaAdmin }] as const),
+    );
+    return indexarRecogida({ personas, expedientes, indice: ges.datos.indice, decisiones: ges.datos.decisiones });
+  }, [ges.datos, personas, padron]);
+  // La tarde dos veces: por los cinco grupos (la apilada) y por la etiqueta fina
+  // (cada seccion y cada combinacion). La etiqueta es la MISMA de `deptoDe`.
+  const tarde = useMemo(() => {
+    if (!recogida || !lectura) return null;
+    const esInstitucional = (t: string) => {
+      const p = personas?.get(t);
+      return !!p && grupoDeDepto(p.departamentoId, p.departamento) === GRUPO_INSTITUCIONAL;
+    };
+    const op = { corte: corteDe(lectura.resumen), inicio: inicioDe(lectura.resumen), esInstitucional };
+    const etiquetaDe = (t: string) => recogida.get(t)?.etiqueta ?? (personas?.get(t)?.departamento || "No está en el padrón de ZK");
+    // Solo los papas entran a «por seccion»: null deja fuera al personal, alumnos e institucionales.
+    const seccionesDe = (t: string) => {
+      const x = recogida.get(t);
+      return x && x.esPapa ? x.secciones : null;
+    };
+    return {
+      salida: salidaPorGrupo(lectura.eventos, (t) => recogida.get(t)?.grupo ?? "otros", op),
+      detalle: salidaPorClave(lectura.eventos, etiquetaDe, null, op),
+      viajes: {
+        tarde: viajesPorSeccion(lectura.eventos, seccionesDe, "tarde", op),
+        manana: viajesPorSeccion(lectura.eventos, seccionesDe, "manana", op),
+      },
+    };
+  }, [recogida, lectura, personas]);
 
   async function elegirBitacora(f: File | null) {
     if (!f) return;
@@ -518,8 +559,10 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     const p = personas?.get(tarjeta);
     return p ? grupoDeDepto(p.departamentoId, p.departamento) : SIN_CLASIFICAR;
   };
+  // Con GES, la clave por departamento es «por quien viene»: el departamento de ZK
+  // para el personal y «Padres de primaria…» para los papas (lib/recogida.ts).
   const deptoDe = personas
-    ? (tarjeta: string) => personas.get(tarjeta)?.departamento || "No está en el padrón de ZK"
+    ? (tarjeta: string) => recogida?.get(tarjeta)?.etiqueta ?? (personas.get(tarjeta)?.departamento || "No está en el padrón de ZK")
     : undefined;
   const tieneAmbos = (tarjeta: string) => (porTag.get(tarjeta)?.estacionamientos.length ?? 0) >= 2;
 
@@ -785,6 +828,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         ) : vista === "lecturas" ? (
           <LecturasZk
             personas={personas}
+            vienePor={recogida ? (t) => recogida.get(t)?.vienePor ?? null : undefined}
             expedientes={expedientesPorTag(padron ?? [])}
             ultimaHasta={importaciones.map((i) => i.hasta).filter((h): h is string => h !== null).sort().pop() ?? null}
           />
@@ -796,10 +840,11 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
               cargando: cargandoRegistros,
               error: errorRegistros,
               personas,
+              deptoDe,
               rol,
               onReintentar: cargarRegistros,
             };
-            return vista === "lotes" ? <GenteEstacionamiento {...comunes} /> : <SeccionesEstacionamiento {...comunes} cupos={cupos} />;
+            return vista === "lotes" ? <GenteEstacionamiento {...comunes} /> : <SeccionesEstacionamiento {...comunes} cupos={cupos} salida={tarde?.salida ?? null} detalle={tarde?.detalle ?? null} viajes={tarde?.viajes ?? null} />;
           })()
         ) : (
           <PanelEstacionamiento d={datos} vista={vista} />

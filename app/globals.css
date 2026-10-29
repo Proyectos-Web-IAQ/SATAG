@@ -941,6 +941,8 @@ a { color: var(--primary-strong); }
 
 /* La leyenda va pegada a la grafica y en linea, no en una columna aparte: el viaje de
    ida y vuelta a una leyenda lejana es lo que hace que una apilada se lea mal. */
+/* El titulo de un panel chico («Dentro del E2 · 120 cajones · lo mas lleno: 118 a las 14:25»). */
+.viz-titulo { color: var(--ink); font-size: 0.9rem; margin: 12px 0 4px; }
 .viz-leyenda { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 8px; padding: 0; list-style: none; }
 .viz-leyenda li { align-items: center; color: var(--ink); display: flex; font-size: 0.82rem; font-weight: 700; gap: 6px; }
 .viz-leyenda i { border-radius: 3px; display: inline-block; height: 12px; width: 12px; }

@@ -34,6 +34,8 @@ import { grupoDeExpediente, nombreDepto, SIN_CLASIFICAR, type PersonaZk } from "
 import FichaPersona from "@/components/admin/FichaPersona";
 import { HistogramaEstancias } from "@/components/admin/GraficasEstacionamiento";
 import { Segmentado } from "@/components/admin/UiEstacionamiento";
+import SalidaPorSeccion, { type ViajesTardeManana } from "@/components/admin/SalidaPorSeccion";
+import type { SalidaPorClave, SalidaPorGrupo } from "@/lib/recogida";
 
 /** Departamentos de ZK que, si aparecen en la bitacora, son el hallazgo. */
 // Por nombre y no por numero: ZK renumero sus departamentos el 2-5 oct-2026 y el
@@ -110,7 +112,7 @@ interface Gente {
 }
 
 /** Lo que las dos vistas saben de cada persona a partir de la medicion y los padrones. */
-function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null): Gente {
+function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null, deptoDe?: (tarjeta: string) => string): Gente {
   const todos = new Map(m.porCredencial.map((u) => [u.tarjeta, u]));
   const porLote = new Map(m.ocupacion.map((o) => [o.lote as string, new Map(o.porCredencial.map((u) => [u.tarjeta, u]))]));
   const normaRota = new Set(m.fueraDeNorma.map((u) => u.tarjeta));
@@ -119,9 +121,11 @@ function prepararGente(m: Medicion, personas: Map<string, PersonaZk> | null): Ge
     if (!r.noDispositivo) return undefined;
     return lote === "ambos" ? todos.get(r.noDispositivo) : porLote.get(lote)?.get(r.noDispositivo);
   };
+  // LA MISMA CLAVE con la que la medicion agrupa: si la vista trae `deptoDe` (con GES,
+  // los papas por la seccion de sus hijos), se usa esa; si no, el departamento de ZK.
   const seccionDe = (r: Registro) =>
     personas
-      ? (r.noDispositivo ? personas.get(r.noDispositivo)?.departamento : undefined) || SIN_ZK
+      ? (r.noDispositivo ? (deptoDe ? deptoDe(r.noDispositivo) : personas.get(r.noDispositivo)?.departamento) : undefined) || SIN_ZK
       : grupoDeExpediente(r.tipoUsuario, r.areaAdmin) ?? SIN_CLASIFICAR;
   const esDelLote = (r: Registro, lote: string) => {
     if (!r.noDispositivo) return false;
@@ -177,6 +181,13 @@ interface PropsComunes {
   error: string | null;
   /** El padron de personas de ZK, si esta cargado: da la seccion fina. */
   personas: Map<string, PersonaZk> | null;
+  /**
+   * La clave por departamento con la que la vista midio `m.porDepartamento`. Con GES
+   * es «por quien viene» (lib/recogida.ts): el departamento de ZK para el personal y
+   * «Padres de primaria…» para los papas. Tiene que ser la MISMA funcion, o una fila
+   * de Secciones y su gente contarian cosas distintas.
+   */
+  deptoDe?: (tarjeta: string) => string;
   rol: RolPanel;
   onReintentar: () => void;
 }
@@ -192,7 +203,7 @@ const textoVacio = (cargando: boolean, registros: Registro[], filtrando: boolean
 
 /* ------------------------------------------------------------ Estacionamientos */
 
-export default function GenteEstacionamiento({ m, registros, cargando, error, personas, rol, onReintentar }: PropsComunes) {
+export default function GenteEstacionamiento({ m, registros, cargando, error, personas, deptoDe, rol, onReintentar }: PropsComunes) {
   const [lote, setLote] = useState(ultimoLote);
   const [seccion, setSeccion] = useState(ultimaSeccion);
   const [q, setQ] = useState("");
@@ -206,7 +217,7 @@ export default function GenteEstacionamiento({ m, registros, cargando, error, pe
     ultimoOrdenGente = orden;
     ultimoDescGente = desc;
   }, [lote, seccion, orden, desc]);
-  const g = useMemo(() => prepararGente(m, personas), [m, personas]);
+  const g = useMemo(() => prepararGente(m, personas, deptoDe), [m, personas, deptoDe]);
 
   const delLote = registros.filter((r) => g.esDelLote(r, lote));
   const conteo = new Map<string, number>();
@@ -320,9 +331,21 @@ export function SeccionesEstacionamiento({
   cargando,
   error,
   personas,
+  deptoDe,
   rol,
   onReintentar,
-}: PropsComunes & { cupos: Record<string, number | null> }) {
+  salida,
+  detalle,
+  viajes,
+}: PropsComunes & {
+  cupos: Record<string, number | null>;
+  /** La tarde por quien viene (lib/recogida.ts); null sin GES o sin bitacora. */
+  salida: SalidaPorGrupo | null;
+  /** Lo mismo por etiqueta fina: cada seccion y cada combinacion. */
+  detalle: SalidaPorClave<string> | null;
+  /** La tabla central: por seccion, cuando entran y salen los papas, tarde y mañana. */
+  viajes: ViajesTardeManana | null;
+}) {
   const [abierta, setAbierta] = useState<string | null>(ultimaAbierta);
   const [verComposicion, setVerComposicion] = useState(false);
   const [orden, setOrden] = useState<OrdenSeccion>(ultimoOrdenSeccion);
@@ -337,7 +360,7 @@ export function SeccionesEstacionamiento({
     ultimoLoteSeccion = lote;
   }, [abierta, orden, desc, lote]);
   const abrir = (s: string) => setAbierta((v) => (v === s ? null : s));
-  const g = useMemo(() => prepararGente(m, personas), [m, personas]);
+  const g = useMemo(() => prepararGente(m, personas, deptoDe), [m, personas, deptoDe]);
 
   const porSeccion = m.porDepartamento.length > 0;
   const valorDe = (x: EstanciasRol) =>
@@ -431,6 +454,8 @@ export function SeccionesEstacionamiento({
         <Orden opciones={ORDENES_SECCION} valor={orden} desc={desc} onValor={setOrden} onDesc={() => setDesc((v) => !v)} />
         <span className="ti-hint">{secs.length} {porSeccion ? "secciones" : "grupos"} {ordenDicho}; la barra es «cajones a la vez».</span>
       </div>
+
+      {salida && <SalidaPorSeccion salida={salida} detalle={detalle} viajes={viajes} lote={lote} cupos={cupos} />}
 
       <div className="filas">
         {secs.map((x) => {
@@ -566,7 +591,9 @@ export function SeccionesEstacionamiento({
         </div>
         <div>
           {porSeccion
-            ? "Las secciones son los departamentos del control de acceso, no una clasificación nuestra."
+            ? salida
+              ? "Las secciones son los departamentos del control de acceso; los padres de familia se parten por la sección de sus hijos en GES, y quien no se pudo ligar a una familia se dice, no se reparte."
+              : "Las secciones son los departamentos del control de acceso, no una clasificación nuestra."
             : "Sin el padrón de personas de ZK, se agrupa por los cinco grupos del padrón de SATAG."}{" "}
           «Cajones a la vez» es el máximo de coches de {porSeccion ? "esa sección" : "ese grupo"} dentro al mismo tiempo; cada{" "}
           {unidad} llega al suyo a una hora distinta, así que no suman el pico total.

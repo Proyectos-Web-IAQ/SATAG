@@ -19,11 +19,13 @@ import { distanciaSeg, rangoDeBusqueda, ultimoMinuto } from "@/lib/zk/lecturas";
 
 const MARGENES = [0, 5, 15, 30, 60];
 
-export default function LecturasZk({ personas, expedientes, ultimaHasta }: {
+export default function LecturasZk({ personas, expedientes, ultimaHasta, vienePor }: {
   personas: Map<string, PersonaZk> | null;
   expedientes: Map<string, ExpedienteTag>;
   /** Hasta donde llega la bitacora guardada (hora de pared). */
   ultimaHasta: string | null;
+  /** Por quien viene esa tarjeta («primaria y secundaria»), si GES lo sabe (lib/recogida.ts). */
+  vienePor?: (tarjeta: string) => string | null;
 }) {
   const ultimoDia = diaDe(ultimaHasta);
   const [dia, setDia] = useState(ultimoDia ?? "");
@@ -127,7 +129,7 @@ export default function LecturasZk({ personas, expedientes, ultimaHasta }: {
           ) : (
             <div className="table-wrap">
               <table className="tabla-tipo lecturas__tabla">
-                <thead><tr><th>Hora</th><th>Pluma</th><th>Resultado</th><th>TAG</th><th>En ZK</th><th>Departamento ese día</th><th>En SATAG</th><th>Casos vivos</th></tr></thead>
+                <thead><tr><th>Hora</th><th>Pluma</th><th>Resultado</th><th>TAG</th><th>En ZK</th><th>Departamento ese día</th>{vienePor && <th>Viene por</th>}<th>En SATAG</th><th>Casos vivos</th></tr></thead>
                 <tbody>
                   {visibles.map((x) => {
                     const zk = personas?.get(x.tarjeta);
@@ -141,6 +143,7 @@ export default function LecturasZk({ personas, expedientes, ultimaHasta }: {
                         <td className="mono">{x.tarjeta}</td>
                         <td>{zk ? (zk.nombre || <em>Sin nombre en ZK</em>) : <em>No está en el padrón de ZK</em>}</td>
                         <td>{x.departamentoEvento || "—"}</td>
+                        {vienePor && <td>{vienePor(x.tarjeta) ?? "—"}</td>}
                         <td>
                           {exp ? (
                             <>

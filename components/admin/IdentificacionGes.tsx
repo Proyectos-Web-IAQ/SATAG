@@ -30,7 +30,7 @@ const DECIDEN: RolPanel[] = ["ti", "super"];
 
 /* ------------------------------------------------------------------ los datos */
 
-interface DatosGes {
+export interface DatosGes {
   indice: IndiceGes;
   decisiones: Map<string, IdentidadDecidida>;
   /** Personas guardadas: 0 = todavia no se ha cargado GES. */
@@ -58,7 +58,8 @@ export function olvidarGes() {
   memoria = null;
 }
 
-function useGes(activo: boolean) {
+/** GES en memoria, compartido entre la ficha y la vista de Estacionamiento (por quien viene). */
+export function useGes(activo: boolean) {
   const [estado, setEstado] = useState<{ datos: DatosGes | null; error: string | null }>({ datos: null, error: null });
   const [vuelta, setVuelta] = useState(0);
   useEffect(() => {
