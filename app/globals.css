@@ -1046,6 +1046,9 @@ a { color: var(--primary-strong); }
   text-transform: uppercase; top: 0; z-index: 1;
 }
 .tabla-pro thead th.num, .tabla-pro td.num { text-align: right; }
+/* Encabezados sin boton de orden (las tablas de «por quien viene»): el th lleva el
+   relleno que en las demas pone el boton, para que dos rotulos vecinos no se toquen. */
+.tabla-pro.tabla-fija thead th { padding: 6px 12px; }
 .tabla-pro td { border-bottom: 1px solid #eef1f6; padding: 9px 12px; vertical-align: middle; }
 .tabla-pro td.num { font-variant-numeric: tabular-nums; }
 .tabla-pro tbody tr:hover { background: #f8fafd; }

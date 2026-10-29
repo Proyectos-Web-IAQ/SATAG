@@ -433,8 +433,12 @@ export function viajesPorSeccion(
   const viajes: ViajeSeccion[] = [];
   for (const s of confirmadas(estancias)) {
     if (!esComparable.has(s.dia)) continue;
-    const secciones = seccionesDeTarjeta(s.tarjeta);
-    if (secciones === null) continue;
+    const crudas = seccionesDeTarjeta(s.tarjeta);
+    if (crudas === null) continue;
+    // En orden de edad y sin repetir, venga como venga: «la mayor» es la ultima, y un
+    // llamador que las pase en orden alfabetico («prepa» antes que «primaria») haria
+    // que prepa esperara a primaria.
+    const secciones = SECCIONES_HIJO.filter((x) => crudas.includes(x));
     const sale = s.entro + s.dur;
     if (momento === "tarde") {
       if (sale < TARDE.salenDesde || sale > TARDE.salenHasta || s.entro >= TARDE.entranAntesDe) continue;

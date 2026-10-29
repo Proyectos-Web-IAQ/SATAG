@@ -193,14 +193,15 @@ function BloqueMomento({ v, lote, titulo }: { v: ViajesPorSeccion; lote: string;
             </p>
           )}
           <div className="table-wrap">
-            <table className="admin-table tabla-pro">
+            <table className="admin-table tabla-pro tabla-fija">
               <thead>
                 <tr>
                   <th>{manana ? "Con qué hijos vienen" : "Hasta qué sección se quedan"}</th>
-                  <th className="num">Autos al día</th>
-                  <th>Entran</th>
-                  <th>Salen</th>
-                  <th>Dentro</th>
+                  {/* Las cifras son angostas («2.4») y el encabezado no: sin ancho minimo se encima con «Entran». */}
+                  <th className="num" style={{ minWidth: 96 }}>Autos al día</th>
+                  <th style={{ minWidth: 150 }}>Entran</th>
+                  <th style={{ minWidth: 150 }}>Salen</th>
+                  <th style={{ minWidth: 110 }}>Dentro</th>
                   <th>{horaCorta(franja.desde)} a {horaCorta(franja.hasta)}</th>
                 </tr>
               </thead>
@@ -392,7 +393,7 @@ function TablaSalida({ capas, minutos }: { capas: Capa[]; minutos: number[] }) {
   };
   return (
     <div className="table-wrap" style={{ marginTop: 10 }}>
-      <table className="admin-table tabla-pro">
+      <table className="admin-table tabla-pro tabla-fija">
         <thead>
           <tr>
             <th>Por quién viene</th>
@@ -460,7 +461,7 @@ function DetallePorSeccion({ detalle, lote }: { detalle: SalidaPorClave<string>;
         propia escala, con una marca abajo en su franja de salida.
       </p>
       <div className="table-wrap">
-        <table className="admin-table tabla-pro">
+        <table className="admin-table tabla-pro tabla-fija">
           <thead>
             <tr>
               <th>Sección o combinación</th>

@@ -209,7 +209,8 @@ describe("viajesPorSeccion · por seccion, a que hora entran y salen los papas",
     ...viaje("N", d, "14:00", "14:40"),
     ...viaje("D", d, "07:00", "15:05"),
   ]);
-  const secciones: Record<string, SeccionHijo[] | null> = { K: ["preescolar"], KS: ["preescolar", "secundaria"], S: ["secundaria"], N: [], D: null };
+  // KS viene al reves a proposito: el orden de edad lo pone la funcion, no quien la llama.
+  const secciones: Record<string, SeccionHijo[] | null> = { K: ["preescolar"], KS: ["secundaria", "preescolar"], S: ["secundaria"], N: [], D: null };
   const m = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
   const tarde = viajesPorSeccion(eventos, (t) => secciones[t] ?? null, "tarde");
   const manana = viajesPorSeccion(eventos, (t) => secciones[t] ?? null, "manana");
