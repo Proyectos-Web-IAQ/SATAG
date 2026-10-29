@@ -71,6 +71,9 @@ const RUTAS = [
       // Subtitulo del bloque nuevo de Secciones (29-oct), sin acentos a proposito: solo
       // existe desde que la tabla por seccion (tarde y manana) vive en SATAG.
       { texto: "Al recoger (tarde)", que: "Estacionamiento › Secciones: la tabla por seccion, entran y salen (29-oct)" },
+      // Subtitulo del segmento nuevo de TI › Caseta (29-oct), sin acentos a proposito: solo
+      // existe desde que las aperturas con boton se siguen desde TI.
+      { texto: "Pendientes de seguimiento", que: "TI › Caseta › Aperturas con boton: el seguimiento por dia y lo pendiente (29-oct)" },
       // La clase de la zona que se recorre minuto a minuto: solo existe si la
       // grafica de ocupacion ya no usa los blancos de cada dos horas (5-oct).
       { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },
