@@ -13,6 +13,8 @@ import {
   comoSeguimiento,
   estadoAviso,
   seguimientoDeReporte,
+  seguimientoDeApertura,
+  SEGUIMIENTO_APERTURA,
   cruzarAperturas,
   csvAperturas,
   paredQueretaro,
@@ -243,5 +245,18 @@ describe("estacionamiento fijo en la cuenta del portero", () => {
     expect(casetaFijaDe({ caseta: "e2" })).toBeNull();
     expect(casetaFijaDe({ rol: "portero" })).toBeNull();
     expect(casetaFijaDe(undefined)).toBeNull();
+  });
+});
+
+describe("seguimientoDeApertura · el seguimiento desde TI (29-oct)", () => {
+  it("sin reporte de la caseta es lo primero; con reporte, el seguimiento del caso", () => {
+    expect(seguimientoDeApertura(null)).toBe("sin-reporte");
+    expect(seguimientoDeApertura({ casoNumero: null, casoEstado: null })).toBe("sin-caso");
+    expect(seguimientoDeApertura({ casoNumero: 7, casoEstado: "nuevo" })).toBe("sin-seguimiento");
+    expect(seguimientoDeApertura({ casoNumero: 7, casoEstado: "abierto" })).toBe("curso");
+    expect(seguimientoDeApertura({ casoNumero: 7, casoEstado: "resuelto" })).toBe("listo");
+  });
+  it("lo pendiente son los tres primeros, en ese orden", () => {
+    expect(SEGUIMIENTO_APERTURA.filter((s) => s.pendiente).map((s) => s.id)).toEqual(["sin-reporte", "sin-caso", "sin-seguimiento"]);
   });
 });

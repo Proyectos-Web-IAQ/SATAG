@@ -520,6 +520,25 @@ export function seguimientoDeReporte(r: Pick<ReporteCaseta, "casoNumero" | "caso
   }
 }
 
+// Gerardo, 29-oct: «ver claramente cuales reporto caseta y a que hora, para darle
+// seguimiento». Cada apertura con boton de ZK, cruzada con la caseta, cae en uno de
+// estos: sin reporte (nadie la reporto) o, con reporte, en el seguimiento de Sistemas.
+// Los tres primeros son lo pendiente.
+export type SeguimientoApertura = "sin-reporte" | SeguimientoSistemas;
+
+export const SEGUIMIENTO_APERTURA: { id: SeguimientoApertura; titulo: string; ayuda: string; pendiente: boolean }[] = [
+  { id: "sin-reporte", titulo: "Sin reporte", ayuda: "ZK registró el botón y la caseta no reportó nada en esa puerta.", pendiente: true },
+  { id: "sin-caso", titulo: "Sin caso", ayuda: "La caseta reportó sin identificar el vehículo: se puede ligar a un expediente.", pendiente: true },
+  { id: "sin-seguimiento", titulo: "Sin seguimiento", ayuda: "Tiene caso y nadie de Sistemas lo ha tomado.", pendiente: true },
+  { id: "curso", titulo: "En atención", ayuda: "Alguien de Sistemas ya lo tomó.", pendiente: false },
+  { id: "espera", titulo: "En espera", ayuda: "Esperando a alguien o algo.", pendiente: false },
+  { id: "listo", titulo: "Resueltos", ayuda: "Lo que hizo Sistemas es lo que ve el portero.", pendiente: false },
+];
+
+export function seguimientoDeApertura(reporte: Pick<ReporteCaseta, "casoNumero" | "casoEstado"> | null): SeguimientoApertura {
+  return reporte ? seguimientoDeReporte(reporte) : "sin-reporte";
+}
+
 /** Un reporte de Sistemas con la forma que dibuja la tarjeta del portero. */
 export function comoSeguimiento(r: ReporteCaseta): ReporteSeguimiento {
   return {

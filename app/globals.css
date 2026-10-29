@@ -2144,6 +2144,11 @@ a { color: var(--primary-strong); }
 .rc-cifra--curso { border-top-color: var(--primary); }
 .rc-cifra--espera { border-top-color: var(--warn); }
 .rc-cifra--listo { border-top-color: var(--ok); }
+/* El seguimiento de las aperturas con boton (29-oct): seis cifras, la primera es «sin reporte». */
+.rc-cifras--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.rc-cifra--sin-reporte { border-top-color: var(--alert); }
+.rc-cifra--sin-reporte .rc-cifra__n { color: var(--alert); }
+@media (max-width: 760px) { .rc-cifras--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 .rc-grupo { display: grid; gap: var(--sp-2); }
 .rc-grupo__t { align-items: center; display: flex; gap: var(--sp-2); font-size: 1.1rem; margin: var(--sp-2) 0 0; }
 .rc-grupo__n { background: var(--field-bg); border-radius: var(--r-pill); font-size: 0.85rem; padding: 1px 10px; }

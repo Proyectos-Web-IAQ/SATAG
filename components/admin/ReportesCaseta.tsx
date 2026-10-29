@@ -19,6 +19,7 @@ import { TarjetaReporte } from "@/components/admin/SeguimientoCaseta";
 import { DialogoLigar } from "@/components/admin/AperturasCaseta";
 import Loader from "@/components/Loader";
 import AvisosCasetaSistemas from "@/components/admin/AvisosCasetaSistemas";
+import AperturasBotonTi from "@/components/admin/ti/AperturasBotonTi";
 
 const GRUPOS: { id: SeguimientoSistemas; titulo: string; ayuda: string }[] = [
   { id: "sin-seguimiento", titulo: "Sin seguimiento", ayuda: "Su caso sigue en Nuevo: nadie de Sistemas lo ha tomado. Del más viejo al más nuevo." },
@@ -33,21 +34,25 @@ const LIGAN: RolPanel[] = ["ti", "super"];
 const DIAS = [7, 30, 90] as const;
 
 /**
- * La vista entera: lo que reporta la caseta y lo que Sistemas le avisa (21-oct),
- * en dos partes de la misma pestaña.
+ * La vista entera, en tres partes de la misma pestaña: las aperturas con el boton
+ * que registro ZK contra lo que reporto la caseta (29-oct, la de seguimiento), lo
+ * que reporta la caseta y lo que Sistemas le avisa (21-oct).
  */
 export default function ReportesCaseta({ rol, email, onIr }: { rol: RolPanel; email: string; onIr: (vista: string) => void }) {
-  const [parte, setParte] = useState<"reportes" | "avisos">("reportes");
+  const [parte, setParte] = useState<"aperturas" | "reportes" | "avisos">("aperturas");
   return (
     <div className="rc">
       <p className="titular__migas"><span>Estacionamiento</span><span>›</span><span>Caseta</span></p>
       <div className="tc-seg rc-partes" role="group" aria-label="Qué ver">
+        <button type="button" aria-pressed={parte === "aperturas"} onClick={() => setParte("aperturas")}>Aperturas con botón</button>
         <button type="button" aria-pressed={parte === "reportes"} onClick={() => setParte("reportes")}>Reportes de la caseta</button>
         <button type="button" aria-pressed={parte === "avisos"} onClick={() => setParte("avisos")}>Avisos a la caseta</button>
       </div>
-      {parte === "reportes"
-        ? <ReportesParte rol={rol} email={email} onIr={onIr} />
-        : <AvisosCasetaSistemas rol={rol} email={email} onIr={onIr} />}
+      {parte === "aperturas"
+        ? <AperturasBotonTi rol={rol} email={email} onIr={onIr} />
+        : parte === "reportes"
+          ? <ReportesParte rol={rol} email={email} onIr={onIr} />
+          : <AvisosCasetaSistemas rol={rol} email={email} onIr={onIr} />}
     </div>
   );
 }
