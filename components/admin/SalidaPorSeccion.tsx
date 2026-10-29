@@ -159,7 +159,7 @@ function ViajesPorSeccionVista({ viajes, lote }: { viajes: ViajesTardeManana; lo
       <p className="sub">
         Cada viaje con entrada y salida leídas, en {donde}, como autos al día de {viajes.tarde.dias} días hábiles comparables. Un papá va con la
         sección de sus hijos; en la tarde, «hasta qué sección se quedan» es la del hijo mayor, que es la que fija la hora de salida; en la mañana la
-        fila dice con qué hijos vienen. «Entran» y «salen» son la mitad central con la mediana en negritas; «dentro», la mediana y la mitad central:
+        fila dice con qué hijos vienen. La fila «X es el mayor» incluye a quien además tiene hijos menores. «Entran» y «salen» son la mitad central con la mediana en negritas; «dentro», la mediana y la mitad central:
         si es ancha, una parte se queda mucho más. En la barra, lo claro es cuándo entran y lo oscuro cuándo salen.
       </p>
       <BloqueMomento v={viajes.tarde} lote={lote} titulo="Al recoger (tarde)" />
@@ -179,7 +179,8 @@ function BloqueMomento({ v, lote, titulo }: { v: ViajesPorSeccion; lote: string;
   const franja = FRANJA_VIAJE[v.momento];
   const nombreDe = (s: (typeof secciones)[number]) => (s.seccion === "sin" ? "Papás sin ligar a GES" : `Papás de ${NOMBRE_SECCION[s.seccion]}`);
   const filaDe = (s: (typeof secciones)[number], f: FilaViaje) =>
-    f.mayor === null ? "no se sabe por quién vienen" : f.mayor === s.seccion ? `solo ${NOMBRE_SECCION[f.mayor]}` : `${manana ? "y" : "hasta"} ${NOMBRE_SECCION[f.mayor]}`;
+    // «X es el mayor» y no «solo X»: la fila junta a quien ademas tiene hijos menores.
+    f.mayor === null ? "no se sabe por quién vienen" : f.mayor === s.seccion ? `${NOMBRE_SECCION[f.mayor]} es el mayor` : `${manana ? "y" : "hasta"} ${NOMBRE_SECCION[f.mayor]}`;
   return (
     <div style={{ marginTop: 12 }}>
       <p className="viz-titulo" style={{ fontSize: "1rem" }}><strong>{titulo}</strong></p>
