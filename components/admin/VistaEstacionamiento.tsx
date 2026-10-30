@@ -25,7 +25,7 @@
 // la misma razon de siempre: es la misma funcion para las dos fuentes, y una ventana
 // son ~9,600 filas que bajan en diez peticiones.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Loader from "@/components/Loader";
 import PanelEstacionamiento, { CoberturaDias, type DatosEstacionamiento, type VistaPanel } from "@/components/admin/PanelEstacionamiento";
 import GenteEstacionamiento, { SeccionesEstacionamiento } from "@/components/admin/GenteEstacionamiento";
@@ -43,7 +43,6 @@ import {
   cargarPadronZk,
   getEstacionamientos,
   getUltimaCargaPadronZk,
-  listEventosZk,
   listImportacionesZk,
   listPadronEstacionamiento,
   listRegistros,
@@ -57,6 +56,8 @@ import {
   type PadronEstacionamiento,
   type RespuestaCargaPadronZk,
 } from "@/lib/supabase/apiPanel";
+import { listEventosZk } from "@/lib/supabase/apiEventos";
+import { anotarTiempo } from "@/lib/medir";
 import { corteDe, inicioDe, medirEleccion, medirEstacionamiento } from "@/lib/estacionamiento";
 import { GLOSARIO } from "@/lib/glosario";
 import { exportadoEnDe, huecoEnDias, huecoMayor, lecturaDesdeBase, leerEventosZk, type LecturaEventos } from "@/lib/zk/eventos";
@@ -198,10 +199,17 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     setProcesando("Leyendo la bitácora guardada…");
     setAvance(null);
     try {
-      const { eventos, truncado } = await listEventosZk(desde, (n) =>
+      // Paso 2 (lib/supabase/apiEventos.ts): semanas a la vez, por cursor; y paso 0:
+      // los tiempos en la consola, la misma vara antes y despues.
+      const t0 = performance.now();
+      const { eventos, truncado, peticiones } = await listEventosZk({ desde, hasta: ultima }, (n) =>
         setProcesando(`Leyendo la bitácora guardada… ${n.toLocaleString("es-MX")} eventos`),
       );
-      setLectura(lecturaDesdeBase(eventos, ventanas));
+      const t1 = performance.now();
+      anotarTiempo("bajar la bitácora", t1 - t0, `${eventos.length.toLocaleString("es-MX")} eventos en ${peticiones} peticiones`);
+      const l = lecturaDesdeBase(eventos, ventanas);
+      anotarTiempo("limpiar y ordenar la bitácora", performance.now() - t1);
+      setLectura(l);
       setSerie({ ventanas, truncada: truncado, desde });
       setOrigen("base");
       setArchivo(null);
@@ -300,6 +308,120 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
       },
     };
   }, [recogida, lectura, personas]);
+
+  // Paso 1 de Desarrollo/11 (30-oct): todo lo que entra a la medicion es ESTABLE
+  // entre renders (useMemo/useCallback), y la medicion misma se memoriza abajo.
+  // Antes vivia despues del return temprano del padron y se rehacia en cada render.
+  const porTag = useMemo(() => new Map((padron ?? []).map((p) => [p.noDispositivo, p])), [padron]);
+  // Un TAG que el expediente YA NO usa sigue siendo suyo en la bitacora: sus pasadas
+  // viejas tienen dueno. Sin esto, un TAG cambiado o repuesto salia como credencial
+  // «de nadie» (el 14273782, el TAG externo que se cambio por uno del IAQ el 28-sep).
+  // El TAG vigente de otro expediente manda: solo se usa si nadie lo tiene hoy.
+  const porTagAnterior = useMemo(() => {
+    const m = new Map<string, PadronEstacionamiento>();
+    for (const p of padron ?? []) {
+      for (const t of p.tagsAnteriores) if (!porTag.has(t) && !m.has(t)) m.set(t, p);
+    }
+    return m;
+  }, [padron, porTag]);
+  const expedienteDe = useCallback((tarjeta: string) => porTag.get(tarjeta) ?? porTagAnterior.get(tarjeta), [porTag, porTagAnterior]);
+
+  // LA REGLA QUE NO SE PUEDE OMITIR: el dueño se resuelve contra el padrón, NUNCA
+  // contra el departamento que trae el evento. Las instalaciones del día cruzan la
+  // pluma antes de que se suba el padrón a ZK —que se sube al cierre— así que
+  // aparecen como STOCK SATAG; agrupar por ese texto las clasificaría mal todas.
+  //
+  // SATAG manda, pero «otro» no es una respuesta: es la ausencia de una. Cuando el
+  // expediente no dice a que grupo pertenece —son 37, los que ZK tenia en «General»
+  // cuando se migraron— se consulta el export de personas, que es estado de hoy. Asi
+  // basta volver a exportar «Usuarios» despues de reclasificar a alguien en ZK para
+  // que la pantalla lo refleje, sin tocar la base.
+  //
+  // Antes esta linea usaba GRUPO_POR_TIPO con un id de departamento, y ese mapa
+  // traduce 'padres' y 'maestro', no '4' ni '15': el respaldo nunca llego a
+  // funcionar. Lo corrige grupoDeDepto, que es el mapa del catalogo de ZK.
+  const rolDe = useCallback((tarjeta: string) => {
+    // 13-oct: un vehiculo del Instituto no es de una persona aunque tenga expediente.
+    // Lo dice su departamento en ZK (INSTITUCIONALES), y ahi manda ZK.
+    const zk = personas?.get(tarjeta);
+    if (zk && grupoDeDepto(zk.departamentoId, zk.departamento) === GRUPO_INSTITUCIONAL) return GRUPO_INSTITUCIONAL;
+    const r = expedienteDe(tarjeta);
+    const deSatag = r ? grupoDeExpediente(r.tipoUsuario, r.areaAdmin) : undefined;
+    if (deSatag) return deSatag;
+    const p = personas?.get(tarjeta);
+    return p ? grupoDeDepto(p.departamentoId, p.departamento) : SIN_CLASIFICAR;
+  }, [personas, expedienteDe]);
+  // Con GES, la clave por departamento es «por quien viene»: el departamento de ZK
+  // para el personal y «Padres de primaria…» para los papas (lib/recogida.ts).
+  const deptoDe = useMemo(
+    () => (personas
+      ? (tarjeta: string) => recogida?.get(tarjeta)?.etiqueta ?? (personas.get(tarjeta)?.departamento || "No está en el padrón de ZK")
+      : undefined),
+    [personas, recogida],
+  );
+  const tieneAmbos = useCallback((tarjeta: string) => (porTag.get(tarjeta)?.estacionamientos.length ?? 0) >= 2, [porTag]);
+
+  // La medicion, UNA vez por bitacora y no en cada render (paso 1). Si en la consola
+  // «medir el estacionamiento» sale con cada letra que se escribe, algo de aqui
+  // abajo dejo de ser estable.
+  const datos = useMemo<DatosEstacionamiento | null>(() => {
+    if (!lectura) return null;
+    const t0 = performance.now();
+    const m = medirEstacionamiento(lectura.eventos, rolDe, { deptoDe, corte: corteDe(lectura.resumen), inicio: inicioDe(lectura.resumen) });
+    anotarTiempo("medir el estacionamiento", performance.now() - t0, `${lectura.eventos.length.toLocaleString("es-MX")} eventos`);
+    const fuentes = new Map<string, Fuentes>();
+    for (const u of m.porCredencial) {
+      const r = expedienteDe(u.tarjeta);
+      fuentes.set(u.tarjeta, {
+        satag: r !== undefined,
+        hoja: r?.origenExpediente === "migracion_hoja",
+        zk: personas ? personas.has(u.tarjeta) : r?.origenExpediente === "migracion_zk",
+      });
+    }
+    return {
+      m,
+      eleccion: medirEleccion(lectura.eventos, tieneAmbos),
+      resumen: lectura.resumen,
+      cupos,
+      padron: personas,
+      fuentes,
+      verIdentidad: VEN_IDENTIDAD.includes(rol),
+      ventanas: origen === "base" ? (serie?.ventanas.length ?? 0) : importaciones.length,
+      // Con un archivo, el hueco es contra la ultima ventana guardada. Con la
+      // base, es el mayor hueco entre ventanas CONSECUTIVAS, recalculado con sus
+      // fechas: el hueco_dias guardado se midio al subir y queda mal si una
+      // ventana llego fuera de orden. Uno solo basta para invalidar el uso por
+      // credencial, y se dice entre que dos fechas esta.
+      ...(() => {
+        if (origen === "base") {
+          const h = huecoMayor(serie?.ventanas ?? []);
+          return { huecoDias: h?.dias ?? null, huecoEntre: h ? { hastaAnterior: h.hastaAnterior, desdeSiguiente: h.desdeSiguiente } : null };
+        }
+        const ultima = importaciones[0]?.hasta ?? null;
+        const d = huecoEnDias(ultima, lectura.resumen.desde);
+        return {
+          huecoDias: d,
+          huecoEntre: d !== null && d > 0 && ultima && lectura.resumen.desde ? { hastaAnterior: ultima, desdeSiguiente: lectura.resumen.desde } : null,
+        };
+      })(),
+      serie:
+        origen === "base" && serie
+          ? {
+              ventanas: serie.ventanas.length,
+              truncadas: serie.ventanas.filter((v) => v.topeAlcanzado).length,
+              // Donde arranca la ultima ventana: si se trunco, lo que falta es lo
+              // anterior a esa fecha, no lo posterior.
+              ultimaDesde: [...serie.ventanas].sort((a, b) => ((a.hasta ?? "") < (b.hasta ?? "") ? 1 : -1))[0]?.desde ?? null,
+            }
+          : null,
+    };
+  }, [lectura, rolDe, deptoDe, tieneAmbos, expedienteDe, personas, cupos, rol, origen, serie, importaciones]);
+  // Lo que se pasa a las hijas, estable mientras no cambie lo que lo forma: el
+  // tablero de casos memoriza por `expedientes` y un Map nuevo cada render lo
+  // obligaba a barrer la bitacora otra vez.
+  const expedientes = useMemo(() => expedientesPorTag(padron ?? []), [padron]);
+  const ventana = useMemo(() => ({ desde: lectura?.resumen.desde ?? null, hasta: lectura?.resumen.hasta ?? null }), [lectura]);
+  const vienePor = useMemo(() => (recogida ? (t: string) => recogida.get(t)?.vienePor ?? null : undefined), [recogida]);
 
   async function elegirBitacora(f: File | null) {
     if (!f) return;
@@ -523,100 +645,6 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     );
   }
 
-  const porTag = new Map((padron ?? []).map((p) => [p.noDispositivo, p]));
-  // Un TAG que el expediente YA NO usa sigue siendo suyo en la bitacora: sus pasadas
-  // viejas tienen dueno. Sin esto, un TAG cambiado o repuesto salia como credencial
-  // «de nadie» (el 14273782, el TAG externo que se cambio por uno del IAQ el 28-sep).
-  // El TAG vigente de otro expediente manda: solo se usa si nadie lo tiene hoy.
-  const porTagAnterior = new Map<string, PadronEstacionamiento>();
-  for (const p of padron ?? []) {
-    for (const t of p.tagsAnteriores) if (!porTag.has(t) && !porTagAnterior.has(t)) porTagAnterior.set(t, p);
-  }
-  const expedienteDe = (tarjeta: string) => porTag.get(tarjeta) ?? porTagAnterior.get(tarjeta);
-
-  // LA REGLA QUE NO SE PUEDE OMITIR: el dueño se resuelve contra el padrón, NUNCA
-  // contra el departamento que trae el evento. Las instalaciones del día cruzan la
-  // pluma antes de que se suba el padrón a ZK —que se sube al cierre— así que
-  // aparecen como STOCK SATAG; agrupar por ese texto las clasificaría mal todas.
-  //
-  // SATAG manda, pero «otro» no es una respuesta: es la ausencia de una. Cuando el
-  // expediente no dice a que grupo pertenece —son 37, los que ZK tenia en «General»
-  // cuando se migraron— se consulta el export de personas, que es estado de hoy. Asi
-  // basta volver a exportar «Usuarios» despues de reclasificar a alguien en ZK para
-  // que la pantalla lo refleje, sin tocar la base.
-  //
-  // Antes esta linea usaba GRUPO_POR_TIPO con un id de departamento, y ese mapa
-  // traduce 'padres' y 'maestro', no '4' ni '15': el respaldo nunca llego a
-  // funcionar. Lo corrige grupoDeDepto, que es el mapa del catalogo de ZK.
-  const rolDe = (tarjeta: string) => {
-    // 13-oct: un vehiculo del Instituto no es de una persona aunque tenga expediente.
-    // Lo dice su departamento en ZK (INSTITUCIONALES), y ahi manda ZK.
-    const zk = personas?.get(tarjeta);
-    if (zk && grupoDeDepto(zk.departamentoId, zk.departamento) === GRUPO_INSTITUCIONAL) return GRUPO_INSTITUCIONAL;
-    const r = expedienteDe(tarjeta);
-    const deSatag = r ? grupoDeExpediente(r.tipoUsuario, r.areaAdmin) : undefined;
-    if (deSatag) return deSatag;
-    const p = personas?.get(tarjeta);
-    return p ? grupoDeDepto(p.departamentoId, p.departamento) : SIN_CLASIFICAR;
-  };
-  // Con GES, la clave por departamento es «por quien viene»: el departamento de ZK
-  // para el personal y «Padres de primaria…» para los papas (lib/recogida.ts).
-  const deptoDe = personas
-    ? (tarjeta: string) => recogida?.get(tarjeta)?.etiqueta ?? (personas.get(tarjeta)?.departamento || "No está en el padrón de ZK")
-    : undefined;
-  const tieneAmbos = (tarjeta: string) => (porTag.get(tarjeta)?.estacionamientos.length ?? 0) >= 2;
-
-  const datos: DatosEstacionamiento | null = lectura
-    ? (() => {
-        const m = medirEstacionamiento(lectura.eventos, rolDe, { deptoDe, corte: corteDe(lectura.resumen), inicio: inicioDe(lectura.resumen) });
-        const fuentes = new Map<string, Fuentes>();
-        for (const u of m.porCredencial) {
-          const r = expedienteDe(u.tarjeta);
-          fuentes.set(u.tarjeta, {
-            satag: r !== undefined,
-            hoja: r?.origenExpediente === "migracion_hoja",
-            zk: personas ? personas.has(u.tarjeta) : r?.origenExpediente === "migracion_zk",
-          });
-        }
-        return {
-          m,
-          eleccion: medirEleccion(lectura.eventos, tieneAmbos),
-          resumen: lectura.resumen,
-          cupos,
-          padron: personas,
-          fuentes,
-          verIdentidad: VEN_IDENTIDAD.includes(rol),
-          ventanas: origen === "base" ? (serie?.ventanas.length ?? 0) : importaciones.length,
-          // Con un archivo, el hueco es contra la ultima ventana guardada. Con la
-          // base, es el mayor hueco entre ventanas CONSECUTIVAS, recalculado con sus
-          // fechas: el hueco_dias guardado se midio al subir y queda mal si una
-          // ventana llego fuera de orden. Uno solo basta para invalidar el uso por
-          // credencial, y se dice entre que dos fechas esta.
-          ...(() => {
-            if (origen === "base") {
-              const h = huecoMayor(serie?.ventanas ?? []);
-              return { huecoDias: h?.dias ?? null, huecoEntre: h ? { hastaAnterior: h.hastaAnterior, desdeSiguiente: h.desdeSiguiente } : null };
-            }
-            const ultima = importaciones[0]?.hasta ?? null;
-            const d = huecoEnDias(ultima, lectura.resumen.desde);
-            return {
-              huecoDias: d,
-              huecoEntre: d !== null && d > 0 && ultima && lectura.resumen.desde ? { hastaAnterior: ultima, desdeSiguiente: lectura.resumen.desde } : null,
-            };
-          })(),
-          serie:
-            origen === "base" && serie
-              ? {
-                  ventanas: serie.ventanas.length,
-                  truncadas: serie.ventanas.filter((v) => v.topeAlcanzado).length,
-                  // Donde arranca la ultima ventana: si se trunco, lo que falta es lo
-                  // anterior a esa fecha, no lo posterior.
-                  ultimaDesde: [...serie.ventanas].sort((a, b) => ((a.hasta ?? "") < (b.hasta ?? "") ? 1 : -1))[0]?.desde ?? null,
-                }
-              : null,
-        };
-      })()
-    : null;
 
   const puedeCargar = CARGAN.includes(rol);
   const rango = lectura?.resumen.desde
@@ -820,16 +848,16 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
             rol={rol}
             email={email}
             eventos={VEN_IDENTIDAD.includes(rol) ? lectura?.eventos ?? [] : null}
-            ventana={{ desde: lectura?.resumen.desde ?? null, hasta: lectura?.resumen.hasta ?? null }}
+            ventana={ventana}
             personas={VEN_IDENTIDAD.includes(rol) ? personas ?? null : null}
-            expedientes={expedientesPorTag(padron ?? [])}
+            expedientes={expedientes}
             padron={padron}
           />
         ) : vista === "lecturas" ? (
           <LecturasZk
             personas={personas}
-            vienePor={recogida ? (t) => recogida.get(t)?.vienePor ?? null : undefined}
-            expedientes={expedientesPorTag(padron ?? [])}
+            vienePor={vienePor}
+            expedientes={expedientes}
             ultimaHasta={importaciones.map((i) => i.hasta).filter((h): h is string => h !== null).sort().pop() ?? null}
           />
         ) : vista === "lotes" || vista === "secciones" ? (
