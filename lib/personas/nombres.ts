@@ -102,19 +102,32 @@ const NOMBRES_PILA = new Set([
  * Clave fonetica ligera para las erratas de captura del espanol: Z/S, V/B, H muda,
  * letras dobles, Y/I y CE/CI con S.
  */
+// 30-oct: las mismas palabras se comparan miles de veces al cruzar un padron con GES
+// (2,879 TAGs contra 1,842 personas tardaban 20 s). El vocabulario es chico, asi que
+// la fonetica y la distancia se recuerdan; el tope evita que crezcan sin fin.
+const FONETICA = new Map<string, string>();
 export function fonetica(p: string): string {
-  return p
+  const v = FONETICA.get(p);
+  if (v !== undefined) return v;
+  const f = p
     .replace(/(?<!C)H/g, "")
     .replace(/Z/g, "S")
     .replace(/V/g, "B")
     .replace(/Y/g, "I")
     .replace(/C([EI])/g, "S$1")
     .replace(/(.)\1+/g, "$1");
+  if (FONETICA.size > 50_000) FONETICA.clear();
+  FONETICA.set(p, f);
+  return f;
 }
 
 /** Distancia de edicion con transposicion (JURAEZ/JUAREZ cuesta 1, no 2). */
+const DISTANCIA = new Map<string, number>();
 export function distancia(a: string, b: string): number {
   if (Math.abs(a.length - b.length) > 3) return 9;
+  const k = a + "\u0000" + b;
+  const v = DISTANCIA.get(k);
+  if (v !== undefined) return v;
   const d: number[][] = Array.from({ length: a.length + 1 }, (_, i) => [i]);
   for (let j = 1; j <= b.length; j++) d[0][j] = j;
   for (let i = 1; i <= a.length; i++)
@@ -122,7 +135,10 @@ export function distancia(a: string, b: string): number {
       d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
       if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
     }
-  return d[a.length][b.length];
+  const r = d[a.length][b.length];
+  if (DISTANCIA.size > 200_000) DISTANCIA.clear();
+  DISTANCIA.set(k, r);
+  return r;
 }
 
 /**
@@ -196,12 +212,28 @@ export const DECISION_POR_CLASE: Record<ClaseNombre, DecisionNombre> = {
  * un nombre corto contenido en uno largo si es la misma persona; buscando SOLO por
  * nombre (GES), no.
  */
+/** Un nombre ya limpio y partido, para compararlo muchas veces sin volver a normalizarlo (30-oct). */
+export interface NombrePreparado {
+  palabras: string[];
+  compacto: string;
+  clave: string;
+}
+export function prepararNombre(s: string | null | undefined): NombrePreparado {
+  const n = separarNota(s).nombre;
+  const A = palabras(n);
+  return { palabras: A, compacto: compacto(n), clave: A.join(" ") };
+}
+
 export function comparar(a: string | null | undefined, b: string | null | undefined, { mismaLlave = false } = {}): ClaseNombre {
-  const na = separarNota(a).nombre, nb = separarNota(b).nombre;
-  const A = palabras(na), B = palabras(nb);
+  return compararPreparados(prepararNombre(a), prepararNombre(b), { mismaLlave });
+}
+
+/** La misma regla que `comparar`, con los dos nombres ya preparados. */
+export function compararPreparados(pa: NombrePreparado, pb: NombrePreparado, { mismaLlave = false } = {}): ClaseNombre {
+  const A = pa.palabras, B = pb.palabras;
   if (!A.length || !B.length) return CLASES.VACIO;
-  if (A.join(" ") === B.join(" ")) return CLASES.IDENTICO;
-  const ca = compacto(na), cb = compacto(nb);
+  if (pa.clave === pb.clave) return CLASES.IDENTICO;
+  const ca = pa.compacto, cb = pb.compacto;
   if (ca === cb) return CLASES.ERRATA;
   // Solo para palabras pegadas o separadas: si el numero de palabras es el mismo, las
   // diferencias se miden palabra por palabra (Julio/Julia no es «casi igual»).

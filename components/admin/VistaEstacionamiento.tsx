@@ -105,6 +105,8 @@ const memoria: {
   bytes?: ArrayBuffer | null;
   /** El padron completo de SATAG, que solo piden las vistas de gente. */
   registros?: Registro[];
+  /** El cruce con GES (por quien viene cada TAG), que cuesta segundos y no cambia si no cambian sus tres entradas (30-oct). */
+  recogida?: { ges: unknown; personas: unknown; padron: unknown; valor: ReturnType<typeof indexarRecogida> };
 } = {};
 
 /** «2026-10-02T18:55:00+00:00» a «02/10/2026». */
@@ -279,10 +281,19 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
   const ges = useGes(LEEN_GES.includes(rol) && personas !== null);
   const recogida = useMemo(() => {
     if (!ges.datos || (personas === null && padron === null)) return null;
+    // 30-oct: el cruce con GES era lo que tardaba al abrir la pestana y al volver a
+    // ella (los memos no sobreviven al desmontaje). Con las mismas tres entradas, el
+    // resultado se reutiliza de la memoria del modulo.
+    const guardado = memoria.recogida;
+    if (guardado && guardado.ges === ges.datos && guardado.personas === personas && guardado.padron === padron) return guardado.valor;
+    const t0 = performance.now();
     const expedientes = new Map(
       (padron ?? []).map((p) => [p.noDispositivo, { nombre: p.nombre, tipoUsuario: p.tipoUsuario, areaAdmin: p.areaAdmin }] as const),
     );
-    return indexarRecogida({ personas, expedientes, indice: ges.datos.indice, decisiones: ges.datos.decisiones });
+    const valor = indexarRecogida({ personas, expedientes, indice: ges.datos.indice, decisiones: ges.datos.decisiones });
+    anotarTiempo("cruzar con GES (por quién viene)", performance.now() - t0, `${valor.size.toLocaleString("es-MX")} TAGs`);
+    memoria.recogida = { ges: ges.datos, personas, padron, valor };
+    return valor;
   }, [ges.datos, personas, padron]);
   // La tarde dos veces: por los cinco grupos (la apilada) y por la etiqueta fina
   // (cada seccion y cada combinacion). La etiqueta es la MISMA de `deptoDe`.

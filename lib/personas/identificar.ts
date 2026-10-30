@@ -18,7 +18,7 @@
 //   3. Si GES tiene a DOS personas distintas de la misma clase con ese nombre (una
 //      mama y su hija exalumna, dos homonimos), no se elige: va a revisar.
 
-import { decidir, palabras, separarNota, titulo } from "@/lib/personas/nombres";
+import { DECISION_POR_CLASE, compararPreparados, palabras, prepararNombre, separarNota, titulo, type NombrePreparado } from "@/lib/personas/nombres";
 import type { ClaseGes, PersonaGes } from "@/lib/ges/leer";
 
 /** Una persona de GES tal como la guarda la base. */
@@ -47,14 +47,20 @@ export interface IndiceGes {
   porPalabra: Map<string, PersonaGesGuardada[]>;
   /** Familia -> sus tutores y sus grupos. */
   familias: Map<string, { tutores: PersonaGesGuardada[]; grupos: string[] }>;
+  /** Cada nombre de GES ya limpio y partido (30-oct): se compara miles de veces. */
+  preparados: Map<string, NombrePreparado>;
+  /** Lo que ya se busco, por nombre limpio: SATAG y ZK traen el mismo, y una familia tiene varios TAGs. */
+  cache: Map<string, { mismas: PersonaGesGuardada[]; parecidas: PersonaGesGuardada[] }>;
 }
 
 export function indexarGes(personas: PersonaGesGuardada[]): IndiceGes {
   const porId = new Map<string, PersonaGesGuardada>();
   const porPalabra = new Map<string, PersonaGesGuardada[]>();
   const familias = new Map<string, { tutores: PersonaGesGuardada[]; grupos: string[] }>();
+  const preparados = new Map<string, NombrePreparado>();
   for (const p of personas) {
     porId.set(p.gesId, p);
+    preparados.set(p.gesId, prepararNombre(p.nombre));
     for (const w of new Set(palabras(p.nombre))) {
       const l = porPalabra.get(w);
       if (l) l.push(p);
@@ -68,12 +74,17 @@ export function indexarGes(personas: PersonaGesGuardada[]): IndiceGes {
       familias.set(p.familia, f);
     }
   }
-  return { porId, porPalabra, familias };
+  return { porId, porPalabra, familias, preparados, cache: new Map() };
 }
 
 /** Las personas de GES que son la misma que `nombre`, y las que se le parecen. */
 export function buscarEnGes(indice: IndiceGes, nombre: string): { mismas: PersonaGesGuardada[]; parecidas: PersonaGesGuardada[] } {
   const limpio = separarNota(nombre).nombre;
+  const hecho = indice.cache.get(limpio);
+  if (hecho) return hecho;
+  // Antes se normalizaban los dos nombres en cada comparacion (20 s por padron);
+  // ahora el de GES viene preparado del indice y el buscado se prepara una vez.
+  const pa = prepararNombre(limpio);
   const vistos = new Set<string>();
   const mismas: PersonaGesGuardada[] = [];
   const parecidas: PersonaGesGuardada[] = [];
@@ -81,12 +92,16 @@ export function buscarEnGes(indice: IndiceGes, nombre: string): { mismas: Person
     for (const p of indice.porPalabra.get(w) ?? []) {
       if (vistos.has(p.gesId)) continue;
       vistos.add(p.gesId);
-      const d = decidir(limpio, p.nombre);
+      const pb = indice.preparados.get(p.gesId) ?? prepararNombre(p.nombre);
+      const d = DECISION_POR_CLASE[compararPreparados(pa, pb)];
       if (d === "misma") mismas.push(p);
       else if (d === "revisar") parecidas.push(p);
     }
   }
-  return { mismas, parecidas };
+  const r = { mismas, parecidas };
+  if (indice.cache.size > 20_000) indice.cache.clear();
+  indice.cache.set(limpio, r);
+  return r;
 }
 
 /** Si la persona sigue en el colegio, segun GES. */
