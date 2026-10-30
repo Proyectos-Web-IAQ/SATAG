@@ -68,6 +68,7 @@ import { EntradasSalidas, EvidenciaGraficas, LosTags, type ExpedienteTag, type V
 import { fechaHora } from "@/lib/formato";
 import { credencialesSinPadron } from "@/lib/casosEvidencia";
 import { lotesDeCaso } from "@/lib/caseta";
+import CasetaDelTag from "@/components/admin/casos/CasetaDelTag";
 import { ROTULO } from "@/lib/glosario";
 import IdentificacionGes from "@/components/admin/IdentificacionGes";
 import { EnZkDelCaso } from "@/components/admin/VistaMovimientosZk";
@@ -873,6 +874,10 @@ function PanelCaso({ caso, casos, tipos, familias, escribe, rol, email, eventos,
               <div>Casos vivos<b>{otros.filter((c) => columnaDe(c.estado) !== "cerrado").length}</b></div>
             </div>
             {caso.detalle.trim() && <p className="tc-det__detalle">{caso.detalle}</p>}
+            {/* 29-oct: en los casos de la caseta, lo que dice de este vehiculo y de esa puerta ese dia. */}
+            {(caso.tipo === "apertura-boton" || caso.tipo === "reporte-caseta") && (rol === "ti" || rol === "contador" || rol === "admin" || rol === "super") && (
+              <CasetaDelTag caso={caso} eventos={eventos} ventana={ventana} />
+            )}
             {eventos ? (
               <EvidenciaGraficas caso={caso} eventos={eventos} ventana={ventana} nombreDe={nombreDe} zkDe={zkDe} expedienteDe={expedienteDe} conocidos={conocidos} />
             ) : (

@@ -96,3 +96,25 @@ export function accionSugerida(casos: { tipo: string; titulo: string }[], deptos
   }
   return null;
 }
+
+/**
+ * Lo DECIDIDO (Gerardo, 9-oct): un movimiento cuenta cuando su caso se cerro con la
+ * accion («Cerrar…» con «Accion en ZK», o corregir el nombre desde la ficha), o
+ * cuando ZK no confirmo lo que se hizo (eso reabre el caso y hay que volverlo a
+ * hacer). El de un caso que sigue abierto, o que se descarto, es una sugerencia o
+ * un sobrante: no entra a Movimientos en ZK ni se cuenta en la Bandeja. La pantalla
+ * y la Bandeja usan ESTA funcion para no volver a contar distinto (29-oct).
+ */
+export const esMovimientoDecidido = (m: { estado: EstadoMovimiento; casoEstado: string | null }): boolean =>
+  m.estado === "no_coincide" || m.casoEstado === "resuelto";
+
+/** Por armar en una tanda: decidido y todavia sin tanda (pendiente o no_coincide). */
+export const esPendienteDecidido = (m: { estado: EstadoMovimiento; casoEstado: string | null }): boolean =>
+  (m.estado === "pendiente" || m.estado === "no_coincide") && esMovimientoDecidido(m);
+
+/**
+ * Lo que ninguna pantalla lista: pendiente, pero su caso no esta resuelto (se volvio
+ * a abrir, o se descarto antes del bloque 105). La Bandeja lo avisa.
+ */
+export const esPendienteSinDecidir = (m: { estado: EstadoMovimiento; casoEstado: string | null }): boolean =>
+  m.estado === "pendiente" && !esMovimientoDecidido(m);

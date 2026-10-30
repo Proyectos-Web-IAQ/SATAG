@@ -4,7 +4,7 @@ import { diasDesde, hechoPorPersona, lunesDe, tagsPorLunes, tareasBandeja, umbra
 const vacia: EntradaBandeja = {
   casetaSinAcceso: [], casetaSinCaso: 0, avisosSinRespuesta: { n: 0, masViejoDias: 0 },
   casosNuevos: { n: 0, masViejoDias: 0, urgentes: 0 }, inventario: { disponibles: 50, lunes: [5, 7, 4, 6] },
-  archivos: { eventos: 1, personas: 2, puertas: 3 }, zk: { pendientes: 0, noCoincide: 0, porVerificar: 0, tandaAbierta: null }, notasBuzon: 0, enBajasZk: 0,
+  archivos: { eventos: 1, personas: 2, puertas: 3 }, zk: { pendientes: 0, noCoincide: 0, porVerificar: 0, sinDecidir: 0, tandaAbierta: null }, notasBuzon: 0, enBajasZk: 0,
 };
 
 describe("inventario: avisar antes de quedarse sin TAGs", () => {
@@ -41,7 +41,7 @@ describe("tareasBandeja", () => {
     expect(a.detalle).not.toContain("Todos los Eventos");
   });
   it("la tanda abierta manda sobre los pendientes; casos nuevos con su antigüedad", () => {
-    const t = tareasBandeja({ ...vacia, zk: { pendientes: 5, noCoincide: 0, porVerificar: 0, tandaAbierta: { numero: 12, faltan: 2 } },
+    const t = tareasBandeja({ ...vacia, zk: { pendientes: 5, noCoincide: 0, porVerificar: 0, sinDecidir: 0, tandaAbierta: { numero: 12, faltan: 2 } },
       casosNuevos: { n: 4, masViejoDias: 14, urgentes: 1 } });
     expect(t.map((x) => x.id)).toEqual(["zk-tanda", "casos-nuevos"]);
     expect(t[1].vieja).toBe(true);
@@ -50,6 +50,11 @@ describe("tareasBandeja", () => {
     expect(tareasBandeja({ ...vacia, avisosSinRespuesta: { n: 2, masViejoDias: 1 } })).toEqual([]);
     const t = tareasBandeja({ ...vacia, avisosSinRespuesta: { n: 2, masViejoDias: 6 }, notasBuzon: 1 });
     expect(t.map((x) => `${x.grupo}:${x.id}`)).toEqual(["semana:avisos", "semana:buzon"]);
+  });
+  it("Esta semana: lo pedido en ZK cuyo caso se volvió a abrir, sin contarlo como decidido", () => {
+    const t = tareasBandeja({ ...vacia, zk: { ...vacia.zk, sinDecidir: 2 } });
+    expect(t.map((x) => `${x.grupo}:${x.id}`)).toEqual(["semana:zk-sin-decidir"]);
+    expect(t[0].titulo).toBe("2 acciones en ZK esperan a que se cierre su caso");
   });
 });
 

@@ -43,7 +43,15 @@ export interface EntradaBandeja {
   inventario: { disponibles: number; lunes: number[] };
   /** Días desde la última carga de cada archivo de ZK; null = nunca. */
   archivos: { eventos: number | null; personas: number | null; puertas: number | null };
-  zk: { pendientes: number; noCoincide: number; porVerificar: number; tandaAbierta: { numero: number; faltan: number } | null };
+  zk: {
+    /** Decididos (su caso está resuelto) y todavía sin tanda. */
+    pendientes: number;
+    noCoincide: number;
+    porVerificar: number;
+    /** Pedidos, pero su caso se volvió a abrir: ninguna pantalla los lista (29-oct). */
+    sinDecidir: number;
+    tandaAbierta: { numero: number; faltan: number } | null;
+  };
   notasBuzon: number;
   /** Expedientes vivos en SATAG cuyo TAG ZK ya tiene en BAJAS (Gerardo, 21-oct). */
   enBajasZk: number;
@@ -174,6 +182,12 @@ export function tareasBandeja(e: EntradaBandeja): Tarea[] {
     titulo: `${e.avisosSinRespuesta.n} ${plural(e.avisosSinRespuesta.n, "aviso a la caseta sigue", "avisos a la caseta siguen")} sin respuesta`,
     detalle: "Quizá esos vehículos no han llegado. Revise si siguen haciendo falta",
     edad: edad(e.avisosSinRespuesta.masViejoDias), vieja: false, ir: { seccion: "caseta", sub: "avisos" },
+  });
+  if (e.zk.sinDecidir) t.push({
+    id: "zk-sin-decidir", grupo: "semana",
+    titulo: `${e.zk.sinDecidir} ${plural(e.zk.sinDecidir, "acción en ZK espera", "acciones en ZK esperan")} a que se cierre su caso`,
+    detalle: "Se pidió al cerrar y el caso se volvió a abrir: ciérrelo con su acción en ZK, o descártelo para retirarla",
+    edad: null, vieja: false, ir: { seccion: "casos" },
   });
   if (e.notasBuzon) t.push({
     id: "buzon", grupo: "semana",

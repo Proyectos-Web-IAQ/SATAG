@@ -818,7 +818,7 @@ function ReactivarExpediente({ r, onCambio, onReactivado }: { r: Registro; onCam
 function textoNombreCorregido(h: NombreCorregido): string {
   const satag = h.satag ? `En SATAG ya dice «${h.nombre}».` : `SATAG ya decía «${h.nombre}».`;
   const zk = {
-    pedido: `En ZK quedó pedido en el caso ${h.caso ? numeroCaso(h.caso) : ""}: sale en la siguiente tanda de Datos › Movimientos en ZK, y el caso se cierra cuando el padrón de ZK lo confirme.`,
+    pedido: `En ZK quedó pedido: el caso ${h.caso ? numeroCaso(h.caso) : ""} queda cerrado con su acción y sale en la siguiente tanda de Datos › Movimientos en ZK. Si el padrón de ZK no lo confirma, el caso se reabre.`,
     coincide: "ZK ya lo tiene así: no hay nada que hacer allá.",
     sin_tag: "No tiene TAG vigente: no hay nada que cambiar en ZK.",
     sin_zk: "Su TAG no está vigente en el padrón de ZK guardado: no hay nada que cambiar allá.",

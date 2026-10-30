@@ -19,7 +19,7 @@ import Loader from "@/components/Loader";
 import { numeroCaso } from "@/lib/casosRegistro";
 import { GLOSARIO } from "@/lib/glosario";
 import { fecha, fechaHora } from "@/lib/formato";
-import { filasDeTanda, nombreNivel, ROTULO_MOVIMIENTO, type RenglonTanda } from "@/lib/zk/movimientos";
+import { esPendienteDecidido, esPendienteSinDecidir, filasDeTanda, nombreNivel, ROTULO_MOVIMIENTO, type RenglonTanda } from "@/lib/zk/movimientos";
 import { descargarArchivo, fechaArchivo, generarXlsxZk } from "@/lib/zk/plantillaZk";
 import {
   ajustarMovimientoZk,
@@ -197,8 +197,10 @@ export default function VistaMovimientosZk({ email, onIr }: { email: string | nu
   // Solo lo DECIDIDO (Gerardo, 9-oct): lo que se cerro con su accion en ZK, y lo que ZK
   // no confirmo (eso reabre su caso y hay que volverlo a hacer). Un movimiento de un
   // caso que sigue abierto es una sugerencia, no una decision: no entra a la lista.
-  const decidido = (m: MovimientoZk) => m.estado === "no_coincide" || m.casoEstado === "resuelto";
-  const pendientes = (movs ?? []).filter((m) => PENDIENTE.has(m.estado) && decidido(m));
+  // La regla vive en lib/zk/movimientos y la Bandeja cuenta con la misma (29-oct).
+  const pendientes = (movs ?? []).filter(esPendienteDecidido);
+  // Lo que se pidio y su caso se volvio a abrir: no se lista, pero se dice.
+  const sinDecidir = (movs ?? []).filter(esPendienteSinDecidir);
   const recientes = (movs ?? []).filter((m) => !PENDIENTE.has(m.estado)).slice(0, 200);
   const grupos = useMemo(() => {
     const g = new Map<string, MovimientoZk[]>();
@@ -261,6 +263,13 @@ export default function VistaMovimientosZk({ email, onIr }: { email: string | nu
         después. Al subir Usuarios y los cuatro «Personal de Apertura» en Archivos de ZK, SATAG comprueba cada movimiento y
         reabre el caso que no coincida.
       </p>
+      {sinDecidir.length > 0 && (
+        <p className="ti-hint" role="status">
+          {n(sinDecidir.length)} {sinDecidir.length === 1 ? "acción pedida espera" : "acciones pedidas esperan"} a que se cierre su caso y no se{" "}
+          {sinDecidir.length === 1 ? "lista" : "listan"}: {sinDecidir.map((m) => numeroCaso(m.casoNumero)).join(", ")}. Cierre el caso con su acción en ZK, o
+          descártelo para retirarla.
+        </p>
+      )}
 
       <section className="ficha__bloque" aria-labelledby="ciclo-t">
         <h3 id="ciclo-t">Cómo va</h3>

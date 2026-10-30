@@ -4,7 +4,7 @@
 // Datos inventados.
 import { describe, it, expect } from "vitest";
 import { parsearPuertaZk, puertaDe } from "@/lib/zk/puertas";
-import { accionSugerida, filasDeTanda, nombreNivel } from "@/lib/zk/movimientos";
+import { accionSugerida, esMovimientoDecidido, esPendienteDecidido, esPendienteSinDecidir, filasDeTanda, nombreNivel } from "@/lib/zk/movimientos";
 
 describe("la accion en ZK que se sugiere al cerrar (bloque 94)", () => {
   const deptos = [{ id: "10", nombre: "BAJAS" }, { id: "19", nombre: "Padres de familia" }, { id: "25", nombre: "Empleado_PPF" }];
@@ -86,5 +86,23 @@ describe("las filas de una tanda", () => {
 
   it("los niveles con su nombre de ZK", () => {
     expect(nombreNivel("E2")).toBe("ESTACIONAMIENTO 2");
+  });
+});
+
+describe("lo decidido: la regla que comparten Movimientos en ZK y la Bandeja (29-oct)", () => {
+  it("cuenta lo pendiente de un caso resuelto y lo que ZK no confirmó", () => {
+    expect(esMovimientoDecidido({ estado: "pendiente", casoEstado: "resuelto" })).toBe(true);
+    expect(esMovimientoDecidido({ estado: "no_coincide", casoEstado: "abierto" })).toBe(true);
+    expect(esPendienteDecidido({ estado: "pendiente", casoEstado: "resuelto" })).toBe(true);
+  });
+  it("no cuenta lo pendiente de un caso abierto ni de uno descartado: nadie lo decidió", () => {
+    expect(esMovimientoDecidido({ estado: "pendiente", casoEstado: "abierto" })).toBe(false);
+    expect(esMovimientoDecidido({ estado: "pendiente", casoEstado: "descartado" })).toBe(false);
+    expect(esPendienteDecidido({ estado: "hecho", casoEstado: "resuelto" })).toBe(false);
+  });
+  it("lo pedido cuyo caso se volvió a abrir es lo que la Bandeja avisa", () => {
+    expect(esPendienteSinDecidir({ estado: "pendiente", casoEstado: "abierto" })).toBe(true);
+    expect(esPendienteSinDecidir({ estado: "pendiente", casoEstado: "resuelto" })).toBe(false);
+    expect(esPendienteSinDecidir({ estado: "no_coincide", casoEstado: "abierto" })).toBe(false);
   });
 });

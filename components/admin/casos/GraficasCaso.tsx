@@ -57,7 +57,7 @@ const diaMin = (d: string) => diaMes(d);
 
 /* ------------------------------------------------------------------ piezas */
 
-function Bloque({ titulo, sub, children }: { titulo: ReactNode; sub?: ReactNode; children?: ReactNode }) {
+export function Bloque({ titulo, sub, children }: { titulo: ReactNode; sub?: ReactNode; children?: ReactNode }) {
   return (
     <section className="g-bloque">
       <div className="g-tit">{titulo}</div>
@@ -67,7 +67,7 @@ function Bloque({ titulo, sub, children }: { titulo: ReactNode; sub?: ReactNode;
   );
 }
 
-function Tabla({ cab, filas }: { cab: string[]; filas: ReactNode[][] }) {
+export function Tabla({ cab, filas }: { cab: string[]; filas: ReactNode[][] }) {
   if (!filas.length) return null;
   return (
     <details className="g-datos">

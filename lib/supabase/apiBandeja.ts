@@ -5,6 +5,7 @@
 // lib/bandeja.ts. No escribe nada. Cada fuente se lee aparte: si una falla (por
 // rol o por red), la Bandeja sigue con las demás y lo dice.
 import { supabaseAuth } from "./auth";
+import { esMovimientoDecidido, esPendienteSinDecidir } from "@/lib/zk/movimientos";
 import {
   getUltimaCargaPadronZk,
   listAvisosCaseta,
@@ -113,7 +114,9 @@ export async function leerBandeja(): Promise<LecturaBandeja> {
       puertas: cargasPuertas.length < 4 ? null : Math.max(...cargasPuertas.map((c) => diasDesde(c!.cargadoEn, ahora) ?? 0)),
     },
     zk: {
-      pendientes: movs.filter((m) => m.estado === "pendiente").length,
+      // La misma regla que Movimientos en ZK (29-oct): solo lo decidido cuenta.
+      pendientes: movs.filter((m) => m.estado === "pendiente" && esMovimientoDecidido(m)).length,
+      sinDecidir: movs.filter(esPendienteSinDecidir).length,
       noCoincide: movs.filter((m) => m.estado === "no_coincide").length,
       porVerificar: movs.filter((m) => m.estado === "hecho").length,
       tandaAbierta: tandaAbierta ? { numero: tandaAbierta.numero, faltan: tandaAbierta.pasos.filter((p) => !p.hecho).length } : null,
