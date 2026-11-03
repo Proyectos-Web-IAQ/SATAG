@@ -103,7 +103,8 @@ function gruposDe(rol: RolPanel): GrupoLado[] {
         // 9-oct: que TAG leyo cada pluma a cierta hora, para encontrar casos.
         { clave: "lecturas", titulo: "Lecturas por hora" },
         { clave: "plano", titulo: "Plano del plantel" },
-        { clave: "vialidad", titulo: "Vialidad", nota: "beta" },
+        // 3-nov: Seguir, el experimento de noviembre (antes, testigo, piloto). Ya no es beta.
+        { clave: "vialidad", titulo: "Vialidad" },
       ],
     });
   }

@@ -34,8 +34,10 @@ import { textoVehiculo } from "@/lib/vehiculo";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
 import type { ExpedienteTag } from "@/components/admin/casos/GraficasCaso";
 import LecturasZk from "@/components/admin/LecturasZk";
+import VialidadSeguir from "@/components/admin/VialidadSeguir";
 import { useGes } from "@/components/admin/IdentificacionGes";
 import { indexarRecogida, salidaPorClave, salidaPorGrupo, viajesPorSeccion } from "@/lib/recogida";
+import { CAJONES_E2_POR_DEFECTO, medirSeguimiento, type Seguimiento } from "@/lib/vialidad";
 import {
   cargarAperturasBotonZk,
   cargarEventosZk,
@@ -107,6 +109,8 @@ const memoria: {
   registros?: Registro[];
   /** El cruce con GES (por quien viene cada TAG), que cuesta segundos y no cambia si no cambian sus tres entradas (30-oct). */
   recogida?: { ges: unknown; personas: unknown; padron: unknown; valor: ReturnType<typeof indexarRecogida> };
+  /** Seguir (Vialidad): los cinco numeros por dia del experimento. Emparejar otra vez cuesta y no cambia si no cambian sus entradas (3-nov). */
+  seguir?: { lectura: unknown; recogida: unknown; cupos: unknown; valor: Seguimiento };
 } = {};
 
 /** «2026-10-02T18:55:00+00:00» a «02/10/2026». */
@@ -133,8 +137,8 @@ function expedientesPorTag(padron: PadronEstacionamiento[]): Map<string, Expedie
   return m;
 }
 
-/** Las vistas que atiende este contenedor: las del panel, las dos de gente y la de los archivos de ZK. */
-export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos" | "casos" | "lecturas";
+/** Las vistas que atiende este contenedor: las del panel, las dos de gente, la de los archivos de ZK y Seguir (Vialidad). */
+export type VistaEstac = VistaPanel | "lotes" | "secciones" | "archivos" | "casos" | "lecturas" | "vialidad";
 
 export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPanel; email: string | null; vista: VistaEstac }) {
   const [padron, setPadron] = useState<PadronEstacionamiento[] | null>(memoria.padron ?? null);
@@ -297,12 +301,16 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
   }, [ges.datos, personas, padron]);
   // La tarde dos veces: por los cinco grupos (la apilada) y por la etiqueta fina
   // (cada seccion y cada combinacion). La etiqueta es la MISMA de `deptoDe`.
-  const tarde = useMemo(() => {
-    if (!recogida || !lectura) return null;
-    const esInstitucional = (t: string) => {
+  // Los vehiculos del Instituto salen y luego entran (13-oct): lo usan la tarde y Seguir.
+  const esInstitucional = useCallback(
+    (t: string) => {
       const p = personas?.get(t);
       return !!p && grupoDeDepto(p.departamentoId, p.departamento) === GRUPO_INSTITUCIONAL;
-    };
+    },
+    [personas],
+  );
+  const tarde = useMemo(() => {
+    if (!recogida || !lectura) return null;
     const op = { corte: corteDe(lectura.resumen), inicio: inicioDe(lectura.resumen), esInstitucional };
     const etiquetaDe = (t: string) => recogida.get(t)?.etiqueta ?? (personas?.get(t)?.departamento || "No está en el padrón de ZK");
     // Solo los papas entran a «por seccion»: null deja fuera al personal, alumnos e institucionales.
@@ -318,7 +326,34 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
         manana: viajesPorSeccion(lectura.eventos, seccionesDe, "manana", op),
       },
     };
-  }, [recogida, lectura, personas]);
+  }, [recogida, lectura, personas, esInstitucional]);
+
+  // SEGUIR (lib/vialidad.ts, 3-nov): los cinco numeros de cada dia del experimento,
+  // antes, testigo y piloto. Funciona sin GES: la cifra de familias queda vacia y la
+  // pantalla lo dice. Se reutiliza de la memoria del modulo porque emparejar otra vez
+  // la bitacora cuesta y el resultado no cambia si no cambian sus tres entradas.
+  const seguir = useMemo(() => {
+    if (!lectura) return null;
+    const guardado = memoria.seguir;
+    if (guardado && guardado.lectura === lectura && guardado.recogida === recogida && guardado.cupos === cupos) return guardado.valor;
+    const t0 = performance.now();
+    const seccionesDe = recogida
+      ? (t: string) => {
+          const x = recogida.get(t);
+          return x && x.esPapa ? x.secciones : null;
+        }
+      : null;
+    const valor = medirSeguimiento(lectura.eventos, {
+      corte: corteDe(lectura.resumen),
+      inicio: inicioDe(lectura.resumen),
+      esInstitucional,
+      seccionesDeTarjeta: seccionesDe,
+      cajonesE2: cupos.E2 ?? CAJONES_E2_POR_DEFECTO,
+    });
+    anotarTiempo("seguir la vialidad", performance.now() - t0, `${valor.dias.length} días del experimento`);
+    memoria.seguir = { lectura, recogida, cupos, valor };
+    return valor;
+  }, [lectura, recogida, cupos, esInstitucional]);
 
   // Paso 1 de Desarrollo/11 (30-oct): todo lo que entra a la medicion es ESTABLE
   // entre renders (useMemo/useCallback), y la medicion misma se memoriza abajo.
@@ -871,6 +906,8 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
             expedientes={expedientes}
             ultimaHasta={importaciones.map((i) => i.hasta).filter((h): h is string => h !== null).sort().pop() ?? null}
           />
+        ) : vista === "vialidad" ? (
+          <VialidadSeguir seguir={seguir} />
         ) : vista === "lotes" || vista === "secciones" ? (
           (() => {
             const comunes = {

@@ -33,7 +33,8 @@
 //                     Tampoco vive aqui: esta junto a Estacionamientos.
 //   Plano del plantel el esquema con la ocupacion a la hora que se elija. Es vista
 //                     propia porque al final de un informe largo nadie llegaba a verlo.
-//   Vialidad · beta   la calle.
+//   Vialidad          Seguir, el experimento de noviembre. Tampoco vive aqui: es
+//                     VialidadSeguir.tsx, con su propia medicion (lib/vialidad.ts).
 // «Permanencia» y «Que tan firme es esto» dejaron de ser pestanas: lo primero vive en
 // Secciones, y de los limites quedan los que cambian una decision (dias comparables,
 // el corte, los cajones, el tope de ZK), en el pie del Resumen. El resto de aquel
@@ -72,7 +73,6 @@ import type { ResumenEventos } from "@/lib/zk/eventos";
 import type { Fuentes, PersonaZk } from "@/lib/zk/padron";
 import { MiniDia, OcupacionDelDia } from "@/components/admin/GraficasEstacionamiento";
 import PlanoPlantel from "@/components/admin/PlanoPlantel";
-import VialidadBeta from "@/components/admin/VialidadBeta";
 import { Segmentado } from "@/components/admin/UiEstacionamiento";
 
 // Con espacio fino antes del signo, como se escribe en español; y el mismo en toda la pantalla.
@@ -123,7 +123,7 @@ export interface DatosEstacionamiento {
 }
 
 /** Las vistas del panel. Las elige la barra lateral de Consulta y llegan como prop. */
-export type VistaPanel = "resumen" | "plano" | "vialidad";
+export type VistaPanel = "resumen" | "plano";
 
 /**
  * Que dias tienen datos, como una rejilla de semanas: una columna por semana, de
@@ -202,7 +202,7 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
       {/* El aviso del hueco solo donde importa: invalida el uso por credencial. En el
           plano y en la calle solo estorbaria. Las credenciales sin padron ya no van
           aqui: desde el 12-oct son casos (Estacionamiento › Casos), no analitica. */}
-      {d.huecoDias !== null && d.huecoDias > 0 && vista !== "plano" && vista !== "vialidad" && (
+      {d.huecoDias !== null && d.huecoDias > 0 && vista !== "plano" && (
         <p className="submit-error" role="alert">
           {d.huecoEntre
             ? <>Entre la ventana que termina el {diaCorto(d.huecoEntre.hastaAnterior.slice(0, 10))} y la que empieza el{" "}
@@ -532,8 +532,6 @@ export default function PanelEstacionamiento({ d, vista }: { d: DatosEstacionami
         </>
       )}
 
-      {/* =============================================== VIALIDAD (beta) ======= */}
-      {vista === "vialidad" && <VialidadBeta m={m} />}
     </>
   );
 }
