@@ -74,6 +74,10 @@ const RUTAS = [
       // Subtitulo del segmento nuevo de TI › Caseta (29-oct), sin acentos a proposito: solo
       // existe desde que las aperturas con boton se siguen desde TI.
       { texto: "Pendientes de seguimiento", que: "TI › Caseta › Aperturas con boton: el seguimiento por dia y lo pendiente (29-oct)" },
+      // Vialidad › Seguir (3-nov): «libresE2» es la clave de una de sus cinco metricas y
+      // viaja en el chunk como cadena; el pie de la pantalla va cortado antes del acento.
+      { texto: "libresE2", que: "Estacionamiento › Vialidad › Seguir: antes, testigo y piloto del experimento (3-nov)" },
+      { texto: "Las metas las fija Direcci", que: "el pie de Vialidad › Seguir: la pantalla solo mide (3-nov)" },
       // La clase de la zona que se recorre minuto a minuto: solo existe si la
       // grafica de ocupacion ya no usa los blancos de cada dos horas (5-oct).
       { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },
