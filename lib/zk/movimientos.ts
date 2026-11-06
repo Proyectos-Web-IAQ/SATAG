@@ -21,6 +21,8 @@ export interface RenglonTanda {
   deptoNombre: string;
   /** El nombre como debe quedar, si la tanda lo corrige; si no, null. */
   nombreDestino: string | null;
+  /** La placa como debe quedar, si la tanda la corrige (bloque 106); si no, null o ausente. */
+  placaDestino?: string | null;
 }
 
 /**
@@ -42,7 +44,7 @@ export function filasDeTanda(renglones: RenglonTanda[]): FilaZk[] {
       deptoId: r.deptoId,
       deptoNombre: r.deptoNombre,
       tarjeta: r.tarjeta,
-      celular: r.placa,
+      celular: r.placaDestino || r.placa,
     };
   });
 }
@@ -61,8 +63,30 @@ export const ROTULO_MOVIMIENTO: Record<EstadoMovimiento, string> = {
 /** «E1» -> «ESTACIONAMIENTO 1»: como se llaman los niveles en ZK. */
 export const nombreNivel = (n: string): string => `ESTACIONAMIENTO ${n.replace(/^E/, "")}`;
 
-/** Lo que se pide hacer en ZK al cerrar un caso (bloque 94). */
-export type AccionZk = { que: "departamento"; deptoDestino: string } | { que: "nombre"; nombreDestino: string };
+/**
+ * Lo que se pide hacer en ZK al cerrar un caso (bloque 94). La placa (bloque 106)
+ * se corrige tambien en SATAG, en el mismo paso: corregir_placa.
+ */
+export type AccionZk =
+  | { que: "departamento"; deptoDestino: string }
+  | { que: "nombre"; nombreDestino: string }
+  | { que: "placa"; placaDestino: string };
+
+/** Clase de un movimiento en ZK. */
+export type QueMovimiento = AccionZk["que"];
+
+/** Como corregir_placa / zk_placa_comparable: mayusculas, solo letras y numeros. */
+export const placaComparable = (s: string): string => s.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+/** Lo mismo que valida corregir_placa: de 4 a 10 letras y numeros. */
+export const placaValida = (s: string): boolean => /^[A-Z0-9]{4,10}$/.test(placaComparable(s));
+
+/** «Pasarlo a X», «Corregir el nombre a «Y»», «Corregir la placa a «Z»». */
+export function textoAccion(m: { que: QueMovimiento; deptoNombre?: string | null; nombreDestino?: string | null; placaDestino?: string | null }): string {
+  if (m.que === "nombre") return `Corregir el nombre a «${m.nombreDestino}»`;
+  if (m.que === "placa") return `Corregir la placa a «${m.placaDestino}»`;
+  return `Pasarlo a ${m.deptoNombre ?? "su departamento"}`;
+}
 
 /** Para comparar nombres de departamento: «Empleado_PPF» = «EMPLEADO PPF», sin acentos. Igual que zk_texto_comparable. */
 export const deptoComparable = (s: string): string =>

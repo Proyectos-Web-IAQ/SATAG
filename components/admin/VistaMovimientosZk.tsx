@@ -19,7 +19,7 @@ import Loader from "@/components/Loader";
 import { numeroCaso } from "@/lib/casosRegistro";
 import { GLOSARIO } from "@/lib/glosario";
 import { fecha, fechaHora } from "@/lib/formato";
-import { esPendienteDecidido, esPendienteSinDecidir, filasDeTanda, nombreNivel, ROTULO_MOVIMIENTO, type RenglonTanda } from "@/lib/zk/movimientos";
+import { esPendienteDecidido, esPendienteSinDecidir, filasDeTanda, nombreNivel, placaValida, ROTULO_MOVIMIENTO, textoAccion, type QueMovimiento, type RenglonTanda } from "@/lib/zk/movimientos";
 import { descargarArchivo, fechaArchivo, generarXlsxZk } from "@/lib/zk/plantillaZk";
 import {
   ajustarMovimientoZk,
@@ -65,7 +65,7 @@ export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: str
   const [movs, setMovs] = useState<Awaited<ReturnType<typeof listMovimientosDeCaso>>>([]);
   const [deptos, setDeptos] = useState<DepartamentoZk[]>([]);
   const [abierto, setAbierto] = useState(false);
-  const [accion, setAccion] = useState<{ que: "departamento" | "nombre"; depto: string; nombre: string }>({ que: "departamento", depto: "", nombre: "" });
+  const [accion, setAccion] = useState<{ que: QueMovimiento; depto: string; nombre: string; placa: string }>({ que: "departamento", depto: "", nombre: "", placa: "" });
   const [error, setError] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const leer = () => listMovimientosDeCaso(casoId).then(setMovs).catch(() => setMovs([]));
@@ -86,7 +86,8 @@ export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: str
     setGuardando(true);
     setError(null);
     try {
-      await pedirMovimientoZk(casoId, accion.que === "departamento" ? { que: "departamento", deptoDestino: accion.depto } : { que: "nombre", nombreDestino: accion.nombre }, email);
+      await pedirMovimientoZk(casoId, accion.que === "departamento" ? { que: "departamento", deptoDestino: accion.depto }
+        : accion.que === "placa" ? { que: "placa", placaDestino: accion.placa } : { que: "nombre", nombreDestino: accion.nombre }, email);
       setAbierto(false);
       await leer();
     } catch (e) {
@@ -102,7 +103,7 @@ export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: str
       {movs.length === 0 && <div>Este caso no pide nada en ZK.</div>}
       {movs.map((m) => (
         <div key={m.id}>
-          {m.que === "nombre" ? `Corregir el nombre a «${m.nombreDestino}»` : `Pasarlo a ${m.deptoNombre ?? "su departamento"}`}: {ROTULO_MOVIMIENTO[m.estado]}
+          {textoAccion(m)}: {ROTULO_MOVIMIENTO[m.estado]}
           {m.detalle ? `. ${m.detalle}` : ""}
         </div>
       ))}
@@ -112,9 +113,10 @@ export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: str
       {pide && abierto && (
         <div className="chip-row" style={{ alignItems: "center", marginTop: 6 }}>
           <select className="input" style={{ width: "auto" }} aria-label="Qué hacer en ZK" value={accion.que}
-            onChange={(e) => setAccion((a) => ({ ...a, que: e.target.value as "departamento" | "nombre" }))}>
+            onChange={(e) => setAccion((a) => ({ ...a, que: e.target.value as QueMovimiento }))}>
             <option value="departamento">Pasarlo a</option>
             <option value="nombre">Corregir el nombre a</option>
+            <option value="placa">Corregir la placa a (también en SATAG)</option>
           </select>
           {accion.que === "departamento" ? (
             <select className="input" style={{ width: "auto" }} aria-label="Departamento de ZK" value={accion.depto}
@@ -122,12 +124,16 @@ export function EnZkDelCaso({ casoId, conTag, puedePedir, email }: { casoId: str
               <option value="">—</option>
               {deptos.map((d) => <option key={d.id} value={d.id}>{d.nombre}</option>)}
             </select>
+          ) : accion.que === "placa" ? (
+            <input className="input" style={{ width: "9rem", textTransform: "uppercase" }} aria-label="Placa como debe quedar en SATAG y en ZK" value={accion.placa}
+              maxLength={14} autoComplete="off" spellCheck={false}
+              onChange={(e) => setAccion((a) => ({ ...a, placa: e.target.value }))} />
           ) : (
             <input className="input" style={{ width: "14rem" }} aria-label="Nombre como debe quedar en ZK" value={accion.nombre}
               onChange={(e) => setAccion((a) => ({ ...a, nombre: e.target.value }))} />
           )}
           <button type="button" className="ghost-action ghost-action--chico"
-            disabled={guardando || (accion.que === "departamento" ? !accion.depto : !accion.nombre.trim())} onClick={guardar}>
+            disabled={guardando || (accion.que === "departamento" ? !accion.depto : accion.que === "placa" ? !placaValida(accion.placa) : !accion.nombre.trim())} onClick={guardar}>
             Guardar
           </button>
           <button type="button" className="link-action" onClick={() => setAbierto(false)}>Cancelar</button>
@@ -205,12 +211,12 @@ export default function VistaMovimientosZk({ email, onIr }: { email: string | nu
   const grupos = useMemo(() => {
     const g = new Map<string, MovimientoZk[]>();
     for (const m of pendientes) {
-      const k = m.que === "nombre" ? "nombre" : m.deptoDestino ?? "?";
+      const k = m.que === "departamento" ? m.deptoDestino ?? "?" : m.que;
       (g.get(k) ?? g.set(k, []).get(k)!).push(m);
     }
     return [...g.entries()].sort((a, b) => b[1].length - a[1].length);
   }, [pendientes]);
-  const destino = (m: MovimientoZk) => (m.que === "nombre" ? `nombre «${m.nombreDestino}»` : porId.get(m.deptoDestino ?? "")?.nombre ?? m.deptoDestino ?? "—");
+  const destino = (m: MovimientoZk) => (m.que === "nombre" ? `nombre «${m.nombreDestino}»` : m.que === "placa" ? `placa «${m.placaDestino}»` : porId.get(m.deptoDestino ?? "")?.nombre ?? m.deptoDestino ?? "—");
 
   // Lo que falta comprobar: movimientos hechos en ZK que los archivos todavia no confirman.
   const porComprobar = (movs ?? []).filter((m) => m.estado === "hecho");
@@ -241,8 +247,9 @@ export default function VistaMovimientosZk({ email, onIr }: { email: string | nu
       const renglones: RenglonTanda[] = [...base.values()].map((b) => {
         const d = suyos.find((m) => m.tarjeta === b.tarjeta && m.que === "departamento");
         const nm = suyos.find((m) => m.tarjeta === b.tarjeta && m.que === "nombre");
+        const pl = suyos.find((m) => m.tarjeta === b.tarjeta && m.que === "placa");
         const dd = d ? porId.get(d.deptoDestino ?? "") : undefined;
-        return { ...b, deptoId: dd?.id ?? b.deptoId, deptoNombre: dd?.nombre ?? b.deptoNombre, nombreDestino: nm?.nombreDestino ?? null };
+        return { ...b, deptoId: dd?.id ?? b.deptoId, deptoNombre: dd?.nombre ?? b.deptoNombre, nombreDestino: nm?.nombreDestino ?? null, placaDestino: pl?.placaDestino ?? null };
       });
       await descargarTanda(t.numero, renglones);
     });
@@ -379,9 +386,9 @@ export default function VistaMovimientosZk({ email, onIr }: { email: string | nu
                           return x;
                         })} />
                     )}{" "}
-                    <strong>{clave === "nombre" ? "Corregir el nombre" : `A ${d?.nombre ?? clave}`}</strong> · {n(lista.length)}
+                    <strong>{clave === "nombre" ? "Corregir el nombre" : clave === "placa" ? "Corregir la placa" : `A ${d?.nombre ?? clave}`}</strong> · {n(lista.length)}
                   </label>{" "}
-                  <span className="hint">{clave === "nombre" ? "Va en el mismo archivo de importación." : pasoDe(d)}</span>
+                  <span className="hint">{clave === "nombre" || clave === "placa" ? "Va en el mismo archivo de importación." : pasoDe(d)}</span>
                 </p>
                 <div className="table-wrap">
                   <table className="tabla-tipo">
@@ -406,7 +413,7 @@ export default function VistaMovimientosZk({ email, onIr }: { email: string | nu
                                 onChange={(e) => hacer("ajustar", () => ajustarMovimientoZk(m.id, { deptoDestino: e.target.value }, email))}>
                                 {deptos.map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}
                               </select>
-                            ) : `«${m.nombreDestino}»`}
+                            ) : m.que === "placa" ? `Placa «${m.placaDestino}»` : `«${m.nombreDestino}»`}
                             {m.estado === "no_coincide" && <div className="aviso-ficha" style={{ marginTop: 6 }}>{m.detalle}</div>}
                           </td>
                           <td>

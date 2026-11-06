@@ -130,6 +130,7 @@ const RUTAS = [
       { texto: "alta_desde_zk_tarjeta", que: "Ficha Solo en ZK: Sistemas le crea su expediente a pedido (bloque 102)" },
       // Bloque 103 (28-oct): va antes del cliente. El RPC viaja por nombre.
       { texto: "corregir_nombre", que: "Ficha de persona: corregir el nombre en SATAG y pedirlo en ZK (bloque 103)" },
+      { texto: "corregir_placa", que: "Casos: corregir la placa en SATAG y pedirla en ZK desde «Cerrar…» (bloque 106)" },
       { texto: "satag.caseta.lotes", que: "Caseta: el estacionamiento que cubre se recuerda en la Chromebook (14-oct)" },
       { texto: "Ocultar cerrados", que: "Casos: los cerrados no se ven y lo pendiente va en bloques (14-oct)" },
       { texto: "eventosHasta", que: "Caseta: diseño Mostrador con las ultimas estancias y hasta cuando llegan las lecturas (14-oct)" },

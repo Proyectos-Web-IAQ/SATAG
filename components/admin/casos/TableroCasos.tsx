@@ -40,11 +40,12 @@ import {
   ordenarGruposCaso,
   tiposEnOrden,
 } from "@/lib/casosRegistro";
-import { accionSugerida, type AccionZk } from "@/lib/zk/movimientos";
+import { accionSugerida, placaValida, type AccionZk } from "@/lib/zk/movimientos";
 import {
   abrirCaso,
   listDepartamentosZk,
   pedirMovimientoZk,
+  corregirPlaca,
   type DepartamentoZk,
   anotarCaso,
   borrarTipoCaso,
@@ -695,6 +696,17 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
             const ids = dialogo.ids;
             setDialogo(null);
             if (!accion) return mover(ids, m, m.estado === "resuelto" ? "Resuelto" : "Descartado");
+            // Bloque 106: la placa se corrige en SATAG y se pide en ZK en un paso. Si ZK ya
+            // la tiene (o el TAG no esta en su padron), no queda nada «por hacer en ZK».
+            if (accion.que === "placa") {
+              const [id] = ids;
+              return hacer(async () => {
+                const r = await corregirPlaca(id, accion.placaDestino, email);
+                const motivo = r.zk !== "pedido" && m.motivo === MOTIVO_DECIDIDO_ZK ? "Se corrigió la placa en SATAG" : m.motivo;
+                await moverCasos([id], { ...m, motivo }, email);
+                setMarcados(new Set());
+              }, "Placa corregida; el caso → Resuelto (si ZK dice otra, va en Movimientos en ZK)");
+            }
             // Bloque 94: se cierra con la decision y la accion queda pendiente en Movimientos en ZK.
             // Primero la accion: si el RPC la rechaza (ya va en una tanda o esta hecha en ZK),
             // el caso no queda cerrado sin ella.
@@ -1045,7 +1057,8 @@ function DialogoCerrar({ ids, casos, tipoDe, deptosZk, onCancelar, onListo }: {
   const [eleccion, setEleccion] = useState(`R|${sugerida ? MOTIVO_DECIDIDO_ZK : propios[0] ?? resolver[0]}`);
   const [nota, setNota] = useState("");
   const [como, motivo] = eleccion.split("|");
-  const falta = !motivo && !nota.trim() ? "Escriba qué se hizo o por qué se descarta." : accion?.que === "nombre" && !accion.nombreDestino.trim() ? "Escriba el nombre como debe quedar en ZK." : null;
+  const falta = !motivo && !nota.trim() ? "Escriba qué se hizo o por qué se descarta." : accion?.que === "nombre" && !accion.nombreDestino.trim() ? "Escriba el nombre como debe quedar en ZK."
+    : accion?.que === "placa" && !placaValida(accion.placaDestino) ? "Escriba la placa como viene en el vehículo: de 4 a 10 letras y números." : null;
   return (
     <Modal titulo={`Cerrar ${ids.length > 1 ? `${ids.length} casos` : "el caso"}`} onCancelar={onCancelar}>
       <p className="ti-hint">El motivo queda en el historial{ids.length > 1 ? " de cada uno" : ""}.</p>
@@ -1081,6 +1094,19 @@ function DialogoCerrar({ ids, casos, tipoDe, deptosZk, onCancelar, onListo }: {
                 onChange={(e) => setAccion({ que: "nombre", nombreDestino: e.target.value })} />
             </label>
           )}
+          {elegidos.length === 1 && (
+            <label>
+              <input type="radio" name="acc-zk" checked={accion?.que === "placa"}
+                onChange={() => setAccion({ que: "placa", placaDestino: accion?.que === "placa" ? accion.placaDestino : "" })} />{" "}
+              Corregir la placa a{" "}
+              <input className="input" style={{ display: "inline-block", width: "9rem", textTransform: "uppercase" }} aria-label="Placa como debe quedar en SATAG y en ZK"
+                maxLength={14} autoComplete="off" spellCheck={false}
+                value={accion?.que === "placa" ? accion.placaDestino : ""}
+                onFocus={() => { if (accion?.que !== "placa") setAccion({ que: "placa", placaDestino: "" }); }}
+                onChange={(e) => setAccion({ que: "placa", placaDestino: e.target.value })} />
+              <span className="ti-hint" style={{ display: "block", margin: "2px 0 0 1.6rem" }}>También la corrige en SATAG si la persona tiene expediente.</span>
+            </label>
+          )}
         </fieldset>
       )}
       {falta && <p className="ti-hint" role="status">{falta}</p>}
@@ -1089,7 +1115,7 @@ function DialogoCerrar({ ids, casos, tipoDe, deptosZk, onCancelar, onListo }: {
         <button type="button" className="primary-action" disabled={falta !== null}
           onClick={() => onListo(
             { estado: como === "D" ? "descartado" : "resuelto", motivo: motivo || null, nota: nota.trim() },
-            como !== "D" && deptosZk && conTag && accion && (accion.que === "nombre" || accion.deptoDestino) ? accion : null,
+            como !== "D" && deptosZk && conTag && accion && (accion.que !== "departamento" || accion.deptoDestino) ? accion : null,
           )}>
           Cerrar
         </button>

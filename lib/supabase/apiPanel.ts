@@ -47,7 +47,7 @@ import type { EventoZk } from "@/lib/zk/eventos";
 import type { PersonaZk } from "@/lib/zk/padron";
 import type { ClaseGes, FuenteGes, PersonaGes } from "@/lib/ges/leer";
 import type { IdentidadDecidida, PersonaGesGuardada, VeredictoGes } from "@/lib/personas/identificar";
-import type { AccionZk, EstadoMovimiento, RenglonTanda } from "@/lib/zk/movimientos";
+import type { AccionZk, EstadoMovimiento, QueMovimiento, RenglonTanda } from "@/lib/zk/movimientos";
 import type { PuertaZk } from "@/lib/zk/puertas";
 
 export interface AccionResultado {
@@ -1760,9 +1760,11 @@ export interface MovimientoZk {
   /** La decision con que se cerro el caso (motivo y nota), si esta cerrado. */
   casoCierre: string | null;
   tarjeta: string;
-  que: "departamento" | "nombre";
+  que: QueMovimiento;
   deptoDestino: string | null;
   nombreDestino: string | null;
+  /** La placa como debe quedar en ZK (bloque 106), si es una correccion de placa. */
+  placaDestino: string | null;
   estado: EstadoMovimiento;
   tandaId: string | null;
   detalle: string;
@@ -1777,12 +1779,12 @@ export interface MovimientoZk {
 export async function listMovimientosZk(): Promise<MovimientoZk[]> {
   const { data, error } = await supabaseAuth
     .from("zk_movimientos")
-    .select("id, caso_id, tarjeta, que, depto_destino, nombre_destino, estado, tanda_id, detalle, actualizado_en, caso:casos ( numero, titulo, estado, cierre_nota )")
+    .select("id, caso_id, tarjeta, que, depto_destino, nombre_destino, placa_destino, estado, tanda_id, detalle, actualizado_en, caso:casos ( numero, titulo, estado, cierre_nota )")
     .neq("estado", "cancelado")
     .order("tarjeta", { ascending: true });
   if (error) throw new Error(traducirError(error.message));
   const filas = (data ?? []) as unknown as {
-    id: string; caso_id: string; tarjeta: string; que: "departamento" | "nombre"; depto_destino: string | null; nombre_destino: string | null;
+    id: string; caso_id: string; tarjeta: string; que: QueMovimiento; depto_destino: string | null; nombre_destino: string | null; placa_destino: string | null;
     estado: EstadoMovimiento; tanda_id: string | null; detalle: string; actualizado_en: string;
     caso: { numero: number; titulo: string; estado: string; cierre_nota: string | null } | null;
   }[];
@@ -1809,23 +1811,27 @@ export async function listMovimientosZk(): Promise<MovimientoZk[]> {
   }
   return filas.map((f) => ({
     id: f.id, casoId: f.caso_id, casoNumero: f.caso?.numero ?? 0, casoTitulo: f.caso?.titulo ?? "", casoEstado: f.caso?.estado ?? "", casoCierre: f.caso?.cierre_nota ?? null,
-    tarjeta: f.tarjeta, que: f.que, deptoDestino: f.depto_destino, nombreDestino: f.nombre_destino, estado: f.estado,
+    tarjeta: f.tarjeta, que: f.que, deptoDestino: f.depto_destino, nombreDestino: f.nombre_destino, placaDestino: f.placa_destino ?? null, estado: f.estado,
     tandaId: f.tanda_id, detalle: f.detalle, actualizadoEn: f.actualizado_en,
     enZk: enZk.get(f.tarjeta) ?? null, ultimaNota: notas.get(f.caso_id) ?? null,
   }));
 }
 
 /** Los movimientos de un caso, para mostrar en su detalle en que va. */
-export async function listMovimientosDeCaso(casoId: string): Promise<(Pick<MovimientoZk, "id" | "que" | "nombreDestino" | "estado" | "detalle"> & { deptoNombre: string | null })[]> {
+export async function listMovimientosDeCaso(casoId: string): Promise<(Pick<MovimientoZk, "id" | "que" | "nombreDestino" | "placaDestino" | "estado" | "detalle"> & { deptoNombre: string | null })[]> {
   const { data, error } = await supabaseAuth
-    .from("zk_movimientos").select("id, que, nombre_destino, estado, detalle, depto:zk_departamentos ( nombre )").eq("caso_id", casoId).neq("estado", "cancelado");
+    .from("zk_movimientos").select("id, que, nombre_destino, placa_destino, estado, detalle, depto:zk_departamentos ( nombre )").eq("caso_id", casoId).neq("estado", "cancelado");
   if (error) throw new Error(traducirError(error.message));
-  return ((data ?? []) as unknown as { id: string; que: "departamento" | "nombre"; nombre_destino: string | null; estado: EstadoMovimiento; detalle: string; depto: { nombre: string } | null }[])
-    .map((r) => ({ id: r.id, que: r.que, deptoNombre: r.depto?.nombre ?? null, nombreDestino: r.nombre_destino, estado: r.estado, detalle: r.detalle }));
+  return ((data ?? []) as unknown as { id: string; que: QueMovimiento; nombre_destino: string | null; placa_destino: string | null; estado: EstadoMovimiento; detalle: string; depto: { nombre: string } | null }[])
+    .map((r) => ({ id: r.id, que: r.que, deptoNombre: r.depto?.nombre ?? null, nombreDestino: r.nombre_destino, placaDestino: r.placa_destino ?? null, estado: r.estado, detalle: r.detalle }));
 }
 
 /** Pide (o cambia) la accion en ZK de un caso, abierto o cerrado (bloque 94). Solo ti. */
 export async function pedirMovimientoZk(casoId: string, a: AccionZk, hechoPor: string | null): Promise<void> {
+  if (a.que === "placa") {
+    await corregirPlaca(casoId, a.placaDestino, hechoPor);
+    return;
+  }
   const { error } = await supabaseAuth.rpc("pedir_movimiento_zk", {
     p_caso: casoId, p_que: a.que,
     p_depto_destino: a.que === "departamento" ? a.deptoDestino : null,
@@ -1833,6 +1839,27 @@ export async function pedirMovimientoZk(casoId: string, a: AccionZk, hechoPor: s
     p_hecho_por: hechoPor,
   });
   if (error) throw new Error(traducirError(error.message));
+}
+
+export interface ResultadoPlaca {
+  placa: string;
+  /** El TAG del caso tiene expediente vigente en SATAG. */
+  expediente: boolean;
+  /** Se cambio la placa en SATAG. */
+  satag: boolean;
+  /** pedido: va a Movimientos en ZK; coincide: ZK ya la tiene; sin_zk: el TAG no esta en el padron guardado. */
+  zk: "pedido" | "coincide" | "sin_zk";
+}
+
+/**
+ * Corrige la placa del TAG de un caso (bloque 106): en SATAG si tiene expediente
+ * vigente, y pide el cambio en ZK si su padron dice otra. No cierra el caso. Solo ti.
+ */
+export async function corregirPlaca(casoId: string, placa: string, hechoPor: string | null): Promise<ResultadoPlaca> {
+  const { data, error } = await supabaseAuth.rpc("corregir_placa", { p_caso: casoId, p_placa: placa, p_hecho_por: hechoPor });
+  if (error) throw new Error(traducirError(error.message));
+  const r = (data ?? {}) as Partial<ResultadoPlaca>;
+  return { placa: r.placa ?? placa, expediente: !!r.expediente, satag: !!r.satag, zk: r.zk ?? "pedido" };
 }
 
 export async function generarMovimientosZk(hechoPor: string | null): Promise<{ nuevos: number; cancelados: number; casosSinDestino: string[] }> {
@@ -1886,8 +1913,8 @@ export async function crearTandaZk(ids: string[], hechoPor: string | null): Prom
 }
 
 /** Lo que el padron guardado dice de unas tarjetas, para volver a armar el archivo de una tanda abierta. */
-export async function listPadronDeTarjetas(tarjetas: string[]): Promise<Map<string, Omit<RenglonTanda, "nombreDestino">>> {
-  const out = new Map<string, Omit<RenglonTanda, "nombreDestino">>();
+export async function listPadronDeTarjetas(tarjetas: string[]): Promise<Map<string, Omit<RenglonTanda, "nombreDestino" | "placaDestino">>> {
+  const out = new Map<string, Omit<RenglonTanda, "nombreDestino" | "placaDestino">>();
   for (let i = 0; i < tarjetas.length; i += 100) {
     const { data, error } = await supabaseAuth
       .from("zk_padron").select("tarjeta, id_zk, nombres, apellidos, placa, departamento_id, departamento")

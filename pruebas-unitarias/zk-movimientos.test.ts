@@ -4,7 +4,7 @@
 // Datos inventados.
 import { describe, it, expect } from "vitest";
 import { parsearPuertaZk, puertaDe } from "@/lib/zk/puertas";
-import { accionSugerida, esMovimientoDecidido, esPendienteDecidido, esPendienteSinDecidir, filasDeTanda, nombreNivel } from "@/lib/zk/movimientos";
+import { accionSugerida, esMovimientoDecidido, esPendienteDecidido, esPendienteSinDecidir, filasDeTanda, nombreNivel, placaComparable, placaValida, textoAccion } from "@/lib/zk/movimientos";
 
 describe("la accion en ZK que se sugiere al cerrar (bloque 94)", () => {
   const deptos = [{ id: "10", nombre: "BAJAS" }, { id: "19", nombre: "Padres de familia" }, { id: "25", nombre: "Empleado_PPF" }];
@@ -80,12 +80,36 @@ describe("las filas de una tanda", () => {
     expect([f.nombre, f.apellido, f.deptoId]).toEqual(["ANA SOFÍA", "DE LA ROJO PAZ", "19"]);
   });
 
+  it("una correccion de placa la escribe en Celular y no toca lo demas (bloque 106)", () => {
+    expect(filasDeTanda([{ ...base, placaDestino: "UPP388D" }])).toEqual([
+      { id: "600123", nombre: "ANA SOFIA", apellido: "ROJO PAZ", deptoId: "10", deptoNombre: "BAJAS", tarjeta: "12345678", celular: "UPP388D" },
+    ]);
+    // Sin correccion (null o renglon de antes del 106) se manda la que ya tiene ZK.
+    expect(filasDeTanda([{ ...base, placaDestino: null }])[0].celular).toBe("ABC123A");
+  });
+
   it("sin el ID de ZK no hay archivo", () => {
     expect(() => filasDeTanda([{ ...base, idZk: "" }])).toThrow(/IDs de ZK/);
   });
 
   it("los niveles con su nombre de ZK", () => {
     expect(nombreNivel("E2")).toBe("ESTACIONAMIENTO 2");
+  });
+});
+
+describe("la placa como la compara corregir_placa (bloque 106)", () => {
+  it("mayusculas, sin espacios ni guiones", () => {
+    expect(placaComparable(" upp-388 d ")).toBe("UPP388D");
+  });
+  it("valida de 4 a 10 letras y numeros", () => {
+    expect(placaValida("upp-388-d")).toBe(true);
+    expect(placaValida("A-1")).toBe(false);
+    expect(placaValida("ABCDEFGHIJK")).toBe(false);
+  });
+  it("cada accion se lee en palabras", () => {
+    expect(textoAccion({ que: "placa", placaDestino: "UPP388D" })).toBe("Corregir la placa a «UPP388D»");
+    expect(textoAccion({ que: "nombre", nombreDestino: "Ana Rojo" })).toBe("Corregir el nombre a «Ana Rojo»");
+    expect(textoAccion({ que: "departamento", deptoNombre: "BAJAS" })).toBe("Pasarlo a BAJAS");
   });
 });
 
