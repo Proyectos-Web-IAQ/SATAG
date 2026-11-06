@@ -33,15 +33,6 @@ export interface Estacionamiento {
   cupoLugares: number | null;
 }
 
-// SC-027: mapa tarjeta -> ID de ZKBioSecurity guardado en la base (sin
-// nombres): con el se exporta el padron con el ID que ZK ya tiene.
-export interface TarjetaZk {
-  noDispositivo: string;
-  zkId: string;
-  cargadoEn: string;
-  cargadoPor: string;
-}
-
 // SC-025: TAG de la escuela dado de alta por adelantado (inventario).
 // asignadoA null = disponible para instalar; con valor = ya quedo en ese
 // expediente (en uso o apartado).

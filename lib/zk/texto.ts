@@ -9,10 +9,9 @@
 // se separan: una gana una correccion y la otra no, y el sintoma es un archivo que
 // se lee bien en un lado y sale con un caracter nulo entre cada letra en el otro.
 //
-// Lo que NO se movio aqui a proposito: el cuerpo de `parsearExportZk`, que valida
-// tarjeta e ID con sus propias expresiones. Esa funcion esta en produccion y
-// refactorizarla mientras se agrega una capacidad nueva es cambiar dos cosas a la
-// vez; cuando algo falle no se sabria cual de las dos fue.
+// `parsearExportZk`, el lector del mapa de IDs que Sistemas subia aparte, vivio en
+// plantillaZk.ts hasta el 20-oct-2026: desde entonces el padron para ZK toma los
+// IDs del padron que guarda `parsearPadronZk` (lib/zk/padron.ts) con `tablaZk`.
 
 // ZK corta sus exports en 40,000 filas sin avisar. No es una suposicion: el
 // archivo del 29-sep-2026 trajo exactamente 40,000 y por eso solo cubrio ocho dias

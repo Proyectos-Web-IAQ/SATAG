@@ -16,11 +16,11 @@ import {
   listTagsInventario,
   altaTagsInventario,
   retirarTagInventario,
-  listMapaZk,
-  cargarMapaZk,
+  listIdsZk,
+  getUltimaCargaPadronZk,
   type AccionResultado,
 } from "@/lib/supabase/apiPanel";
-import { filaStock, filaPadron, generarXlsxZk, generarCsvZk, leerExportZk, descargarArchivo, fechaArchivo, type FilaZk } from "@/lib/zk/plantillaZk";
+import { filaStock, filaPadron, generarXlsxZk, generarCsvZk, descargarArchivo, fechaArchivo, type FilaZk } from "@/lib/zk/plantillaZk";
 import { estacionamientosSugeridos, esSeccionMaestro, SECCION_MAESTRO_LABEL } from "@/lib/secciones";
 import type { RolPanel } from "@/lib/supabase/auth";
 import { chipsDisponibles } from "@/lib/inventario";
@@ -30,7 +30,7 @@ import EvidenciaFirmaPanel from "@/components/admin/EvidenciaFirma";
 import ListaIncompletos from "@/components/admin/Incompletos";
 import { textoVehiculo } from "@/lib/vehiculo";
 import { DetalleRegistro, TarjetaRegistro, TRAMITE_LABEL, TIPOS_CON_FAMILIA, BadgeEspera, scrollAlAviso } from "@/components/admin/RegistroCard";
-import { enFrase, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
+import { enFrase, GLOSARIO, ROTULO, TIPO_PERSONA, textoPlumas } from "@/lib/glosario";
 import { fechaHora } from "@/lib/formato";
 
 export type Modo = "inicio" | "instalar" | "actualizar" | "baja" | "notas" | "incompletos" | "tags";
@@ -154,11 +154,14 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
   // El inventario se carga aparte: si falla (p.ej. bloque 52 sin aplicar) se
   // dice tal cual, pero las colas de instalar/actualizar/baja siguen operando.
   const [inventarioError, setInventarioError] = useState<string | null>(null);
-  // SC-027: mapa tarjeta -> ID de ZK guardado en la base (bloque 54): con el,
-  // el import de ZK actualiza las tarjetas que ZK ya tenia con otro ID. Se
-  // actualiza subiendo el export de ZK; queda para todas las sesiones.
+  // Tarjeta -> ID de ZK, leido del padron de ZK que Estacionamiento guarda al
+  // subir Usuarios en «Archivos de ZK» (bloque 83, con el ID desde el 93). Con
+  // el, el import de ZK ACTUALIZA a la persona que ya tiene la tarjeta en vez
+  // de rechazar la fila con «el número de tarjeta ya existe». Hasta el 20-oct
+  // se leia de un mapa aparte (zk_tarjetas, bloque 54) que habia que subir por
+  // separado desde aqui, y que se quedo en el 28-sep con una sola tarjeta.
   const [mapaZk, setMapaZk] = useState<Map<string, string>>(new Map());
-  const [mapaZkInfo, setMapaZkInfo] = useState<{ total: number; cargadoEn: string; cargadoPor: string } | null>(null);
+  const [mapaZkInfo, setMapaZkInfo] = useState<{ total: number; personas: number; cargadoEn: string; cargadoPor: string } | null>(null);
   const [mapaZkError, setMapaZkError] = useState<string | null>(null);
   const [exportando, setExportando] = useState(false);
   // El padron se exporta incremental: solo lo instalado desde esta fecha
@@ -225,7 +228,7 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
           (v) => ({ ok: true as const, v }),
           (e: unknown) => ({ ok: false as const, e }),
         ),
-        listMapaZk().then(
+        Promise.all([listIdsZk(), getUltimaCargaPadronZk()]).then(
           (v) => ({ ok: true as const, v }),
           (e: unknown) => ({ ok: false as const, e }),
         ),
@@ -235,10 +238,9 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
       setNotas(notasList);
       setIncompletos(incompletosList);
       if (mapaRes.ok) {
-        setMapaZk(new Map(mapaRes.v.map((t) => [t.noDispositivo, t.zkId])));
-        const ultima = mapaRes.v.reduce<typeof mapaRes.v[number] | null>(
-          (acc, t) => (!acc || t.cargadoEn > acc.cargadoEn ? t : acc), null);
-        setMapaZkInfo(ultima ? { total: mapaRes.v.length, cargadoEn: ultima.cargadoEn, cargadoPor: ultima.cargadoPor } : null);
+        const [ids, carga] = mapaRes.v;
+        setMapaZk(ids);
+        setMapaZkInfo(carga ? { total: ids.size, personas: carga.personas, cargadoEn: carga.cargadoEn, cargadoPor: carga.cargadoPor } : null);
         setMapaZkError(null);
       } else {
         setMapaZk(new Map());
@@ -587,25 +589,6 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
       scrollAlAviso(bannersRef.current);
     }
   }
-  // Lee el export de ZK en el navegador y reemplaza el mapa guardado en la base.
-  async function cargarExportZk(archivo: File | null) {
-    if (!archivo) return;
-    let filas: { tarjeta: string; id: string }[];
-    try {
-      const mapa = await leerExportZk(archivo);
-      if (mapa.size === 0) throw new Error("El archivo no parece un export de ZK (Usuarios_….csv).");
-      filas = [...mapa.entries()].map(([tarjeta, id]) => ({ tarjeta, id }));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo leer el export de ZK.");
-      scrollAlAviso(bannersRef.current);
-      return;
-    }
-    await run(
-      () => cargarMapaZk(filas, tiNombre),
-      (res) => `Mapa de ZK actualizado con ${res.total ?? filas.length} tarjetas; queda guardado para todas las sesiones.`,
-    );
-  }
-
   // Cierra una solicitud improcedente sin tocar el registro (motivo obligatorio).
   // Una nota ya vinculada se "cierra" con el mismo RPC una vez atendida.
   function confirmarDescartar(r: Registro, sol: Solicitud, motivo: string) {
@@ -1008,26 +991,31 @@ export default function VistaTi({ nombreSesion, rol, modoInicial = "inicio", sin
               <p className="ti-section-title" style={{ marginTop: 22 }}>Exportar a ZKBioSecurity</p>
               <div className="ti-form">
                 <p className="ti-hint">
-                  Descargue el archivo y en ZK use Personal → Usuarios → Importar: Fila de Inicio <strong>2</strong>,
-                  «Actualizar el ID de usuario existente» = <strong>Sí</strong>. El ID de cada persona es su No. de TAG,
-                  salvo las tarjetas que ZK ya tenía con otro ID (las dadas de alta a mano): para esas el archivo usa el
-                  ID del mapa de ZK guardado abajo, y así ZK las actualiza en vez de rechazarlas con «el número de tarjeta
-                  ya existe».
+                  Descargue el archivo y en ZK use {GLOSARIO.importarZk.ruta}: Fila de Inicio <strong>2</strong>,
+                  «Actualizar el ID de usuario existente» = <strong>Sí</strong>. El ID de cada persona es el que ZK ya
+                  tiene según el padrón guardado desde Archivos de ZK (Estacionamiento), y así ZK la actualiza en vez de
+                  rechazar la fila con «el número de tarjeta ya existe»; una tarjeta que ZK no tiene nace con su No. de TAG.
                 </p>
                 <div className="field">
-                  <span>Mapa de IDs de ZK (guardado para todas las sesiones y computadoras)</span>
+                  <span>IDs de ZK: del padrón guardado desde Archivos de ZK</span>
                   {mapaZkError ? (
-                    <p className="field-error">No se pudo cargar el mapa de ZK: {mapaZkError}</p>
+                    <p className="field-error">
+                      No se pudo leer el padrón de ZK guardado: {mapaZkError}. El archivo saldría con el No. de TAG como ID
+                      y ZK rechazaría las tarjetas que ya tiene con otro ID.
+                    </p>
                   ) : mapaZkInfo ? (
                     <p className="hint">
-                      {mapaZkInfo.total} tarjetas · actualizado el {fechaHoraLocal(mapaZkInfo.cargadoEn)} por {mapaZkInfo.cargadoPor}.
-                      Súbalo de nuevo cuando ZK cambie por altas manuales (por ejemplo, cada lunes).
+                      {mapaZkInfo.total.toLocaleString("es-MX")} tarjetas con ID, de {mapaZkInfo.personas.toLocaleString("es-MX")} personas
+                      en el Usuarios de ZK cargado el {fechaHoraLocal(mapaZkInfo.cargadoEn)} por {mapaZkInfo.cargadoPor}.
+                      Si en ZK se dio de alta a alguien a mano después de esa hora, vuelva a subir Usuarios en Archivos de ZK
+                      antes de descargar.
                     </p>
                   ) : (
-                    <p className="hint">Sin cargar todavía. Suba el export de ZK (Personal → Exportar → Usuarios_….csv) una sola vez.</p>
+                    <p className="hint">
+                      Sin padrón de ZK guardado todavía: suba Usuarios en Estacionamiento → Archivos de ZK. Mientras, el
+                      archivo sale con el No. de TAG como ID.
+                    </p>
                   )}
-                  <input className="input" type="file" accept=".csv,.txt" disabled={busy}
-                    onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; cargarExportZk(f); }} />
                 </div>
                 <div className="grid-2">
                   <div className="field">

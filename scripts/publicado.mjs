@@ -43,6 +43,8 @@ const RUTAS = [
       { texto: "anotar_caso", que: "el seguimiento de casos (bloque 89)" },
       { texto: "EMPLEADO_PPF", que: "Estacionamiento agrupa el departamento Empleado_PPF (ZK 25)" },
       { texto: "Contabilidad", que: "el rol contador existe en el cliente (inerte hasta el bloque 74)" },
+      { texto: "satag · tiempos", que: "tiempos por estación en la consola (Desarrollo/11, paso 0; 30-oct)" },
+      { texto: "cruzar con GES", que: "el cruce con GES se cronometra y se reutiliza entre pestañas (30-oct, fa8c0dd)" },
       // Marca el nombre de columna, no un rotulo de pantalla: va dentro del
       // select de listInstalaciones, asi que sobrevive a la minificacion y a
       // cualquier cambio de redaccion de las tarjetas.
@@ -150,6 +152,9 @@ const RUTAS = [
       // Bloque 100 (16-oct): va antes del cliente. p_tipo_usuario y p_apellidos_familia
       // ya viajaban en el cobro y el alta: la marca es el texto del formulario.
       { texto: "los apellidos de la familia para cambiar el tipo", que: "Actualizar datos corrige el tipo de un familiar y los apellidos de la familia (bloque 100)" },
+      // Sin acentos: la frase va en el aviso de Sistemas y solo existe desde que el
+      // padron para ZK toma los IDs del padron guardado, sin mapa aparte (20-oct).
+      { texto: "guardado desde Archivos de ZK", que: "Sistemas: el padron para ZK toma los IDs del padron de ZK guardado en Estacionamiento (20-oct)" },
     ],
   },
 ];
