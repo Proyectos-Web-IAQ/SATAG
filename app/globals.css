@@ -1571,7 +1571,9 @@ a { color: var(--primary-strong); }
 .tc-etq--urg { background: #fde8ea; color: #a3122a; }
 .tc-urg { font-size: 0.66rem; font-weight: 800; color: var(--rose); letter-spacing: 0.04em; }
 
-.tc-zona { display: flex; min-height: 520px; height: calc(100vh - 300px); border-top: 1px solid var(--line); }
+/* contain: el ancho lo pone el contenedor, nunca el panel: sin esto, arrastrar el divisor
+   ensanchaba toda la página (y, por ir centrada, la desbordaba hacia la izquierda). */
+.tc-zona { display: flex; min-height: 520px; height: calc(100vh - 300px); border-top: 1px solid var(--line); min-width: 0; contain: inline-size; }
 .tc-zona--arr { cursor: col-resize; user-select: none; }
 .tc-zona__tablero { flex: 1; min-width: 0; overflow: auto; padding-top: 12px; }
 .tc-tablero { display: grid; grid-template-columns: repeat(5, minmax(190px, 1fr)); gap: 12px; height: 100%; min-width: 1000px; }
@@ -1613,7 +1615,7 @@ a { color: var(--primary-strong); }
 .tc-divisor::after { content: ""; position: absolute; top: 50%; left: 2px; width: 5px; height: 36px; margin-top: -18px; border-radius: 3px; background: #c3cad4; }
 .tc-divisor:hover::before, .tc-divisor:focus-visible::before, .tc-zona--arr .tc-divisor::before { left: 3px; width: 3px; background: var(--primary); }
 .tc-divisor:focus-visible { outline: none; }
-.tc-panel { flex: none; width: min(540px, 46%); min-width: 320px; overflow: hidden; display: flex; flex-direction: column; background: #fff; border-left: 1px solid var(--line); }
+.tc-panel { flex: none; width: min(540px, 46%); min-width: 320px; max-width: calc(100% - 280px); overflow: hidden; display: flex; flex-direction: column; background: #fff; border-left: 1px solid var(--line); }
 .tc-det { display: flex; flex-direction: column; min-height: 0; height: 100%; }
 .tc-det__cab { padding: 12px 16px 10px; border-bottom: 1px solid var(--line); }
 .tc-det__linea { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.78rem; color: var(--muted); }
@@ -1748,7 +1750,7 @@ a { color: var(--primary-strong); }
   .tc-col--vis { display: flex; }
   .tc-col__tarjetas { overflow: visible; }
   .tc-divisor { display: none; }
-  .tc-panel { position: fixed; inset: 0; width: 100vw !important; min-width: 0; z-index: 60; border: 0; }
+  .tc-panel { position: fixed; inset: 0; width: 100vw !important; min-width: 0; max-width: none; z-index: 60; border: 0; }
   .tc-r6 { grid-template-columns: 1fr 1fr; }
   .tc-pop { left: 8px !important; right: 8px; width: auto !important; }
 }
