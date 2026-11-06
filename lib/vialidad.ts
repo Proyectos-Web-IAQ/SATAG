@@ -36,6 +36,7 @@ import {
 } from "@/lib/estacionamiento";
 import { SALIDA_DESDE, SALIDA_HASTA, SALIDA_PASO, SECCIONES_HIJO, type SeccionHijo } from "@/lib/recogida";
 import type { EventoZk, Lote } from "@/lib/zk/eventos";
+import { tipoDeRuta, type MuestraVial } from "@/lib/vial/trayectos";
 
 /* ------------------------------------------------------------------ calendario */
 
@@ -416,6 +417,8 @@ export interface FilaTarde { minuto: number; llegan: number; salen: number; sale
 export interface Flujo {
   /** Los dias con que se midio: lunes a jueves, tarde completa, sin testigos. */
   dias: string[];
+  /** Las estancias de esos dias (todas, tambien las incompletas): el simulador arma sus celdas con ellas. */
+  estancias: Estancia[];
   cupoE2: number;
   cupoE1: number;
   acumuladas: PuntoAcumulado[];
@@ -570,7 +573,91 @@ export function medirFlujo(eventos: EventoZk[], op: OpcionesFlujo): Flujo | null
   }
 
   return {
-    dias, cupoE2, cupoE1, acumuladas, masLleno, completasEnMasLleno, tarde, picoLlegan, picoSalen,
+    dias, estancias: todas, cupoE2, cupoE1, acumuladas, masLleno, completasEnMasLleno, tarde, picoLlegan, picoSalen,
     dentro1440: { E2: porGrupo("E2"), E1: porGrupo("E1") }, sistema,
   };
+}
+
+/* ------------------------------------------------------------------ la calle (bloque 107) */
+
+// La calle es el SINTOMA: Google da lo que tarda cada ruta con trafico y sin trafico, y
+// el indice es uno entre el otro (1.0x = calle libre). No explica nada; sirve para
+// comparar dias con clases, testigos y el control a 3.5 km. Las mismas reglas de la
+// pagina de Analisis Vial: rutas de llegada (pluma) con tramo libre de 2 minutos o mas
+// (en los cortos el indice exagera), control aparte, ventana de 13:50 a 15:30 y un dia
+// cuenta con 7 rondas o mas.
+
+export type ClaseDia = "LJ" | "V" | "testigo" | "finde";
+export const CALLE = { desde: 13 * 60 + 50, hasta: 15 * 60 + 30, minLibreS: 120, minRanuras: 7 };
+
+export interface DiaCalle {
+  fecha: string;
+  clase: ClaseDia;
+  /** Promedio de todas las muestras de llegada en la ventana. */
+  medio: number;
+  /** La ranura peor: promedio de las rutas de llegada en esa ranura. */
+  pico: number;
+  horaPico: number;
+  /** Minutos de mas que tardan las rutas de llegada en la ranura peor, en promedio. */
+  extraPico: number;
+  /** Mediana del control en la ventana; null si ese dia no hubo control. */
+  control: number | null;
+  ranuras: number;
+}
+export interface ResumenCalle {
+  dias: DiaCalle[];
+  porFecha: Map<string, DiaCalle>;
+  /** Mediana entre dias de lunes a jueves con clases, por ranura de la tarde. */
+  porRanuraLJ: Map<number, number>;
+  clases: { clase: ClaseDia; dias: DiaCalle[]; medio: number | null; pico: number | null; control: number | null }[];
+}
+
+export function claseDeDia(fecha: string, cal: CalendarioVial = CALENDARIO_VIAL): ClaseDia | null {
+  if (cal.testigo.includes(fecha)) return "testigo";
+  if (cal.sinClases.includes(fecha)) return null;
+  const t = tipoDiaDe(fecha);
+  return t === null ? "finde" : t;
+}
+
+export function medirCalle(muestras: MuestraVial[], cal: CalendarioVial = CALENDARIO_VIAL): ResumenCalle {
+  const porDiaRanura = new Map<string, Map<number, { acc: number[]; extra: number[]; ctrl: number[] }>>();
+  for (const m of muestras) {
+    const tipo = tipoDeRuta(m.rutaId);
+    const min = Number(m.ranura.slice(0, 2)) * 60 + Number(m.ranura.slice(3, 5));
+    const d = porDiaRanura.get(m.fecha) ?? new Map();
+    porDiaRanura.set(m.fecha, d);
+    const c = d.get(min) ?? { acc: [], extra: [], ctrl: [] };
+    d.set(min, c);
+    if (tipo === "pluma" && m.libreS >= CALLE.minLibreS) {
+      c.acc.push(m.duracionS / m.libreS);
+      c.extra.push((m.duracionS - m.libreS) / 60);
+    } else if (tipo === "control" || tipo === "testigo") c.ctrl.push(m.duracionS / m.libreS);
+  }
+  const dias: DiaCalle[] = [];
+  for (const [fecha, d] of [...porDiaRanura].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const clase = claseDeDia(fecha, cal);
+    if (!clase) continue;
+    const enVentana = [...d].filter(([m, c]) => m >= CALLE.desde && m <= CALLE.hasta && c.acc.length > 0);
+    if (enVentana.length < CALLE.minRanuras) continue;
+    const todas = enVentana.flatMap(([, c]) => c.acc);
+    let pico = -1, horaPico = 0, extraPico = 0;
+    for (const [m, c] of enVentana) {
+      const v = promedio(c.acc);
+      if (v > pico) { pico = v; horaPico = m; extraPico = promedio(c.extra); }
+    }
+    const ctrl = enVentana.map(([, c]) => c.ctrl).filter((x) => x.length).map(promedio);
+    dias.push({ fecha, clase, medio: promedio(todas), pico, horaPico, extraPico, control: mediana(ctrl), ranuras: enVentana.length });
+  }
+  const porFecha = new Map(dias.map((x) => [x.fecha, x]));
+  const porRanuraLJ = new Map<number, number>();
+  const lj = dias.filter((x) => x.clase === "LJ").map((x) => porDiaRanura.get(x.fecha)!);
+  for (let m = CALLE.desde - 20; m <= CALLE.hasta; m += 5) {
+    const vs = lj.map((d) => d.get(m)).filter((c) => c && c.acc.length).map((c) => promedio(c!.acc));
+    if (vs.length >= 3) porRanuraLJ.set(m, mediana(vs)!);
+  }
+  const clases = (["LJ", "V", "testigo", "finde"] as ClaseDia[]).map((clase) => {
+    const ds = dias.filter((x) => x.clase === clase);
+    return { clase, dias: ds, medio: mediana(ds.map((x) => x.medio)), pico: mediana(ds.map((x) => x.pico)), control: mediana(ds.map((x) => x.control).filter((x): x is number => x !== null)) };
+  });
+  return { dias, porFecha, porRanuraLJ, clases };
 }

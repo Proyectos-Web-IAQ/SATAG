@@ -82,6 +82,11 @@ const RUTAS = [
       { texto: "Las metas las fija Direcci", que: "el pie de Vialidad › Seguir: la pantalla solo mide (3-nov)" },
       // La linea de consola del calculo nuevo: solo existe desde que Vialidad tiene las siete pantallas (6-nov).
       { texto: "flujo de la tarde", que: "Vialidad: siete pantallas, curvas acumuladas de E2 y la cuenta del sistema (6-nov)" },
+      // El RPC y la tabla de la calle se llaman por nombre: solo existen desde el bloque 107 (va antes del cliente).
+      { texto: "cargar_muestras_vial", que: "Datos carga los archivos del muestreador de la calle (bloque 107)" },
+      { texto: "vial_muestras", que: "Vialidad lee la calle guardada: Cuanto es nuestro y la columna de la calle (bloque 107)" },
+      // Rotulo del boton de la primera propuesta: solo existe desde que el simulador vive en el panel (6-nov).
+      { texto: "horarios y personal a E1", que: "Vialidad › Que pasa si: el simulador con las propuestas (6-nov)" },
       // La clase de la zona que se recorre minuto a minuto: solo existe si la
       // grafica de ocupacion ya no usa los blancos de cada dos horas (5-oct).
       { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },

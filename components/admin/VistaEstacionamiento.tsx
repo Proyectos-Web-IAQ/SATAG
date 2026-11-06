@@ -37,7 +37,11 @@ import LecturasZk from "@/components/admin/LecturasZk";
 import Vialidad from "@/components/admin/Vialidad";
 import { useGes } from "@/components/admin/IdentificacionGes";
 import { indexarRecogida, salidaPorClave, salidaPorGrupo, viajesPorSeccion } from "@/lib/recogida";
-import { CAJONES_E2_POR_DEFECTO, grupoDeSecciones, medirFlujo, medirSeguimiento, type Flujo, type GrupoSalida, type Seguimiento } from "@/lib/vialidad";
+import { CAJONES_E2_POR_DEFECTO, grupoDeSecciones, medirCalle, medirFlujo, medirSeguimiento, type Flujo, type GrupoSalida, type Seguimiento } from "@/lib/vialidad";
+import CargaVial from "@/components/admin/CargaVial";
+import { celdasDeEstancias, claveSim } from "@/lib/simulador";
+import { listMuestrasVial } from "@/lib/supabase/apiVial";
+import type { MuestraVial } from "@/lib/vial/trayectos";
 import {
   cargarAperturasBotonZk,
   cargarEventosZk,
@@ -111,6 +115,8 @@ const memoria: {
   recogida?: { ges: unknown; personas: unknown; padron: unknown; valor: ReturnType<typeof indexarRecogida> };
   /** Seguir (Vialidad): los cinco numeros por dia del experimento. Emparejar otra vez cuesta y no cambia si no cambian sus entradas (3-nov). */
   seguir?: { lectura: unknown; recogida: unknown; cupos: unknown; valor: Seguimiento };
+  /** Vialidad: las muestras de la calle guardadas (bloque 107); null si el bloque no esta. */
+  muestras?: MuestraVial[] | null;
   /** Vialidad: el flujo de la tarde (6-nov). */
   flujo?: { lectura: unknown; recogida: unknown; cupos: unknown; valor: Flujo | null };
 } = {};
@@ -280,6 +286,19 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vista]);
 
+  // LA CALLE (bloque 107, 6-nov): las muestras de Google guardadas. Solo al abrir
+  // Vialidad, una vez por sesion. null = el bloque todavia no esta aplicado.
+  const [muestras, setMuestras] = useState<MuestraVial[] | null | undefined>(memoria.muestras);
+  useEffect(() => {
+    if (vista !== "vialidad" || muestras !== undefined) return;
+    let vivo = true;
+    listMuestrasVial("2026-10-01")
+      .then((m) => { if (vivo) { memoria.muestras = m; setMuestras(m); } })
+      .catch(() => { if (vivo) setMuestras(null); });
+    return () => { vivo = false; };
+  }, [vista, muestras]);
+  const calle = useMemo(() => (muestras && muestras.length ? medirCalle(muestras) : null), [muestras]);
+
   // POR QUIEN VIENE CADA AUTO (lib/recogida.ts). Con GES, los papas se parten por la
   // seccion de sus hijos y la tarde se dibuja por grupo. Solo para quien puede leer
   // GES (bloque 92); sin GES, todo sigue por departamento de ZK como antes. Son
@@ -384,6 +403,12 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     memoria.flujo = { lectura, recogida, cupos, valor };
     return valor;
   }, [lectura, recogida, cupos, esInstitucional, vista]);
+  // El simulador (lib/simulador.ts): las mismas estancias del flujo, por quién viene cada auto.
+  // Sin GES no hay papás que mover: no se arma.
+  const celdas = useMemo(
+    () => (flujo && recogida ? celdasDeEstancias(flujo.estancias, flujo.dias, (t) => claveSim(recogida.get(t))) : null),
+    [flujo, recogida],
+  );
 
   // Paso 1 de Desarrollo/11 (30-oct): todo lo que entra a la medicion es ESTABLE
   // entre renders (useMemo/useCallback), y la medicion misma se memoriza abajo.
@@ -835,6 +860,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
           </div>}
 
           {puedeCargar && <CargaPuertasZk email={email} onAviso={setAvisoCarga} />}
+          {puedeCargar && <CargaVial email={email} onAviso={(t) => { setAvisoCarga(t); memoria.muestras = undefined; setMuestras(undefined); }} />}
         </div>
         {!puedeCargar && (
           <p className="ti-hint">
@@ -937,7 +963,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
             ultimaHasta={importaciones.map((i) => i.hasta).filter((h): h is string => h !== null).sort().pop() ?? null}
           />
         ) : vista === "vialidad" ? (
-          <Vialidad flujo={flujo} seguir={seguir} />
+          <Vialidad flujo={flujo} seguir={seguir} calle={calle} calleSinBloque={muestras === null} celdas={celdas} />
         ) : vista === "lotes" || vista === "secciones" ? (
           (() => {
             const comunes = {

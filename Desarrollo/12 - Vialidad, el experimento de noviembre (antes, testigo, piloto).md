@@ -73,9 +73,13 @@ Vialidad dejó de ser solo Seguir. Ahora son siete pantallas, una por pregunta d
 
 **Los días** del flujo son los de lunes a jueves con la tarde completa en la bitácora guardada (la misma regla de la sección 3), fuera de los testigos. Código: `medirFlujo` en `lib/vialidad.ts`, con pruebas en `pruebas-unitarias/vialidad.test.ts`; la pantalla es `components/admin/Vialidad.tsx`.
 
-## 7. Lo que sigue
+## 7. La calle y el simulador, dentro (6-nov, tarde)
 
-1. **El bloque de la calle** (`vial_rutas`, `vial_muestras`, `vial_importaciones`, RPC `cargar_muestras_vial`; el número lo da el runbook, el 106 ya es de la placa) y la carga semanal de los `trayectos-AAAA-MM-DD.csv` desde Datos › Archivos de ZK. Con eso se llenan la pantalla 4 y la columna de la calle.
-2. El simulador en el panel (pantalla 5).
+- **La calle, bloque 107.** `vial_rutas` y `vial_muestras` (llave ruta, fecha, ranura: recargar no duplica), lectura ti/contador/super con MFA, escritura solo por `cargar_muestras_vial` (ti). Se carga cada semana en Datos › Archivos de ZK con los `trayectos-AAAA-MM-DD.csv` del muestreador (`components/admin/CargaVial.tsx`, `lib/vial/trayectos.ts`). `medirCalle` (lib/vialidad.ts) usa las reglas de la página de Análisis Vial: rutas de llegada con tramo libre de 2 minutos o más, control aparte, ventana 13:50–15:30, día válido con 7 rondas. Llena la pantalla 4, la columna de la calle de la 2 y las filas de la calle de Seguir. Si el bloque no está aplicado, la pantalla lo dice.
+- **El simulador.** `lib/simulador.ts` y `components/admin/SimuladorVialidad.tsx`, portados del mapa con la misma lógica (paridad con las celdas del mapa: hoy 32 min y 17 libres; Propuesta 1, 29 y 53). Las celdas salen de las mismas estancias del flujo y de GES; sin GES la pantalla lo dice.
+
+## 8. Lo que sigue
+
+La medida del piloto ante Dirección y la fila (el botón del portero).
 2. La medida del piloto: la Propuesta 1 del buscador (preescolar +15, secundaria −15, 30 del personal a E1) como lo que se pide a Dirección, una sola, la semana del 16-nov.
 3. La fila: el botón del portero.

@@ -26,20 +26,29 @@ import {
   METRICAS_PUERTA,
   NOMBRE_FASE,
   TIPOS_DIA,
+  resumirCelda,
   type Celda,
+  type DiaCalle,
   type DiaSeguir,
+  type ResumenCalle,
   type FaseId,
   type ResumenFaseTipo,
   type Seguimiento,
   type TipoDia,
 } from "@/lib/vialidad";
 
-/** Lo que la calle va a decir cuando entre a la base (bloque 106): filas vacias con su hueco a la vista. */
-const CALLE = [
-  { titulo: "Índice pico de los accesos en la salida", detalle: "de 13:50 a 15:30: con tráfico entre sin tráfico, promedio de las rutas de llegada" },
-  { titulo: "Minutos extra en el peor momento", detalle: "lo que tarda de más la ruta en ese pico" },
-  { titulo: "Accesos contra el control", detalle: "la misma avenida a 3.5 km, el mismo día" },
+/** Lo que dice la calle cada día (bloque 107); vacío mientras no haya muestras guardadas. */
+const CALLE: { titulo: string; detalle: string; valor: (d: DiaCalle) => number | null; fmt: (v: number) => string }[] = [
+  { titulo: "Índice pico de los accesos en la salida", detalle: "de 13:50 a 15:30: con tráfico entre sin tráfico, promedio de las rutas de llegada", valor: (d) => d.pico, fmt: (v) => `${v.toFixed(2)}x` },
+  { titulo: "Minutos extra en el peor momento", detalle: "lo que tardan de más las rutas de llegada en ese pico", valor: (d) => d.extraPico, fmt: (v) => `${v.toFixed(1)} min` },
+  { titulo: "Accesos contra el control", detalle: "promedio de la ventana menos la misma avenida a 3.5 km, el mismo día", valor: (d) => (d.control === null ? null : d.medio - d.control), fmt: (v) => `${v >= 0 ? "+" : ""}${v.toFixed(2)}` },
 ];
+
+function CeldaCalle({ c, fmt }: { c: Celda; fmt: (v: number) => string }) {
+  if (c.n === 0 || c.mediana === null) return <><span className="ti-hint">—</span><br /><span className="ti-hint">{dias(0, c.m)}</span></>;
+  const rango = c.n > 1 && c.min !== null && c.max !== null && c.min !== c.max ? `${fmt(c.min)} a ${fmt(c.max)} · ` : "";
+  return <><strong>{fmt(c.mediana)}</strong><br /><span className="ti-hint">{rango}{dias(c.n, c.m)}</span></>;
+}
 
 /** El tipo de dia elegido sobrevive al cambio de pestana, como el lote en Estacionamientos. */
 let ultimoTipo: TipoDia = "LJ";
@@ -103,7 +112,7 @@ function FilaDia({ d }: { d: DiaSeguir }) {
   );
 }
 
-export default function VialidadSeguir({ seguir }: { seguir: Seguimiento | null }) {
+export default function VialidadSeguir({ seguir, calle = null }: { seguir: Seguimiento | null; calle?: ResumenCalle | null }) {
   const [tipo, setTipoEstado] = useState<TipoDia>(ultimoTipo);
   const setTipo = (t: string) => {
     ultimoTipo = t as TipoDia;
@@ -177,16 +186,18 @@ export default function VialidadSeguir({ seguir }: { seguir: Seguimiento | null 
                   <br />
                   <span className="ti-hint">{c.detalle} · Google</span>
                 </td>
-                {FASES.map((f) => (
-                  <td key={f} className="num"><span className="ti-hint">—</span></td>
-                ))}
+                {FASES.map((f) => {
+                  const r = de(f);
+                  const vs = r.habiles.map((d) => { const x = calle?.porFecha.get(d); return x ? c.valor(x) : null; });
+                  return <td key={f} className="num"><CeldaCalle c={resumirCelda(vs, r.m)} fmt={c.fmt} /></td>;
+                })}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <p className="ti-hint" style={{ margin: "6px 0 0" }}>
-        La calle (Google) entra a la base con el bloque 106; hasta entonces sus filas quedan vacías.
+        {calle ? "La calle: Google Routes guardado en SATAG; un día cuenta con 7 rondas o más en la salida." : "La calle (Google) se llena al cargar en Datos los archivos del muestreador; hasta entonces sus filas quedan vacías."}
         {seguir.conGes ? "" : " Sin GES en esta sesión, «minutos dentro por familia» queda vacío."}
       </p>
 
@@ -243,7 +254,7 @@ export default function VialidadSeguir({ seguir }: { seguir: Seguimiento | null 
           Piloto{piloto ? ` del ${fechaLarga(piloto.desde)} al ${fechaLarga(piloto.hasta)}` : ""}:{" "}
           {cal.medidaPiloto ?? "sin medida autorizada todavía; mientras tanto hereda las horas de salida de antes."}
         </p>
-        <p>Lo que falta: la calle entra con el bloque 106 (Google Routes, cargado cada semana) y la fila afuera, con el botón del portero en la caseta.</p>
+        <p>Lo que falta: la fila afuera, con el botón del portero en la caseta. La calle se actualiza al cargar cada semana los archivos del muestreador en Datos.</p>
       </div>
     </section>
   );
