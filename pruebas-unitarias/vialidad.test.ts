@@ -15,6 +15,9 @@ import {
   faseDe,
   horaSalidaDe,
   medirSeguimiento,
+  medirFlujo,
+  grupoDeSecciones,
+  type GrupoSalida,
   resumirCelda,
   tipoDiaDe,
   type CalendarioVial,
@@ -217,5 +220,53 @@ describe("medirSeguimiento · el resumen por fase y tipo de dia", () => {
     const r100 = medirSeguimiento(serie, { ...op, cajonesE2: 100 });
     expect(r100.cajonesE2).toBe(100);
     expect(r100.dias.find((x) => x.dia === "2026-11-03")!.valores.libresE2).toBe(98);
+  });
+});
+
+describe("medirFlujo · la tarde como una fila", () => {
+  const GRUPO: Record<string, GrupoSalida> = { D: "personal", D1: "personal", D2: "personal", P: "primaria", X: "primaria", S: "secprepa", Y: "otros" };
+  const serieFlujo = [
+    ...diaConClases("2026-10-20"),
+    ...diaConClases("2026-10-21"),
+    // Fuera del dia tipico: un viernes y un testigo.
+    ...diaConClases("2026-10-23"),
+    ...diaTestigo("2026-11-02"),
+  ];
+  const f = medirFlujo(serieFlujo, { grupoDe: (t) => GRUPO[t] ?? "otros", seccionesDeTarjeta: seccionesDe, minAccesosDia: 4 })!;
+
+  it("solo cuenta lunes a jueves con la tarde completa, sin testigos ni viernes", () => {
+    expect(f.dias).toEqual(["2026-10-20", "2026-10-21"]);
+  });
+  it("las curvas acumuladas empiezan con los que ya estaban y cierran con todo lo que paso", () => {
+    expect(f.acumuladas[0]).toEqual({ minuto: 12 * 60, llegaron: 1, salieron: 0 });
+    const fin = f.acumuladas[f.acumuladas.length - 1];
+    expect(fin.minuto).toBe(16 * 60);
+    expect(fin.llegaron).toBe(5); // D ya estaba; entran X, P, S y Y
+    expect(fin.salieron).toBe(5);
+  });
+  it("lo mas lleno: la mayor distancia entre las dos curvas, y lo que ven las estancias completas", () => {
+    expect(f.masLleno).toEqual({ minuto: 13 * 60 + 40, dentro: 4, libres: 116 });
+    expect(f.completasEnMasLleno).toBe(4);
+  });
+  it("la tarde cada 5 minutos: picos y con que salida se van", () => {
+    expect(f.picoLlegan).toBe(13 * 60 + 35);
+    expect(f.picoSalen).toBe(14 * 60 + 20);
+    expect(f.tarde.find((t) => t.minuto === 14 * 60 + 20)!.salenPor).toEqual({ primaria: 2 });
+  });
+  it("quien esta dentro a las 14:40, promedio por dia", () => {
+    expect(f.dentro1440.E2).toEqual({ personal: 1, secprepa: 1 });
+    expect(f.dentro1440.E1).toEqual({ personal: 1 });
+  });
+  it("la cuenta del sistema: llegan, minutos por familia y papas a las 14:30", () => {
+    expect(f.sistema).toMatchObject({ llegan: 2, cadaMin: 40, papasA1430: 1, conHermanos: 0, minutosDentro: 58 });
+  });
+  it("sin GES no hay cuenta del sistema, y sin dias completos no hay flujo", () => {
+    expect(medirFlujo(serieFlujo, { grupoDe: () => "otros", minAccesosDia: 4 })!.sistema).toBeNull();
+    expect(medirFlujo(diaTestigo("2026-11-02"), { grupoDe: () => "otros", minAccesosDia: 4 })).toBeNull();
+  });
+  it("el grupo de salida es el del hijo mayor; secundaria y prepa van juntas", () => {
+    expect(grupoDeSecciones(["primaria", "preescolar"])).toBe("primaria");
+    expect(grupoDeSecciones(["preparatoria", "primaria"])).toBe("secprepa");
+    expect(grupoDeSecciones([])).toBe("otros");
   });
 });

@@ -53,8 +53,29 @@ Consecuencia práctica: el export de ZK de un viernes tiene que hacerse **despu�
 - `components/admin/VialidadSeguir.tsx` — la pantalla. Reemplaza a la beta de Vialidad (minutos capturados a mano en el navegador), que se borró.
 - `components/admin/VistaEstacionamiento.tsx` — calcula `seguir` una vez por sesión (memoria del módulo) y lo pasa a la pantalla; sin GES la cifra de familias queda vacía y se dice.
 
-## 6. Lo que sigue
+## 6. Siete pantallas (6-nov)
 
-1. **Bloque 106** (`vial_rutas`, `vial_muestras`, `vial_importaciones`, RPC `cargar_muestras_vial`) y la carga semanal de los `trayectos-AAAA-MM-DD.csv` desde Datos › Archivos de ZK. Con eso se llenan las tres filas de la calle y una tabla por ruta.
+Vialidad dejó de ser solo Seguir. Ahora son siete pantallas, una por pregunta de quien decide, y Seguir es la sexta:
+
+| Pantalla | Pregunta | Qué muestra | Estado |
+|---|---|---|---|
+| 1. El sistema | Con qué modelo se lee | Llegan → se guardan → salen; la fila afuera (causa) y la calle (síntoma); la cuenta autos dentro = llegan por minuto × minutos que se queda cada uno, y las tres palancas | Con datos |
+| 2. Qué pasa | ¿Qué pasa? | Curvas acumuladas de E2 (llegaron, salieron y el tope «salieron + cupo») y la tarde cada 5 minutos con quién sale | Con datos; falta la columna de la calle |
+| 3. Por qué | ¿Por qué? | Quién ocupa E2 y E1 a las 14:40 por la salida de su hijo mayor; qué parte tiene hermanos | Con datos |
+| 4. Cuánto es nuestro | ¿Por qué? | Calle en días con clases, testigos y control | Espera el bloque de la calle |
+| 5. Qué pasa si | ¿Qué pasa si? | El simulador | Espera reescribirse para el panel |
+| 6. Cómo sabremos si sirvió | ¿Sirvió? | Seguir | Con datos |
+| 7. Qué falta autorizar | — | La fila, el testigo del 16, el circuito, la calle, la medida | Fija |
+
+**La cuenta (ley de Little).** No es una predicción: sobre una tarde completa se cumple siempre, porque es conservación. Sirve para ordenar las palancas: bajar los que llegan por minuto (escalonar, solo si las familias ajustan), bajar los minutos (que lleguen cuando sale el hijo, recogida única) o subir el tope (el personal a E1, que no toca la cuenta).
+
+**Las curvas acumuladas** cuentan cada paso por la pluma; lo demás de Vialidad cuenta solo estancias con entrada y salida leídas. Por eso la curva puede marcar más autos dentro que los cajones: son salidas que la pluma no leyó. La pantalla lo dice cuando pasa.
+
+**Los días** del flujo son los de lunes a jueves con la tarde completa en la bitácora guardada (la misma regla de la sección 3), fuera de los testigos. Código: `medirFlujo` en `lib/vialidad.ts`, con pruebas en `pruebas-unitarias/vialidad.test.ts`; la pantalla es `components/admin/Vialidad.tsx`.
+
+## 7. Lo que sigue
+
+1. **El bloque de la calle** (`vial_rutas`, `vial_muestras`, `vial_importaciones`, RPC `cargar_muestras_vial`; el número lo da el runbook, el 106 ya es de la placa) y la carga semanal de los `trayectos-AAAA-MM-DD.csv` desde Datos › Archivos de ZK. Con eso se llenan la pantalla 4 y la columna de la calle.
+2. El simulador en el panel (pantalla 5).
 2. La medida del piloto: la Propuesta 1 del buscador (preescolar +15, secundaria −15, 30 del personal a E1) como lo que se pide a Dirección, una sola, la semana del 16-nov.
 3. La fila: el botón del portero.

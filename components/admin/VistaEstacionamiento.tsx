@@ -34,10 +34,10 @@ import { textoVehiculo } from "@/lib/vehiculo";
 import TableroCasos from "@/components/admin/casos/TableroCasos";
 import type { ExpedienteTag } from "@/components/admin/casos/GraficasCaso";
 import LecturasZk from "@/components/admin/LecturasZk";
-import VialidadSeguir from "@/components/admin/VialidadSeguir";
+import Vialidad from "@/components/admin/Vialidad";
 import { useGes } from "@/components/admin/IdentificacionGes";
 import { indexarRecogida, salidaPorClave, salidaPorGrupo, viajesPorSeccion } from "@/lib/recogida";
-import { CAJONES_E2_POR_DEFECTO, medirSeguimiento, type Seguimiento } from "@/lib/vialidad";
+import { CAJONES_E2_POR_DEFECTO, grupoDeSecciones, medirFlujo, medirSeguimiento, type Flujo, type GrupoSalida, type Seguimiento } from "@/lib/vialidad";
 import {
   cargarAperturasBotonZk,
   cargarEventosZk,
@@ -111,6 +111,8 @@ const memoria: {
   recogida?: { ges: unknown; personas: unknown; padron: unknown; valor: ReturnType<typeof indexarRecogida> };
   /** Seguir (Vialidad): los cinco numeros por dia del experimento. Emparejar otra vez cuesta y no cambia si no cambian sus entradas (3-nov). */
   seguir?: { lectura: unknown; recogida: unknown; cupos: unknown; valor: Seguimiento };
+  /** Vialidad: el flujo de la tarde (6-nov). */
+  flujo?: { lectura: unknown; recogida: unknown; cupos: unknown; valor: Flujo | null };
 } = {};
 
 /** «2026-10-02T18:55:00+00:00» a «02/10/2026». */
@@ -354,6 +356,34 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
     memoria.seguir = { lectura, recogida, cupos, valor };
     return valor;
   }, [lectura, recogida, cupos, esInstitucional]);
+
+  // VIALIDAD (lib/vialidad.ts, 6-nov): el flujo de la tarde de un dia tipico de lunes a
+  // jueves (curvas acumuladas de E2, la tarde cada 5 min y la cuenta del sistema). Solo se
+  // calcula al abrir Vialidad y se guarda en la memoria del modulo, como Seguir.
+  const flujo = useMemo(() => {
+    if (!lectura || vista !== "vialidad") return null;
+    const guardado = memoria.flujo;
+    if (guardado && guardado.lectura === lectura && guardado.recogida === recogida && guardado.cupos === cupos) return guardado.valor;
+    const t0 = performance.now();
+    const grupoDe = (t: string): GrupoSalida => {
+      const x = recogida?.get(t);
+      if (!x) return "otros";
+      if (x.grupo === "personal") return "personal";
+      return x.esPapa ? grupoDeSecciones(x.secciones) : "otros";
+    };
+    const valor = medirFlujo(lectura.eventos, {
+      corte: corteDe(lectura.resumen),
+      inicio: inicioDe(lectura.resumen),
+      esInstitucional,
+      grupoDe,
+      seccionesDeTarjeta: recogida ? (t: string) => { const x = recogida.get(t); return x && x.esPapa ? x.secciones : null; } : null,
+      cupoE2: cupos.E2 ?? CAJONES_E2_POR_DEFECTO,
+      cupoE1: cupos.E1 ?? 80,
+    });
+    anotarTiempo("flujo de la tarde", performance.now() - t0, `${valor?.dias.length ?? 0} días de lunes a jueves`);
+    memoria.flujo = { lectura, recogida, cupos, valor };
+    return valor;
+  }, [lectura, recogida, cupos, esInstitucional, vista]);
 
   // Paso 1 de Desarrollo/11 (30-oct): todo lo que entra a la medicion es ESTABLE
   // entre renders (useMemo/useCallback), y la medicion misma se memoriza abajo.
@@ -907,7 +937,7 @@ export default function VistaEstacionamiento({ rol, email, vista }: { rol: RolPa
             ultimaHasta={importaciones.map((i) => i.hasta).filter((h): h is string => h !== null).sort().pop() ?? null}
           />
         ) : vista === "vialidad" ? (
-          <VialidadSeguir seguir={seguir} />
+          <Vialidad flujo={flujo} seguir={seguir} />
         ) : vista === "lotes" || vista === "secciones" ? (
           (() => {
             const comunes = {

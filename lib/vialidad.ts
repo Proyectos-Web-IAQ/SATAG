@@ -260,7 +260,23 @@ export function resumirCelda(valores: (number | null)[], m: number): Celda {
   };
 }
 
-const VACIO: Record<MetricaPuerta, number | null> = { minutosFamilia: null, libresE2: null, salenE2: null, lleganE2: null, picoE1: null };
+/**
+ * Por que un dia con bitacora no cuenta, o null si cuenta. La misma regla para Seguir y
+ * para el flujo: el dia del export no termino, y un archivo que empieza tarde o acaba
+ * temprano no describe la tarde.
+ */
+function motivoDia(ok: EventoZk[], dia: string, corte: Corte | null, minutoCierre: number, minAccesos: number): string | null {
+  if (corte !== null && corte.dia === dia && corte.minuto < minutoCierre) return `el archivo termina a las ${horaCorta(corte.minuto)}: el día seguía corriendo`;
+  if (ok.length < minAccesos) return `solo ${ok.length} accesos`;
+  const minutos = ok.map(minutoDe);
+  const primero = Math.min(...minutos);
+  const ultimo = Math.max(...minutos);
+  if (primero > DIA_SEGUIR.desde) return `la bitácora de ese día empieza a las ${horaCorta(primero)}`;
+  if (ultimo < DIA_SEGUIR.hasta) return `la bitácora de ese día termina a las ${horaCorta(ultimo)}`;
+  return null;
+}
+
+const VACIO: Record<MetricaPuerta, number | null> ={ minutosFamilia: null, libresE2: null, salenE2: null, lleganE2: null, picoE1: null };
 
 /**
  * Los cinco numeros de cada dia habil del experimento y su resumen por fase y tipo de
@@ -293,14 +309,7 @@ export function medirSeguimiento(eventos: EventoZk[], op: OpcionesSeguir = {}): 
     const base = { dia, fase, tipo, accesos: ok.length, familias: 0, sinFamilia: 0 };
     if (ok.length === 0) return { ...base, completo: false, motivo: "sin bitácora", valores: { ...VACIO } };
 
-    const minutos = ok.map(minutoDe);
-    const primero = Math.min(...minutos);
-    const ultimo = Math.max(...minutos);
-    let motivo: string | null = null;
-    if (corte !== null && corte.dia === dia && corte.minuto < minutoCierre) motivo = `el archivo termina a las ${horaCorta(corte.minuto)}: el día seguía corriendo`;
-    else if (ok.length < minAccesos) motivo = `solo ${ok.length} accesos`;
-    else if (primero > DIA_SEGUIR.desde) motivo = `la bitácora de ese día empieza a las ${horaCorta(primero)}`;
-    else if (ultimo < DIA_SEGUIR.hasta) motivo = `la bitácora de ese día termina a las ${horaCorta(ultimo)}`;
+    const motivo = motivoDia(ok, dia, corte, minutoCierre, minAccesos);
 
     const est = estPorDia.get(dia) ?? [];
     const e2 = est.filter((s) => s.lote === "E2");
@@ -359,4 +368,209 @@ export function medirSeguimiento(eventos: EventoZk[], op: OpcionesSeguir = {}): 
     }
   }
   return { dias, resumen, conGes: seccionesDe !== null, cajonesE2, calendario: cal };
+}
+
+/* ------------------------------------------------------------------ el flujo de la tarde */
+
+// LA TARDE COMO UNA FILA (6-nov-2026). A la salida llegan autos, se guardan en E2 y E1,
+// y se van cuando sale la seccion por la que vinieron. Es un sistema de colas con
+// almacenamiento, y se lee con dos figuras de ingenieria de transito:
+//
+//   - Las CURVAS ACUMULADAS: autos que han entrado a E2 desde las 12:00 (con los que ya
+//     estaban) y autos que han salido. La distancia vertical entre las dos son los que
+//     estan dentro; la curva «salieron + cupo» es el tope. Cuando la de entradas la toca,
+//     E2 esta lleno y el siguiente auto se queda afuera, donde ninguna pluma lo ve.
+//   - La CUENTA autos dentro = llegan por minuto × minutos que se queda cada uno (ley de
+//     Little). No es una prediccion: es conservacion. Sirve para decir que solo hay tres
+//     palancas: que no lleguen juntos, que se queden menos, o mas lugar (el personal a E1).
+//
+// Se mide con los dias habiles de lunes a jueves con la tarde completa en la ventana que
+// bajo la pestana, fuera de los testigos. Las curvas cuentan cada paso por la pluma; lo
+// demas, solo estancias con entrada y salida leidas (por eso dan un poco menos).
+
+/** Con que salida se va un auto en la tarde: la seccion del hijo mayor, el personal u otros. */
+export type GrupoSalida = "comunidad" | "preescolar" | "primaria" | "secprepa" | "personal" | "otros";
+export const GRUPOS_SALIDA: { clave: GrupoSalida; titulo: string; color: string }[] = [
+  { clave: "personal", titulo: "personal", color: "#5b6b82" },
+  { clave: "secprepa", titulo: "secundaria y prepa", color: "#eb6834" },
+  { clave: "primaria", titulo: "primaria", color: "#1baf7a" },
+  { clave: "preescolar", titulo: "preescolar", color: "#eda100" },
+  { clave: "comunidad", titulo: "comunidad infantil", color: "#e87ba4" },
+  { clave: "otros", titulo: "otros y sin ligar", color: "#c9d1dc" },
+];
+/** De las secciones de los hijos (en cualquier orden) al grupo de su salida: la del mayor. */
+export function grupoDeSecciones(secciones: SeccionHijo[]): GrupoSalida {
+  const mayor = [...SECCIONES_HIJO].reverse().find((x) => secciones.includes(x));
+  if (!mayor) return "otros";
+  return mayor === "secundaria" || mayor === "preparatoria" ? "secprepa" : mayor;
+}
+
+export const FLUJO = { desde: 12 * 60, hasta: 16 * 60, paso: 5, tablaDesde: 13 * 60 + 30, tablaHasta: 15 * 60 + 30 };
+/** La ventana en que llegan los papas a recoger: la cuenta del sistema se hace con ella. */
+export const RECOGE = { desde: 13 * 60 + 30, hasta: 14 * 60 + 50 };
+const A_LAS_1430 = 14 * 60 + 30;
+const A_LAS_1440 = 14 * 60 + 40;
+
+export interface PuntoAcumulado { minuto: number; llegaron: number; salieron: number }
+export interface FilaTarde { minuto: number; llegan: number; salen: number; salenPor: Partial<Record<GrupoSalida, number>> }
+export interface Flujo {
+  /** Los dias con que se midio: lunes a jueves, tarde completa, sin testigos. */
+  dias: string[];
+  cupoE2: number;
+  cupoE1: number;
+  acumuladas: PuntoAcumulado[];
+  masLleno: { minuto: number; dentro: number; libres: number };
+  /** Lo que ven las estancias completas en ese mismo minuto: la diferencia son lecturas incompletas. */
+  completasEnMasLleno: number;
+  tarde: FilaTarde[];
+  picoLlegan: number;
+  picoSalen: number;
+  /** Quien esta dentro a las 14:40, por grupo, promedio por dia. */
+  dentro1440: Record<"E1" | "E2", Partial<Record<GrupoSalida, number>>>;
+  /** La cuenta del sistema; null sin GES. */
+  sistema: null | {
+    /** Papas que entran a E2 a recoger entre RECOGE.desde y RECOGE.hasta, por dia. */
+    llegan: number;
+    cadaMin: number;
+    porMinuto: number;
+    minutosDentro: number | null;
+    papasA1430: number;
+    /** De los autos de papas ligados que recogen, que parte tiene hijos en mas de una seccion. */
+    conHermanos: number;
+  };
+}
+
+export interface OpcionesFlujo {
+  corte?: Corte | null;
+  inicio?: Corte | null;
+  minutoCierre?: number;
+  esInstitucional?: (tarjeta: string) => boolean;
+  /** Con que salida se va cada tarjeta; sin GES, todo lo que no es personal va a «otros». */
+  grupoDe: (tarjeta: string) => GrupoSalida;
+  /** Secciones de los hijos (vacio = papa sin ligar), null si no es papa. null = sin GES. */
+  seccionesDeTarjeta?: ((tarjeta: string) => SeccionHijo[] | null) | null;
+  cupoE2?: number;
+  cupoE1?: number;
+  calendario?: CalendarioVial;
+  minAccesosDia?: number;
+}
+
+const promedio = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+
+/** El flujo de la tarde de un dia tipico de lunes a jueves; null si no hay ningun dia completo. */
+export function medirFlujo(eventos: EventoZk[], op: OpcionesFlujo): Flujo | null {
+  const cal = op.calendario ?? CALENDARIO_VIAL;
+  const corte = op.corte ?? null;
+  const minutoCierre = op.minutoCierre ?? MINUTO_CIERRE_POR_DEFECTO;
+  const cupoE2 = op.cupoE2 ?? CAJONES_E2_POR_DEFECTO;
+  const cupoE1 = op.cupoE1 ?? 80;
+  const minAccesos = op.minAccesosDia ?? DIA_SEGUIR.minAccesos;
+  const seccionesDe = op.seccionesDeTarjeta ?? null;
+
+  const ok = accesos(eventos);
+  const okPorDia = new Map<string, EventoZk[]>();
+  for (const e of ok) {
+    const g = okPorDia.get(diaDe(e));
+    if (g) g.push(e);
+    else okPorDia.set(diaDe(e), [e]);
+  }
+  const dias = [...okPorDia.keys()].sort().filter((d) =>
+    tipoDiaDe(d) === "LJ" && !cal.testigo.includes(d) && !cal.sinClases.includes(d) && motivoDia(okPorDia.get(d)!, d, corte, minutoCierre, minAccesos) === null);
+  if (dias.length === 0) return null;
+  const idx = new Map(dias.map((d, i) => [d, i]));
+  const n = dias.length;
+
+  const { estancias } = emparejarEstancias(eventos, minutoCierre, corte, op.inicio ?? null, op.esInstitucional ?? (() => false));
+  const todas = estancias.filter((s) => idx.has(s.dia));
+  const completas = confirmadas(todas);
+
+  // Las curvas, con los que ya estaban a las 12:00 (toda estancia, aunque le falte un extremo).
+  const minutos: number[] = [];
+  for (let m = FLUJO.desde; m <= FLUJO.hasta; m += FLUJO.paso) minutos.push(m);
+  const celda = (m: number) => FLUJO.desde + Math.floor((m - FLUJO.desde) / FLUJO.paso) * FLUJO.paso;
+  const entran = new Map<number, number[]>();
+  const salen = new Map<number, number[]>();
+  for (const m of minutos) {
+    entran.set(m, new Array<number>(n).fill(0));
+    salen.set(m, new Array<number>(n).fill(0));
+  }
+  for (const e of ok) {
+    const i = idx.get(diaDe(e));
+    if (i === undefined || e.lote !== "E2" || e.sentido === null) continue;
+    const m = minutoDe(e);
+    if (m < FLUJO.desde || m >= FLUJO.hasta + FLUJO.paso) continue;
+    (e.sentido === "entrada" ? entran : salen).get(celda(m))![i] += 1;
+  }
+  const yaEstaban = new Array<number>(n).fill(0);
+  for (const s of todas) if (s.lote === "E2" && s.entro <= FLUJO.desde && s.entro + s.dur > FLUJO.desde) yaEstaban[idx.get(s.dia)!] += 1;
+  const acumuladas: PuntoAcumulado[] = [];
+  let A = promedio(yaEstaban);
+  let D = 0;
+  for (const m of minutos) {
+    acumuladas.push({ minuto: m, llegaron: A, salieron: D });
+    A += promedio(entran.get(m)!);
+    D += promedio(salen.get(m)!);
+  }
+  const top = acumuladas.reduce((a, p) => (p.llegaron - p.salieron > a.llegaron - a.salieron ? p : a));
+  const masLleno = { minuto: top.minuto, dentro: top.llegaron - top.salieron, libres: cupoE2 - (top.llegaron - top.salieron) };
+  const dentroEn = (lote: Lote, m: number) => completas.filter((s) => s.lote === lote && s.entro <= m && s.entro + s.dur > m);
+  const completasEnMasLleno = dentroEn("E2", masLleno.minuto).length / n;
+
+  // La tarde cada 5 minutos: mediana entre dias de lo que pasa por la pluma, y con que salida se van.
+  const tarde: FilaTarde[] = [];
+  for (const m of minutos.filter((x) => x >= FLUJO.tablaDesde && x <= FLUJO.tablaHasta)) {
+    const salenPor: Partial<Record<GrupoSalida, number>> = {};
+    for (const s of completas) {
+      if (s.lote !== "E2" || celda(s.entro + s.dur) !== m) continue;
+      const g = op.grupoDe(s.tarjeta);
+      salenPor[g] = (salenPor[g] ?? 0) + 1 / n;
+    }
+    tarde.push({ minuto: m, llegan: mediana(entran.get(m)!) ?? 0, salen: mediana(salen.get(m)!) ?? 0, salenPor });
+  }
+  const picoLlegan = tarde.reduce((a, t) => (t.llegan > a.llegan ? t : a)).minuto;
+  const picoSalen = tarde.reduce((a, t) => (t.salen > a.salen ? t : a)).minuto;
+
+  const porGrupo = (lote: Lote) => {
+    const o: Partial<Record<GrupoSalida, number>> = {};
+    for (const s of dentroEn(lote, A_LAS_1440)) {
+      const g = op.grupoDe(s.tarjeta);
+      o[g] = (o[g] ?? 0) + 1 / n;
+    }
+    return o;
+  };
+
+  let sistema: Flujo["sistema"] = null;
+  if (seccionesDe) {
+    let llegan = 0, ligados = 0, conHermanos = 0, sumaFam = 0, nFam = 0, papas1430 = 0;
+    for (const s of completas) {
+      const crudas = seccionesDe(s.tarjeta);
+      if (crudas === null || s.lote !== "E2") continue;
+      const sale = s.entro + s.dur;
+      if (s.entro <= A_LAS_1430 && sale > A_LAS_1430) papas1430 += 1;
+      if (sale < RECOGIDA.salenDesde || sale > RECOGIDA.salenHasta) continue;
+      if (s.entro >= RECOGE.desde && s.entro < RECOGE.hasta) llegan += 1;
+      const menor = SECCIONES_HIJO.find((x) => crudas.includes(x));
+      if (!menor) continue;
+      ligados += 1;
+      if (new Set(crudas).size > 1) conHermanos += 1;
+      if (s.entro >= horaSalidaDe(menor, "antes", cal) - ANTES_DE_LA_SALIDA_MIN && s.entro < RECOGIDA.entranAntesDe) {
+        sumaFam += s.dur;
+        nFam += 1;
+      }
+    }
+    const porDia = llegan / n;
+    sistema = {
+      llegan: porDia,
+      cadaMin: porDia > 0 ? (RECOGE.hasta - RECOGE.desde) / porDia : 0,
+      porMinuto: porDia / (RECOGE.hasta - RECOGE.desde),
+      minutosDentro: nFam ? sumaFam / nFam : null,
+      papasA1430: papas1430 / n,
+      conHermanos: ligados ? conHermanos / ligados : 0,
+    };
+  }
+
+  return {
+    dias, cupoE2, cupoE1, acumuladas, masLleno, completasEnMasLleno, tarde, picoLlegan, picoSalen,
+    dentro1440: { E2: porGrupo("E2"), E1: porGrupo("E1") }, sistema,
+  };
 }
