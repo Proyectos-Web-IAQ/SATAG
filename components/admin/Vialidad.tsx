@@ -100,7 +100,7 @@ function Sistema({ f }: { f: Flujo }) {
         <span>Autos dentro</span><span style={{ color: "#009844" }}>=</span><span>los que llegan por minuto</span><span style={{ color: "#009844" }}>×</span><span>los minutos que se queda cada uno</span>
       </div>
       <p className="ti-hint" style={{ textAlign: "center", margin: "4px 0 10px" }}>
-        Es una cuenta, no una suposición (en ingeniería, ley de Little){s ? `: a las 14:30 hay ${n0(s.papasA1430)} papás en E2` : ""}. Por eso solo hay tres formas de bajar la saturación.
+        Es una cuenta de promedios (en ingeniería, ley de Little){s?.minutosDentro ? `: unos ${n0(s.porMinuto * s.minutosDentro)} autos a lo largo de la ventana; cuando ya se acumularon son más (a las 14:30 se cuentan ${n0(s.papasA1430)} papás en E2)` : ""}. Por eso solo hay tres formas de bajar la saturación.
       </p>
       <div className="table-wrap">
         <table className="admin-table tabla-pro">

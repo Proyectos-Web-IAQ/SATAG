@@ -487,9 +487,12 @@ export default function RegistroWizard() {
                   <span>Foto del permiso para conducir del menor</span>
                   <p className="hint" style={{ margin: "0 0 8px" }}>
                     Necesitará una <strong>foto del permiso para conducir</strong> expedido a nombre del menor.
-                    Puede tomarla ahora con la cámara. Sin ella no se puede terminar el registro.
+                    Puede tomarla ahora con la cámara o elegirla de sus fotos; si lo tiene en PDF, suba una captura de pantalla.
+                    Sin la imagen no se puede terminar el registro.
                   </p>
-                  <input type="file" accept="image/jpeg,image/png,image/webp" capture="environment"
+                  {/* Sin capture a proposito: en el celular obliga a usar la camara
+                      y no deja elegir de la galeria. */}
+                  <input type="file" accept="image/jpeg,image/png,image/webp"
                     className={`input ${mostrarErrores && errores.permisoArchivo ? "invalid" : ""}`}
                     onChange={(e) => {
                       const f = e.target.files?.[0] ?? null;
@@ -500,7 +503,7 @@ export default function RegistroWizard() {
                       // el peor momento posible.
                       if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
                         setPermisoArchivo(null);
-                        setPermisoError("El archivo debe ser una foto (JPG, PNG o WEBP). Si tiene el permiso en PDF, tómele una foto a la pantalla.");
+                        setPermisoError("El archivo debe ser una foto (JPG, PNG o WEBP). Si tiene el permiso en PDF, haga una captura de pantalla y súbala.");
                         return;
                       }
                       if (f.size > 5 * 1024 * 1024) {

@@ -30,6 +30,8 @@ const RUTAS = [
       // dentro del cuerpo de la llamada al RPC, asi que sobrevive a la
       // minificacion y a cualquier cambio de redaccion de la pantalla.
       { texto: "p_permiso_sha256", que: "el alta manda el permiso del menor (bloque 75)" },
+      // Solo existe desde que el campo dejo de forzar la camara del celular (9-nov).
+      { texto: "elegirla de sus fotos", que: "el permiso del menor se puede elegir de la galeria (9-nov)" },
     ],
   },
   {
@@ -87,6 +89,8 @@ const RUTAS = [
       { texto: "vial_muestras", que: "Vialidad lee la calle guardada: Cuanto es nuestro y la columna de la calle (bloque 107)" },
       // Rotulo del boton de la primera propuesta: solo existe desde que el simulador vive en el panel (6-nov).
       { texto: "horarios y personal a E1", que: "Vialidad › Que pasa si: el simulador con las propuestas (6-nov)" },
+      // La nota de la cuenta: el 42 de las 14:30 ya no parece el resultado de la formula (9-nov).
+      { texto: "cuando ya se acumularon", que: "Vialidad › El sistema: el promedio de la cuenta y el conteo de las 14:30, separados (9-nov)" },
       // La clase de la zona que se recorre minuto a minuto: solo existe si la
       // grafica de ocupacion ya no usa los blancos de cada dos horas (5-oct).
       { texto: "viz-recorrido", que: "la ocupacion se lee minuto a minuto y explica el rango del pico (5-oct)" },
