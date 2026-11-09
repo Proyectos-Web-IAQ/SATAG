@@ -36,6 +36,7 @@ let ultima = 1;
 
 const n0 = (v: number | null | undefined) => (v === null || v === undefined ? "—" : Math.round(v).toLocaleString("es-MX"));
 const n1 = (v: number) => v.toLocaleString("es-MX", { maximumFractionDigits: 1 });
+const n2 = (v: number) => v.toLocaleString("es-MX", { maximumFractionDigits: 2 });
 const libresTxt = (v: number) => {
   const k = Math.max(0, Math.round(v));
   return k === 0 ? "ningún cajón libre" : k === 1 ? "1 cajón libre" : `${k} cajones libres`;
@@ -96,12 +97,29 @@ function Sistema({ f }: { f: Flujo }) {
         <Caja titulo="Si no caben: la fila afuera" tono="rojo">en el circuito y en la calle. Es la causa, y <u>nadie la mide todavía</u>.</Caja>
         <Caja titulo="Alrededor: la calle" tono="gris">el síntoma. Google la mide cada 5 minutos; no explica, compara antes y después.</Caja>
       </div>
+      {/* Primero lo medido y despues la formula: el conteo dice cuantos hay y la cuenta
+          solo explica de que depende. Juntos, el 42 parecia el resultado del 0.7 × 28. */}
+      {s && (
+        <div style={{ marginBottom: 12 }}>
+          <Caja titulo="¿Cuántos hay dentro? Se cuenta, no se calcula" cifra={`${n0(s.papasA1430)} papás`}>
+            en E2 a las 14:30, en promedio por día: entraron antes de esa hora y salieron después<br />
+            <span className="ti-hint">Solo cuentan los autos con entrada y salida leídas: una salida que la pluma no leyó dejaría al auto «dentro» para siempre. Por eso puede quedarse un poco corto.</span>
+          </Caja>
+        </div>
+      )}
+      <p style={{ textAlign: "center", margin: "0 0 6px" }}><strong>¿Por qué son tantos y qué pasaría si algo cambia?</strong> Para eso es esta cuenta:</p>
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, flexWrap: "wrap", fontWeight: 700, fontSize: "1.2rem", color: "var(--primary)", background: "#f7faf8", border: "1px solid #cfe6d6", borderRadius: 10, padding: 12 }}>
         <span>Autos dentro</span><span style={{ color: "#009844" }}>=</span><span>los que llegan por minuto</span><span style={{ color: "#009844" }}>×</span><span>los minutos que se queda cada uno</span>
       </div>
-      <p className="ti-hint" style={{ textAlign: "center", margin: "4px 0 10px" }}>
-        Es una cuenta de promedios (en ingeniería, ley de Little){s?.minutosDentro ? `: unos ${n0(s.porMinuto * s.minutosDentro)} autos a lo largo de la ventana; cuando ya se acumularon son más (a las 14:30 se cuentan ${n0(s.papasA1430)} papás en E2)` : ""}. Por eso solo hay tres formas de bajar la saturación.
+      <p className="ti-hint" style={{ textAlign: "center", margin: "4px 0 4px" }}>
+        El conteo dice cuántos hay, pero no por qué ni qué pasaría si algo cambia. Esta cuenta (en ingeniería, ley de Little) lo separa en sus dos causas: los mismos autos pueden venir de muchos que llegan o de pocos que se quedan mucho, y la solución es distinta.
       </p>
+      {s?.minutosDentro ? (
+        <p className="ti-hint" style={{ textAlign: "center", margin: "0 0 4px" }}>
+          Con estos datos: {n2(s.porMinuto)} por minuto × {n0(s.minutosDentro)} minutos = unos {n0(s.porMinuto * s.minutosDentro)} autos en promedio entre {horaCorta(RECOGE.desde)} y {horaCorta(RECOGE.hasta)}. No tiene que coincidir con el conteo: la cuenta promedia toda la ventana y el conteo mira un momento en que ya se acumularon, con otro grupo de estancias. Para probar una propuesta con las estancias reales está la pantalla 5.
+        </p>
+      ) : null}
+      <p style={{ textAlign: "center", margin: "6px 0 10px" }}>Por eso solo hay tres formas de bajar la saturación:</p>
       <div className="table-wrap">
         <table className="admin-table tabla-pro">
           <thead><tr><th>Palanca</th><th>Qué cambia en la cuenta</th><th>Con estos datos</th></tr></thead>
@@ -114,7 +132,7 @@ function Sistema({ f }: { f: Flujo }) {
             <tr>
               <td><strong>Que se queden menos</strong><br /><span className="ti-hint">llegar cuando sale el hijo, recogida única</span></td>
               <td>los minutos que se queda cada uno</td>
-              <td>{s ? <>Llegan {n1(s.porMinuto)} papás por minuto: cada 5 minutos menos de espera por familia son unos {n0(s.porMinuto * 5)} autos menos dentro.</> : "Necesita GES para saber por quién viene cada auto."}</td>
+              <td>{s ? <>Llegan {n2(s.porMinuto)} papás por minuto: cada 5 minutos menos de espera por familia son unos {n0(s.porMinuto * 5)} autos menos dentro.</> : "Necesita GES para saber por quién viene cada auto."}</td>
             </tr>
             <tr>
               <td><strong>Más lugar para los papás</strong><br /><span className="ti-hint">el personal a E1</span></td>
