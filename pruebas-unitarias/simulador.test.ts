@@ -14,10 +14,13 @@ import {
   VENT,
   celdasDeEstancias,
   claveSim,
+  combinacionesPersonal,
   estanciaSolo,
+  hayCambio,
   kpis,
   palancasDe,
   perE2En1430,
+  perE2PorDepto,
   quien,
   simular,
   suma,
@@ -74,6 +77,38 @@ describe("claveSim · de lo que sabe SATAG a la clave del simulador", () => {
     expect(claveSim(r({ esPapa: true }))).toBe("sin");
     expect(claveSim(r({ grupo: "otros" }))).toBe("otro");
     expect(claveSim(undefined)).toBe("otro");
+  });
+});
+
+describe("el personal por departamento y sus combinaciones (9-nov)", () => {
+  const celdas: Celda[] = [
+    ["E2", "per:PRIMARIA", 720, 905, 18],
+    ["E2", "per:PREESCOLAR", 720, 905, 12],
+    ["E2", "per:ADMON", 720, 905, 12],
+    ["E2", "per:MANTENIMIENTO", 720, 905, 1],
+    ["E2", "per:SECUNDARIA", 720, 905, 0.5],
+    // No cuentan: se fue antes de las 14:30, esta en E1, o no es personal.
+    ["E2", "per:PRIMARIA", 720, 860, 4],
+    ["E1", "per:PREPA", 720, 905, 12],
+    ["E2", "fam:primaria", 820, 880, 9],
+  ];
+  it("cuenta cada departamento en E2 a las 14:30, de mas a menos", () => {
+    expect(perE2PorDepto(celdas)).toEqual([
+      { depto: "PRIMARIA", autos: 18 },
+      { depto: "ADMON", autos: 12 },
+      { depto: "PREESCOLAR", autos: 12 },
+      { depto: "MANTENIMIENTO", autos: 1 },
+      { depto: "SECUNDARIA", autos: 0.5 },
+    ]);
+    expect(perE2PorDepto(celdas).reduce((t, x) => t + x.autos, 0)).toBe(perE2En1430(celdas));
+  });
+  it("arma combinaciones completas cerca de la meta, primero las de menos departamentos", () => {
+    const c = combinacionesPersonal(perE2PorDepto(celdas), 30);
+    expect(c[0].deptos.length).toBe(2);
+    expect(c.slice(0, 2).map((x) => x.autos)).toEqual([30, 30]);
+    for (const x of c) expect(Math.abs(x.autos - 30)).toBeLessThanOrEqual(5);
+    // El departamento de medio auto no entra: solo haria copias de cada combinacion.
+    expect(c.some((x) => x.deptos.includes("SECUNDARIA"))).toBe(false);
   });
 });
 
@@ -138,6 +173,16 @@ describe("simular y kpis", () => {
     const k = kpis(r);
     expect(k.esperaHijo).toBe(f.e - f.eAj);
     expect(k.esperaFam).toBeLessThan(k0.esperaFam);
+  });
+  it("por departamento, el personal marcado pasa COMPLETO a E1 y el resto se queda (9-nov)", () => {
+    const r = simular(celdas, palancasDe({ deptos: ["DOCENTES"] }));
+    const k = kpis(r);
+    expect(k.libresE2).toBe(k0.libresE2 + 10);
+    expect(k.maxE1).toBe(15);
+    // Un departamento que ya esta en E1 no se mueve ni se duplica.
+    expect(kpis(simular(celdas, palancasDe({ deptos: ["ADMON"] })))).toEqual(k0);
+    expect(hayCambio(palancasDe({ deptos: ["DOCENTES"] }))).toBe(true);
+    expect(hayCambio(palancasDe({ deptos: [] }))).toBe(false);
   });
   it("las propuestas son escenarios completos", () => {
     const p = palancasDe(PROPUESTAS[0].palancas);

@@ -197,6 +197,44 @@ export const perE2En1430 = (celdas: Celda[]) =>
   celdas.filter((x) => x[0] === "E2" && x[1].startsWith("per:") && x[2] < 870 && x[3] >= 870).reduce((a, x) => a + x[4], 0);
 
 /**
+ * Lo mismo, por departamento de ZK (9-nov-2026): cuantos autos de cada uno hay en E2 a
+ * las 14:30, de mas a menos. Es con lo que se arman las combinaciones que se pasan a E1
+ * completas, en vez de una parte pareja de todo el personal.
+ */
+export function perE2PorDepto(celdas: Celda[]): { depto: string; autos: number }[] {
+  const m = new Map<string, number>();
+  for (const x of celdas) {
+    if (x[0] !== "E2" || !x[1].startsWith("per:") || !(x[2] < 870 && x[3] >= 870)) continue;
+    const d = x[1].slice(4);
+    m.set(d, (m.get(d) ?? 0) + x[4]);
+  }
+  return [...m].map(([depto, autos]) => ({ depto, autos })).sort((a, b) => b.autos - a.autos || a.depto.localeCompare(b.depto));
+}
+
+/**
+ * Las combinaciones de departamentos COMPLETOS que suman cerca de `meta` autos en E2 a las
+ * 14:30. Solo entran los departamentos con al menos un auto: con uno de medio auto salian
+ * copias de cada combinacion. Primero las de menos departamentos, y entre ellas la mas cercana.
+ */
+export function combinacionesPersonal(
+  lista: { depto: string; autos: number }[],
+  meta: number,
+  holgura = 5,
+  max = 6,
+): { deptos: string[]; autos: number }[] {
+  const c = lista.filter((x) => x.autos >= 1).slice(0, 14);
+  const out: { deptos: string[]; autos: number }[] = [];
+  for (let m = 1; m < 1 << c.length; m++) {
+    const sel = c.filter((_, i) => m & (1 << i));
+    const autos = sel.reduce((a, x) => a + x.autos, 0);
+    if (Math.abs(autos - meta) <= holgura) out.push({ deptos: sel.map((x) => x.depto), autos });
+  }
+  return out
+    .sort((a, b) => a.deptos.length - b.deptos.length || Math.abs(a.autos - meta) - Math.abs(b.autos - meta))
+    .slice(0, max);
+}
+
+/**
  * Minutos adentro (mediana, hoy) de quien viene solo por cada seccion: lo que esperaria
  * una familia con hermanos si llegara a la hora del mayor.
  */
@@ -214,8 +252,10 @@ export function estanciaSolo(celdas: Celda[]): Record<Seccion, number | null> {
 /* ------------------------------------------------------------------ simular */
 
 export interface Palancas {
-  /** Autos del personal que pasan de E2 a E1. */
+  /** Autos del personal que pasan de E2 a E1, una parte pareja de todo el personal. */
   per: number;
+  /** Departamentos de ZK cuyo personal pasa COMPLETO de E2 a E1 (9-nov). La pantalla no los junta con `per`. */
+  deptos?: string[];
   /** Minutos que se mueve la salida de cada seccion. */
   d: Record<Seccion, number>;
   /** Los papas llegan segun la salida del hijo por el que vienen. */
@@ -239,6 +279,7 @@ export interface Resultado {
 export function simular(celdas: Celda[], p: Palancas): Resultado {
   const d = p.d;
   const f = Math.min(1, (p.per || 0) / (perE2En1430(celdas) || 1));
+  const completos = new Set(p.deptos ?? []);
   const solo = p.unica ? estanciaSolo(celdas) : null;
   const filas: Fila[] = [];
   for (const [lote, g, e0, s0, w] of celdas) {
@@ -254,7 +295,9 @@ export function simular(celdas: Celda[], p: Palancas): Resultado {
       if (solo && q.menor !== q.mayor && sm != null) e = Math.max(e, s - sm);
       if (e > s - 5) e = s - 5;
     }
-    if (q.tipo === "per" && lote === "E2" && f > 0) {
+    if (q.tipo === "per" && lote === "E2" && completos.has(g.slice(4))) {
+      filas.push({ lote: "E1", serie: q.serie, e, s, w, q, eAj });
+    } else if (q.tipo === "per" && lote === "E2" && f > 0) {
       filas.push({ lote: "E1", serie: q.serie, e, s, w: w * f, q, eAj });
       filas.push({ lote: "E2", serie: q.serie, e, s, w: w * (1 - f), q, eAj });
     } else filas.push({ lote, serie: q.serie, e, s, w, q, eAj });
@@ -342,6 +385,6 @@ export const PROPUESTAS: Escenario[] = [
 ];
 /** Completa un escenario con lo de hoy. */
 export function palancasDe(e: Escenario["palancas"]): Palancas {
-  return { per: e.per ?? 0, d: { ...SIN_CAMBIOS(), ...(e.d ?? {}) }, ajusta: e.ajusta ?? true, unica: e.unica ?? false };
+  return { per: e.per ?? 0, deptos: e.deptos ?? [], d: { ...SIN_CAMBIOS(), ...(e.d ?? {}) }, ajusta: e.ajusta ?? true, unica: e.unica ?? false };
 }
-export const hayCambio = (p: Palancas) => p.per > 0 || p.unica || SECCIONES.some((s) => p.d[s] !== 0);
+export const hayCambio = (p: Palancas) => p.per > 0 || (p.deptos?.length ?? 0) > 0 || p.unica || SECCIONES.some((s) => p.d[s] !== 0);

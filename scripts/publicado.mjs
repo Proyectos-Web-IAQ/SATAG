@@ -89,6 +89,8 @@ const RUTAS = [
       { texto: "vial_muestras", que: "Vialidad lee la calle guardada: Cuanto es nuestro y la columna de la calle (bloque 107)" },
       // Rotulo del boton de la primera propuesta: solo existe desde que el simulador vive en el panel (6-nov).
       { texto: "horarios y personal a E1", que: "Vialidad › Que pasa si: el simulador con las propuestas (6-nov)" },
+      // Rotulo del bloque nuevo del simulador: solo existe desde que el personal se mueve por departamento (9-nov).
+      { texto: "O por departamento completo", que: "Vialidad › Que pasa si: el personal a E1 por departamento y sus combinaciones (9-nov)" },
       // El conteo va antes que la formula: el 42 de las 14:30 ya no parece su resultado (9-nov).
       { texto: "Se cuenta, no se calcula", que: "Vialidad › El sistema: primero el conteo y despues para que sirve la cuenta (9-nov)" },
       // La clase de la zona que se recorre minuto a minuto: solo existe si la
