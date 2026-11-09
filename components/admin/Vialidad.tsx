@@ -312,6 +312,8 @@ const diaMes = (f: string) => `${Number(f.slice(8))}/${f.slice(5, 7)}`;
 function CuantoEsNuestro({ calle }: { calle: ResumenCalle }) {
   const lj = calle.clases.find((c) => c.clase === "LJ");
   const tes = calle.clases.find((c) => c.clase === "testigo");
+  // 9-nov: el viernes 6 subió el control; la frase sale de los datos, no se afirma de memoria.
+  const controlAlto = calle.dias.filter((d) => d.control !== null && d.control >= 1.1);
   return (
     <>
       <Encabezado n={4} pregunta="¿Cuánto es nuestro?">Qué parte de la calle es del Instituto y qué parte es de la zona.</Encabezado>
@@ -336,7 +338,8 @@ function CuantoEsNuestro({ calle }: { calle: ResumenCalle }) {
         </table>
       </div>
       <p style={{ fontWeight: 700, color: "var(--primary)", marginTop: 10 }}>
-        El control, la misma avenida a 3.5 km, no sube ningún día: la congestión es local.
+        El control, la misma avenida a 3.5 km, se queda en {lj?.control ? `${lj.control.toFixed(2)}x` : "su nivel normal"} mientras los accesos suben: la congestión es local.
+        {controlAlto.length > 0 && ` Excepción: ${controlAlto.map((d) => `${diaMes(d.fecha)} (${(d.control as number).toFixed(2)}x)`).join(", ")}, cuando el control también subió.`}
         {lj?.medio && tes?.medio ? ` Sin alumnos la calle baja de ${lj.medio.toFixed(2)}x a ${tes.medio.toFixed(2)}x en promedio, pero los testigos todavía no coinciden entre sí: el 16 de noviembre, asueto general, lo decide.` : ""}
       </p>
       <p className="ti-hint">
