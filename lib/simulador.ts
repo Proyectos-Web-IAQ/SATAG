@@ -192,7 +192,7 @@ export function cuantilPeso(xs: [number, number][], q: number): number | null {
   return s.length ? s[s.length - 1][0] : null;
 }
 
-/** Autos del personal en E2 a las 14:30: el tope de la palanca «personal a E1». */
+/** Autos del personal en E2 a las 14:30, todos los departamentos juntos. */
 export const perE2En1430 = (celdas: Celda[]) =>
   celdas.filter((x) => x[0] === "E2" && x[1].startsWith("per:") && x[2] < 870 && x[3] >= 870).reduce((a, x) => a + x[4], 0);
 
@@ -252,9 +252,11 @@ export function estanciaSolo(celdas: Celda[]): Record<Seccion, number | null> {
 /* ------------------------------------------------------------------ simular */
 
 export interface Palancas {
-  /** Autos del personal que pasan de E2 a E1, una parte pareja de todo el personal. */
-  per: number;
-  /** Departamentos de ZK cuyo personal pasa COMPLETO de E2 a E1 (9-nov). La pantalla no los junta con `per`. */
+  /**
+   * Departamentos de ZK cuyo personal pasa COMPLETO de E2 a E1 (9-nov). Es la unica forma
+   * de mover al personal desde el 10-nov: la parte pareja de todos se quito porque nadie
+   * puede pedirla, y movia gente con el horario promedio en vez del suyo.
+   */
   deptos?: string[];
   /** Minutos que se mueve la salida de cada seccion. */
   d: Record<Seccion, number>;
@@ -264,7 +266,7 @@ export interface Palancas {
   unica: boolean;
 }
 export const SIN_CAMBIOS = (): Record<Seccion, number> => ({ comunidad: 0, preescolar: 0, primaria: 0, secundaria: 0, prepa: 0 });
-export const HOY: Palancas = { per: 0, d: SIN_CAMBIOS(), ajusta: true, unica: false };
+export const HOY: Palancas = { deptos: [], d: SIN_CAMBIOS(), ajusta: true, unica: false };
 
 /** Una celda despues de las palancas. eAj: la entrada sin recogida unica (para la espera del hijo menor). */
 export interface Fila { lote: Lote; serie: number; e: number; s: number; w: number; q: Quien; eAj: number }
@@ -278,7 +280,6 @@ export interface Resultado {
 
 export function simular(celdas: Celda[], p: Palancas): Resultado {
   const d = p.d;
-  const f = Math.min(1, (p.per || 0) / (perE2En1430(celdas) || 1));
   const completos = new Set(p.deptos ?? []);
   const solo = p.unica ? estanciaSolo(celdas) : null;
   const filas: Fila[] = [];
@@ -297,9 +298,6 @@ export function simular(celdas: Celda[], p: Palancas): Resultado {
     }
     if (q.tipo === "per" && lote === "E2" && completos.has(g.slice(4))) {
       filas.push({ lote: "E1", serie: q.serie, e, s, w, q, eAj });
-    } else if (q.tipo === "per" && lote === "E2" && f > 0) {
-      filas.push({ lote: "E1", serie: q.serie, e, s, w: w * f, q, eAj });
-      filas.push({ lote: "E2", serie: q.serie, e, s, w: w * (1 - f), q, eAj });
     } else filas.push({ lote, serie: q.serie, e, s, w, q, eAj });
   }
   const r: Resultado = { dentro: { E1: [], E2: [] }, salen: { E1: [], E2: [] }, entran: { E1: [], E2: [] }, filas };
@@ -377,14 +375,25 @@ export function grupos(res: Resultado): Map<string, Grupo> {
 
 /* ------------------------------------------------------------------ escenarios */
 
-export interface Escenario { nombre: string; palancas: Partial<Omit<Palancas, "d">> & { d?: Partial<Record<Seccion, number>> }; detalle?: string }
+/**
+ * Un escenario. `personal` es una meta en autos (10-nov): la pantalla la convierte en
+ * departamentos completos con `deptosParaMeta`, para que nada mueva personal sin nombre.
+ */
+export interface Escenario { nombre: string; palancas: Partial<Omit<Palancas, "d">> & { d?: Partial<Record<Seccion, number>>; personal?: number }; detalle?: string }
 /** Las dos propuestas del buscador de combinaciones (Analisis Vial, 30-oct). */
 export const PROPUESTAS: Escenario[] = [
-  { nombre: "Propuesta 1: horarios y personal a E1", palancas: { per: 30, d: { preescolar: 15, secundaria: -15 } }, detalle: "preescolar 15 min después, secundaria 15 min antes y 30 autos del personal a E1" },
-  { nombre: "Propuesta 2: con recogida única", palancas: { per: 30, d: { preescolar: 15, prepa: -15 }, unica: true }, detalle: "preescolar 15 min después, prepa 15 min antes, 30 del personal a E1 y recogida única" },
+  { nombre: "Propuesta 1: horarios y personal a E1", palancas: { personal: 30, d: { preescolar: 15, secundaria: -15 } }, detalle: "preescolar 15 min después, secundaria 15 min antes y unos 30 autos del personal a E1, por departamento completo" },
+  { nombre: "Propuesta 2: con recogida única", palancas: { personal: 30, d: { preescolar: 15, prepa: -15 }, unica: true }, detalle: "preescolar 15 min después, prepa 15 min antes, unos 30 del personal a E1 por departamento completo y recogida única" },
 ];
-/** Completa un escenario con lo de hoy. */
-export function palancasDe(e: Escenario["palancas"]): Palancas {
-  return { per: e.per ?? 0, deptos: e.deptos ?? [], d: { ...SIN_CAMBIOS(), ...(e.d ?? {}) }, ajusta: e.ajusta ?? true, unica: e.unica ?? false };
+/** La combinacion de departamentos completos mas cercana a la meta, con los menos departamentos. */
+export const deptosParaMeta = (celdas: Celda[], meta: number): string[] =>
+  combinacionesPersonal(perE2PorDepto(celdas), meta)[0]?.deptos ?? [];
+/**
+ * Completa un escenario con lo de hoy. Si el escenario trae una meta de personal y no
+ * nombra departamentos, toma `deptosMeta` (los que la pantalla resolvio para esa meta).
+ */
+export function palancasDe(e: Escenario["palancas"], deptosMeta: string[] = []): Palancas {
+  const deptos = e.deptos ?? (e.personal ? deptosMeta : []);
+  return { deptos, d: { ...SIN_CAMBIOS(), ...(e.d ?? {}) }, ajusta: e.ajusta ?? true, unica: e.unica ?? false };
 }
-export const hayCambio = (p: Palancas) => p.per > 0 || (p.deptos?.length ?? 0) > 0 || p.unica || SECCIONES.some((s) => p.d[s] !== 0);
+export const hayCambio = (p: Palancas) => (p.deptos?.length ?? 0) > 0 || p.unica || SECCIONES.some((s) => p.d[s] !== 0);

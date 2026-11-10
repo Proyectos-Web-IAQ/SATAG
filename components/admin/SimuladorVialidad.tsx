@@ -41,7 +41,7 @@ import {
 import { CRITERIO_ESTACIONAMIENTO_MAESTRO } from "@/lib/secciones";
 
 /** Cuantos autos del personal busca mover la Propuesta 1: la meta de las combinaciones por departamento. */
-const META_PERSONAL = PROPUESTAS[0].palancas.per ?? 30;
+const META_PERSONAL = PROPUESTAS[0].palancas.personal ?? 30;
 
 const textoD = (v: number) => (v ? (v > 0 ? `${v} min después` : `${-v} min antes`) : "a la hora de hoy");
 const signoMin = (v: number) => `${v > 0 ? "+" : ""}${v} min`;
@@ -216,14 +216,15 @@ function TablaGrupos({ base, r }: { base: Resultado; r: Resultado }) {
 }
 
 /* ------------------------------------------------------------------ la pantalla */
-const ESCENARIOS = (cabe: number): Escenario[] => [
+// Las filas del personal nombran sus departamentos: la combinacion mas cercana a la meta (10-nov).
+const ESCENARIOS = (combo: string[]): Escenario[] => [
   { nombre: "Hoy", palancas: {} },
-  { nombre: "Personal a E1 (lo que cabe)", palancas: { per: cabe } },
+  ...(combo.length ? [{ nombre: `Personal a E1: ${combo.join(" + ")}`, palancas: { deptos: combo } }] : []),
   { nombre: "Secundaria y prepa 5 min después", palancas: { d: { secundaria: 5, prepa: 5 } } },
   { nombre: "Secundaria y prepa 5 min antes", palancas: { d: { secundaria: -5, prepa: -5 } } },
   { nombre: "Primaria 10 min antes", palancas: { d: { primaria: -10 } } },
   { nombre: "Recogida única", palancas: { unica: true } },
-  { nombre: "Personal a E1 y secundaria 5 después", palancas: { per: cabe, d: { secundaria: 5, prepa: 5 } } },
+  ...(combo.length ? [{ nombre: `${combo.join(" + ")} a E1 y secundaria 5 después`, palancas: { deptos: combo, d: { secundaria: 5, prepa: 5 } } }] : []),
 ];
 
 const boton: React.CSSProperties = { font: "inherit", color: "var(--primary)", border: "1px solid var(--line)", fontSize: 12, padding: "3px 9px", margin: "4px 6px 0 0", background: "#fff", borderRadius: 6, cursor: "pointer" };
@@ -256,18 +257,20 @@ export default function SimuladorVialidad({ celdas, dias }: { celdas: Celda[]; d
   if (celdas.length === 0) return <p className="ti-empty">No hay estancias de la tarde con las que simular.</p>;
 
   const b = kpis(base), s = kpis(r), cambio = hayCambio(p);
-  const poner = (e: Escenario) => setP(palancasDe(e.palancas));
-  // Las dos formas de mover al personal no se suman: elegir departamentos apaga el deslizador y al reves.
+  // El personal se mueve solo por departamento completo (10-nov). Una propuesta pide «unos 30»:
+  // si ya hay departamentos marcados se quedan esos; si no, la combinacion mas cercana.
   const elegidos = p.deptos ?? [];
+  const deptosMeta = combinaciones[0]?.deptos ?? [];
+  const poner = (e: Escenario) => setP(palancasDe(e.palancas, elegidos.length ? elegidos : deptosMeta));
   const autosElegidos = porDepto.filter((x) => elegidos.includes(x.depto)).reduce((t, x) => t + x.autos, 0);
-  const ponerDeptos = (deptos: string[]) => setP({ ...p, per: 0, deptos });
+  const ponerDeptos = (deptos: string[]) => setP({ ...p, deptos });
   const alternar = (depto: string) => ponerDeptos(elegidos.includes(depto) ? elegidos.filter((x) => x !== depto) : [...elegidos, depto]);
   const mismos = (a: string[]) => a.length === elegidos.length && a.every((x) => elegidos.includes(x));
   const autosTxt = (v: number) => (v >= 1 ? `${r0(v)}` : "menos de 1");
 
   // Lo que dice el escenario, en frases.
   const frases: React.ReactNode[] = [];
-  if (p.per || elegidos.length) frases.push(<>{p.per ? <>Pasar {p.per} autos del personal a E1</> : <>Pasar a E1 al personal de <strong>{elegidos.join(", ")}</strong> ({r0(autosElegidos)} autos en E2 a las 14:30)</>} deja <strong>{r0(Math.max(0, s.libresE2))} cajones libres en E2</strong> durante la espera de secundaria y prepa (hoy {r0(Math.max(0, b.libresE2))}).{s.maxE1 > CAJONES.E1 ? <> Pero <strong>E1 se pasa de sus {CAJONES.E1} cajones</strong> ({r0(s.maxE1)}): no caben todos.</> : ` E1 llega a ${r0(s.maxE1)} de ${CAJONES.E1}: caben.`}</>);
+  if (elegidos.length) frases.push(<>Pasar a E1 al personal de <strong>{elegidos.join(", ")}</strong> ({r0(autosElegidos)} autos en E2 a las 14:30{mismos(deptosMeta) ? `: la combinación más cercana a los ${META_PERSONAL} de las propuestas; puede cambiarla en las casillas` : ""}) deja <strong>{r0(Math.max(0, s.libresE2))} cajones libres en E2</strong> durante la espera de secundaria y prepa (hoy {r0(Math.max(0, b.libresE2))}).{s.maxE1 > CAJONES.E1 ? <> Pero <strong>E1 se pasa de sus {CAJONES.E1} cajones</strong> ({r0(s.maxE1)}): no caben todos.</> : ` E1 llega a ${r0(s.maxE1)} de ${CAJONES.E1}: caben.`}</>);
   const porDelta = new Map<number, string[]>();
   for (const x of SECCIONES) if (p.d[x]) porDelta.set(p.d[x], [...(porDelta.get(p.d[x]) ?? []), NOMBRE_SEC[x]]);
   for (const [v, noms] of porDelta) frases.push(<>Con la salida de <strong>{noms.join(" y ")} {v > 0 ? `${v} min después` : `${-v} min antes`}</strong> se mueven las familias cuyo hijo mayor está ahí, también las que llegaron por un hermano menor{p.ajusta ? `, y llegan según esa salida las que vienen por un hijo de ${noms.length > 1 ? "esas secciones" : "esa sección"}.` : "."}</>);
@@ -301,13 +304,9 @@ export default function SimuladorVialidad({ celdas, dias }: { celdas: Celda[]; d
             <strong>Propuestas del buscador</strong>
             <div>{PROPUESTAS.map((e) => <button key={e.nombre} type="button" style={boton} title={e.detalle} onClick={() => poner(e)}>{e.nombre}</button>)}</div>
           </div>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>Personal que pasa de E2 a E1, parejo entre todos: <strong>{p.per}</strong> autos <span className="ti-hint">(hoy hay unos {maxPer} en E2 a las 14:30; en E1 caben unos {cabeE1})</span></span>
-            <input type="range" min={0} max={maxPer} step={1} value={p.per} onChange={(ev) => setP({ ...p, per: +ev.target.value, deptos: [] })} style={{ width: "100%", accentColor: "var(--primary)" }} />
-          </label>
           {porDepto.length > 0 && (
             <div style={{ display: "grid", gap: 4, borderTop: "1px solid var(--line)", paddingTop: 8 }}>
-              <span><strong>O por departamento completo</strong> <span className="ti-hint">(autos de cada uno en E2 a las 14:30, promedio por día)</span></span>
+              <span><strong>Personal que pasa de E2 a E1, por departamento completo</strong> <span className="ti-hint">(autos de cada uno en E2 a las 14:30, promedio por día; hoy hay unos {maxPer} en E2 y en E1 caben unos {cabeE1})</span></span>
               {combinaciones.length > 0 && (
                 <div>
                   <span className="ti-hint">Combinaciones de unos {META_PERSONAL} autos:</span>
@@ -347,7 +346,7 @@ export default function SimuladorVialidad({ celdas, dias }: { celdas: Celda[]; d
           <label><input type="checkbox" checked={verPersonal} onChange={(ev) => setVerPersonal(ev.target.checked)} /> Mostrar al personal, a los alumnos que manejan y a otros en las gráficas <span className="ti-hint">(quítelo para ver solo a los papás; las cifras siguen contando a todos)</span></label>
           <div>
             <strong>Escenarios</strong>
-            <div>{ESCENARIOS(cabeE1).map((e) => <button key={e.nombre} type="button" style={boton} onClick={() => poner(e)}>{e.nombre}</button>)}</div>
+            <div>{ESCENARIOS(deptosMeta).map((e) => <button key={e.nombre} type="button" style={boton} onClick={() => poner(e)}>{e.nombre}</button>)}</div>
           </div>
         </div>
 
@@ -388,7 +387,7 @@ export default function SimuladorVialidad({ celdas, dias }: { celdas: Celda[]; d
         </p>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
           <li>Cada auto con TAG entra y sale a la hora en que lo hizo, en promedio por día. Nada se inventa: lo que no mueve una palanca queda igual que hoy. De cada familia se sabe por quién viene (el hijo menor) y hasta quién se queda (el mayor), con las secciones de GES.</li>
-          <li><strong>Personal a E1:</strong> esa parte de los autos del personal que hoy usan E2 se estaciona en E1, con sus mismos horarios. Con el deslizador se mueve una parte pareja de todo el personal; por departamento, se mueven completos los departamentos marcados, con la cifra de cada uno en E2 a las 14:30.</li>
+          <li><strong>Personal a E1:</strong> los departamentos marcados pasan completos de E2 a E1, cada quien con sus mismos horarios. La cifra de cada uno es cuántos autos suyos hay en E2 a las 14:30. Las propuestas piden unos {META_PERSONAL} autos: si no hay departamentos marcados, toman la combinación más cercana con menos departamentos.</li>
           <li><strong>Salida de una sección:</strong> se recorre la salida de las familias cuyo hijo mayor está en esa sección, también las que llegaron por un hermano menor. Si los papás «llegan según la salida del hijo por el que vienen», las familias cuyo hijo menor está en esa sección llegan esos minutos después o antes. La parte proporcional de los papás sin ligar a GES se mueve igual.</li>
           <li><strong>Recogida única:</strong> las familias con hermanos llegan a la hora del mayor, con la espera de quien viene solo por esa sección. El hijo menor espera en la escuela ese tiempo.</li>
         </ul>

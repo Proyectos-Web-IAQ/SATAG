@@ -15,6 +15,7 @@ import {
   celdasDeEstancias,
   claveSim,
   combinacionesPersonal,
+  deptosParaMeta,
   estanciaSolo,
   hayCambio,
   kpis,
@@ -147,11 +148,16 @@ describe("simular y kpis", () => {
     expect(k0.esperaFam).toBeCloseTo((25 * 4 + 55 * 2 + 25 * 2) / 8, 6);
     expect(k0.esperaHijo).toBe(0);
   });
-  it("el personal a E1 pasa esa parte de E2 a E1 con sus horarios", () => {
+  it("una meta de personal se vuelve departamentos con nombre, nunca una parte pareja (10-nov)", () => {
     expect(perE2En1430(celdas)).toBe(10);
-    const k = kpis(simular(celdas, palancasDe({ per: 5 })));
-    expect(k.libresE2).toBe(k0.libresE2 + 5);
-    expect(k.maxE1).toBe(10);
+    // Sin departamentos que la cumplan, la meta no mueve a nadie.
+    expect(deptosParaMeta(celdas, 30)).toEqual([]);
+    expect(palancasDe({ personal: 30 }).deptos).toEqual([]);
+    expect(hayCambio(palancasDe({ personal: 30 }))).toBe(false);
+    // Con la combinacion que resolvio la pantalla, o con los departamentos que nombra el escenario.
+    expect(palancasDe({ personal: 30 }, ["DOCENTES"]).deptos).toEqual(["DOCENTES"]);
+    expect(palancasDe({ personal: 30, deptos: ["ADMON"] }, ["DOCENTES"]).deptos).toEqual(["ADMON"]);
+    expect(deptosParaMeta(celdas, 10)).toEqual(["DOCENTES"]);
   });
   it("mover una salida recorre a quien sale con ella y, si ajustan, a quien viene por ella", () => {
     const r = simular(celdas, palancasDe({ d: { secundaria: 10 } }));
@@ -185,8 +191,9 @@ describe("simular y kpis", () => {
     expect(hayCambio(palancasDe({ deptos: [] }))).toBe(false);
   });
   it("las propuestas son escenarios completos", () => {
-    const p = palancasDe(PROPUESTAS[0].palancas);
-    expect(p).toMatchObject({ per: 30, ajusta: true, unica: false });
+    expect(PROPUESTAS.every((e) => e.palancas.personal === 30)).toBe(true);
+    const p = palancasDe(PROPUESTAS[0].palancas, ["PRIMARIA", "PREESCOLAR"]);
+    expect(p).toMatchObject({ deptos: ["PRIMARIA", "PREESCOLAR"], ajusta: true, unica: false });
     expect(p.d).toEqual({ comunidad: 0, preescolar: 15, primaria: 0, secundaria: -15, prepa: 0 });
     expect(palancasDe(PROPUESTAS[1].palancas).unica).toBe(true);
   });
