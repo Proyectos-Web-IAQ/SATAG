@@ -39,6 +39,27 @@ describe("numeroCaso y numeroDeBusqueda", () => {
   });
 });
 
+describe("buscar una lista pegada de numeros", () => {
+  const a = caso({ numero: 75, tarjeta: "12823809" }), b = caso({ numero: 77, tarjeta: "9425959" }), c = caso({ numero: 78, tarjeta: "13856219" });
+  it("con comas, espacios, renglones o C-: encuentra cada caso de la lista y ninguno mas", () => {
+    for (const q of ["75, 77", "75 77", "75\n77", "C-000075; c77"]) {
+      expect([a, b, c].filter((x) => coincideBusqueda(x, q)).map((x) => x.numero)).toEqual([75, 77]);
+    }
+  });
+  it("tambien sirve con numeros de TAG", () => {
+    expect([a, b, c].filter((x) => coincideBusqueda(x, "13856219, 9425959")).map((x) => x.numero)).toEqual([77, 78]);
+  });
+  it("un solo numero sigue buscando como antes (caso o TAG)", () => {
+    expect(coincideBusqueda(a, "75")).toBe(true);
+    expect(coincideBusqueda(a, "12823809")).toBe(true);
+    expect(coincideBusqueda(b, "75")).toBe(false);
+  });
+  it("si algo de la lista no es numero, es una busqueda normal por palabras", () => {
+    expect(coincideBusqueda(caso({ numero: 5, nombre: "Maria Perez" }), "maria perez")).toBe(true);
+    expect(coincideBusqueda(a, "75 maria")).toBe(false);
+  });
+});
+
 describe("problemaDeSeguimiento", () => {
   it("pide algo que enviar", () => {
     expect(problemaDeSeguimiento("  ", null, "abierto")).not.toBeNull();

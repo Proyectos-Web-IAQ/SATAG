@@ -260,10 +260,27 @@ export function personaDelCaso(c: Pick<CasoGuardado, "nombre" | "folio" | "tarje
   return c.tarjeta ? `TAG ${c.tarjeta}` : "Sin persona ligada";
 }
 
-/** Lo que se busca en un caso: numero, TAG, folio, nombre y titulo. */
+/**
+ * Una lista pegada de numeros de caso o de TAG: «75, 77, 78» o «C-75 C-77».
+ * Hacen falta al menos dos, separados por coma, punto y coma, espacio o renglon.
+ * Devuelve los numeros (sin la C-) o null si no es una lista.
+ * Para que (19-nov): las consultas de mantenimiento devuelven los numeros de los
+ * casos que se pueden cerrar juntos; pegarlos aqui los deja marcables de un clic.
+ */
+export function listaDeBusqueda(q: string): string[] | null {
+  const partes = q.split(/[\s,;]+/).filter(Boolean);
+  if (partes.length < 2) return null;
+  const nums = partes.map((p) => /^c?-?(\d{1,12})$/i.exec(p)?.[1]);
+  if (nums.some((x) => x === undefined)) return null;
+  return nums.map((x) => String(Number(x)));
+}
+
+/** Lo que se busca en un caso: numero, TAG, folio, nombre y titulo; o una lista de numeros de caso o de TAG. */
 export function coincideBusqueda(c: CasoGuardado, q: string): boolean {
   const t = q.trim().toLowerCase();
   if (!t) return true;
+  const lista = listaDeBusqueda(t);
+  if (lista) return lista.includes(String(c.numero)) || (c.tarjeta !== null && lista.includes(String(Number(c.tarjeta))));
   const n = numeroDeBusqueda(t);
   if (n !== null && c.numero === n) return true;
   // Sin acentos y en cualquier orden: «martinez gonzalez» encuentra «Martínez González».

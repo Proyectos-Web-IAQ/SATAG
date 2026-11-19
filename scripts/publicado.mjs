@@ -126,6 +126,8 @@ const RUTAS = [
       { texto: "Llevar a Consultar con el CP", que: "Casos: la columna Consultar con el CP (bloque 96)" },
       { texto: "Lecturas por hora", que: "Estacionamiento: Lecturas por hora (9-oct)" },
       { texto: "Desmarcar todos", que: "Casos: marcar de un clic lo que se ve con busqueda o filtro (9-oct)" },
+      // La expresion que reconoce cada numero de la lista viaja tal cual en el bundle.
+      { texto: "(\\d{1,12})$", que: "Casos: el buscador acepta una lista pegada de numeros de caso o de TAG (19-nov)" },
       { texto: "INSTITUCIONALES", que: "Estacionamiento: los vehiculos del Instituto operan al reves (13-oct)" },
       { texto: "Salidas y regresos", que: "Ficha: un vehiculo del Instituto se dibuja por sus salidas (13-oct)" },
       { texto: "sin-padron:", que: "Casos: la credencial sin padron abre su caso y deja el Resumen (12-oct)" },
