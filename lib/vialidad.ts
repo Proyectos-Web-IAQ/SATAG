@@ -59,9 +59,16 @@ export interface CalendarioVial {
   medidaPiloto: string | null;
   /** Las horas de salida que cambian en el piloto; lo que no este aqui hereda las de antes. */
   salidaPiloto: Partial<Record<SeccionHijo, number>>;
+  /** Si el experimento ya se cerro: el dia y una frase. Las pantallas dejan de anunciar lo que venia. */
+  cierre: { el: string; nota: string } | null;
 }
 
 export const FASES: FaseId[] = ["antes", "testigo", "piloto"];
+
+/** Las fases que se muestran: el piloto solo si el calendario lo tiene. */
+export function fasesVisibles(cal: CalendarioVial): FaseId[] {
+  return FASES.filter((f) => f !== "piloto" || cal.fases.some((x) => x.id === "piloto"));
+}
 export const NOMBRE_FASE: Record<FaseId, string> = { antes: "Antes", testigo: "Testigo", piloto: "Piloto" };
 export const TIPOS_DIA: { clave: TipoDia; titulo: string }[] = [
   { clave: "LJ", titulo: "Lunes a jueves" },
@@ -77,15 +84,18 @@ export const SALIDA_SECCION: Record<SeccionHijo, number> = {
   preparatoria: 14 * 60 + 35,
 };
 
+// 19-nov-2026 (Gerardo): el experimento se cierra sin piloto. La linea base termina ese dia
+// (el muestreador de la calle se apago a las 14:10) y no se anuncia ninguna fase despues.
+// Si se retoma, se vuelve a escribir aqui la fase «piloto» y se quita `cierre`.
 export const CALENDARIO_VIAL: CalendarioVial = {
   fases: [
-    { id: "antes", desde: "2026-11-03", hasta: "2026-11-20" },
-    { id: "piloto", desde: "2026-11-23", hasta: "2026-12-04" },
+    { id: "antes", desde: "2026-11-03", hasta: "2026-11-19" },
   ],
   testigo: ["2026-10-30", "2026-11-02", "2026-11-16"],
   sinClases: [],
   medidaPiloto: null,
   salidaPiloto: {},
+  cierre: { el: "2026-11-19", nota: "Se cerró sin piloto. Lo medido queda como línea base para cualquier medida que se decida después." },
 };
 
 const sumarDia = (dia: string): string => new Date(Date.parse(`${dia}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);

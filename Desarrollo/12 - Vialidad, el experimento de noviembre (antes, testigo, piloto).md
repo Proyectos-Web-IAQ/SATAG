@@ -83,3 +83,9 @@ Vialidad dejó de ser solo Seguir. Ahora son siete pantallas, una por pregunta d
 La medida del piloto ante Dirección y la fila (el botón del portero).
 2. La medida del piloto: la Propuesta 1 del buscador (preescolar +15, secundaria −15, 30 del personal a E1) como lo que se pide a Dirección, una sola, la semana del 16-nov.
 3. La fila: el botón del portero.
+
+## 9. Cierre (19-nov)
+
+Gerardo cerró el experimento el 19-nov, sin piloto. En `CALENDARIO_VIAL` la línea base («antes») queda del 3 al 19-nov, se quita la fase «piloto» y `cierre` lo dice; Seguir deja de mostrar la columna y la fecha del piloto, y «¿Qué falta?» deja de pedir la calle semanal y la medida del piloto. El muestreador de la calle se apagó ese día a las 14:10: las seis tareas `AnalisisVial-*` del Programador de tareas de la PC de Sistemas quedaron **desactivadas, no borradas**. Los datos siguen en `analisis_vial/datos` (el archivo del 19-nov es parcial).
+
+Para retomarlo: volver a escribir la fase «piloto» en `CALENDARIO_VIAL`, poner `cierre: null` y reactivar las tareas (`Enable-ScheduledTask`). Las pruebas del mecanismo de piloto siguen vivas con un calendario de prueba (`CON_PILOTO` en `pruebas-unitarias/vialidad.test.ts`).

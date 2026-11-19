@@ -19,7 +19,7 @@ import VialidadSeguir from "@/components/admin/VialidadSeguir";
 import SimuladorVialidad from "@/components/admin/SimuladorVialidad";
 import type { Celda } from "@/lib/simulador";
 import { horaCorta } from "@/lib/estacionamiento";
-import { GRUPOS_SALIDA, RECOGE, type ClaseDia, type Flujo, type GrupoSalida, type ResumenCalle, type Seguimiento } from "@/lib/vialidad";
+import { CALENDARIO_VIAL, GRUPOS_SALIDA, RECOGE, type ClaseDia, type Flujo, type GrupoSalida, type ResumenCalle, type Seguimiento } from "@/lib/vialidad";
 
 const PANTALLAS = [
   { n: 1, titulo: "El sistema" },
@@ -381,16 +381,21 @@ function Pendiente({ n, pregunta, sub, falta }: { n: number; pregunta: string; s
 }
 
 function QueFalta() {
+  const cierre = CALENDARIO_VIAL.cierre;
   const filas = [
     ["La fila afuera: cuántos autos esperan antes de la pluma y a qué hora", "Validar afuera cualquier medida: personal a E1, horarios, recogida", "Botón «fila hasta…» del portero en la caseta, o tres tardes de video fijo"],
     ["Un testigo limpio", "Cuánto del tráfico es del Instituto", "Lunes 16 de noviembre, asueto general: ya está programado"],
     ["El circuito y la salida de secundaria por E1", "La mañana y el escalonamiento de horarios", "Ninguna pluma lo ve: cámaras con conteo local, o aforo manual"],
-    ["La calle de cada semana", "Que «Cuánto es nuestro» y Seguir incluyan los días nuevos", "Cargar en Datos los archivos del muestreador junto con los de ZK, cada semana"],
-    ["La medida del piloto", "El piloto entero", "Dirección, antes del 23 de noviembre"],
+    // Con el experimento cerrado (19-nov) ya no se muestrea la calle ni se espera un piloto.
+    ...(cierre ? [] : [
+      ["La calle de cada semana", "Que «Cuánto es nuestro» y Seguir incluyan los días nuevos", "Cargar en Datos los archivos del muestreador junto con los de ZK, cada semana"],
+      ["La medida del piloto", "El piloto entero", "Dirección, antes del 23 de noviembre"],
+    ]),
   ];
   return (
     <>
       <Encabezado n={7} pregunta="¿Qué falta?">Lo que hoy nadie mide y qué decisión frena cada hueco.</Encabezado>
+      {cierre && <p className="ti-hint">El experimento se cerró el {cierre.el.split("-").reverse().join("/")}, sin piloto: la calle se muestreó hasta ese día. Lo de abajo queda para cuando se retome.</p>}
       <div className="table-wrap">
         <table className="admin-table tabla-pro">
           <thead><tr><th>Falta</th><th>Qué decisión frena</th><th>Cómo se consigue</th></tr></thead>

@@ -13,6 +13,7 @@ import {
   SALIDA_SECCION,
   diasHabilesDe,
   faseDe,
+  fasesVisibles,
   horaSalidaDe,
   medirSeguimiento,
   medirFlujo,
@@ -48,19 +49,45 @@ function estancia(tarjeta: string, entra: string, sale: string, dia: string, lot
 
 const corteA = (dia: string, minuto: number): Corte => ({ dia, minuto, exportadoEn: null, retrasoMin: null });
 
+// El calendario como estaba planeado hasta el 19-nov (con piloto): fija el mecanismo de fases,
+// que sigue sirviendo si el experimento se retoma. El vigente se prueba aparte.
+const CON_PILOTO: CalendarioVial = {
+  ...CALENDARIO_VIAL,
+  fases: [
+    { id: "antes", desde: "2026-11-03", hasta: "2026-11-20" },
+    { id: "piloto", desde: "2026-11-23", hasta: "2026-12-04" },
+  ],
+  cierre: null,
+};
+
+describe("el calendario vigente: cerrado el 19-nov, sin piloto", () => {
+  it("la linea base termina el 19-nov y despues ningun dia cae en una fase", () => {
+    expect(CALENDARIO_VIAL.cierre?.el).toBe("2026-11-19");
+    expect(faseDe("2026-11-19")).toBe("antes");
+    expect(faseDe("2026-11-20")).toBeNull();
+    expect(faseDe("2026-11-23")).toBeNull();
+    expect(diasHabilesDe("antes", "V")).toEqual(["2026-11-06", "2026-11-13"]);
+    expect(diasHabilesDe("piloto", "LJ")).toEqual([]);
+  });
+  it("sin piloto en el calendario, la pantalla no muestra su columna", () => {
+    expect(fasesVisibles(CALENDARIO_VIAL)).toEqual(["antes", "testigo"]);
+    expect(fasesVisibles(CON_PILOTO)).toEqual(["antes", "testigo", "piloto"]);
+  });
+});
+
 describe("calendario del experimento", () => {
   it("fase de cada dia: testigo manda sobre el rango, fin de semana no cuenta", () => {
-    expect(faseDe("2026-11-03")).toBe("antes");
-    expect(faseDe("2026-11-20")).toBe("antes");
-    expect(faseDe("2026-11-16")).toBe("testigo");
-    expect(faseDe("2026-11-02")).toBe("testigo");
-    expect(faseDe("2026-10-30")).toBe("testigo");
-    expect(faseDe("2026-11-14")).toBeNull();
-    expect(faseDe("2026-11-21")).toBeNull();
-    expect(faseDe("2026-11-23")).toBe("piloto");
-    expect(faseDe("2026-12-04")).toBe("piloto");
-    expect(faseDe("2026-12-07")).toBeNull();
-    expect(faseDe("2026-10-29")).toBeNull();
+    expect(faseDe("2026-11-03", CON_PILOTO)).toBe("antes");
+    expect(faseDe("2026-11-20", CON_PILOTO)).toBe("antes");
+    expect(faseDe("2026-11-16", CON_PILOTO)).toBe("testigo");
+    expect(faseDe("2026-11-02", CON_PILOTO)).toBe("testigo");
+    expect(faseDe("2026-10-30", CON_PILOTO)).toBe("testigo");
+    expect(faseDe("2026-11-14", CON_PILOTO)).toBeNull();
+    expect(faseDe("2026-11-21", CON_PILOTO)).toBeNull();
+    expect(faseDe("2026-11-23", CON_PILOTO)).toBe("piloto");
+    expect(faseDe("2026-12-04", CON_PILOTO)).toBe("piloto");
+    expect(faseDe("2026-12-07", CON_PILOTO)).toBeNull();
+    expect(faseDe("2026-10-29", CON_PILOTO)).toBeNull();
   });
   it("tipo de dia: lunes a jueves, viernes, o nada", () => {
     expect(tipoDiaDe("2026-11-03")).toBe("LJ");
@@ -69,19 +96,19 @@ describe("calendario del experimento", () => {
     expect(tipoDiaDe("2026-11-08")).toBeNull();
   });
   it("los dias habiles de cada fase y tipo, sin el testigo que cae adentro", () => {
-    expect(diasHabilesDe("antes", "LJ")).toEqual([
+    expect(diasHabilesDe("antes", "LJ", CON_PILOTO)).toEqual([
       "2026-11-03", "2026-11-04", "2026-11-05", "2026-11-09", "2026-11-10", "2026-11-11", "2026-11-12", "2026-11-17", "2026-11-18", "2026-11-19",
     ]);
-    expect(diasHabilesDe("antes", "V")).toEqual(["2026-11-06", "2026-11-13", "2026-11-20"]);
-    expect(diasHabilesDe("piloto", "LJ")).toEqual([
+    expect(diasHabilesDe("antes", "V", CON_PILOTO)).toEqual(["2026-11-06", "2026-11-13", "2026-11-20"]);
+    expect(diasHabilesDe("piloto", "LJ", CON_PILOTO)).toEqual([
       "2026-11-23", "2026-11-24", "2026-11-25", "2026-11-26", "2026-11-30", "2026-12-01", "2026-12-02", "2026-12-03",
     ]);
-    expect(diasHabilesDe("piloto", "V")).toEqual(["2026-11-27", "2026-12-04"]);
-    expect(diasHabilesDe("testigo", "LJ")).toEqual(["2026-11-02", "2026-11-16"]);
-    expect(diasHabilesDe("testigo", "V")).toEqual(["2026-10-30"]);
+    expect(diasHabilesDe("piloto", "V", CON_PILOTO)).toEqual(["2026-11-27", "2026-12-04"]);
+    expect(diasHabilesDe("testigo", "LJ", CON_PILOTO)).toEqual(["2026-11-02", "2026-11-16"]);
+    expect(diasHabilesDe("testigo", "V", CON_PILOTO)).toEqual(["2026-10-30"]);
   });
   it("un dia sin clases sale de su fase", () => {
-    const cal: CalendarioVial = { ...CALENDARIO_VIAL, sinClases: ["2026-11-04"] };
+    const cal: CalendarioVial = { ...CON_PILOTO, sinClases: ["2026-11-04"] };
     expect(faseDe("2026-11-04", cal)).toBeNull();
     expect(diasHabilesDe("antes", "LJ", cal)).toHaveLength(9);
   });
@@ -132,7 +159,7 @@ const serie = [
   paso({ tarjeta: "D1", hora: "06:50:00", dia: "2026-11-25", lote: "E1" }),
   paso({ tarjeta: "D", hora: "07:00:00", dia: "2026-11-25" }),
 ];
-const op = { corte: corteA("2026-11-25", 10 * 60), seccionesDeTarjeta: seccionesDe, minAccesosDia: 4 };
+const op = { corte: corteA("2026-11-25", 10 * 60), seccionesDeTarjeta: seccionesDe, minAccesosDia: 4, calendario: CON_PILOTO };
 
 describe("medirSeguimiento · los cinco numeros por dia", () => {
   const r = medirSeguimiento(serie, op);

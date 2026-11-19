@@ -22,7 +22,7 @@ import { useState } from "react";
 import { Segmentado } from "@/components/admin/UiEstacionamiento";
 import { diaCorto } from "@/lib/caja";
 import {
-  FASES,
+  fasesVisibles,
   METRICAS_PUERTA,
   NOMBRE_FASE,
   TIPOS_DIA,
@@ -132,15 +132,17 @@ export default function VialidadSeguir({ seguir, calle = null }: { seguir: Segui
         ? ""
         : " (sin medida autorizada)"
     : "";
-  const cobertura = FASES.map((f) => `${NOMBRE_FASE[f]}: ${dias(de(f).n, de(f).m)}${f === "piloto" ? notaPiloto : ""}`).join(" · ");
+  // Sin fase de piloto en el calendario (experimento cerrado el 19-nov) no hay columna de piloto.
+  const fases = fasesVisibles(cal);
+  const cobertura = fases.map((f) => `${NOMBRE_FASE[f]}: ${dias(de(f).n, de(f).m)}${f === "piloto" ? notaPiloto : ""}`).join(" · ");
 
   return (
     <section className="seccion-plana">
       <p className="ti-hint" style={{ margin: 0 }}>Estacionamiento › Vialidad › Seguir</p>
-      <h2 className="titular">Antes, testigo y piloto: los cinco números de la tarde</h2>
+      <h2 className="titular">{piloto ? "Antes, testigo y piloto" : "Antes y testigo"}: los cinco números de la tarde</h2>
       <p className="sub">
-        {antes ? `Línea base del ${fechaLarga(antes.desde)} al ${fechaLarga(antes.hasta)}` : "Línea base"}, días testigo sin alumnos y
-        {piloto ? ` piloto del ${fechaLarga(piloto.desde)} al ${fechaLarga(piloto.hasta)}` : " piloto"}, de la bitácora de las plumas y de GES.
+        {antes ? `Línea base del ${fechaLarga(antes.desde)} al ${fechaLarga(antes.hasta)}` : "Línea base"}
+        {piloto ? `, días testigo sin alumnos y piloto del ${fechaLarga(piloto.desde)} al ${fechaLarga(piloto.hasta)}` : " y días testigo sin alumnos"}, de la bitácora de las plumas y de GES.
         Cada celda es la mediana entre días, con el menor y el mayor, y cuántos días hay de cuántos.
       </p>
       <Segmentado opciones={TIPOS_DIA} activa={tipo} onCambio={setTipo} etiqueta="Tipo de día" />
@@ -151,7 +153,7 @@ export default function VialidadSeguir({ seguir, calle = null }: { seguir: Segui
           <thead>
             <tr>
               <th>Qué se mide</th>
-              {FASES.map((f) => (
+              {fases.map((f) => (
                 <th key={f} className="num" style={{ minWidth: 150 }}>{NOMBRE_FASE[f]}</th>
               ))}
             </tr>
@@ -164,7 +166,7 @@ export default function VialidadSeguir({ seguir, calle = null }: { seguir: Segui
                   <br />
                   <span className="ti-hint">{m.detalle} · {m.fuente}</span>
                 </td>
-                {FASES.map((f) => (
+                {fases.map((f) => (
                   <td key={f} className="num"><CeldaVista c={de(f).metricas[m.clave]} unidad={m.unidad} /></td>
                 ))}
               </tr>
@@ -175,7 +177,7 @@ export default function VialidadSeguir({ seguir, calle = null }: { seguir: Segui
                 <br />
                 <span className="ti-hint">autos esperando antes de la pluma · nadie la mide todavía</span>
               </td>
-              {FASES.map((f) => (
+              {fases.map((f) => (
                 <td key={f} className="num"><span className="ti-hint">sin medir</span></td>
               ))}
             </tr>
@@ -186,7 +188,7 @@ export default function VialidadSeguir({ seguir, calle = null }: { seguir: Segui
                   <br />
                   <span className="ti-hint">{c.detalle} · Google</span>
                 </td>
-                {FASES.map((f) => {
+                {fases.map((f) => {
                   const r = de(f);
                   const vs = r.habiles.map((d) => { const x = calle?.porFecha.get(d); return x ? c.valor(x) : null; });
                   return <td key={f} className="num"><CeldaCalle c={resumirCelda(vs, r.m)} fmt={c.fmt} /></td>;
@@ -203,7 +205,7 @@ export default function VialidadSeguir({ seguir, calle = null }: { seguir: Segui
 
       <details style={{ marginTop: 16 }}>
         <summary>Día por día</summary>
-        {FASES.map((f) => {
+        {fases.map((f) => {
           const r = de(f);
           if (r.m === 0) return null;
           // Los dias que todavia no llegan no son «sin bitacora»: se cuentan, no se listan.
@@ -250,11 +252,19 @@ export default function VialidadSeguir({ seguir, calle = null }: { seguir: Segui
           Las cifras usan solo estancias con entrada y salida leídas; por eso «cajones libres» es un techo y E2 se mide con {seguir.cajonesE2} cajones.
         </p>
         <p>Testigos ({cal.testigo.map(diaCorto).join(", ")}): días hábiles sin alumnos, en los que solo el personal cruza la pluma.</p>
-        <p>
-          Piloto{piloto ? ` del ${fechaLarga(piloto.desde)} al ${fechaLarga(piloto.hasta)}` : ""}:{" "}
-          {cal.medidaPiloto ?? "sin medida autorizada todavía; mientras tanto hereda las horas de salida de antes."}
-        </p>
-        <p>Lo que falta: la fila afuera, con el botón del portero en la caseta. La calle se actualiza al cargar cada semana los archivos del muestreador en Datos.</p>
+        {cal.cierre ? (
+          <p>
+            <strong>Experimento cerrado el {fechaLarga(cal.cierre.el)}.</strong> {cal.cierre.nota} La calle (Google) se muestreó hasta ese día.
+          </p>
+        ) : (
+          <>
+            <p>
+              Piloto{piloto ? ` del ${fechaLarga(piloto.desde)} al ${fechaLarga(piloto.hasta)}` : ""}:{" "}
+              {cal.medidaPiloto ?? "sin medida autorizada todavía; mientras tanto hereda las horas de salida de antes."}
+            </p>
+            <p>Lo que falta: la fila afuera, con el botón del portero en la caseta. La calle se actualiza al cargar cada semana los archivos del muestreador en Datos.</p>
+          </>
+        )}
       </div>
     </section>
   );
