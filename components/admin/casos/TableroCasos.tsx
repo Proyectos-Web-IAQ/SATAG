@@ -504,6 +504,12 @@ export default function TableroCasos({ rol, email, eventos, ventana, personas, e
           <button type="button" role="tab" aria-selected={verObservacion} onClick={() => setVerObservacion((v) => !v)} title="Esperan su fecha: no están en las columnas">
             TAGs sin uso en observación <b>{observados.length}</b>
           </button>
+          {/* 19-nov: con busqueda, marcar de un clic los observados que se ven (p. ej. los 31 que volvieron a abrir) para cerrarlos juntos. */}
+          {verObservacion && escribe && q.trim() && observados.length > 1 && (
+            <button type="button" className="link-action" onClick={() => marcar(observados.map((c) => c.id))}>
+              {observados.every((c) => marcados.has(c.id)) ? "Desmarcar los observados" : `Marcar los ${observados.length} observados`}
+            </button>
+          )}
         </div>
       </div>
 
