@@ -45,8 +45,8 @@ const RUTAS = [
       { texto: "anotar_caso", que: "el seguimiento de casos (bloque 89)" },
       { texto: "EMPLEADO_PPF", que: "Estacionamiento agrupa el departamento Empleado_PPF (ZK 25)" },
       { texto: "Contabilidad", que: "el rol contador existe en el cliente (inerte hasta el bloque 74)" },
-      // El titulo del recibo vive en una plantilla de texto: sobrevive a la minificacion.
-      { texto: "Recibo de corte de caja", que: "el corte de caja se imprime con firmas (27-nov)" },
+      // Texto fijo de la plantilla del recibo (no del bloque editable RECIBO): sobrevive a la minificacion.
+      { texto: "Devoluciones en este corte", que: "el corte de caja se imprime con firmas (27-nov)" },
       { texto: "satag · tiempos", que: "tiempos por estación en la consola (Desarrollo/11, paso 0; 30-oct)" },
       { texto: "cruzar con GES", que: "el cruce con GES se cronometra y se reutiliza entre pestañas (30-oct, fa8c0dd)" },
       // Marca el nombre de columna, no un rotulo de pantalla: va dentro del

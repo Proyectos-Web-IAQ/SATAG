@@ -19,6 +19,26 @@ import { fecha, fechaHora } from "@/lib/formato";
 // Todo texto que viene de la base pasa por `esc`: un nombre o una observacion
 // con «<» no puede romper el documento.
 
+// =====================================================================
+// LO QUE SE PUEDE EDITAR A MANO (si el CP pide cambios al formato).
+// Se edita aqui y nada mas. Desde la Chromebook: github.com > este archivo
+// > lapiz > «Commit changes» a main. Actions corre las pruebas y el build
+// ANTES de publicar: si algo se rompe, no se publica (pestana Actions en rojo).
+// Las comillas y comas de cada renglon se respetan tal cual.
+// =====================================================================
+export const RECIBO = {
+  institucion: "Instituto Asunción de Querétaro · SATAG",
+  titulo: "Recibo de corte de caja",
+  // Una caja de firma por renglon. `nombre: "corte"` pone el nombre de quien
+  // cerro el corte; `nombre: ""` deja el renglon en blanco para escribirlo a mano.
+  firmas: [
+    { rol: "Entrega", nombre: "corte" },
+    { rol: "Recibe", nombre: "" },
+  ],
+  leyendaFirma: "Nombre y firma",
+  pie: "Documento interno de control de caja.",
+};
+
 const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
 const MESES_LARGOS = [
@@ -98,7 +118,7 @@ export function htmlReciboCorte(
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<title>Recibo de corte de caja ${esc(corte.folioCorte)}</title>
+<title>${esc(RECIBO.titulo)} ${esc(corte.folioCorte)}</title>
 <style>
   @page { size: letter; margin: 14mm 14mm 16mm; }
   * { box-sizing: border-box; }
@@ -135,8 +155,8 @@ export function htmlReciboCorte(
 <body>
   <header>
     <div>
-      <div class="inst">Instituto Asunción de Querétaro · SATAG</div>
-      <h1>Recibo de corte de caja</h1>
+      <div class="inst">${esc(RECIBO.institucion)}</div>
+      <h1>${esc(RECIBO.titulo)}</h1>
     </div>
     <div class="folio">Folio<br><b>${esc(corte.folioCorte)}</b></div>
   </header>
@@ -162,19 +182,13 @@ export function htmlReciboCorte(
   <div class="obs">${esc(corte.observaciones ?? "")}</div>
 ${seccionDevs}
 
-  <div class="firmas">
+  <div class="firmas" style="grid-template-columns: repeat(${Math.min(RECIBO.firmas.length, 3)}, 1fr)">${RECIBO.firmas.map((f) => `
     <div class="firma">
       <div class="linea"></div>
-      <div class="rol">Entrega</div>
-      <div class="nombre">${esc(corte.cortadoPor)}</div>
-      <div>Nombre y firma</div>
-    </div>
-    <div class="firma">
-      <div class="linea"></div>
-      <div class="rol">Recibe</div>
-      <div class="nombre"></div>
-      <div>Nombre y firma</div>
-    </div>
+      <div class="rol">${esc(f.rol)}</div>
+      <div class="nombre">${f.nombre === "corte" ? esc(corte.cortadoPor) : esc(f.nombre)}</div>
+      <div>${esc(RECIBO.leyendaFirma)}</div>
+    </div>`).join("")}
   </div>
 
   <h2>Detalle de cobros y devoluciones (${pagos.length})</h2>
@@ -186,7 +200,7 @@ ${seccionDevs}
     </tbody>
   </table>
 
-  <div class="pie">Impreso el ${esc(fechaHora(ahora.toISOString()))} por ${esc(impresoPor)} desde SATAG. Documento interno de control de caja.</div>
+  <div class="pie">Impreso el ${esc(fechaHora(ahora.toISOString()))} por ${esc(impresoPor)} desde SATAG. ${esc(RECIBO.pie)}</div>
 </body>
 </html>`;
 }

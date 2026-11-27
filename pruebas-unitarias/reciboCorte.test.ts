@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { esc, htmlReciboCorte, mesDelCorte } from "@/lib/reciboCorte";
+import { esc, htmlReciboCorte, mesDelCorte, RECIBO } from "@/lib/reciboCorte";
 import type { CorteCaja, PagoReciente } from "@/lib/mock/types";
 
 const corte: CorteCaja = {
@@ -30,6 +30,7 @@ describe("recibo del corte de caja", () => {
 
   it("lleva folio, mes, periodo y número de TAG", () => {
     expect(html).toContain("SATAG-CORTE-2026-000001");
+    expect(html).toContain(RECIBO.titulo);
     expect(html).toContain("noviembre 2026");
     expect(html).toContain("del 14 sep 2026 al 30 nov 2026");
     expect(html).toContain("Cobrado (3 TAG)");
@@ -40,10 +41,12 @@ describe("recibo del corte de caja", () => {
     expect(html).toContain("Faltante de $50.00");
   });
 
-  it("trae los dos espacios de firma", () => {
-    expect(html).toContain(">Entrega<");
-    expect(html).toContain(">Recibe<");
-    expect(html.match(/Nombre y firma/g)?.length).toBe(2);
+  // Lee el bloque RECIBO: si el CP pide otra firma y se agrega ahi, la prueba
+  // sigue en verde sin tocarla.
+  it("trae una caja de firma por cada renglon de RECIBO.firmas", () => {
+    expect(RECIBO.firmas.length).toBeGreaterThan(0);
+    for (const f of RECIBO.firmas) expect(html).toContain(`>${f.rol}<`);
+    expect(html.split('class="firma"').length - 1).toBe(RECIBO.firmas.length);
   });
 
   it("la devolución sale en rojo, con signo y con su motivo", () => {
@@ -55,7 +58,7 @@ describe("recibo del corte de caja", () => {
   it("las devoluciones tienen su sección antes de las firmas", () => {
     const sec = html.indexOf("Devoluciones en este corte (1)");
     expect(sec).toBeGreaterThan(-1);
-    expect(sec).toBeLessThan(html.indexOf(">Entrega<"));
+    expect(sec).toBeLessThan(html.indexOf('class="firmas"'));
   });
 
   it("sin devoluciones no aparece la sección", () => {
