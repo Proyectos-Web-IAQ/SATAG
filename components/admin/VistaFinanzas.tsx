@@ -8,6 +8,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { scrollAlAviso } from "@/components/admin/RegistroCard";
 import { diaCorto, semDias, diasNaturalesDesde } from "@/lib/caja";
 import { fechaHora as fechaHoraFmt } from "@/lib/formato";
+import { htmlReciboCorte, mesDelCorte } from "@/lib/reciboCorte";
 
 const dinero = new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" });
 
@@ -187,6 +188,32 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
     setExpandido(clave);
     if (pagosPorCorte[clave]) return;
     cargarDetalle(clave, corteId);
+  }
+
+  // Recibo imprimible del corte (pedido del CP, 27-nov). La ventana se abre
+  // EN el clic, antes de leer nada: si se abriera despues del await, el
+  // navegador la trataria como emergente y la bloquearia. Los cobros salen de
+  // la misma lectura que el detalle; si falla, no se imprime un recibo vacio.
+  async function imprimirRecibo(c: CorteCaja) {
+    const w = window.open("", "_blank");
+    if (!w) {
+      setError("El navegador bloqueó la ventana del recibo. Permita ventanas emergentes para SATAG e inténtelo de nuevo.");
+      scrollAlAviso(bannersRef.current);
+      return;
+    }
+    w.document.write("<p style=\"font-family:Arial;padding:24px\">Preparando el recibo…</p>");
+    try {
+      const lista = pagosPorCorte[c.id] ?? await listPagosDeCorte(c.id);
+      w.document.open();
+      w.document.write(htmlReciboCorte(c, lista, nombreSesion));
+      w.document.close();
+      w.focus();
+      setTimeout(() => w.print(), 300);
+    } catch (err) {
+      w.close();
+      setError(`No se pudo preparar el recibo: ${err instanceof Error ? err.message : "no se leyeron los cobros del corte"}.`);
+      scrollAlAviso(bannersRef.current);
+    }
   }
 
   async function run(fn: () => Promise<ResultadoCorte>, ok: (r: ResultadoCorte) => string) {
@@ -405,8 +432,8 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Folio</th><th>Fecha</th><th>Esperado</th><th>Contado</th>
-                  <th>Diferencia</th><th>Cobros</th><th>Devuelto</th><th>Por</th><th>Observaciones</th>
+                  <th>Folio</th><th>Mes</th><th>Fecha</th><th>Esperado</th><th>Contado</th>
+                  <th>Diferencia</th><th>TAG</th><th>Devuelto</th><th>Por</th><th>Observaciones</th><th>Recibo</th>
                 </tr>
               </thead>
               <tbody>
@@ -415,6 +442,7 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
                     <tr className={`selectable ${expandido === c.id ? "is-selected" : ""}`}
                       onClick={() => toggleDetalle(c.id, c.id)}>
                       <td>{expandido === c.id ? "▾" : "▸"} {c.folioCorte}</td>
+                      <td>{mesDelCorte(c.periodoHasta)}</td>
                       <td>{fechaHora(c.createdAt)}</td>
                       <td>{dinero.format(c.totalEsperado)}</td>
                       <td>{dinero.format(c.efectivoContado)}</td>
@@ -429,10 +457,16 @@ export default function VistaFinanzas({ nombreSesion }: { nombreSesion: string }
                       <td>{c.cantidadDevoluciones > 0 ? `−${dinero.format(c.totalDevuelto)} (${c.cantidadDevoluciones})` : "—"}</td>
                       <td>{c.cortadoPor}</td>
                       <td>{c.observaciones ?? "—"}</td>
+                      <td>
+                        <button type="button" className="link-action"
+                          onClick={(e) => { e.stopPropagation(); imprimirRecibo(c); }}>
+                          Imprimir recibo
+                        </button>
+                      </td>
                     </tr>
                     {expandido === c.id && (
                       <tr>
-                        <td colSpan={9} style={{ background: "#f7f9fc" }}>
+                        <td colSpan={11} style={{ background: "#f7f9fc" }}>
                           <DetalleCobros cargando={cargandoDet === c.id} error={errorDet[c.id] ?? null}
                             lista={pagosPorCorte[c.id] ?? []} onReintentar={() => cargarDetalle(c.id, c.id)} />
                         </td>
